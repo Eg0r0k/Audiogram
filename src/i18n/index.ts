@@ -3,6 +3,8 @@ import { messages } from "./messages";
 
 const DEFAULT_LOCALE = "ru";
 
+// TODO: add translate for track context menu
+
 export const i18n = createI18n({
   legacy: false,
   messages,
