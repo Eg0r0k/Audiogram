@@ -4,38 +4,44 @@
       <slot />
     </ContextMenuTrigger>
 
-    <component
-      :is="contextComponent"
-      v-bind="contextProps"
-    />
+    <ContextMenuPortal>
+      <ContextMenuContent class="w-60">
+        <component
+
+          :is="contextComponent"
+          v-if="activeTrack"
+          v-bind="contextProps"
+        />
+      </ContextMenuContent>
+    </ContextMenuPortal>
   </ContextMenu>
 </template>
 
 <script setup lang="ts">
+import { computed, type Component, toRef } from "vue";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
-import { Track } from "@/types/track/track";
-import { TrackContext } from "./types";
-import { type Component, computed, toRef } from "vue";
-import DefaultContext from "./contexts/DefaultContext.vue";
+import { useTrackMenu } from "@/composables/useTrackMenu";
 import { useTrackContextActions } from "@/composables/useTrackContextActions";
+import type { TrackContext } from "./types";
+import type { PlaylistId } from "@/types/ids";
+import DefaultContext from "./contexts/DefaultContext.vue";
 import QueueContext from "./contexts/QueueContext.vue";
 import PlaylistContext from "./contexts/PlaylistContext.vue";
-import { PlaylistId } from "@/types/ids";
+import ContextMenuContent from "@/components/ui/context-menu/ContextMenuContent.vue";
+import { ContextMenuPortal } from "reka-ui";
 
 interface Props {
-  track: Track;
   context?: TrackContext;
   isPlaylistOwner?: boolean;
   playlistId?: PlaylistId;
-  queueIndex?: number;
 }
 
-const props = withDefaults(
-  defineProps<Props>(),
-  {
-    context: "default",
-  },
-);
+const props = withDefaults(defineProps<Props>(), {
+  context: "default",
+});
+
+const { activeTrack, activeIndex } = useTrackMenu();
+
 const contexts: Record<TrackContext, Component> = {
   "default": DefaultContext,
   "search": DefaultContext,
@@ -50,17 +56,20 @@ const contexts: Record<TrackContext, Component> = {
 const contextComponent = computed(() => contexts[props.context]);
 
 const actions = useTrackContextActions(
-  toRef(props, "track"),
+  // @ts-expect-error: activeTrack can be null, but v-if guards the component render
+  activeTrack,
   toRef(props, "context"),
   {
     playlistId: toRef(props, "playlistId"),
-    queueIndex: toRef(props, "queueIndex"),
+    queueIndex: activeIndex,
   },
 );
 
 const contextProps = computed(() => {
+  if (!activeTrack.value) return {};
+
   const base = {
-    track: props.track,
+    track: activeTrack.value,
     actions,
   };
 

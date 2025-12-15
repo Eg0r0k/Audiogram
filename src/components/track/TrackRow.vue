@@ -1,33 +1,65 @@
-<script setup lang="ts">
-
-</script>
-
 <template>
   <div
     v-ripple
+    role="button"
     tabindex="0"
-    class="gird relative select-none cursor-pointer p-2 rounded-[10px] hover:bg-muted/20 data-[state=open]:bg-muted/20"
+    class="track-row flex rounded select-none items-center gap-3 px-4 h-16 hover:bg-muted/50 cursor-pointer"
+    @click="handlePlay"
+    @keypress="handlePlay"
+    @contextmenu="onContextMenu"
   >
-    <div class="flex items-center">
-      <img
-        :alt="$t('player.cover')"
-        class=" size-12 rounded-sm z-1 object-cover mr-3"
-        loading="eager"
-        width="40"
-        height="40"
-        src="https://i.scdn.co/image/ab67616d000048514feb42ff53928276cf9d9f5a"
-      >
-      <div class=" pr-2 flex leading-tight flex-col">
-        <div>
-          <span class="font-medium truncate">Title</span>
-        </div>
-        <!-- <div>Badge</div> -->
-        <div>
-          <span
-            class="inline-flex   text-sm truncate items-center justify-center text-muted-foreground"
-          >Artist</span>
-        </div>
+    <span class="w-8 text-center text-muted-foreground">
+      {{ index }}
+    </span>
+
+    <Image
+      :src="track.cover"
+      :alt="track.title"
+      container-class="size-10 shrink-0 rounded z-1"
+      image-class="size-full object-cover"
+    />
+
+    <div class="flex-1 min-w-0">
+      <div class="font-medium truncate">
+        {{ track.title }}
+      </div>
+      <div class="text-sm text-muted-foreground truncate">
+        {{ track.artist }}
       </div>
     </div>
+
+    <span class="text-sm text-muted-foreground">
+      {{ formatDuration(track.duration) }}
+    </span>
   </div>
 </template>
+
+<script setup lang="ts">
+import Image from "@/components/ui/image/Image.vue";
+import type { Track } from "@/types/track/track";
+import { formatDuration } from "@/helpers/formatter/time";
+import { useTrackMenu } from "@/composables/useTrackMenu";
+
+interface Props {
+  track: Track;
+  index?: number;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  index: 0,
+});
+
+const emit = defineEmits<{
+  play: [track: Track];
+}>();
+
+const { openMenu } = useTrackMenu();
+
+const handlePlay = () => {
+  emit("play", props.track);
+};
+
+const onContextMenu = () => {
+  openMenu(props.track, props.index);
+};
+</script>

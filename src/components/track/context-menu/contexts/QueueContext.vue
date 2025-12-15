@@ -1,62 +1,60 @@
 <template>
-  <ContextMenuContent class="w-60">
-    <PlayItems
-      @play="actions.play"
-      @play-next="actions.playNext"
-      @add-to-queue="actions.addToQueue"
-    />
+  <PlayItems
+    @play="actions.play"
+    @play-next="actions.playNext"
+    @add-to-queue="actions.addToQueue"
+  />
 
-    <ContextMenuSeparator />
+  <ContextMenuSeparator />
 
-    <ContextMenuItem
-      :disabled="queueIndex === 0"
-      @click="emit('moveUp')"
-    >
-      <Icon icon="tabler:arrow-up" />
-      Переместить выше
-    </ContextMenuItem>
+  <ContextMenuItem
+    :disabled="queueIndex === 0"
+    @click="emit('moveUp')"
+  >
+    <Icon icon="tabler:arrow-up" />
+    Переместить выше
+  </ContextMenuItem>
 
-    <ContextMenuItem
-      :disabled="queueIndex === queueLength - 1"
-      @click="emit('moveDown')"
-    >
-      <Icon icon="tabler:arrow-down" />
-      Переместить ниже
-    </ContextMenuItem>
+  <ContextMenuItem
+    :disabled="queueIndex === queueLength - 1"
+    @click="emit('moveDown')"
+  >
+    <Icon icon="tabler:arrow-down" />
+    Переместить ниже
+  </ContextMenuItem>
 
-    <ContextMenuItem
-      variant="destructive"
-      @click="actions.removeFromQueue?.()"
-    >
-      <Icon icon="tabler:trash" />
-      Удалить из очереди
-    </ContextMenuItem>
+  <ContextMenuItem
+    variant="destructive"
+    @click="actions.removeFromQueue?.()"
+  >
+    <Icon icon="tabler:trash" />
+    Удалить из очереди
+  </ContextMenuItem>
 
-    <ContextMenuSeparator />
+  <ContextMenuSeparator />
 
-    <LikeItem
-      :is-liked="track.isLiked"
-      @toggle="actions.toggleLike"
-    />
+  <LikeItem
+    :is-liked="track.isLiked"
+    @toggle="actions.toggleLike"
+  />
 
-    <AddToPlaylistSub
-      :playlists="playlists"
-      @add="actions.addToPlaylist"
-      @create="handleCreatePlaylist"
-    />
+  <AddToPlaylistSub
+    :playlists="playlists"
+    @add="actions.addToPlaylist"
+    @create="handleCreatePlaylist"
+  />
 
-    <ContextMenuSeparator />
+  <ContextMenuSeparator />
 
-    <NavigationItems
-      :artist-name="track.artist"
-      :album-name="track.albumName"
-      @go-to-artist="actions.goToArtist"
-      @go-to-album="actions.goToAlbum"
-    />
-  </ContextMenuContent>
+  <NavigationItems
+    :artist-name="track.artist"
+    :album-name="track.albumName"
+    @go-to-artist="actions.goToArtist"
+    @go-to-album="actions.goToAlbum"
+  />
 </template>
 <script setup lang="ts">
-import { ContextMenuContent, ContextMenuSeparator } from "@/components/ui/context-menu";
+import { ContextMenuSeparator } from "@/components/ui/context-menu";
 import PlayItems from "../items/PlayItems.vue";
 import { Track } from "@/types/track/track";
 import { ContextActions } from "../types";

@@ -14,9 +14,14 @@
     Добавить в очередь
   </ContextMenuItem>
 </template>
+
 <script setup lang="ts">
 import { ContextMenuItem } from "@/components/ui/context-menu";
 import { Icon } from "@iconify/vue";
+
+defineOptions({
+  inheritAttrs: false,
+});
 
 const emit = defineEmits<{
   play: [];

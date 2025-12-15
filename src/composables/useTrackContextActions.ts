@@ -1,17 +1,22 @@
 import type { ContextActions, TrackContext } from "@/components/track/context-menu/types";
 import { PlaylistId } from "@/types/ids";
 import { Track } from "@/types/track/track";
-import { type Ref } from "vue";
 import { useRouter } from "vue-router";
+
+interface RefLike<T> {
+  value: T;
+}
+
 export function useTrackContextActions(
-  track: Ref<Track>,
-  context: Ref<TrackContext>,
+  track: RefLike<Track>,
+  context: RefLike<TrackContext>,
   options: {
-    playlistId?: Ref<PlaylistId | undefined>;
-    queueIndex?: Ref<number | undefined>;
+    playlistId?: RefLike<PlaylistId | undefined>;
+    queueIndex?: RefLike<number | undefined>;
   } = {},
 ): ContextActions {
   const router = useRouter();
+
   const play = () => {
     console.log("Play track:", track.value.id);
   };
