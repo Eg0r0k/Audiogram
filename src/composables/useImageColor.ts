@@ -1,4 +1,3 @@
-// composables/useImageColor.ts
 import { Vibrant } from "node-vibrant/browser";
 import { ref } from "vue";
 
@@ -10,13 +9,9 @@ export interface ColorResult {
 }
 
 export interface UseImageColorOptions {
-  /** Яркость (0-100), undefined = оригинальная */
   lightness?: number;
-  /** Насыщенность (0-100), undefined = оригинальная */
   saturation?: number;
-  /** Тип цвета из палитры */
   colorType?: "Vibrant" | "Muted" | "DarkVibrant" | "DarkMuted" | "LightVibrant" | "LightMuted";
-  /** Fallback цвет */
   fallback?: string;
 }
 
@@ -54,7 +49,7 @@ export const getColorFromImage = async (
 
     let [h, s, l] = swatch.hsl;
     h = Math.round(h * 360);
-    s = opts.saturation ?? Math.round(s * 100); // Можно переопределить
+    s = opts.saturation ?? Math.round(s * 100);
     l = opts.lightness ?? Math.round(l * 100);
 
     const rgb = swatch.rgb.map(Math.round) as [number, number, number];

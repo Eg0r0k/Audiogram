@@ -6,13 +6,15 @@ interface SidebarState {
   width: number;
 }
 
+const LEFT_SIDEBAR_KEY = "app-left-sidebar" as const;
+
 const DEFAULT_LEFT_SIDEBAR: SidebarState = {
   isOpen: true,
   width: 280,
 };
 
 const leftSidebarState = useLocalStorage<SidebarState>(
-  "app-left-sidebar",
+  LEFT_SIDEBAR_KEY,
   DEFAULT_LEFT_SIDEBAR,
 );
 
