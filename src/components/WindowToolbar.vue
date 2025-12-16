@@ -22,9 +22,6 @@
       >
         <Icon icon="tabler:chevron-right" />
       </Button>
-      <!-- <Button size="icon-xs" @click="handleThemeToggle">
-        <component :is="themeIcon" />
-      </Button> -->
     </div>
     <div class="titlebar-controls">
       <button
@@ -61,8 +58,6 @@ import { Window } from "@tauri-apps/api/window";
 import { computed, onMounted, ref } from "vue";
 import { Button } from "./ui/button";
 import { Icon } from "@iconify/vue";
-import { useTheme } from "@/composables/useTheme";
-import { Moon, Sun } from "lucide-vue-next";
 import { useRouter } from "vue-router";
 import { IS_TAURI } from "@/helpers/environment/userAgent";
 import useTauriEvent from "@/composables/tauri/useTauriEvent";
@@ -73,11 +68,6 @@ const canGoForward = computed(() => false);
 const goNext = () => router.go(1);
 const goBack = () => router.back();
 
-const theme = useTheme();
-const themeIcon = computed(() => (theme.isDark.value ? Sun : Moon));
-const handleThemeToggle = (event: MouseEvent) => {
-  theme.toggleTheme(event);
-};
 const appWindow = ref<Window | null>(null);
 const isMaximized = ref(false);
 
