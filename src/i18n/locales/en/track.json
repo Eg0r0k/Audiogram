@@ -1,0 +1,20 @@
+{
+  "contextMenu": {
+    "addToFavorites": "Add to favorites",
+    "removeFromFavorites": "Remove from favorites",
+    "goToArtist": "Go to artist",
+    "goToAlbum": "Go to album",
+    "play": "Play",
+    "playNext": "Play next",
+    "addToQueue": "Add to queue",
+    "addToPlaylist": "Add to playlist",
+    "searchPlaylist": "Search playlist...",
+    "createPlaylist": "Create playlist",
+    "noPlaylistsFound": "No playlists found",
+    "noPlaylistsYet": "You don't have any playlists yet",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "removeFromQueue": "Remove from queue",
+    "removeFromPlaylist": "Remove from playlist"
+  }
+}

@@ -46,6 +46,8 @@ defineProps<{
   actions: ContextActions;
 }>();
 
+// TODO delete this later
+
 const playlists: { id: PlaylistId; name: string }[] = [
   { id: createPlaylistId("1"), name: "Избранное" },
   { id: createPlaylistId("2"), name: "Для тренировок" },

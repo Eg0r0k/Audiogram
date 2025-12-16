@@ -5,17 +5,16 @@
         icon="tabler:playlist-add"
         class="mr-2"
       />
-      Добавить в плейлист
+      {{ $t('track.contextMenu.addToPlaylist') }}
     </ContextMenuSubTrigger>
     <ContextMenuSubContent class="w-56">
       <div class="p-0.5 ">
         <InputGroup
-          class="bg-background!"
-          size="sm"
+          class="bg-background! h-8 "
         >
           <InputGroupInput
             v-model="searchQuery"
-            placeholder="Поиск плейлиста..."
+            :placeholder="$t('track.contextMenu.searchPlaylist')"
             @keydown.stop
           />
           <InputGroupAddon>
@@ -31,7 +30,7 @@
 
       <ContextMenuItem @click="emit('create')">
         <Icon icon="tabler:plus" />
-        Создать плейлист
+        {{ $t('track.contextMenu.createPlaylist') }}
       </ContextMenuItem>
 
       <template v-if="filteredPlaylists.length">
@@ -51,14 +50,14 @@
       <template v-else-if="searchQuery && playlists.length">
         <ContextMenuSeparator />
         <div class="p-3 text-center text-sm text-muted-foreground">
-          Плейлисты не найдены
+          {{ $t('track.contextMenu.noPlaylistsFound') }}
         </div>
       </template>
 
       <template v-else-if="!playlists.length">
         <ContextMenuSeparator />
         <div class="p-3 text-center text-sm text-muted-foreground">
-          У вас пока нет плейлистов
+          {{ $t('track.contextMenu.noPlaylistsYet') }}
         </div>
       </template>
     </ContextMenuSubContent>

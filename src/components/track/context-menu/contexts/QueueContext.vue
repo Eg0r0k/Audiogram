@@ -12,7 +12,8 @@
     @click="emit('moveUp')"
   >
     <Icon icon="tabler:arrow-up" />
-    Переместить выше
+
+    {{ $t('track.contextMenu.moveUp') }}
   </ContextMenuItem>
 
   <ContextMenuItem
@@ -20,7 +21,7 @@
     @click="emit('moveDown')"
   >
     <Icon icon="tabler:arrow-down" />
-    Переместить ниже
+    {{ $t('track.contextMenu.moveDown') }}
   </ContextMenuItem>
 
   <ContextMenuItem
@@ -28,7 +29,7 @@
     @click="actions.removeFromQueue?.()"
   >
     <Icon icon="tabler:trash" />
-    Удалить из очереди
+    {{ $t('track.contextMenu.removeFromQueue') }}
   </ContextMenuItem>
 
   <ContextMenuSeparator />

@@ -1,17 +1,17 @@
 <template>
   <ContextMenuItem @click="emit('play')">
     <Icon icon="tabler:player-play" />
-    Воспроизвести
+    {{ $t('track.contextMenu.play') }}
   </ContextMenuItem>
 
   <ContextMenuItem @click="emit('playNext')">
     <Icon icon="tabler:playlist-add" />
-    Воспроизвести следующим
+    {{ $t('track.contextMenu.playNext') }}
   </ContextMenuItem>
 
   <ContextMenuItem @click="emit('addToQueue')">
     <Icon icon="tabler:list-numbers" />
-    Добавить в очередь
+    {{ $t('track.contextMenu.addToQueue') }}
   </ContextMenuItem>
 </template>
 

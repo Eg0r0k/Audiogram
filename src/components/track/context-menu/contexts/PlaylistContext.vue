@@ -34,7 +34,7 @@
       @click="actions.removeFromPlaylist"
     >
       <Icon icon="tabler:trash" />
-      Удалить из плейлиста
+      {{ $t('track.contextMenu.removeFromPlaylist') }}
     </ContextMenuItem>
   </template>
 </template>

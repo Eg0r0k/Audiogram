@@ -4,7 +4,11 @@
       :icon="!isLiked ? 'tabler:heart' : 'tabler:heart-filled'"
       :class="{ 'fill-red-400 text-red-400': isLiked }"
     />
-    {{ !isLiked ? "Добавь в любимые треки" : "Удалить из любимых треков" }}
+    {{
+      !isLiked
+        ? $t("track.contextMenu.removeFromFavorites")
+        : $t("track.contextMenu.addToFavorites")
+    }}
   </ContextMenuItem>
 </template>
 <script setup lang="ts">

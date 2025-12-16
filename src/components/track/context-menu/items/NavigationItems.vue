@@ -1,11 +1,11 @@
 <template>
   <ContextMenuItem @click="emit('goToArtist')">
     <Icon icon="tabler:user" />
-    Перейти к исполнителю
+    {{ $t('track.contextMenu.goToArtist') }}
   </ContextMenuItem>
   <ContextMenuItem @click="emit('goToAlbum')">
     <Icon icon="tabler:disc" />
-    Перейти к альбому
+    {{ $t('track.contextMenu.goToAlbum') }}
   </ContextMenuItem>
 </template>
 
