@@ -1,7 +1,11 @@
 <template>
-  <Motion :while-press="{ scale: 0.95 }">
+  <Motion
+    tabindex="-1"
+    :while-press="{ scale: 0.95 }"
+    class=" size-fit"
+  >
     <Button
-      class="p-0 size-10 min-w-10 rounded-full"
+      :class="cn( 'p-0 size-10 min-w-10 rounded-full',props.class )"
       @click="toggle"
     >
       <motion.svg
@@ -24,7 +28,13 @@
 import { Motion, motion, motionValue, useTransform, animate } from "motion-v";
 import { interpolate } from "flubber";
 import { Button } from "@/components/ui/button";
-import { ref } from "vue";
+import { HTMLAttributes, ref } from "vue";
+import { cn } from "@/lib/utils";
+
+interface Props {
+  class?: HTMLAttributes["class"];
+}
+const props = defineProps<Props>();
 
 const play
   = "M21.409 9.353a2.998 2.998 0 0 1 0 5.294L8.597 21.614C6.534 22.737 4 21.277 4 18.968V5.033c0-2.31 2.534-3.769 4.597-2.648z";
