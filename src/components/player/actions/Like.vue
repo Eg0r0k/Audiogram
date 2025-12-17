@@ -33,9 +33,8 @@
     >
       <Icon
         :icon="isLiked ? 'tabler:heart-filled' : 'tabler:heart'"
-        class="transition-colors duration-150"
+        class="transition-colors duration-150 text-inherit"
         :class="isLiked ? 'text-red-500' : 'text-current'"
-        :style="{ fontSize: 'inherit' }"
       />
     </Motion>
 
@@ -66,9 +65,9 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { Motion } from "motion-v";
-import { ref, watch, nextTick } from "vue";
+import { ref, nextTick } from "vue";
 
-const props = defineProps<{
+defineProps<{
   isLiked: boolean;
 }>();
 
