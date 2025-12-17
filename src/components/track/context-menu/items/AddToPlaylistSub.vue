@@ -3,7 +3,7 @@
     <ContextMenuSubTrigger>
       <Icon
         icon="tabler:playlist-add"
-        class="mr-2"
+        class="mr-2 size-5.5"
       />
       {{ $t('track.contextMenu.addToPlaylist') }}
     </ContextMenuSubTrigger>
@@ -20,7 +20,7 @@
           <InputGroupAddon>
             <Icon
               icon="tabler:search"
-              class="size-4 text-muted-foreground"
+              class="size-4 "
             />
           </InputGroupAddon>
         </InputGroup>
@@ -29,7 +29,10 @@
       <ContextMenuSeparator />
 
       <ContextMenuItem @click="emit('create')">
-        <Icon icon="tabler:plus" />
+        <Icon
+          icon="tabler:plus"
+          class="size-5.5"
+        />
         {{ $t('track.contextMenu.createPlaylist') }}
       </ContextMenuItem>
 
@@ -41,7 +44,10 @@
             :key="playlist.id"
             @click="emit('add', playlist.id)"
           >
-            <Icon icon="tabler:playlist" />
+            <Icon
+              icon="tabler:playlist"
+              class="size-5.5"
+            />
             <span class="truncate">{{ playlist.name }}</span>
           </ContextMenuItem>
         </div>

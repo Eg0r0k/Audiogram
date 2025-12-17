@@ -10,8 +10,8 @@ export interface ViewOption {
 }
 
 export const viewOptions: ViewOption[] = [
-  { value: "compact", label: "Компактный", icon: "tabler:menu-2" },
-  { value: "list", label: "Список", icon: "tabler:list" },
+  { value: "compact", label: "media.display.compact", icon: "tabler:menu-2" },
+  { value: "list", label: "media.display.list", icon: "tabler:list" },
 ];
 
 const VIEW_MODE_KEY = "library-view-mode" as const;

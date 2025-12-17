@@ -6,14 +6,16 @@
           class="size-5"
           :icon="currentOption.icon"
         />
-        {{ currentOption.label }}
+        {{ $t(`${currentOption.label}`) }}
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent
       side="bottom"
       align="end"
     >
-      <DropdownMenuLabel>Формат библиотеки</DropdownMenuLabel>
+      <DropdownMenuLabel class="text-xs">
+        {{ $t('media.display.label') }}
+      </DropdownMenuLabel>
       <DropdownMenuItem
         v-for="option in viewOptions"
         :key="option.value"
@@ -24,7 +26,7 @@
           class="size-5"
           :icon="option.icon"
         />
-        {{ option.label }}
+        {{ $t(`${option.label}`) }}
         <Icon
           v-if="viewMode === option.value"
           class="size-4 ml-auto"

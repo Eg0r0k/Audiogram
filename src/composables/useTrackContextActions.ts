@@ -1,4 +1,6 @@
 import type { ContextActions, TrackContext } from "@/components/track/context-menu/types";
+import { usePlayerStore } from "@/stores/player.store";
+import { useQueueStore } from "@/stores/queue.store";
 import { PlaylistId } from "@/types/ids";
 import { Track } from "@/types/track/track";
 import { useRouter } from "vue-router";
@@ -7,26 +9,27 @@ interface RefLike<T> {
   value: T;
 }
 
-export function useTrackContextActions(
+export const useTrackContextActions = (
   track: RefLike<Track>,
   context: RefLike<TrackContext>,
   options: {
     playlistId?: RefLike<PlaylistId | undefined>;
     queueIndex?: RefLike<number | undefined>;
   } = {},
-): ContextActions {
+): ContextActions => {
   const router = useRouter();
+  const playerStore = usePlayerStore();
+  const queueStore = useQueueStore();
 
   const play = () => {
-    console.log("Play track:", track.value.id);
+    console.log("not implemented");
   };
-
   const playNext = () => {
-    console.log("Play next:", track.value.id);
+    console.log("not implemented");
   };
 
   const addToQueue = () => {
-    console.log("Add to queue:", track.value.id);
+    console.log("not implemented");
   };
 
   const toggleLike = async () => {
@@ -62,6 +65,7 @@ export function useTrackContextActions(
   };
 
   const download = () => {
+    // TODO: Download service
     console.log("Download:", track.value.id);
   };
 
@@ -78,4 +82,4 @@ export function useTrackContextActions(
     goToAlbum,
     download,
   };
-}
+};

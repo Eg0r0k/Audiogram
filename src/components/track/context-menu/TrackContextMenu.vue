@@ -4,36 +4,35 @@
       <slot />
     </ContextMenuTrigger>
 
-    <ContextMenuPortal>
-      <ContextMenuContent class="w-60">
-        <component
+    <ContextMenuContent class="w-60">
+      <component
 
-          :is="contextComponent"
-          v-if="activeTrack"
-          v-bind="contextProps"
-        />
-      </ContextMenuContent>
-    </ContextMenuPortal>
+        :is="contextComponent"
+        v-if="activeTrack"
+        v-bind="contextProps"
+      />
+    </ContextMenuContent>
   </ContextMenu>
 </template>
 
 <script setup lang="ts">
 import { computed, type Component, toRef } from "vue";
-import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent } from "@/components/ui/context-menu";
 import { useTrackMenu } from "@/composables/useTrackMenu";
 import { useTrackContextActions } from "@/composables/useTrackContextActions";
 import type { TrackContext } from "./types";
-import type { PlaylistId } from "@/types/ids";
+import type { AlbumId, PlaylistId } from "@/types/ids";
 import DefaultContext from "./contexts/DefaultContext.vue";
 import QueueContext from "./contexts/QueueContext.vue";
 import PlaylistContext from "./contexts/PlaylistContext.vue";
-import ContextMenuContent from "@/components/ui/context-menu/ContextMenuContent.vue";
-import { ContextMenuPortal } from "reka-ui";
 
 interface Props {
   context?: TrackContext;
   isPlaylistOwner?: boolean;
   playlistId?: PlaylistId;
+  queueIndex?: number;
+  albumId?: AlbumId;
+
 }
 
 const props = withDefaults(defineProps<Props>(), {

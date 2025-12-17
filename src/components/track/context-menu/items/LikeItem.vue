@@ -1,19 +1,19 @@
 <template>
   <ContextMenuItem @click="emit('toggle')">
-    <Icon
-      :icon="!isLiked ? 'tabler:heart' : 'tabler:heart-filled'"
-      :class="{ 'fill-red-400 text-red-400': isLiked }"
+    <Like
+      :is-liked="isLiked"
+      class=" size-5.5 "
     />
     {{
       !isLiked
-        ? $t("track.contextMenu.removeFromFavorites")
-        : $t("track.contextMenu.addToFavorites")
+        ? $t("track.contextMenu.addToFavorites")
+        : $t("track.contextMenu.removeFromFavorites")
     }}
   </ContextMenuItem>
 </template>
 <script setup lang="ts">
+import Like from "@/components/player/actions/Like.vue";
 import ContextMenuItem from "@/components/ui/context-menu/ContextMenuItem.vue";
-import { Icon } from "@iconify/vue";
 
 defineProps<{
   isLiked: boolean;
