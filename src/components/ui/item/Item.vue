@@ -17,6 +17,7 @@ const props = withDefaults(defineProps<PrimitiveProps & {
 
 <template>
   <Primitive
+    v-ripple
     data-slot="item"
     :as="as"
     :as-child="asChild"

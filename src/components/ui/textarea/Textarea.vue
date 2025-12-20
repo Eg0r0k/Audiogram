@@ -26,7 +26,7 @@ const modelValue = useVModel(props, "modelValue", emits, {
     :class="
       cn(
         'audiogram-textarea',
-        'placeholder:text-muted-foreground selection:bg-primary caret-primary selection:text-primary-foreground dark:bg-background flex field-sizing-content min-h-16 w-full rounded-md bg-transparent px-3 py-2 text-base outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+        'placeholder:text-muted-foreground placeholder:font-semibold selection:bg-primary caret-primary selection:text-primary-foreground dark:bg-background flex field-sizing-content min-h-16 w-full rounded-md bg-transparent px-3 py-2 text-base outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
         props.class
       )
     "

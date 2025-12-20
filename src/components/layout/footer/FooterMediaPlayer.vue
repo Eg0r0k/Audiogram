@@ -11,7 +11,7 @@ const isOpen = ref(false);
 
 <template>
   <footer
-    class="p-2 bg-card border-t"
+    class="p-2 bg-card border-t border-background"
   >
     <aside>
       <div class=" flex items-center justify-between h-[78px]">

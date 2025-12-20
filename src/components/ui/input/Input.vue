@@ -26,7 +26,7 @@ const modelValue = useVModel(props, "modelValue", emits, {
     :class="
       cn(
         'audiogram-input',
-        'file:text-foreground placeholder:text-muted-foreground selection:bg-primary caret-primary selection:text-primary-foreground dark:bg-background h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 text-base  outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium  disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+        'file:text-foreground placeholder:font-medium placeholder:text-muted-foreground selection:bg-primary caret-primary selection:text-primary-foreground dark:bg-background h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 text-base  outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium  disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
         props.class
       )
     "
