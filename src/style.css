@@ -125,8 +125,17 @@
 @utility press-scale {
   transition: transform .1s var(--ease-standard);
   transform: scale(1);
+  
   &:active {
     transform: scale(.96);
+  }
+  
+  body.is-mobile & {
+    transform: var(--transform-extra, none) scale3d(1, 1, 1);
+    
+    &:active {
+      transform: var(--transform-extra, none) scale3d(.96, .96, 1);
+    }
   }
 }
 
