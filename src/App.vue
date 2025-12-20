@@ -7,7 +7,7 @@
       />
     </RouterView>
   </component>
-
+  <DragPreview />
   <Toaster
     position="top-center"
     class="pointer-events-auto"
@@ -27,6 +27,7 @@ import { useRoute } from "vue-router";
 import { useSetupRootClasses } from "./composables/useSetupRootClasses";
 import { listenForOpenedFiles, OpenedFile } from "./helpers/files/fileOpener";
 import { usePreventPinchZoom } from "./composables/usePreventPinchZoom";
+import DragPreview from "./components/dnd/DragPreview.vue";
 
 const route = useRoute();
 const layouts: Record<string, Component> = {
@@ -55,7 +56,6 @@ onMounted(async () => {
 onUnmounted(() => {
   unlisten?.();
 });
-
 useTheme();
 useSetupRootClasses();
 usePreventPinchZoom();
