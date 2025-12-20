@@ -8,7 +8,7 @@ import { CheckboxIndicator, CheckboxRoot, useForwardPropsEmits } from "reka-ui";
 import { cn } from "@/lib/utils";
 
 const checkboxVariants = cva(
-  "checkbox-animated peer relative cursor-pointer overflow-hidden border-input data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shrink-0 border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
+  "checkbox-animated peer relative cursor-pointer overflow-hidden border data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shrink-0 border outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
   {
     variants: {
       size: {
@@ -47,12 +47,15 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
     <span class="checkbox-bg" />
 
     <CheckboxIndicator
+      as-child
+      force-mount
       data-slot="checkbox-indicator"
-      class="checkbox-icon relative z-10 grid place-content-center text-current"
     >
-      <slot v-bind="slotProps">
-        <Check />
-      </slot>
+      <span class="checkbox-icon">
+        <slot v-bind="slotProps">
+          <Check stroke-width="3" />
+        </slot>
+      </span>
     </CheckboxIndicator>
   </CheckboxRoot>
 </template>
@@ -64,13 +67,25 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
   background-color: var(--primary);
   border-radius: 50%;
   transform: scale(0);
-  transition: transform 0.2s 0.05s ease-in-out;
+  opacity: 0;
+  transition:
+    transform 0.2s var(--ease-standard),
+    opacity 0.15s ease-out;
   pointer-events: none;
 }
 
 .checkbox-icon {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-content: center;
+  color: currentColor;
   opacity: 0;
-  transition: opacity 0.1s 0s ease-in-out;
+  transform: scale(0.5);
+  transition:
+    opacity 0.15s ease-out,
+    transform 0.2s var(--ease-bounce);
 }
 
 @supports (-webkit-touch-callout: none) {
@@ -82,12 +97,34 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
 .checkbox-animated[data-state="checked"] .checkbox-bg,
 .checkbox-animated[data-state="indeterminate"] .checkbox-bg {
   transform: scale(1);
-  transition: transform 0.2s 0s ease-in-out;
+  opacity: 1;
+  transition:
+    transform 0.25s var(--ease-bounce),
+    opacity 0.1s ease-out;
 }
 
 .checkbox-animated[data-state="checked"] .checkbox-icon,
 .checkbox-animated[data-state="indeterminate"] .checkbox-icon {
   opacity: 1;
-  transition: opacity 0.1s 0.15s ease-in-out;
+  transform: scale(1);
+  transition:
+    opacity 0.1s 0.1s ease-out,
+    transform 0.25s 0.05s var(--ease-bounce);
+}
+
+.checkbox-animated[data-state="unchecked"] .checkbox-bg {
+  transform: scale(0);
+  opacity: 0;
+  transition:
+    transform 0.2s 0.05s var(--ease-standard),
+    opacity 0.15s 0.1s ease-out;
+}
+
+.checkbox-animated[data-state="unchecked"] .checkbox-icon {
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity 0.1s ease-out,
+    transform 0.15s var(--ease-standard);
 }
 </style>
