@@ -47,7 +47,7 @@ const index = ref(0);
 
 const progress = motionValue(0);
 function centerInterpolate(a: string, b: string) {
-  return interpolate(a, b, { maxSegmentLength: 0.1 });
+  return interpolate(a, b, { maxSegmentLength: 2.5 });
 }
 const d = useTransform(progress, [0, 1], paths, {
   mixer: centerInterpolate,

@@ -3,24 +3,27 @@
     <Image
       :src="src"
       :alt="alt"
+      :width="232"
+      :height="232"
+      fetchpriority="high"
       :container-class="containerClass"
       image-class="size-full object-cover"
-    />
-
-    <button
-      v-if="editable"
-      class="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-      :class="rounded ? 'rounded-full' : 'rounded-md'"
-      @click="emit('edit')"
     >
-      <div class="text-center text-white">
-        <Icon
-          icon="tabler:pencil"
-          class="size-12 mx-auto"
-        />
-        <span class="text-sm mt-2 block">{{ $t('media.editImage') }}</span>
-      </div>
-    </button>
+      <button
+        v-if="editable"
+        class="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+        :class="rounded ? 'rounded-full' : 'rounded-md'"
+        @click="emit('edit')"
+      >
+        <div class="text-center text-white">
+          <Icon
+            icon="tabler:pencil"
+            class="size-12 mx-auto"
+          />
+          <span class="text-sm mt-2 block">{{ $t('media.editImage') }}</span>
+        </div>
+      </button>
+    </Image>
   </div>
 </template>
 

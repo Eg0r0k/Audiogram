@@ -59,7 +59,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   alt: "",
-  fallbackSrc: "/img/placeholder.jpg",
+  fallbackSrc: "/img/fallback.svg",
   crossorigin: "anonymous",
   draggable: false,
   showSkeleton: true,

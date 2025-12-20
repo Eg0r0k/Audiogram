@@ -1,8 +1,8 @@
 <template>
   <ContextMenuItem @click="emit('play')">
     <Icon
-      icon="tabler:player-play"
-      class="size-5.5"
+      icon="tabler:player-play-filled"
+      class="size-5"
     />
     {{ $t('track.contextMenu.play') }}
   </ContextMenuItem>

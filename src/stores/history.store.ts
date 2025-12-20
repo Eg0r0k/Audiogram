@@ -1,3 +1,5 @@
 import { defineStore } from "pinia";
 
-export const useHistoryStore = defineStore("history", () => {});
+export const useHistoryStore = defineStore("history", () => {
+
+});

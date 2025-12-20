@@ -53,9 +53,10 @@
         size="icon-sm"
         variant="ghost"
       >
-        <Icon
-          class="size-4.5"
-          icon="material-symbols:repeat-rounded"
+        <Like
+          ref="likeRef"
+          class="text-xl"
+          :is-liked="false"
         />
       </Button>
     </div>
@@ -92,6 +93,7 @@ import { Button } from "@/components/ui/button";
 import PlayButton from "../player/PlayButton.vue";
 import VolumeButton from "../player/actions/VolumeButton.vue";
 import MarqueeBlock from "../ui/marquee/MarqueeBlock.vue";
+import Like from "../player/actions/Like.vue";
 </script>
 
 <style lang="css">
