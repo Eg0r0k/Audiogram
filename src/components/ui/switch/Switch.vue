@@ -24,13 +24,17 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
     data-slot="switch"
     v-bind="forwarded"
     :class="cn(
-      'peer data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:border-ring focus-visible:ring-ring/50 dark:data-[state=unchecked]:bg-input/80 inline-flex h-[1.15rem] w-8 shrink-0 items-center rounded-full border border-transparent shadow-xs transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
+      'switch-root',
+      'peer cursor-pointer data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:border-ring focus-visible:ring-ring/50 dark:data-[state=unchecked]:bg-input/80 inline-flex h-4 w-8 shrink-0 items-center rounded-full border-none transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
       props.class,
     )"
   >
     <SwitchThumb
       data-slot="switch-thumb"
-      :class="cn('bg-background dark:data-[state=unchecked]:bg-foreground dark:data-[state=checked]:bg-primary-foreground pointer-events-none block size-4 rounded-full ring-0 transition-transform data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0')"
+      :class="cn(
+        'switch-thumb',
+        'bg-background pointer-events-none block size-4 rounded-full'
+      )"
     >
       <slot
         name="thumb"
@@ -39,3 +43,31 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
     </SwitchThumb>
   </SwitchRoot>
 </template>
+
+<style scoped>
+.switch-root {
+  position: relative;
+  overflow: visible;
+}
+
+.switch-thumb {
+  position: absolute;
+  top: 50%;
+  box-shadow: 0 0 0 2px var(--input);
+  transition:
+    left 0.2s var(--ease-standard),
+    box-shadow 0.2s var(--ease-standard);
+}
+
+.switch-root[data-state="unchecked"] .switch-thumb {
+  left: -2px;
+  transform: translateY(-50%);
+  box-shadow: 0 0 0 2px var(--input);
+}
+
+.switch-root[data-state="checked"] .switch-thumb {
+  left: calc(100% - 14px);
+  transform: translateY(-50%);
+  box-shadow: 0 0 0 2px var(--primary);
+}
+</style>

@@ -18,7 +18,6 @@ const modelValue = useVModel(props, "modelValue", emits, {
   defaultValue: props.defaultValue,
 });
 </script>
-
 <!-- eslint-disable vuejs-accessibility/form-control-has-label -->
 <template>
   <textarea
@@ -26,9 +25,34 @@ const modelValue = useVModel(props, "modelValue", emits, {
     data-slot="textarea"
     :class="
       cn(
-        'border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 flex field-sizing-content min-h-16 w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+        'audiogram-textarea',
+        'placeholder:text-muted-foreground selection:bg-primary caret-primary selection:text-primary-foreground dark:bg-background flex field-sizing-content min-h-16 w-full rounded-md bg-transparent px-3 py-2 text-base outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
         props.class
       )
     "
   />
 </template>
+
+<style scoped>
+.audiogram-textarea {
+  border: 1px solid var(--border);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.audiogram-textarea:hover:not(:focus):not(:disabled):not([aria-invalid="true"]) {
+  border-color: var(--primary);
+}
+
+.audiogram-textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.audiogram-textarea[aria-invalid="true"] {
+  border-color: var(--destructive);
+}
+
+.audiogram-textarea[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 1px var(--destructive);
+}
+</style>
