@@ -14,12 +14,12 @@
 
 <script setup lang="ts">
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent } from "@/components/ui/context-menu";
-import type { MediaContext } from "./types";
 import { computed, type Component } from "vue";
 import { useMediaContext } from "@/composables/useMediaContext";
-import { provideMenuComponents, contextMenuComponents } from "../useMenuComponents";
-import AlbumContext from "@/components/media-hero/context-menu/contexts/AlbumContext.vue";
-import ArtistContext from "@/components/media-hero/context-menu/contexts/ArtistContext.vue";
+import { contextMenuComponents, provideMenuComponents } from "@/components/media-hero/useMenuComponents";
+import { MediaContext } from "../types";
+import AlbumContext from "../contexts/AlbumContext.vue";
+import ArtistContext from "../contexts/ArtistContext.vue";
 
 provideMenuComponents(contextMenuComponents);
 

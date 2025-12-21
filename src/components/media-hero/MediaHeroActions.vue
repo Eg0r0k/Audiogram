@@ -26,12 +26,12 @@
 
 <script setup lang="ts">
 import PlayButton from "@/components/player/PlayButton.vue";
-import MediaDropdown from "@/components/media-hero/dropdown/MediaDropdown.vue";
 import MediaDisplayDropdown from "@/components/media-hero/MediaDisplayDropdown.vue";
 import Button from "../ui/button/Button.vue";
 import { MediaType } from "./types";
 import { computed } from "vue";
 import { Icon } from "@iconify/vue";
+import MediaDropdown from "./menu/dropdown/MediaDropdown.vue";
 
 const props = defineProps<{
   type: MediaType;

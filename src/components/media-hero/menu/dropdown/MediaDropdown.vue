@@ -36,10 +36,10 @@ import Button from "@/components/ui/button/Button.vue";
 import { computed, type Component } from "vue";
 import { useMediaContext } from "@/composables/useMediaContext";
 import { Icon } from "@iconify/vue";
-import { dropdownMenuComponents, provideMenuComponents } from "../useMenuComponents";
-import AlbumContext from "@/components/media-hero/context-menu/contexts/AlbumContext.vue";
-import ArtistContext from "@/components/media-hero/context-menu/contexts/ArtistContext.vue";
-import { MediaContext } from "../context-menu/types";
+import { provideMenuComponents, dropdownMenuComponents } from "@/components/media-hero/useMenuComponents";
+import { MediaContext } from "../types";
+import AlbumContext from "../contexts/AlbumContext.vue";
+import ArtistContext from "../contexts/ArtistContext.vue";
 
 provideMenuComponents(dropdownMenuComponents);
 

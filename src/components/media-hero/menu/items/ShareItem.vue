@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { useMenuComponents } from "../useMenuComponents";
+import { useMenuComponents } from "@/components/media-hero/useMenuComponents";
 
 const { Item } = useMenuComponents();
 

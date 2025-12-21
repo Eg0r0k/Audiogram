@@ -1,7 +1,7 @@
 <template>
   <MediaContextMenu :context="contextType">
     <div
-      class="relative flex items-end px-6 pb-6 ml-px h-[32vh] min-h-[260px] max-h-[340px]"
+      class="relative flex items-end px-6 pb-6  h-[32vh] min-h-[260px] max-h-[340px]"
       :style="{ backgroundColor: color.hsl }"
     >
       <div
@@ -38,13 +38,13 @@
   </MediaContextMenu>
 </template>
 <script setup lang="ts">
-import MediaContextMenu from "@/components/media-hero/context-menu/MediaContextMenu.vue";
 import { isArtist, isPlaylist, MediaData } from "./types";
 import { useImageColor } from "@/composables/useImageColor";
 import { computed, onBeforeMount } from "vue";
 import { useI18n } from "vue-i18n";
 import HeroImage from "./HeroImage.vue";
 import HeroMeta from "./HeroMeta.vue";
+import MediaContextMenu from "./menu/context-menu/MediaContextMenu.vue";
 
 const props = defineProps<{
   data: MediaData;
