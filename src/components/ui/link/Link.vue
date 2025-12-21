@@ -3,11 +3,12 @@
 
     v-if="isExternalLink"
     v-bind="$attrs"
-    :href="normalizedHref"
+    :href="confirmExternal ? undefined : normalizedHref"
     :target="computedTarget"
     :rel="computedRel"
     :class="linkClass"
     :draggable="draggable"
+    @click="handleExternalClick"
   >
     <slot />
   </a>
@@ -35,6 +36,7 @@
 </template>
 
 <script setup lang="ts">
+import { useExternalLinkDialog } from "@/composables/dialog/useExternalLinkDialog";
 import { computed, HTMLAttributes } from "vue";
 import { RouterLink, type RouteLocationRaw } from "vue-router";
 
@@ -52,11 +54,14 @@ interface LinkProps {
   draggable?: boolean;
   rel?: string;
   replace?: boolean;
+  confirmExternal?: boolean;
 }
 
 defineOptions({
   inheritAttrs: false,
 });
+
+const { openDialog } = useExternalLinkDialog();
 
 const props = withDefaults(defineProps<LinkProps>(), {
   target: "_self",
@@ -64,6 +69,7 @@ const props = withDefaults(defineProps<LinkProps>(), {
   disabled: false,
   replace: false,
   draggable: false,
+  confirmExternal: false,
 });
 
 const isExternalLink = computed(() => {
@@ -81,6 +87,18 @@ const normalizedHref = computed(() => {
   if (props.disabled) return undefined;
   return typeof props.to === "string" ? props.to : String(props.to);
 });
+
+const handleExternalClick = (event: MouseEvent) => {
+  if (props.disabled) {
+    event.preventDefault();
+    return;
+  }
+
+  if (props.confirmExternal && normalizedHref.value) {
+    event.preventDefault();
+    openDialog(normalizedHref.value);
+  }
+};
 
 const computedTarget = computed((): TargetType => {
   if (props.target) return props.target;

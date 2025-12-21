@@ -62,7 +62,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
           size="icon-lg"
           class="absolute rounded-full top-2 right-2 size-8 opacity-80 hover:opacity-100"
         >
-          <X class="size-6" />
+          <X class="size-5" />
           <span class="sr-only">
             {{ $t("common.close") }}
           </span>

@@ -7,7 +7,7 @@
       />
     </RouterView>
   </component>
-
+  <ExternalLinkDialog />
   <Toaster
     position="top-center"
     class="pointer-events-auto"
@@ -27,6 +27,7 @@ import { useRoute } from "vue-router";
 import { useSetupRootClasses } from "./composables/useSetupRootClasses";
 import { listenForOpenedFiles, OpenedFile } from "./helpers/files/fileOpener";
 import { usePreventPinchZoom } from "./composables/usePreventPinchZoom";
+import ExternalLinkDialog from "./components/dialogs/ExternalLinkDialog.vue";
 
 const route = useRoute();
 const layouts: Record<string, Component> = {
