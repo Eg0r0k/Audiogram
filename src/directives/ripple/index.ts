@@ -142,6 +142,14 @@ function setupRipple(el: RippleHTMLElement, binding: DirectiveBinding): void {
       const ripple = el._ripple;
       if (!ripple || ripple.options.disabled) return;
 
+      const target = e.target as HTMLElement;
+
+      const interactiveSelector = "button, a, input, select, textarea, [role=\"button\"]";
+      const closestInteractive = target.closest(interactiveSelector);
+      if (closestInteractive && closestInteractive !== el) {
+        return;
+      }
+
       const rect = el.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
