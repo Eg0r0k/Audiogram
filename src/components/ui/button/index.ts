@@ -18,7 +18,7 @@ export const buttonVariants = cva(
         "ghost":
           "hover:bg-accent text-muted-foreground hover:text-accent-foreground dark:hover:bg-accent/50",
         "ghost-primary": " text-primary hover:bg-primary/10",
-        "link": "text-primary",
+        "link": "text-primary  hover:bg-primary/10",
         "destructive-link":
           "text-destructive hover:text-destructive/80 focus-visible:ring-destructive/20 hover:bg-destructive/10 dark:focus-visible:ring-destructive/40",
       },
