@@ -1,23 +1,29 @@
 <template>
-  <ContextMenuItem @click="emit('goToArtist')">
+  <component
+    :is="Item"
+    @click="emit('goToArtist')"
+  >
     <Icon
       icon="tabler:user"
       class="size-5.5"
     />
     {{ $t('track.contextMenu.goToArtist') }}
-  </ContextMenuItem>
-  <ContextMenuItem @click="emit('goToAlbum')">
+  </component>
+  <component
+    :is="Item"
+    @click="emit('goToAlbum')"
+  >
     <Icon
       icon="tabler:disc"
       class="size-5.5"
     />
     {{ $t('track.contextMenu.goToAlbum') }}
-  </ContextMenuItem>
+  </component>
 </template>
 
 <script setup lang="ts">
-import { ContextMenuItem } from "@/components/ui/context-menu";
 import { Icon } from "@iconify/vue";
+import { useTrackMenuComponents } from "../useTrackMenuComponents";
 
 defineOptions({
   inheritAttrs: false,
@@ -27,6 +33,8 @@ defineProps<{
   artistName: string;
   albumName: string;
 }>();
+
+const { Item } = useTrackMenuComponents();
 
 const emit = defineEmits<{
   goToArtist: [];

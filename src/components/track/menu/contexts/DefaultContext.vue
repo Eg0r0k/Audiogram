@@ -5,7 +5,7 @@
     @add-to-queue="actions.addToQueue"
   />
 
-  <ContextMenuSeparator />
+  <component :is="Separator" />
 
   <LikeItem
     :is-liked="track.isLiked"
@@ -18,7 +18,7 @@
     @create="handleCreatePlaylist"
   />
 
-  <ContextMenuSeparator />
+  <component :is="Separator" />
 
   <NavigationItems
     :artist-name="track.artist"
@@ -29,15 +29,16 @@
 </template>
 
 <script setup lang="ts">
-import { ContextMenuSeparator } from "@/components/ui/context-menu";
+import { Track } from "@/types/track/track";
 import PlayItems from "../items/PlayItems.vue";
-import LikeItem from "../items/LikeItem.vue";
-import AddToPlaylistSub from "../items/AddToPlaylistSub.vue";
+import { useTrackMenuComponents } from "../useTrackMenuComponents";
+import { PlaylistId } from "@/types/ids";
+import { ContextActions } from "../type";
 import NavigationItems from "../items/NavigationItems.vue";
-import type { ContextActions } from "../types";
-import type { PlaylistId } from "@/types/ids";
-import { PlaylistId as createPlaylistId } from "@/types/ids";
-import type { Track } from "@/types/track/track";
+import AddToPlaylistSub from "../items/AddToPlaylistSub.vue";
+import LikeItem from "../items/LikeItem.vue";
+
+const { Separator } = useTrackMenuComponents();
 
 defineProps<{
   track: Track;
@@ -47,9 +48,9 @@ defineProps<{
 // TODO delete this later
 
 const playlists: { id: PlaylistId; name: string }[] = [
-  { id: createPlaylistId("1"), name: "Избранное" },
-  { id: createPlaylistId("2"), name: "Для тренировок" },
-  { id: createPlaylistId("3"), name: "Вечерний плейлист" },
+  { id: PlaylistId("1"), name: "Избранное" },
+  { id: PlaylistId("2"), name: "Для тренировок" },
+  { id: PlaylistId("3"), name: "Вечерний плейлист" },
 ];
 
 const handleCreatePlaylist = () => {

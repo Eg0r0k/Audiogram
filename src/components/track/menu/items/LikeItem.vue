@@ -1,5 +1,8 @@
 <template>
-  <ContextMenuItem @click="emit('toggle')">
+  <component
+    :is="Item"
+    @click="emit('toggle')"
+  >
     <Like
       :is-liked="isLiked"
       class=" size-5.5 "
@@ -9,15 +12,17 @@
         ? $t("track.contextMenu.addToFavorites")
         : $t("track.contextMenu.removeFromFavorites")
     }}
-  </ContextMenuItem>
+  </component>
 </template>
 <script setup lang="ts">
 import Like from "@/components/player/actions/Like.vue";
-import ContextMenuItem from "@/components/ui/context-menu/ContextMenuItem.vue";
+import { useTrackMenuComponents } from "../useTrackMenuComponents";
 
 defineProps<{
   isLiked: boolean;
 }>();
+
+const { Item } = useTrackMenuComponents();
 
 const emit = defineEmits<{
   toggle: [];

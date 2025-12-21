@@ -1,17 +1,19 @@
 <template>
-  <ContextMenuSub>
-    <ContextMenuSubTrigger>
+  <component :is="Sub">
+    <component :is="SubTrigger">
       <Icon
         icon="tabler:playlist-add"
         class="mr-2 size-5.5"
       />
       {{ $t('track.contextMenu.addToPlaylist') }}
-    </ContextMenuSubTrigger>
-    <ContextMenuSubContent class="w-56">
-      <div class="p-0.5 ">
-        <InputGroup
-          class="bg-background! h-8 "
-        >
+    </component>
+
+    <component
+      :is="SubContent"
+      class="w-56"
+    >
+      <div class="p-0.5">
+        <InputGroup class="bg-background! h-8">
           <InputGroupInput
             v-model="searchQuery"
             :placeholder="$t('track.contextMenu.searchPlaylist')"
@@ -20,26 +22,30 @@
           <InputGroupAddon>
             <Icon
               icon="tabler:search"
-              class="size-4 "
+              class="size-4"
             />
           </InputGroupAddon>
         </InputGroup>
       </div>
 
-      <ContextMenuSeparator />
+      <component :is="Separator" />
 
-      <ContextMenuItem @click="emit('create')">
+      <component
+        :is="Item"
+        @click="emit('create')"
+      >
         <Icon
           icon="tabler:plus"
           class="size-5.5"
         />
         {{ $t('track.contextMenu.createPlaylist') }}
-      </ContextMenuItem>
+      </component>
 
       <template v-if="filteredPlaylists.length">
-        <ContextMenuSeparator />
+        <component :is="Separator" />
         <div class="max-h-48 overflow-y-auto">
-          <ContextMenuItem
+          <component
+            :is="Item"
             v-for="playlist in filteredPlaylists"
             :key="playlist.id"
             @click="emit('add', playlist.id)"
@@ -49,36 +55,29 @@
               class="size-5.5"
             />
             <span class="truncate">{{ playlist.name }}</span>
-          </ContextMenuItem>
+          </component>
         </div>
       </template>
 
       <template v-else-if="searchQuery && playlists.length">
-        <ContextMenuSeparator />
+        <component :is="Separator" />
         <div class="p-3 text-center text-sm text-muted-foreground">
           {{ $t('track.contextMenu.noPlaylistsFound') }}
         </div>
       </template>
 
       <template v-else-if="!playlists.length">
-        <ContextMenuSeparator />
+        <component :is="Separator" />
         <div class="p-3 text-center text-sm text-muted-foreground">
           {{ $t('track.contextMenu.noPlaylistsYet') }}
         </div>
       </template>
-    </ContextMenuSubContent>
-  </ContextMenuSub>
+    </component>
+  </component>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import {
-  ContextMenuSub,
-  ContextMenuSubTrigger,
-  ContextMenuSubContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from "@/components/ui/context-menu";
 import {
   InputGroup,
   InputGroupInput,
@@ -86,6 +85,7 @@ import {
 } from "@/components/ui/input-group";
 import { Icon } from "@iconify/vue";
 import type { PlaylistId } from "@/types/ids";
+import { useTrackMenuComponents } from "../../menu/useTrackMenuComponents";
 
 interface Playlist {
   id: PlaylistId;
@@ -100,6 +100,8 @@ const emit = defineEmits<{
   add: [playlistId: PlaylistId];
   create: [];
 }>();
+
+const { Item, Separator, Sub, SubTrigger, SubContent } = useTrackMenuComponents();
 
 const searchQuery = ref("");
 

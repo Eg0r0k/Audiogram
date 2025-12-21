@@ -20,11 +20,14 @@ import { computed, type Component, toRef } from "vue";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent } from "@/components/ui/context-menu";
 import { useTrackMenu } from "@/composables/useTrackMenu";
 import { useTrackContextActions } from "@/composables/useTrackContextActions";
-import type { TrackContext } from "./types";
 import type { AlbumId, PlaylistId } from "@/types/ids";
-import DefaultContext from "./contexts/DefaultContext.vue";
-import QueueContext from "./contexts/QueueContext.vue";
-import PlaylistContext from "./contexts/PlaylistContext.vue";
+import { contextMenuTrackComponents, provideTrackMenuComponents } from "../useTrackMenuComponents";
+import { TrackContext } from "../type";
+import DefaultContext from "../contexts/DefaultContext.vue";
+import QueueContext from "../contexts/QueueContext.vue";
+import PlaylistContext from "../contexts/PlaylistContext.vue";
+
+provideTrackMenuComponents(contextMenuTrackComponents);
 
 interface Props {
   context?: TrackContext;

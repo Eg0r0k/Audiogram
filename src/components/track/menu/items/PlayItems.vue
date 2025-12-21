@@ -1,36 +1,46 @@
 <template>
-  <ContextMenuItem @click="emit('play')">
+  <component
+    :is="Item"
+    @click="emit('play')"
+  >
     <Icon
       icon="tabler:player-play-filled"
       class="size-5"
     />
     {{ $t('track.contextMenu.play') }}
-  </ContextMenuItem>
+  </component>
 
-  <ContextMenuItem @click="emit('playNext')">
+  <component
+    :is="Item"
+    @click="emit('playNext')"
+  >
     <Icon
       icon="tabler:playlist-add"
       class="size-5.5"
     />
     {{ $t('track.contextMenu.playNext') }}
-  </ContextMenuItem>
+  </component>
 
-  <ContextMenuItem @click="emit('addToQueue')">
+  <component
+    :is="Item"
+    @click="emit('addToQueue')"
+  >
     <Icon
       icon="tabler:list-numbers"
       class="size-5.5"
     />
     {{ $t('track.contextMenu.addToQueue') }}
-  </ContextMenuItem>
+  </component>
 </template>
 
 <script setup lang="ts">
-import { ContextMenuItem } from "@/components/ui/context-menu";
 import { Icon } from "@iconify/vue";
+import { useTrackMenuComponents } from "../useTrackMenuComponents";
 
 defineOptions({
   inheritAttrs: false,
 });
+const { Item } = useTrackMenuComponents();
 
 const emit = defineEmits<{
   play: [];
