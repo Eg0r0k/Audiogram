@@ -12,8 +12,10 @@ export { default as ItemMedia } from "./ItemMedia.vue";
 export { default as ItemSeparator } from "./ItemSeparator.vue";
 export { default as ItemTitle } from "./ItemTitle.vue";
 
+export { default as ItemSubtitle } from "./ItemSubtitle.vue";
+
 export const itemVariants = cva(
-  "group/item select-none flex items-center border border-transparent text-sm rounded-md transition-colors [a]:hover:bg-accent/50 [a]:transition-colors duration-100 flex-wrap outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+  "group/item select-none flex items-center border border-transparent text-sm rounded-md  hover:bg-accent flex-wrap outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
   {
     variants: {
       variant: {
