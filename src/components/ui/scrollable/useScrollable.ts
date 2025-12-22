@@ -76,9 +76,12 @@ export default function useScrollable(
   let startMousePosition = 0;
   let startScrollPosition = 0;
 
+  const scrollPositionRef = ref(0);
+
   const scrollPosition = computed({
-    get: () => containerRef.value?.[props.value.scrollPosition] ?? 0,
+    get: () => scrollPositionRef.value,
     set: (value: number) => {
+      scrollPositionRef.value = value;
       if (containerRef.value) {
         containerRef.value[props.value.scrollPosition] = value;
       }
@@ -168,6 +171,7 @@ export default function useScrollable(
 
       const currentPosition
         = containerRef.value?.[props.value.scrollPosition] ?? 0;
+      scrollPositionRef.value = currentPosition;
 
       lastScrollDirection.value
         = lastScrollPosition.value === currentPosition
