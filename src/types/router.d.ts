@@ -10,5 +10,6 @@ declare module "vue-router" {
     navOrder?: number;
     // TODO: Implement that
     keepAlive?: boolean;
+    depth?: number;
   }
 }
