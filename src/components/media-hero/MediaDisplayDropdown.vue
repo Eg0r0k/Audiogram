@@ -2,13 +2,14 @@
   <DropdownMenu :modal="false">
     <DropdownMenuTrigger as-child>
       <Button variant="ghost">
-        <Icon
+        <component
+          :is="currentOption.icon"
           class="size-5"
-          :icon="currentOption.icon"
         />
         {{ $t(`${currentOption.label}`) }}
       </Button>
     </DropdownMenuTrigger>
+
     <DropdownMenuContent
       side="bottom"
       align="end"
@@ -16,21 +17,23 @@
       <DropdownMenuLabel class="text-xs">
         {{ $t('media.display.label') }}
       </DropdownMenuLabel>
+
       <DropdownMenuItem
         v-for="option in viewOptions"
         :key="option.value"
         :class="{ 'text-primary!': viewMode === option.value }"
         @click="viewMode = option.value"
       >
-        <Icon
+        <component
+          :is="option.icon"
           class="size-5"
-          :icon="option.icon"
         />
+
         {{ $t(`${option.label}`) }}
-        <Icon
+
+        <IconCheck
           v-if="viewMode === option.value"
           class="size-4 ml-auto"
-          icon="tabler:check"
         />
       </DropdownMenuItem>
     </DropdownMenuContent>
@@ -46,7 +49,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Icon } from "@iconify/vue";
+
+import IconCheck from "~icons/tabler/check";
+
 import { useLibraryView, viewOptions } from "@/composables/useLibraryView";
 
 const { viewMode, currentOption } = useLibraryView();

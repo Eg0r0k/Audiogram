@@ -3,8 +3,7 @@
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2">
-          <Icon
-            icon="tabler:external-link"
+          <IconExternalLink
             class="size-6"
           />
           Open external link?
@@ -15,8 +14,7 @@
       </DialogHeader>
 
       <div class="flex items-center gap-3 p-3 bg-muted rounded-lg">
-        <Icon
-          icon="tabler:link"
+        <IconLink
           class="size-5 text-muted-foreground shrink-0"
         />
         <span class="text-sm break-all">
@@ -36,8 +34,7 @@
           @click="confirmNavigation"
         >
           Open link
-          <Icon
-            icon="tabler:external-link"
+          <IconExternalLink
             class="size-4"
           />
         </Button>
@@ -48,7 +45,6 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { Icon } from "@iconify/vue";
 import {
   Dialog,
   DialogContent,
@@ -59,6 +55,8 @@ import {
 } from "@/components/ui/dialog";
 import Button from "@/components/ui/button/Button.vue";
 import { useExternalLinkDialog } from "@/composables/dialog/useExternalLinkDialog";
+import IconExternalLink from "~icons/tabler/external-link";
+import IconLink from "~icons/tabler/link";
 
 const { isOpen, pendingUrl, closeDialog, confirmNavigation } = useExternalLinkDialog();
 

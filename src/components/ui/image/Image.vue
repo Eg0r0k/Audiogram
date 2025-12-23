@@ -18,8 +18,7 @@
     >
       <slot name="fallback">
         <div class="app-image__fallback-default">
-          <Icon
-            icon="tabler:photo-off"
+          <IconPhotoOff
             class="size-8"
           />
         </div>
@@ -42,10 +41,9 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useImage } from "@vueuse/core";
 import { computed, type HTMLAttributes, ref, useAttrs, useTemplateRef, watch } from "vue";
-
+import IconPhotoOff from "~icons/tabler/photo-off";
 interface Props {
   src: string;
   alt?: string;

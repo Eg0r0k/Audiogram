@@ -3,8 +3,7 @@
     :is="Item"
     @click="emit('play')"
   >
-    <Icon
-      icon="tabler:player-play-filled"
+    <IconPlayFilled
       class="size-5"
     />
     {{ $t('track.contextMenu.play') }}
@@ -14,8 +13,7 @@
     :is="Item"
     @click="emit('playNext')"
   >
-    <Icon
-      icon="tabler:playlist-add"
+    <IconPlaylistAdd
       class="size-5.5"
     />
     {{ $t('track.contextMenu.playNext') }}
@@ -25,8 +23,7 @@
     :is="Item"
     @click="emit('addToQueue')"
   >
-    <Icon
-      icon="tabler:list-numbers"
+    <IconListNumbers
       class="size-5.5"
     />
     {{ $t('track.contextMenu.addToQueue') }}
@@ -36,6 +33,9 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
+import IconPlayFilled from "~icons/tabler/player-play-filled";
+import IconPlaylistAdd from "~icons/tabler/playlist-add";
+import IconListNumbers from "~icons/tabler/list-numbers";
 
 defineOptions({
   inheritAttrs: false,

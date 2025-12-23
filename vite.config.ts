@@ -4,7 +4,7 @@
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-
+import Icons from "unplugin-icons/vite";
 import tailwindcss from "@tailwindcss/vite";
 import vue from "@vitejs/plugin-vue";
 import { visualizer } from "rollup-plugin-visualizer";
@@ -20,6 +20,11 @@ export default defineConfig({
     vue(),
     VueDevTools(),
     tailwindcss(),
+    Icons({
+      compiler: "vue3",
+      autoInstall: true, // Автоматически предложит установить другие сеты, если попробуете их импортировать
+    }),
+
     isAnalyze
     && visualizer({
       filename: "dist/stats.html",

@@ -24,8 +24,7 @@
           </div>
 
           <div class="drop-content text-primary">
-            <Icon
-              icon="tabler:file-music"
+            <IconExternalLink
               class="w-16 h-16"
             />
             <h2 class="text-xl font-semibold mt-4">
@@ -42,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
+import IconExternalLink from "~icons/tabler/file-music";
 
 defineProps<{
   show: boolean;

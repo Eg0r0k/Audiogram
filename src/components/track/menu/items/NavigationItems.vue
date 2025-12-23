@@ -3,8 +3,7 @@
     :is="Item"
     @click="emit('goToArtist')"
   >
-    <Icon
-      icon="tabler:user"
+    <IconUser
       class="size-5.5"
     />
     {{ $t('track.contextMenu.goToArtist') }}
@@ -13,8 +12,7 @@
     :is="Item"
     @click="emit('goToAlbum')"
   >
-    <Icon
-      icon="tabler:disc"
+    <IconDisc
       class="size-5.5"
     />
     {{ $t('track.contextMenu.goToAlbum') }}
@@ -22,8 +20,9 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
+import IconDisc from "~icons/tabler/disc";
+import IconUser from "~icons/tabler/user";
 
 defineOptions({
   inheritAttrs: false,

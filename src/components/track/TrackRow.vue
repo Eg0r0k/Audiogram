@@ -48,8 +48,7 @@
       class="rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
       @click.stop="onDotsClick"
     >
-      <Icon
-        icon="tabler:dots"
+      <IconDots
         class="size-4"
       />
     </Button>
@@ -70,6 +69,7 @@ import Button from "../ui/button/Button.vue";
 import Like from "../player/actions/Like.vue";
 import { Icon } from "@iconify/vue";
 import { ref, useTemplateRef } from "vue";
+import IconDots from "~icons/tabler/dots";
 
 interface Props {
   track: Track;

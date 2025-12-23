@@ -1,20 +1,18 @@
 <template>
-  <div class="pip-container ">
+  <div class="pip-container">
     <div class="content-cover">
       <div class="content" />
     </div>
 
     <div class="controls">
       <VolumeButton />
+
       <Button
         class="rounded-full"
         size="icon-sm"
         variant="ghost"
       >
-        <Icon
-          class="size-4.5"
-          icon="tabler:arrows-shuffle-2"
-        />
+        <IconArrowsShuffle2 class="size-4.5" />
       </Button>
 
       <Button
@@ -22,32 +20,27 @@
         size="icon-sm"
         variant="ghost"
       >
-        <Icon
-          class="size-4.5"
-          icon="tabler:player-track-prev-filled"
-        />
+        <IconPlayerTrackPrevFilled class="size-4.5" />
       </Button>
+
       <PlayButton class="size-10" />
+
       <Button
         class="rounded-full"
         size="icon-sm"
         variant="ghost"
       >
-        <Icon
-          class="size-4.5"
-          icon="tabler:player-track-next-filled"
-        />
+        <IconPlayerTrackNextFilled class="size-4.5" />
       </Button>
+
       <Button
         class="rounded-full"
         size="icon-sm"
         variant="ghost"
       >
-        <Icon
-          class="size-4.5"
-          icon="material-symbols:repeat-rounded"
-        />
+        <IconRepeat class="size-4.5" />
       </Button>
+
       <Button
         class="rounded-full"
         size="icon-sm"
@@ -70,7 +63,7 @@
         gradient-color="var(--background)"
         gradient-length="20px"
       >
-        <span class=" context-info__title">TITLE</span>
+        <span class="context-info__title">TITLE</span>
       </MarqueeBlock>
 
       <MarqueeBlock
@@ -81,19 +74,23 @@
         gradient-color="var(--background)"
         gradient-length="20px"
       >
-        <span class=" context-info__sub">Subtitlasdasdasdasdsadase</span>
+        <span class="context-info__sub">Subtitlasdasdasdasdsadase</span>
       </MarqueeBlock>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { Button } from "@/components/ui/button";
 import PlayButton from "../player/PlayButton.vue";
 import VolumeButton from "../player/actions/VolumeButton.vue";
 import MarqueeBlock from "../ui/marquee/MarqueeBlock.vue";
 import Like from "../player/actions/Like.vue";
+import IconArrowsShuffle2 from "~icons/tabler/arrows-shuffle-2";
+import IconPlayerTrackPrevFilled from "~icons/tabler/player-track-prev-filled";
+import IconPlayerTrackNextFilled from "~icons/tabler/player-track-next-filled";
+import IconRepeat from "~icons/tabler/repeat";
+
 </script>
 
 <style lang="css">

@@ -1,0 +1,51 @@
+<template>
+  <Item
+    v-ripple
+    tabindex="0"
+    size="sm"
+    class="cursor-pointer"
+    @click="$emit('click')"
+  >
+    <ItemMedia v-if="icon">
+      <div
+        class="size-8 rounded-lg flex items-center justify-center text-white"
+        :class="iconClass"
+      >
+        <Icon
+          :icon="icon"
+          class="size-5"
+        />
+      </div>
+    </ItemMedia>
+
+    <ItemContent :class="icon && 'ml-3'">
+      <ItemTitle>{{ title }}</ItemTitle>
+    </ItemContent>
+
+    <ItemActions>
+      <slot name="action" />
+    </ItemActions>
+  </Item>
+</template>
+
+<script setup lang="ts">
+import { Icon } from "@iconify/vue";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
+
+interface Props {
+  icon?: string;
+  iconClass?: string;
+  title: string;
+}
+
+defineProps<Props>();
+defineEmits<{
+  click: [];
+}>();
+</script>

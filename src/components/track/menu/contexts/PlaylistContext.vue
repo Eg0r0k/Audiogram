@@ -34,7 +34,7 @@
       variant="destructive"
       @click="actions.removeFromPlaylist"
     >
-      <Icon icon="tabler:trash" />
+      <IconTrash />
       {{ $t('track.contextMenu.removeFromPlaylist') }}
     </component>
   </template>
@@ -46,12 +46,11 @@ import { Track } from "@/types/track/track";
 import LikeItem from "../items/LikeItem.vue";
 import AddToPlaylistSub from "../items/AddToPlaylistSub.vue";
 import NavigationItems from "../items/NavigationItems.vue";
-import { Icon } from "@iconify/vue";
 import type { PlaylistId } from "@/types/ids";
 import { PlaylistId as createPlaylistId } from "@/types/ids";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
 import { ContextActions } from "../type";
-
+import IconTrash from "~icons/tabler/trash";
 const { Separator, Item } = useTrackMenuComponents();
 
 defineProps<{

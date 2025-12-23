@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { DialogContentEmits, DialogContentProps } from "reka-ui";
+import IconClose from "~icons/tabler/x";
 import type { HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-vue-next";
 import {
   DialogClose,
   DialogContent,
@@ -62,7 +62,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
           size="icon-lg"
           class="absolute rounded-full top-2 right-2 size-8 opacity-80 hover:opacity-100"
         >
-          <X class="size-5" />
+          <IconClose class="size-5" />
           <span class="sr-only">
             {{ $t("common.close") }}
           </span>

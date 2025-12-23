@@ -1,8 +1,7 @@
 <template>
   <component :is="Sub">
     <component :is="SubTrigger">
-      <Icon
-        icon="tabler:playlist-add"
+      <IconPlaylistAdd
         class="mr-2 size-5.5"
       />
       {{ $t('track.contextMenu.addToPlaylist') }}
@@ -20,8 +19,7 @@
             @keydown.stop
           />
           <InputGroupAddon>
-            <Icon
-              icon="tabler:search"
+            <IconSearch
               class="size-4"
             />
           </InputGroupAddon>
@@ -34,8 +32,7 @@
         :is="Item"
         @click="emit('create')"
       >
-        <Icon
-          icon="tabler:plus"
+        <IconPlus
           class="size-5.5"
         />
         {{ $t('track.contextMenu.createPlaylist') }}
@@ -50,8 +47,7 @@
             :key="playlist.id"
             @click="emit('add', playlist.id)"
           >
-            <Icon
-              icon="tabler:playlist"
+            <IconPlaylist
               class="size-5.5"
             />
             <span class="truncate">{{ playlist.name }}</span>
@@ -83,7 +79,11 @@ import {
   InputGroupInput,
   InputGroupAddon,
 } from "@/components/ui/input-group";
-import { Icon } from "@iconify/vue";
+import IconSearch from "~icons/tabler/search";
+import IconPlaylistAdd from "~icons/tabler/playlist-add";
+import IconPlus from "~icons/tabler/plus";
+import IconPlaylist from "~icons/tabler/playlist";
+
 import type { PlaylistId } from "@/types/ids";
 import { useTrackMenuComponents } from "../../menu/useTrackMenuComponents";
 

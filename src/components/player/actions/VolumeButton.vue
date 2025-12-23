@@ -14,9 +14,9 @@
       @focus="showTooltip"
       @blur="hideTooltip"
     >
-      <Icon
+      <component
+        :is="volumeIcon"
         class="size-4.5"
-        :icon="volumeIcon"
       />
     </Button>
 
@@ -62,9 +62,12 @@
 <script lang="ts" setup>
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Icon } from "@iconify/vue";
 import { unrefElement, useEventListener } from "@vueuse/core";
 import { computed, ref, useTemplateRef } from "vue";
+
+import IconVolumeOff from "~icons/tabler/volume-off";
+import IconVolume2 from "~icons/tabler/volume-2";
+import IconVolume from "~icons/tabler/volume";
 
 const containerRef = useTemplateRef("containerRef");
 const buttonRef = useTemplateRef("buttonRef");
@@ -79,9 +82,9 @@ const MIN_TOP_SPACE = 120;
 
 const volumeIcon = computed(() => {
   const v = volume.value[0];
-  if (v === 0) return "tabler:volume-off";
-  if (v < 30) return "tabler:volume-2";
-  return "tabler:volume";
+  if (v === 0) return IconVolumeOff;
+  if (v < 30) return IconVolume2;
+  return IconVolume;
 });
 
 const positionClasses = computed(() => {

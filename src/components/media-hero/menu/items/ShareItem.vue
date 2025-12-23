@@ -3,18 +3,16 @@
     :is="Item"
     @click="emit('share')"
   >
-    <Icon
+    <IconShare2
       class=" size-5.5"
-      icon="tabler:share-2"
     />
     {{ $t('common.share') }}
   </component>
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useMenuComponents } from "@/components/media-hero/useMenuComponents";
-
+import IconShare2 from "~icons/tabler/share-2";
 const { Item } = useMenuComponents();
 
 const emit = defineEmits<{

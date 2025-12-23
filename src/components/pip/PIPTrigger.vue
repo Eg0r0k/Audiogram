@@ -6,9 +6,8 @@
     :class="{ 'text-primary': pip.isPipOpen.value }"
     @click="handleToggle"
   >
-    <Icon
+    <IconPIPFilled
       class="size-4.5"
-      icon="tabler:picture-in-picture-filled"
     />
   </Button>
 </template>
@@ -22,6 +21,7 @@ import {
 } from "vue";
 import PIPContent from "./PIPContent.vue";
 import { usePictureInPicture } from "@/composables/usePictureInPicture";
+import IconPIPFilled from "~icons/tabler/picture-in-picture-filled";
 
 const pip = usePictureInPicture();
 const getPipOptions = () => ({

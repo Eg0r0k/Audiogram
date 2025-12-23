@@ -31,8 +31,8 @@
       :transition="{ duration: 0.5, ease: 'easeOut' }"
       class="relative z-10 flex items-center justify-center"
     >
-      <Icon
-        :icon="isLiked ? 'tabler:heart-filled' : 'tabler:heart'"
+      <component
+        :is="isLiked ? IconHeartFilled : IconHeart"
         class="transition-colors duration-150 text-inherit"
         :class="isLiked ? 'text-red-500' : 'text-current'"
       />
@@ -54,18 +54,17 @@
       :transition="{ duration: 0.6, ease: 'easeOut', delay: heart.delay }"
       class="absolute text-red-400"
     >
-      <Icon
-        icon="tabler:heart-filled"
-        class="size-2"
-      />
+      <IconHeartFilled class="size-2" />
     </Motion>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { Motion } from "motion-v";
 import { ref, nextTick } from "vue";
+
+import IconHeart from "~icons/tabler/heart";
+import IconHeartFilled from "~icons/tabler/heart-filled";
 
 defineProps<{
   isLiked: boolean;

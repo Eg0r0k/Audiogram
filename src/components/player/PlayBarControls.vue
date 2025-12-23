@@ -8,43 +8,33 @@
             size="icon"
             variant="ghost"
           >
-            <Icon
-              class="size-4.5"
-              icon="tabler:arrows-shuffle-2"
-            />
+            <IconArrowsShuffle2 class="size-4.5" />
           </Button>
           <Button
             class="rounded-full"
             size="icon"
             variant="ghost"
           >
-            <Icon
-              class="size-5"
-              icon="tabler:player-track-prev-filled"
-            />
+            <IconPlayerTrackPrevFilled class="size-5" />
           </Button>
         </div>
+
         <PlayButton />
+
         <div class="flex flex-1 gap-2">
           <Button
             class="rounded-full"
             size="icon"
             variant="ghost"
           >
-            <Icon
-              class="size-5"
-              icon="tabler:player-track-next-filled"
-            />
+            <IconPlayerTrackNextFilled class="size-5" />
           </Button>
           <Button
             class="rounded-full"
             size="icon"
             variant="ghost"
           >
-            <Icon
-              class="size-4.5"
-              icon="material-symbols:repeat-rounded"
-            />
+            <IconRepeat class="size-4.5" />
           </Button>
         </div>
       </div>
@@ -70,7 +60,11 @@
 
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
-import { Icon } from "@iconify/vue";
 import { Slider } from "@/components/ui/slider";
 import PlayButton from "./PlayButton.vue";
+import IconArrowsShuffle2 from "~icons/tabler/arrows-shuffle-2";
+import IconPlayerTrackPrevFilled from "~icons/tabler/player-track-prev-filled";
+import IconPlayerTrackNextFilled from "~icons/tabler/player-track-next-filled";
+import IconRepeat from "~icons/tabler/repeat";
+
 </script>

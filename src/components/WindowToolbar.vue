@@ -12,7 +12,7 @@
         :disabled="!canGoBack"
         @click="goBack"
       >
-        <Icon icon="tabler:chevron-left" />
+        <IconChevronLeft />
       </Button>
       <Button
         size="icon-xs"
@@ -20,7 +20,7 @@
         :disabled="!canGoForward"
         @click="goNext"
       >
-        <Icon icon="tabler:chevron-right" />
+        <IconChevronRight />
       </Button>
     </div>
     <div class="titlebar-controls">
@@ -57,9 +57,11 @@
 import { Window } from "@tauri-apps/api/window";
 import { computed, onMounted, ref } from "vue";
 import { Button } from "./ui/button";
-import { Icon } from "@iconify/vue";
 import { useRouter } from "vue-router";
 import { IS_TAURI } from "@/helpers/environment/userAgent";
+import IconChevronLeft from "~icons/tabler/chevron-left";
+import IconChevronRight from "~icons/tabler/chevron-left";
+
 import useTauriEvent from "@/composables/tauri/useTauriEvent";
 
 const router = useRouter();

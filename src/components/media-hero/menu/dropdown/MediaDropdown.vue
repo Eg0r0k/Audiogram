@@ -7,9 +7,8 @@
           size="icon-lg"
           variant="ghost"
         >
-          <Icon
+          <IconDots
             class="size-5"
-            icon="tabler:dots"
           />
         </Button>
       </slot>
@@ -35,11 +34,11 @@ import {
 import Button from "@/components/ui/button/Button.vue";
 import { computed, type Component } from "vue";
 import { useMediaContext } from "@/composables/useMediaContext";
-import { Icon } from "@iconify/vue";
 import { provideMenuComponents, dropdownMenuComponents } from "@/components/media-hero/useMenuComponents";
 import { MediaContext } from "../types";
 import AlbumContext from "../contexts/AlbumContext.vue";
 import ArtistContext from "../contexts/ArtistContext.vue";
+import IconDots from "~icons/tabler/dots";
 
 provideMenuComponents(dropdownMenuComponents);
 

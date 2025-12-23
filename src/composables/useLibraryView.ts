@@ -1,17 +1,20 @@
 import { useLocalStorage } from "@vueuse/core";
-import { computed } from "vue";
+import { computed, type Component } from "vue";
+
+import IconMenu2 from "~icons/tabler/menu-2";
+import IconList from "~icons/tabler/list";
 
 export type ViewMode = "compact" | "list";
 
 export interface ViewOption {
   value: ViewMode;
   label: string;
-  icon: string;
+  icon: Component;
 }
 
 export const viewOptions: ViewOption[] = [
-  { value: "compact", label: "media.display.compact", icon: "tabler:menu-2" },
-  { value: "list", label: "media.display.list", icon: "tabler:list" },
+  { value: "compact", label: "media.display.compact", icon: IconMenu2 },
+  { value: "list", label: "media.display.list", icon: IconList },
 ];
 
 const VIEW_MODE_KEY = "library-view-mode" as const;

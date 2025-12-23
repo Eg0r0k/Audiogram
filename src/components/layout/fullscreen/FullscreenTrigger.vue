@@ -6,11 +6,9 @@
       variant="ghost"
       @click="toggle"
     >
-      <Icon
+      <component
+        :is="ScreenIcon"
         class="size-4.5"
-        :icon="
-          isFullscreen ? 'tabler:arrows-minimize' : 'tabler:arrows-diagonal-2'
-        "
       />
     </Button>
     <div
@@ -26,9 +24,8 @@
         variant="ghost"
         @click="exit"
       >
-        <Icon
+        <IconClose
           class="size-4.5"
-          icon="tabler:x"
         />
       </Button>
     </div>
@@ -36,15 +33,22 @@
 </template>
 
 <script setup lang="ts">
-import { useTemplateRef } from "vue";
+import { computed, useTemplateRef } from "vue";
 import { Button } from "@/components/ui/button";
-import { Icon } from "@iconify/vue";
 import { useFullscreen } from "@vueuse/core";
+import IconArrowsMinimize from "~icons/tabler/arrows-minimize";
+import IconClose from "~icons/tabler/x";
 
+import IconArrowsDiagonal2 from "~icons/tabler/arrows-diagonal-2";
 // TODO: Make 2 components FullscreenButton and Overlay
 const targetRef = useTemplateRef("overlayRef");
 
 const { isFullscreen, toggle, isSupported, exit } = useFullscreen(targetRef);
+
+const ScreenIcon = computed(() => {
+  return isFullscreen.value ? IconArrowsMinimize : IconArrowsDiagonal2;
+});
+
 </script>
 
 <style scoped>

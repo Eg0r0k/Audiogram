@@ -16,8 +16,7 @@
         @click="emit('edit')"
       >
         <div class="text-center text-white">
-          <Icon
-            icon="tabler:pencil"
+          <IconPencil
             class="size-12 mx-auto"
           />
           <span class="text-sm mt-2 block">{{ $t('media.editImage') }}</span>
@@ -30,7 +29,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import Image from "@/components/ui/image/Image.vue";
-import { Icon } from "@iconify/vue";
+import IconPencil from "~icons/tabler/pencil";
 
 const props = withDefaults(defineProps<{
   src: string;

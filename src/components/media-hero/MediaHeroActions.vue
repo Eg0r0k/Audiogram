@@ -12,9 +12,8 @@
         variant="ghost"
         @click="emit('shuffle')"
       >
-        <Icon
+        <IconShuffle
           class="size-5"
-          icon="tabler:arrows-shuffle"
         />
       </Button>
 
@@ -30,8 +29,8 @@ import MediaDisplayDropdown from "@/components/media-hero/MediaDisplayDropdown.v
 import Button from "../ui/button/Button.vue";
 import { MediaType } from "./types";
 import { computed } from "vue";
-import { Icon } from "@iconify/vue";
 import MediaDropdown from "./menu/dropdown/MediaDropdown.vue";
+import IconShuffle from "~icons/tabler/arrows-shuffle";
 
 const props = defineProps<{
   type: MediaType;
