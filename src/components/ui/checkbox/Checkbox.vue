@@ -77,7 +77,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
 .checkbox-icon {
   position: absolute;
   inset: 0;
-  z-index: 10;
+  z-index: 0;
   display: grid;
   place-content: center;
   color: currentColor;
