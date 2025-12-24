@@ -133,7 +133,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   height: 100%;
   overflow: hidden;
-  box-shadow: 0px 0px 0px 1px var(--border);
+
 }
 
 .sidebar-wrapper.is-resizing {
@@ -143,7 +143,7 @@ onUnmounted(() => {
 .sidebar-inner {
   height: 100%;
   display: flex;
-  background: var(--background);
+  background: var(--card);
 }
 
 .sidebar-content {
