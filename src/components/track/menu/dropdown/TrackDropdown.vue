@@ -78,9 +78,8 @@ const contexts: Record<TrackContext, Component> = {
 const contextComponent = computed(() => contexts[props.context]);
 
 const actions = useTrackContextActions(
-  // @ts-expect-error: activeTrack can be null, but v-if guards the component render
   activeTrack,
-  toRef(props, "context"),
+  // toRef(props, "context"),
   {
     playlistId: toRef(props, "playlistId"),
     queueIndex: activeIndex,
