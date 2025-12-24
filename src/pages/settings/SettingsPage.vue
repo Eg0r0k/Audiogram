@@ -7,26 +7,23 @@
       <SettingsGroup>
         <div class="flex pl-6 gap-6 items-center">
           <h1 class="font-bold text-xl py-3">
-            Settings
+            {{ $t('settings.index.title') }}
           </h1>
         </div>
         <SettingsLink
           to="/settings/general"
           icon="tabler:settings"
-          icon-class="bg-zinc-500"
-          title="General"
+          :title="$t('settings.index.general')"
         />
         <SettingsLink
           to="/settings/appearance"
           icon="tabler:palette"
-          icon-class="bg-purple-500"
-          title="Appearance"
+          :title="$t('settings.index.appearance')"
         />
         <SettingsLink
           to="/settings/language"
           icon="tabler:language"
-          icon-class="bg-indigo-500"
-          title="Language"
+          :title="$t('settings.index.language')"
           subtitle="English"
         />
       </SettingsGroup>
@@ -35,20 +32,17 @@
         <SettingsLink
           to="/settings/audio"
           icon="tabler:headphones"
-          icon-class="bg-green-500"
-          title="Audio & Playback"
+          :title="$t('settings.index.audio')"
         />
         <SettingsLink
           to="/settings/storage"
           icon="tabler:database"
-          icon-class="bg-orange-500"
-          title="Storage"
+          :title="$t('settings.index.storage')"
         />
         <SettingsLink
           to="/settings/notifications"
           icon="tabler:bell"
-          icon-class="bg-red-500"
-          title="Notifications"
+          :title="$t('settings.index.notifications')"
         />
       </SettingsGroup>
 
@@ -56,8 +50,7 @@
         <SettingsLink
           to="/settings/about"
           icon="tabler:info-circle"
-          icon-class="bg-blue-500"
-          title="About"
+          :title="$t('settings.index.about')"
         />
       </SettingsGroup>
     </div>

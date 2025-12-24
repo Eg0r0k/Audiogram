@@ -37,7 +37,6 @@ import ItemSubtitle from "../ui/item/ItemSubtitle.vue";
 interface Props {
   to: string;
   icon: string;
-  iconClass?: string;
   title: string;
   subtitle?: string;
 }

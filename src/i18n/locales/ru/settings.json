@@ -1,0 +1,16 @@
+{
+    "index":{
+        "title": "Настройки",
+        "general": "Общие",
+        "appearance": "Внешний вид",
+        "language": "Язык",
+        "audio": "Звук и воспроизведение",
+        "storage": "Хранилище",
+        "notifications": "Уведомления",
+        "about": "О программе"
+    },
+    "about": {
+        "madeWith": "Сделано с",
+        "allRightsReserved": "Все права защищены"
+    }
+}

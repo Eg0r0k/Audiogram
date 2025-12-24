@@ -1,7 +1,7 @@
 <template>
   <SettingsGroup
-    class="sticky top-0 z-10 bg-background border-b transition-colors duration-200"
-    :class="isScrolled ? 'border-background' : 'border-transparent'"
+    class="sticky top-0 z-10 bg-background border-b  transition-colors duration-200"
+    :class="isScrolled ? 'border-b' : 'border-transparent'"
   >
     <div class="flex px-2 gap-6 items-center">
       <Button

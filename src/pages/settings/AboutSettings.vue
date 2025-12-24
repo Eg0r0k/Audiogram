@@ -98,13 +98,13 @@
 
       <div class="px-4 py-6 text-center text-xs text-muted-foreground">
         <p class=" inline-flex gap-1 items-center">
-          Made with <IconBarBell
+          {{ $t('settings.about.madeWith') }} <IconBarBell
             class="size-4"
           />
         </p>
 
         <p class="mt-1">
-          © {{ dateYear }} Audiogram. All rights reserved.
+          © {{ dateYear }} Audiogram.{{ $t('settings.about.allRightsReserved') }}.
         </p>
       </div>
     </div>

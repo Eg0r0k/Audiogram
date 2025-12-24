@@ -1,0 +1,16 @@
+{
+    "index":{
+        "title": "Settings",
+        "general": "General",
+        "appearance": "Appearance",
+        "language": "Language",
+        "audio": "Audio & Playback",
+        "storage": "Store",
+        "notifications": "Notifications",
+        "about": "About"
+    },
+    "about": {
+        "madeWith": "Made with",
+        "allRightsReserved": "All rights reserved"
+    }
+}

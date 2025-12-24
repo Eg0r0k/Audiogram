@@ -21,7 +21,7 @@ import {
         <IconMenu2 class="size-6" />
       </Button>
     </div>
-    <InputGroup class="bg-background! border-none! rounded-full h-10">
+    <InputGroup class=" dark:bg-background! bg-muted!  border-none! rounded-full h-10">
       <InputGroupInput
         class="pl-4! "
         :placeholder="$t('common.search')"
