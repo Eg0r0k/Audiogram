@@ -9,8 +9,7 @@
       <SettingsGroup>
         <div class="px-4 py-6 flex flex-col items-center">
           <div class="size-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-            <Icon
-              icon="tabler:music"
+            <IconMusic
               class="size-10 text-primary"
             />
           </div>
@@ -30,9 +29,8 @@
                 to="https://github.com/Eg0r0k/AudioGram"
                 confirm-external
               >
-                <Icon
+                <IconGithub
                   class="size-6"
-                  icon="tabler:brand-github-filled"
                 />
               </Link>
             </Button>
@@ -45,9 +43,8 @@
                 to="https://t.me/EG0RK13"
                 confirm-external
               >
-                <Icon
+                <IconTelegram
                   class="size-6"
-                  icon="tabler:brand-telegram"
                 />
               </Link>
             </Button>
@@ -58,8 +55,7 @@
       <SettingsGroup class="mt-3">
         <SettingsItem title="What's new">
           <template #action>
-            <Icon
-              icon="tabler:chevron-right"
+            <IconChevronRight
               class="size-5 text-muted-foreground"
             />
           </template>
@@ -67,8 +63,7 @@
 
         <SettingsItem title="Share with friends">
           <template #action>
-            <Icon
-              icon="tabler:chevron-right"
+            <IconChevronRight
               class="size-5 text-muted-foreground"
             />
           </template>
@@ -78,8 +73,7 @@
       <SettingsGroup class="mt-3">
         <SettingsItem title="Terms of Service">
           <template #action>
-            <Icon
-              icon="tabler:external-link"
+            <IconExternalLink
               class="size-5 text-muted-foreground"
             />
           </template>
@@ -87,8 +81,7 @@
 
         <SettingsItem title="Privacy Policy">
           <template #action>
-            <Icon
-              icon="tabler:external-link"
+            <IconExternalLink
               class="size-5 text-muted-foreground"
             />
           </template>
@@ -96,8 +89,7 @@
 
         <SettingsItem title="Licenses">
           <template #action>
-            <Icon
-              icon="tabler:chevron-right"
+            <IconChevronRight
               class="size-5 text-muted-foreground"
             />
           </template>
@@ -106,9 +98,8 @@
 
       <div class="px-4 py-6 text-center text-xs text-muted-foreground">
         <p class=" inline-flex gap-1 items-center">
-          Made with <Icon
+          Made with <IconBarBell
             class="size-4"
-            icon="tabler:barbell-filled"
           />
         </p>
 
@@ -121,7 +112,13 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
+import IconMusic from "~icons/tabler/music";
+import IconGithub from "~icons/tabler/brand-github-filled";
+import IconTelegram from "~icons/tabler/brand-telegram";
+import IconChevronRight from "~icons/tabler/chevron-right";
+import IconExternalLink from "~icons/tabler/external-link";
+import IconBarBell from "~icons/tabler/barbell-filled";
+
 import { Scrollable } from "@/components/ui/scrollable";
 import SettingsGroup from "@/components/settings/SettingsGroup.vue";
 import SettingsItem from "@/components/settings/SettingsItem.vue";
