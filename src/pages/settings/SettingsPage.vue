@@ -6,16 +6,6 @@
     <div class="pb-8">
       <SettingsGroup>
         <div class="flex pl-6 gap-6 items-center">
-          <!-- <Button
-            variant="ghost"
-            size="icon-lg"
-            class=" rounded-full"
-          >
-            <Icon
-              class=" size-6"
-              icon="tabler:arrow-left"
-            />
-          </Button> -->
           <h1 class="font-bold text-xl py-3">
             Settings
           </h1>
