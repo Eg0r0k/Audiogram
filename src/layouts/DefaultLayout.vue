@@ -21,7 +21,12 @@
               Test
             </Button>
           </Scrollable>
-
+          <Button
+            size="icon-xs"
+            @click="handleThemeToggle"
+          >
+            <component :is="themeIcon" />
+          </Button>
           <Button class="absolute bottom-4 right-4 size-12 rounded-full">
             <IconPlus class="size-6" />
           </Button>
@@ -67,12 +72,6 @@
             </Scrollable>
           </div>
         </Tabs> -->
-        <!-- <Button
-          size="icon-xs"
-          @click="handleThemeToggle"
-        >
-          <component :is="themeIcon" />
-        </Button> -->
       </ResizableSidebar>
 
       <main
