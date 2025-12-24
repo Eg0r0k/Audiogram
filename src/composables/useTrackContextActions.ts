@@ -1,8 +1,9 @@
-import type { ContextActions, TrackContext } from "@/components/track/context-menu/types";
-import { usePlayerStore } from "@/stores/player.store";
-import { useQueueStore } from "@/stores/queue.store";
+import { ContextActions } from "@/components/track/menu/type";
+// import { usePlayerStore } from "@/stores/player.store";
+// import { useQueueStore } from "@/stores/queue.store";
 import { PlaylistId } from "@/types/ids";
 import { Track } from "@/types/track/track";
+import { Ref } from "vue";
 import { useRouter } from "vue-router";
 
 interface RefLike<T> {
@@ -10,16 +11,16 @@ interface RefLike<T> {
 }
 
 export const useTrackContextActions = (
-  track: RefLike<Track>,
-  context: RefLike<TrackContext>,
+  track: Ref<Track | null>,
+  // context: RefLike<TrackContext>,
   options: {
     playlistId?: RefLike<PlaylistId | undefined>;
-    queueIndex?: RefLike<number | undefined>;
+    queueIndex?: RefLike<number | null>;
   } = {},
 ): ContextActions => {
   const router = useRouter();
-  const playerStore = usePlayerStore();
-  const queueStore = useQueueStore();
+  // const playerStore = usePlayerStore();
+  // const queueStore = useQueueStore();
 
   const play = () => {
     console.log("not implemented");
@@ -33,10 +34,12 @@ export const useTrackContextActions = (
   };
 
   const toggleLike = async () => {
+    if (!track.value) return;
     console.log("Toggle like:", track.value.id);
   };
 
   const addToPlaylist = async (playlistId: PlaylistId) => {
+    if (!track.value) return;
     console.log("Add to playlist:", track.value.id, "->", playlistId);
   };
 
@@ -53,18 +56,22 @@ export const useTrackContextActions = (
   };
 
   const removeFromHistory = async () => {
+    if (!track.value) return;
     console.log("Remove from history:", track.value.id);
   };
 
   const goToArtist = () => {
+    if (!track.value) return;
     router.push(`/artist/${track.value.artistId}`);
   };
 
   const goToAlbum = () => {
+    if (!track.value) return;
     router.push(`/album/${track.value.albumId}`);
   };
 
   const download = () => {
+    if (!track.value) return;
     // TODO: Download service
     console.log("Download:", track.value.id);
   };
