@@ -10,7 +10,7 @@
       :class="{ 'is-resizing': isResizing }"
     >
       <div
-        class="sidebar-inner"
+        class="sidebar-inner border-r"
         :style="{ width: `${sidebar.width}px` }"
       >
         <div class="sidebar-content">
@@ -47,7 +47,7 @@ const sidebarTransition: Transition = {
   damping: 30,
 };
 const instantTransition: Transition = { duration: 0 };
-const MIN_WIDTH = 200;
+const MIN_WIDTH = 280;
 const MAX_WIDTH = 500;
 
 const isResizing = ref(false);
@@ -141,6 +141,7 @@ onUnmounted(() => {
 }
 
 .sidebar-inner {
+  position: relative;
   height: 100%;
   display: flex;
   background: var(--card);
@@ -174,17 +175,17 @@ onUnmounted(() => {
 .resize-handle {
   position: relative;
   flex-shrink: 0;
-  width: 4px;
+  width: 2px;
   cursor: col-resize;
   background: transparent;
-  transition: background-color 0.2s;
-
+  transition: background-color 0.2s, box-shadow 0.2s;
   touch-action: none;
 }
 
 .resize-handle:hover,
 .resize-handle:active {
   background: var(--primary);
+  box-shadow: 3px 0 0 0 var(--primary);
 }
 
 .resize-handle::before {
