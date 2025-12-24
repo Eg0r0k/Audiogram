@@ -8,7 +8,7 @@ import { CheckboxIndicator, CheckboxRoot, useForwardPropsEmits } from "reka-ui";
 import { cn } from "@/lib/utils";
 
 const checkboxVariants = cva(
-  "checkbox-animated peer relative cursor-pointer overflow-hidden border data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shrink-0 border outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
+  "checkbox-animated peer relative cursor-pointer overflow-hidden border-2 border-input data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shrink-0 outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
   {
     variants: {
       size: {
