@@ -1,7 +1,7 @@
 <template>
   <div
     ref="dropZoneRef"
-    class="app-grid overflow-hidden h-dvh antialiased"
+    class="app-grid  overflow-hidden h-dvh antialiased"
     :style="{
       paddingTop: top,
       paddingRight: right,
@@ -10,10 +10,22 @@
     }"
   >
     <WindowToolbar class="toolbar" />
-    <Header class="header" />
+    <!-- <Header class="header" /> -->
     <DropOverlay :show="isDragging" />
     <div class="content-area">
       <ResizableSidebar>
+        <div class="relative flex-1 pt-4 h-full flex flex-col min-h-0 overflow-hidden">
+          <SidebarHeader />
+          <Scrollable class="min-h-0 flex-1">
+            <Button variant="ghost">
+              Test
+            </Button>
+          </Scrollable>
+
+          <Button class="absolute bottom-4 right-4 size-12 rounded-full">
+            <IconPlus class="size-6" />
+          </Button>
+        </div>
         <!-- <Tabs v-model="currentTab" class="flex flex-col h-full">
           <Scrollable
             :hide-thumb="true"
@@ -55,12 +67,18 @@
             </Scrollable>
           </div>
         </Tabs> -->
+        <!-- <Button
+          size="icon-xs"
+          @click="handleThemeToggle"
+        >
+          <component :is="themeIcon" />
+        </Button> -->
       </ResizableSidebar>
 
       <main
         class="main"
       >
-        <RouterView />
+        <slot />
       </main>
     </div>
 
@@ -69,22 +87,20 @@
 </template>
 
 <script setup lang="ts">
-import Tabs from "@/components/ui/tabs/Tabs.vue";
-import TabsContent from "@/components/ui/tabs/TabsContent.vue";
-import TabsList from "@/components/ui/tabs/TabsList.vue";
-import TabsTrigger from "@/components/ui/tabs/TabsTrigger.vue";
-import { useDropZone, useScreenSafeArea } from "@vueuse/core";
-import { Icon } from "@iconify/vue";
-import Button from "@/components/ui/button/Button.vue";
-import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
+import { useScreenSafeArea } from "@vueuse/core";
 import WindowToolbar from "@/components/WindowToolbar.vue";
 import FooterMediaPlayer from "@/components/layout/footer/FooterMediaPlayer.vue";
 import ResizableSidebar from "@/components/layout/sidebar/ResizableSidebar.vue";
-import Header from "@/components/layout/header/Header.vue";
-import { useSwipeControl } from "@/composables/useSwipeControl";
-import { computed, ref, useTemplateRef } from "vue";
+import { computed } from "vue";
 import DropOverlay from "@/components/layout/dropzone/DropOverlay.vue";
 import { useFileDrop } from "@/composables/useFileDrop";
+import { useTheme } from "@/composables/useTheme";
+import { Moon, Sun } from "lucide-vue-next";
+import IconPlus from "~icons/tabler/plus";
+
+import Button from "@/components/ui/button/Button.vue";
+import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
+import SidebarHeader from "@/components/layout/sidebar/header/SidebarHeader.vue";
 
 function processFiles(files: File[]) {
   files.forEach((file) => {
@@ -94,7 +110,13 @@ function processFiles(files: File[]) {
   });
 }
 
-const { isDragging, droppedFiles, isProcessing } = useFileDrop({
+const theme = useTheme();
+const themeIcon = computed(() => (theme.isDark.value ? Sun : Moon));
+const handleThemeToggle = (event: MouseEvent) => {
+  theme.toggleTheme(event);
+};
+
+const { isDragging } = useFileDrop({
   acceptedExtensions: [".mp3", ".flac", ".wav", ".ogg"],
   onDrop: (files) => {
     console.log("Dropped:", files);
