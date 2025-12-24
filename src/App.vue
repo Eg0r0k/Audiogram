@@ -1,10 +1,13 @@
 <template>
   <component :is="LayoutComponent">
     <RouterView v-slot="{ Component, route }">
-      <component
-        :is="Component"
-        :key="route.fullPath"
-      />
+      <SlideTransition :depth="route.meta.depth">
+        <component
+          :is="Component"
+          :key="route.fullPath"
+          class="page-wrapper"
+        />
+      </SlideTransition>
     </RouterView>
   </component>
   <ExternalLinkDialog />
@@ -28,6 +31,7 @@ import { useSetupRootClasses } from "./composables/useSetupRootClasses";
 import { listenForOpenedFiles, OpenedFile } from "./helpers/files/fileOpener";
 import { usePreventPinchZoom } from "./composables/usePreventPinchZoom";
 import ExternalLinkDialog from "./components/dialogs/ExternalLinkDialog.vue";
+import SlideTransition from "./components/transitions/SlideTransition.vue";
 
 const route = useRoute();
 const layouts: Record<string, Component> = {
