@@ -1,14 +1,14 @@
 import { defineStore } from "pinia";
-import { useQueueStore } from "./queue.store";
-import { computed, readonly, ref } from "vue";
-import { REPEAT_MODES, RepeatMode } from "@/types/player/types";
+// import { useQueueStore } from "./queue.store";
+import { computed, ref } from "vue";
+import { RepeatMode } from "@/types/player/types";
 import { Track } from "@/types/track/track";
 
-const VOLUME_STORAGE_KEY = "player_volume";
-const PLAYER_SETTINGS_KEY = "player_settings";
+// const VOLUME_STORAGE_KEY = "player_volume";
+// const PLAYER_SETTINGS_KEY = "player_settings";
 
 export const usePlayerStore = defineStore("player", () => {
-  const queueStore = useQueueStore();
+  // const queueStore = useQueueStore();
 
   const currentTime = ref(0);
   const duration = ref(0);
@@ -44,12 +44,13 @@ export const usePlayerStore = defineStore("player", () => {
     throw new Error("not implemented");
   };
 
-  const cycleRepeatMode = () => {
-    const currentIndex = REPEAT_MODES.indexOf(repeatMode.value);
-    repeatMode.value = REPEAT_MODES[(currentIndex + 1) % REPEAT_MODES.length];
-  };
+  // const cycleRepeatMode = () => {
+  //   const currentIndex = REPEAT_MODES.indexOf(repeatMode.value);
+  //   repeatMode.value = REPEAT_MODES[(currentIndex + 1) % REPEAT_MODES.length];
+  // };
 
   const playTrack = (track: Track): void => {
+    console.log(track);
     throw new Error("not implemented");
   };
 
@@ -62,6 +63,7 @@ export const usePlayerStore = defineStore("player", () => {
   };
 
   const seekTo = (seconds: number) => {
+    console.log(seconds);
     throw new Error("not implemented");
   };
 
@@ -83,10 +85,10 @@ export const usePlayerStore = defineStore("player", () => {
 
   return {
     // States
-    status: readonly(status),
-    currentTime: readonly(currentTime),
-    duration: readonly(duration),
-    repeatMode: readonly(repeatMode),
+    status,
+    currentTime,
+    duration,
+    repeatMode,
     // Computed
     progress,
     canPlay,
@@ -102,6 +104,9 @@ export const usePlayerStore = defineStore("player", () => {
     previous,
     seekTo,
     toggleRepeat,
+    toggleShuffle,
+    toggleMute,
+    setVolume,
 
   };
 });

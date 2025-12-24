@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { computed, readonly, ref } from "vue";
+import { computed, ref } from "vue";
 export const useQueueStore = defineStore("queue", () => {
   const currentIndex = ref(-1);
   const queue = ref([]);
@@ -55,13 +55,27 @@ export const useQueueStore = defineStore("queue", () => {
 
   return {
 
-    queue: readonly(queue),
-    currentIndex: readonly(currentIndex),
-    originalQueue: readonly(originalQueue),
-    isShuffled: readonly(isShuffled),
+    queue,
+    currentIndex,
+    originalQueue,
+    isShuffled,
     currentTrack,
     hasNext,
     hasPrevious,
+    currentItem,
+    isEmpty,
+
+    clear,
+    moveTrack,
+    next,
+    previous,
+    playNext,
+    setQueue,
+    addTrackToQueue,
+    removeFromQueue,
+    jumpTo,
+    suffle,
+    removeTracksFormQueue,
     addToQueue,
     insertNext,
   };
