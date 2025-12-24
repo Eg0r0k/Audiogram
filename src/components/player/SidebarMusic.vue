@@ -88,9 +88,6 @@ const tracks = [
 const currentIndex = ref(0);
 const currentTrack = computed(() => tracks[currentIndex.value]);
 
-const nextTrack = () => {
-  currentIndex.value = (currentIndex.value + 1) % tracks.length;
-};
 </script>
 
 <style scoped>

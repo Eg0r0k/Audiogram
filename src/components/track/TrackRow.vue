@@ -67,7 +67,6 @@ import { formatDuration } from "@/helpers/formatter/time";
 import { useTrackMenu } from "@/composables/useTrackMenu";
 import Button from "../ui/button/Button.vue";
 import Like from "../player/actions/Like.vue";
-import { Icon } from "@iconify/vue";
 import { ref, useTemplateRef } from "vue";
 import IconDots from "~icons/tabler/dots";
 

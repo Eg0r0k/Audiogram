@@ -45,11 +45,11 @@
 import { Button } from "@/components/ui/button";
 
 import IconPlaylist from "~icons/tabler/playlist";
-import IconDevices2 from "~icons/tabler/devices-2";
-import IconDeviceSpeaker from "~icons/tabler/device-speaker-filled";
+// import IconDevices2 from "~icons/tabler/devices-2";
+// import IconDeviceSpeaker from "~icons/tabler/device-speaker-filled";
 import IconDots from "~icons/tabler/dots";
 
-import PIPTrigger from "@/components/pip/PIPTrigger.vue";
-import FullscreenTrigger from "@/components/layout/fullscreen/FullscreenTrigger.vue";
+// import PIPTrigger from "@/components/pip/PIPTrigger.vue";
+// import FullscreenTrigger from "@/components/layout/fullscreen/FullscreenTrigger.vue";
 import VolumeButton from "./actions/VolumeButton.vue";
 </script>

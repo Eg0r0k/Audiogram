@@ -58,36 +58,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { Motion } from "motion-v";
 import { Button } from "@/components/ui/button";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
-import Link from "@/components/ui/link/Link.vue";
-import { useTheme } from "@/composables/useTheme";
-import {
-  Home,
-  Search,
-  Settings,
-  Sun,
-  Moon,
-  Navigation,
-  Menu,
-} from "lucide-vue-next";
 import { useSidebar } from "@/composables/useSidebar";
 import { Icon } from "@iconify/vue";
-
-const theme = useTheme();
-const isSearchFocused = ref(false);
-
-const themeIcon = computed(() => (theme.isDark.value ? Sun : Moon));
-
-const handleThemeToggle = (event: MouseEvent) => {
-  theme.toggleTheme(event);
-};
 
 const { toggleLeftSidebar } = useSidebar();
 </script>

@@ -14,7 +14,6 @@
 
 <script lang="ts" setup>
 import { Button } from "@/components/ui/button";
-import { Icon } from "@iconify/vue";
 import {
   onMounted,
   onUnmounted,

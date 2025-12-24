@@ -31,7 +31,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
 import IconPlayFilled from "~icons/tabler/player-play-filled";
 import IconPlaylistAdd from "~icons/tabler/playlist-add";
