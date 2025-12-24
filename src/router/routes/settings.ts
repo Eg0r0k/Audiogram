@@ -8,6 +8,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
     meta: {
       titleKey: "nav.settings",
       showInNav: false,
+      depth: 0,
     },
   },
   {
@@ -16,6 +17,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/settings/GeneralSettings.vue"),
     meta: {
       titleKey: "settings.general",
+      depth: 1,
     },
   },
   {
@@ -24,6 +26,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/settings/AudioSettings.vue"),
     meta: {
       titleKey: "settings.audio",
+      depth: 1,
     },
   },
   {
@@ -32,6 +35,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/settings/StorageSettings.vue"),
     meta: {
       titleKey: "settings.storage",
+      depth: 1,
     },
   },
   {
@@ -40,6 +44,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/settings/LanguageSettings.vue"),
     meta: {
       titleKey: "settings.language",
+      depth: 1,
     },
   },
   {
@@ -48,6 +53,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/settings/NotificationsSettings.vue"),
     meta: {
       titleKey: "settings.notifications",
+      depth: 1,
     },
   },
   {
@@ -56,6 +62,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/settings/AppearanceSettings.vue"),
     meta: {
       titleKey: "settings.appearance",
+      depth: 1,
     },
   },
   {
@@ -64,6 +71,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/settings/AboutSettings.vue"),
     meta: {
       titleKey: "settings.about",
+      depth: 1,
     },
   },
 ];
