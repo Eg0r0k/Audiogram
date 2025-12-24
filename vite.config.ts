@@ -22,7 +22,6 @@ export default defineConfig({
     tailwindcss(),
     Icons({
       compiler: "vue3",
-      autoInstall: true, // Автоматически предложит установить другие сеты, если попробуете их импортировать
     }),
 
     isAnalyze
