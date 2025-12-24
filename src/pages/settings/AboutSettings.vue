@@ -18,7 +18,7 @@
             Audiogram
           </div>
           <div class="text-sm text-muted-foreground mb-2">
-            Version 0.0.1 (Build 2025)
+            Version {{ appVersion }}  ({{ buildTime }})
           </div>
           <div class="flex gap-2">
             <Button
@@ -39,11 +39,17 @@
             <Button
               size="icon-lg"
               variant="link"
+              as-child
             >
-              <Icon
-                class="size-6"
-                icon="tabler:brand-telegram"
-              />
+              <Link
+                to="https://t.me/EG0RK13"
+                confirm-external
+              >
+                <Icon
+                  class="size-6"
+                  icon="tabler:brand-telegram"
+                />
+              </Link>
             </Button>
           </div>
         </div>
@@ -122,6 +128,8 @@ import SettingsItem from "@/components/settings/SettingsItem.vue";
 import SettingsHeader from "@/components/settings/SettingsHeader.vue";
 import Button from "@/components/ui/button/Button.vue";
 import Link from "@/components/ui/link/Link.vue";
-const dateYear = new Date().getFullYear();
 
+const dateYear = new Date().getFullYear();
+const appVersion = __APP_VERSION__;
+const buildTime = __BUILD_TIME__;
 </script>
