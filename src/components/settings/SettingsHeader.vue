@@ -10,9 +10,8 @@
         class="rounded-full"
         @click="$router.back()"
       >
-        <Icon
+        <IconArrowLeft
           class="size-6"
-          icon="tabler:arrow-left"
         />
       </Button>
       <h1 class="font-bold text-xl py-3">
@@ -23,10 +22,10 @@
 </template>
 
 <script setup lang="ts">
-import { inject, computed, type Ref, type ComputedRef } from "vue";
-import { Icon } from "@iconify/vue";
+import { inject, computed, type ComputedRef } from "vue";
 import Button from "@/components/ui/button/Button.vue";
 import SettingsGroup from "./SettingsGroup.vue";
+import IconArrowLeft from "~icons/tabler/arrow-left";
 
 defineProps<{
   title: string;
