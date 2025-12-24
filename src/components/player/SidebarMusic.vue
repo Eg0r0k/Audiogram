@@ -2,7 +2,7 @@
   <div class="min-w-[180px] w-[30%] pl-2">
     <div class="flex justify-start items-center relative select-none">
       <div
-        class="isolate relative shrink-0 mr-2 w-14 h-14 rounded overflow-hidden"
+        class="isolate relative shrink-0 mr-2 size-12 rounded overflow-hidden"
       >
         <img
           class="w-full h-full object-cover object-center absolute left-0 top-0"
@@ -13,7 +13,7 @@
         >
       </div>
 
-      <div class="data-track min-w-0 overflow-hidden">
+      <div class="data-track min-w-0 max-w-fit overflow-hidden mr-2">
         <MarqueeBlock
           :duration="10"
           animate-on-overflow-only
@@ -24,21 +24,52 @@
         >
           <span class="text-sm font-medium">{{ currentTrack.title }}</span>
         </MarqueeBlock>
-        <div class="text-muted-foreground text-xs truncate capitalize">
-          {{ currentTrack.artist }}
-        </div>
+        <MarqueeBlock
+          :duration="6"
+          animate-on-overflow-only
+          pause-on-hover
+          gradient
+          gradient-color="var(--card)"
+          gradient-length="20px"
+        >
+          <span class="text-muted-foreground text-xs truncate capitalize">
+            {{ currentTrack.artist }}
+          </span>
+        </MarqueeBlock>
       </div>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        class="rounded-full"
+        @click.stop="toggle"
+      >
+        <Like
+          ref="likeRef"
+          class="text-xl"
+          :is-liked="liked"
+        />
+      </Button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, useTemplateRef } from "vue";
 import MarqueeBlock from "../ui/marquee/MarqueeBlock.vue";
+import { Button } from "@/components/ui/button";
+import Like from "../player/actions/Like.vue";
+const likeRef = useTemplateRef("likeRef");
+const liked = ref(false);
+const toggle = () => {
+  if (!liked.value) {
+    likeRef.value?.playAnimation();
+  }
+  liked.value = !liked.value;
+};
 
 const tracks = [
   {
-    title: "Очень длинное название трека которое точно не поместится",
+    title: "Название трека",
     artist: "ЛСП",
     cover: "https://i.scdn.co/image/ab67616d000048514feb42ff53928276cf9d9f5a",
   },
