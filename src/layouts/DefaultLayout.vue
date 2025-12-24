@@ -17,8 +17,10 @@
         <div class="relative flex-1 pt-4 h-full flex flex-col min-h-0 overflow-hidden">
           <SidebarHeader />
           <Scrollable class="min-h-0 flex-1">
-            <Button variant="ghost">
-              Test
+            <Button
+              @click="handleThemeToggle"
+            >
+              <component :is="themeIcon" />
             </Button>
           </Scrollable>
           <Button
