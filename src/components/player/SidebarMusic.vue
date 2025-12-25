@@ -1,8 +1,8 @@
 <template>
-  <div class="min-w-[180px] w-[30%] pl-2">
+  <div class="min-w-[180px] w-[30%] pl-1">
     <div class="flex justify-start items-center relative select-none">
       <div
-        class="isolate relative shrink-0 mr-2 size-12 rounded overflow-hidden"
+        class=" relative shrink-0  size-14 rounded overflow-hidden"
       >
         <img
           class="w-full h-full object-cover object-center absolute left-0 top-0"
@@ -13,7 +13,7 @@
         >
       </div>
 
-      <div class="data-track min-w-0 max-w-fit overflow-hidden mr-2">
+      <div class="data-track min-w-0 max-w-fit overflow-hidden mx-2">
         <MarqueeBlock
           :duration="10"
           animate-on-overflow-only

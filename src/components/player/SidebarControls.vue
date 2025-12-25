@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-w-[180px] w-[30%] justify-end pr-2">
+  <div class="flex min-w-[180px] w-[30%] justify-end pr-1">
     <div class="flex w-full gap-0.5 justify-end items-center grow">
       <VolumeButton />
       <!-- <Button

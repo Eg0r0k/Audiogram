@@ -15,11 +15,11 @@ const progress = ref(0);
 
 <template>
   <footer
-    class="p-2 bg-card border-t border-background"
+    class=" p-3 bg-card border-t border-background"
   >
     <aside>
-      <div class="relative flex items-center justify-between h-[63px]">
-        <div class=" absolute -left-[7px]  -top-[9px] -right-[7px]">
+      <div class="relative flex items-center justify-between h-[55px]">
+        <div class=" absolute -left-[11px]  -top-[14px] -right-[11px]">
           <RangeSelector
             v-model="progress"
             :step="0.016666666666666666"
