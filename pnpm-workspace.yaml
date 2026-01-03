@@ -1,2 +1,5 @@
 ignoredBuiltDependencies:
   - esbuild
+
+overrides:
+  lyra: link:../../AppData/Local/pnpm/global/5/node_modules/@egor/lyra
