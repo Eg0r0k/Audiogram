@@ -1,112 +1,359 @@
 import { defineStore } from "pinia";
-// import { useQueueStore } from "./queue.store";
-import { computed, ref } from "vue";
-import { RepeatMode } from "@/types/player/types";
-import { Track } from "@/types/track/track";
-
-// const VOLUME_STORAGE_KEY = "player_volume";
-// const PLAYER_SETTINGS_KEY = "player_settings";
+import { computed, ref, shallowRef, markRaw } from "vue";
+import { Player } from "@egor/lyra";
+import type { RepeatMode } from "@/types/player/types";
+import type { LocalTrack, PlayerTrack } from "@/types/track/track";
+import Hls from "hls.js";
 
 export const usePlayerStore = defineStore("player", () => {
-  // const queueStore = useQueueStore();
+  const player = shallowRef<Player | null>(null);
 
   const currentTime = ref(0);
   const duration = ref(0);
+  const volume = ref(1);
+  const isMuted = ref(false);
+  const isPlaying = ref(false);
+  const isLoading = ref(false);
   const repeatMode = ref<RepeatMode>("off");
-  const status = ref("idle");
+  const isShuffled = ref(false);
+  const status = ref<"idle" | "loading" | "ready" | "playing" | "paused" | "error">("idle");
 
-  const progress = computed(() =>
-    duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0,
-  );
+  const currentTrack = ref<PlayerTrack | null>(null);
 
-  const play = () => {
-    throw new Error("not implemented");
+  const progress = computed(() => {
+    if (duration.value <= 0) return 0;
+    return (currentTime.value / duration.value) * 100;
+  });
+  const canPlay = computed(() => player.value?.isReady ?? false);
+  const canGoNext = computed(() => false); // TODO: implement with queue
+  const canGoPrevious = computed(() => false); // TODO: implement with queue
+
+  const initPlayer = async () => {
+    if (player.value) {
+      await player.value.dispose();
+    }
+
+    const newPlayer = new Player({
+      mode: "auto",
+      Hls: Hls,
+    });
+    newPlayer.setVolume(volume.value);
+    newPlayer.setMuted(isMuted.value);
+
+    player.value = markRaw(newPlayer);
+
+    newPlayer.on("play", () => {
+      isPlaying.value = true;
+      status.value = "playing";
+    });
+
+    newPlayer.on("pause", () => {
+      isPlaying.value = false;
+      status.value = "paused";
+    });
+
+    newPlayer.on("ended", () => {
+      isPlaying.value = false;
+      currentTime.value = 0;
+      status.value = "ready";
+
+      if (repeatMode.value === "one") {
+        play();
+      }
+      else {
+        // TODO: next track from queue
+      }
+    });
+
+    newPlayer.on("timeupdate", (payload) => {
+      currentTime.value = payload.currentTime as number;
+    });
+
+    newPlayer.on("durationchange", (dur) => {
+      duration.value = dur as number;
+    });
+    newPlayer.on("loadstart", () => {
+      isLoading.value = true;
+      status.value = "loading";
+    });
+
+    newPlayer.on("canplay", () => {
+      isLoading.value = false;
+      status.value = "ready";
+      if (player.value) {
+        duration.value = player.value.duration as number;
+      }
+    });
+    newPlayer.on("loadedmetadata", ({ duration: dur }) => {
+      duration.value = dur as number;
+    });
+
+    newPlayer.on("statechange", ({ to }) => {
+      status.value = to as typeof status.value;
+    });
+
+    newPlayer.on("volumechange", ({ volume: vol, muted }) => {
+      volume.value = vol;
+      isMuted.value = muted;
+    });
+    newPlayer.on("error", (err) => {
+      console.error("Player error:", err);
+      status.value = "error";
+      isLoading.value = false;
+    });
+
+    return newPlayer;
+  };
+
+  const play = async () => {
+    // Try to restore source
+    if (!player.value) {
+      if (currentTrack.value && "url" in currentTrack.value) {
+        await playUrl(currentTrack.value.url as string);
+        if (currentTime.value > 0 && player.value) {
+          (player.value as Player).seek(currentTime.value);
+        }
+        return;
+      }
+      return;
+    }
+
+    await player.value.play();
   };
   const pause = () => {
-    throw new Error("not implemented");
+    player.value?.pause();
   };
 
-  // TODO implement this
-  const canPlay = computed(() => false);
-  const canGoNext = computed(() => false);
-  const canGoPrevious = computed(() => false);
-
-  const togglePlay = () => {
-    if (canPlay.value) {
+  const togglePlay = async () => {
+    if (isPlaying.value) {
       pause();
     }
     else {
-      play();
+      await play();
     }
   };
 
   const stop = () => {
-    throw new Error("not implemented");
+    player.value?.stop();
+    currentTime.value = 0;
+    status.value = "ready";
   };
 
-  // const cycleRepeatMode = () => {
-  //   const currentIndex = REPEAT_MODES.indexOf(repeatMode.value);
-  //   repeatMode.value = REPEAT_MODES[(currentIndex + 1) % REPEAT_MODES.length];
-  // };
+  const playTrack = async (track: LocalTrack) => {
+    await initPlayer();
 
-  const playTrack = (track: Track): void => {
-    console.log(track);
-    throw new Error("not implemented");
+    if (!player.value) return;
+
+    currentTrack.value = track;
+
+    try {
+      if (!track.url) {
+        throw new Error("Track has no URL");
+      }
+      await player.value.load(track.url);
+      await player.value.play();
+    }
+    catch (err) {
+      console.error("Failed to play track:", err);
+      status.value = "error";
+    }
+  };
+  const playFile = async (file: File) => {
+    await initPlayer();
+
+    if (!player.value) return;
+
+    const localTrack: LocalTrack = {
+      id: crypto.randomUUID(),
+      title: file.name.replace(/\.[^/.]+$/, ""),
+      artist: "Unknown Artist",
+      file,
+    };
+
+    currentTrack.value = localTrack;
+
+    try {
+      await player.value.load(file);
+      localTrack.duration = player.value.duration;
+      await player.value.play();
+    }
+    catch (err) {
+      console.error("Failed to play file:", err);
+      status.value = "error";
+    }
   };
 
-  const next = () => {
-    throw new Error("not implemented");
+  const playUrl = async (url: string) => {
+    await initPlayer();
+
+    if (!player.value) return;
+
+    const localTrack: LocalTrack = {
+      id: crypto.randomUUID(),
+      title: url.split("/").pop()?.split("?")[0] || "Stream",
+      artist: "Stream",
+      url,
+    };
+
+    currentTrack.value = localTrack;
+
+    try {
+      await player.value.load(url);
+      localTrack.duration = player.value.duration;
+      await player.value.play();
+    }
+    catch (err) {
+      console.error("Failed to play URL:", err);
+      status.value = "error";
+    }
   };
 
-  const previous = () => {
-    throw new Error("not implemented");
-  };
+  const isLiveStream = computed(() => {
+    if (!isFinite(duration.value) || duration.value === 0) {
+      return true;
+    }
+
+    const track = currentTrack.value;
+    const url = (track && "url" in track ? track.url : undefined)?.toLowerCase() ?? "";
+
+    if (url.includes(".m3u8") || url.includes("stream") || url.includes("radio")) {
+      if (duration.value > 86400) {
+        return true;
+      }
+    }
+
+    return false;
+  });
 
   const seekTo = (seconds: number) => {
-    console.log(seconds);
-    throw new Error("not implemented");
+    if (!canSeek.value) {
+      console.log("[Store] Seek disabled for live stream");
+      return;
+    }
+    player.value?.seek(seconds);
   };
 
-  const setVolume = () => {
-    throw new Error("not implemented");
+  const canSeek = computed(() => {
+    if (!player.value) return false;
+    if (isLiveStream.value) return false;
+    if (duration.value <= 0) return false;
+    return true;
+  });
+
+  const seekPercent = (percent: number) => {
+    if (!canSeek.value) {
+      console.log("[Store] Seek disabled for live stream");
+      return;
+    }
+    player.value?.seekPercent(percent / 100);
+  };
+
+  const setVolume = (value: number) => {
+    volume.value = value;
+    player.value?.setVolume(value);
+  };
+
+  const setMuted = (muted: boolean) => {
+    isMuted.value = muted;
+    player.value?.setMuted(muted);
   };
 
   const toggleMute = () => {
-    throw new Error("not implemented");
+    player.value?.toggleMute();
+    isMuted.value = player.value?.muted ?? false;
   };
 
   const toggleShuffle = () => {
-    throw new Error("not implemented");
+    isShuffled.value = !isShuffled.value;
+    // TODO: shuffle queue
   };
 
   const toggleRepeat = () => {
-    throw new Error("not implemented");
+    const modes: RepeatMode[] = ["off", "all", "one"];
+    const currentIndex = modes.indexOf(repeatMode.value);
+    repeatMode.value = modes[(currentIndex + 1) % modes.length];
+  };
+
+  const next = () => {
+    // TODO: implement with queue
+    console.log("next");
+  };
+
+  const previous = () => {
+    // TODO: implement with queue
+    console.log("previous");
+  };
+
+  // Cleanup
+  const dispose = async () => {
+    if (player.value) {
+      await player.value.dispose();
+      player.value = null;
+    }
+  };
+
+  // Get audio graph for equalizer
+  const getAudioGraph = () => {
+    return player.value?.graph ?? null;
   };
 
   return {
-    // States
+    // State
+    player,
     status,
     currentTime,
     duration,
+    volume,
+    isMuted,
+    isPlaying,
+    isLoading,
     repeatMode,
+    isShuffled,
+    currentTrack,
+
     // Computed
     progress,
     canPlay,
     canGoNext,
     canGoPrevious,
-    // Functions
+    isLiveStream,
+    canSeek,
+    // Actions
     play,
     pause,
     togglePlay,
     playTrack,
+    playFile,
+    playUrl,
     stop,
     next,
     previous,
     seekTo,
-    toggleRepeat,
-    toggleShuffle,
-    toggleMute,
+    seekPercent,
     setVolume,
-
+    toggleMute,
+    toggleShuffle,
+    toggleRepeat,
+    getAudioGraph,
+    dispose,
+    setMuted,
   };
-});
+},
+{
+  persist: {
+    key: "lyra-player",
+    pick: [
+      "volume",
+      "isMuted",
+      "repeatMode",
+      "isShuffled",
+      "currentTrack",
+      "currentTime",
+      "duration",
+
+    ],
+
+  },
+},
+
+);
