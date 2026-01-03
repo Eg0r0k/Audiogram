@@ -40,7 +40,6 @@ watch(
 
 <style>
 :root {
-  --transition-standard: cubic-bezier(.4, 0, .2, 1);
   --transition-duration: 0.3s;
   --parallax-offset: -20%;
   --overlay-brightness: 0.7;
@@ -53,8 +52,6 @@ watch(
   width: 100%;
   height: 100%;
   overflow: hidden;
-
-  background-color: var(--background, #fff);
 
   position: relative;
 }
@@ -70,7 +67,6 @@ watch(
   backface-visibility: hidden;
   transform: translate3d(0,0,0);
   will-change: transform;
-  background-color: var(--background, #fff);
 }
 
 .slide-transition-container > * {
@@ -81,8 +77,8 @@ watch(
 .slide-left-leave-active,
 .slide-right-enter-active,
 .slide-right-leave-active {
-  transition: transform var(--transition-duration) var(--transition-standard),
-              filter var(--transition-duration) var(--transition-standard);
+  transition: transform var(--transition-duration) var(--ease-standard),
+              filter var(--transition-duration) var(--ease-standard);
   position: absolute;
   top: 0;
   left: 0;
