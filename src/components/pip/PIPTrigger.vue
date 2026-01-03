@@ -21,12 +21,19 @@ import {
 import PIPContent from "./PIPContent.vue";
 import { usePictureInPicture } from "@/composables/usePictureInPicture";
 import IconPIPFilled from "~icons/tabler/picture-in-picture-filled";
+import { getActivePinia, Pinia } from "pinia";
+import { i18n } from "@/i18n";
 
+const pinia = getActivePinia();
 const pip = usePictureInPicture();
 const getPipOptions = () => ({
   component: PIPContent,
   width: 400,
   height: 280,
+  plugins: [
+    pinia as Pinia,
+    i18n,
+  ],
 });
 const handleToggle = async () => {
   await pip.toggle(getPipOptions());
