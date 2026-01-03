@@ -13,11 +13,10 @@
       {{ index }}
     </span>
 
-    <Image
+    <NuxtImage
       :src="track.cover"
       :alt="track.title"
-      :container-class="styles.image"
-      image-class="size-full object-cover"
+      :class="styles.image"
     />
 
     <div :class="styles.info">
@@ -69,6 +68,7 @@ import Button from "../ui/button/Button.vue";
 import Like from "../player/actions/Like.vue";
 import { ref, useTemplateRef } from "vue";
 import IconDots from "~icons/tabler/dots";
+import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 
 interface Props {
   track: Track;

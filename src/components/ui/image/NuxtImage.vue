@@ -1,0 +1,255 @@
+<template>
+  <img
+    v-if="!custom"
+    ref="imgEl"
+    :class="placeholderSrc ? placeholderClass : undefined"
+    v-bind="imgAttrs"
+    :src="imageSrc"
+  >
+  <slot
+    v-else
+    v-bind="{
+      imgAttrs,
+      isLoaded: placeholderLoaded,
+      src: imageSrc,
+    }"
+  />
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, ref, useAttrs, useTemplateRef, watch } from "vue";
+import type { ImgHTMLAttributes } from "vue";
+
+export interface ImageProps {
+  src?: string;
+  alt?: string;
+  width?: number | string;
+  height?: number | string;
+  loading?: "lazy" | "eager";
+  decoding?: "async" | "sync" | "auto";
+  crossorigin?: "anonymous" | "use-credentials" | "";
+  sizes?: string;
+  srcset?: string;
+  custom?: boolean;
+  placeholder?: boolean | string | number | [w: number, h: number, q?: number, b?: number];
+  placeholderClass?: string;
+  fallbackSrc?: string;
+}
+
+export interface DefaultSlotProps {
+  imgAttrs: ImgHTMLAttributes;
+  isLoaded: boolean;
+  src?: string;
+}
+
+const props = withDefaults(defineProps<ImageProps>(), {
+  alt: "",
+  loading: "lazy",
+  decoding: "async",
+  fallbackSrc: "",
+});
+
+const emit = defineEmits<{
+  (event: "load", payload: Event): void;
+  (event: "error", payload: string | Event): void;
+}>();
+
+defineSlots<{
+  default(props: DefaultSlotProps): unknown;
+}>();
+
+const imgEl = useTemplateRef<HTMLImageElement>("imgEl");
+const placeholderLoaded = ref(false);
+const useFallback = ref(false);
+const loadAttempted = ref(false);
+
+defineExpose({
+  imgEl,
+  isLoaded: placeholderLoaded,
+  hasError: useFallback,
+});
+
+const attrs = useAttrs() as ImgHTMLAttributes;
+
+const normalizedAttrs = computed<ImgHTMLAttributes>(() => ({
+  alt: props.alt,
+  width: props.width,
+  height: props.height,
+  loading: props.loading,
+  decoding: props.decoding,
+  crossorigin: props.crossorigin,
+}));
+
+const imgAttrs = computed<ImgHTMLAttributes>(() => ({
+  ...normalizedAttrs.value,
+  ...(!props.placeholder || placeholderLoaded.value)
+    ? { sizes: props.sizes, srcset: props.srcset }
+    : {},
+  ...attrs,
+}));
+
+const placeholderSrc = computed<string | false>(() => {
+  if (placeholderLoaded.value) {
+    return false;
+  }
+
+  const placeholderProp = props.placeholder === true ? [10, 10] : props.placeholder;
+
+  if (!placeholderProp) {
+    return false;
+  }
+
+  if (typeof placeholderProp === "string") {
+    return placeholderProp;
+  }
+
+  const [width = 10, height = width] = Array.isArray(placeholderProp)
+    ? placeholderProp
+    : typeof placeholderProp === "number"
+      ? [placeholderProp]
+      : [];
+
+  return generatePlaceholderDataUrl(width, height);
+});
+
+const isValidImageSrc = computed(() => {
+  if (!props.src) return false;
+
+  const src = props.src.trim();
+
+  if (!src || src === "/" || src === "//") return false;
+
+  if (src.startsWith("data:image/")) return true;
+
+  if (src.startsWith("blob:")) return true;
+
+  const hasImageExtension = /\.(jpe?g|png|gif|webp|avif|svg|ico|bmp|tiff?)(\?.*)?$/i.test(src);
+  const isAbsoluteUrl = /^https?:\/\//i.test(src);
+  const isRelativePath = src.startsWith("/") && src.length > 1;
+
+  return hasImageExtension || isAbsoluteUrl || isRelativePath;
+});
+
+const imageSrc = computed(() => {
+  if (!isValidImageSrc.value) {
+    return props.fallbackSrc || generatePlaceholderDataUrl(100, 100);
+  }
+
+  if (useFallback.value) {
+    return props.fallbackSrc || generatePlaceholderDataUrl(100, 100);
+  }
+
+  if (placeholderSrc.value) {
+    return placeholderSrc.value;
+  }
+
+  return props.src!;
+});
+
+function generatePlaceholderDataUrl(width: number, height: number): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+    <rect width="100%" height="100%" fill="#374151"/>
+    <text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="#9CA3AF" font-size="${Math.min(width, height) / 4}">
+      No Image
+    </text>
+  </svg>`;
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
+}
+
+function resetState() {
+  placeholderLoaded.value = false;
+  useFallback.value = false;
+  loadAttempted.value = false;
+}
+
+function handleLoadSuccess(event?: Event) {
+  placeholderLoaded.value = true;
+  useFallback.value = false;
+  emit("load", event || new Event("load"));
+}
+
+function handleLoadError(error: unknown) {
+  if (loadAttempted.value && useFallback.value) {
+    return;
+  }
+
+  loadAttempted.value = true;
+  useFallback.value = true;
+  emit("error", error instanceof Event ? error : String(error));
+}
+
+function loadMainImage() {
+  if (!isValidImageSrc.value || loadAttempted.value) {
+    return;
+  }
+
+  const img = new Image();
+
+  if (props.crossorigin) {
+    img.crossOrigin = props.crossorigin;
+  }
+
+  if (props.sizes) {
+    img.sizes = props.sizes;
+  }
+
+  if (props.srcset) {
+    img.srcset = props.srcset;
+  }
+
+  img.src = props.src!;
+
+  if (typeof img.decode === "function") {
+    img.decode()
+      .then(() => handleLoadSuccess())
+      .catch(error => handleLoadError(error));
+  }
+  else {
+    img.onload = event => handleLoadSuccess(event);
+    img.onerror = event => handleLoadError(event);
+  }
+}
+
+function setupImageListeners() {
+  if (!imgEl.value) {
+    return;
+  }
+
+  if (imgEl.value.complete) {
+    if (imgEl.value.naturalWidth === 0) {
+      handleLoadError(new Event("error"));
+    }
+    else {
+      handleLoadSuccess();
+    }
+    return;
+  }
+
+  imgEl.value.onload = event => handleLoadSuccess(event);
+  imgEl.value.onerror = event => handleLoadError(event);
+}
+
+watch(() => props.src, (newSrc, oldSrc) => {
+  if (newSrc !== oldSrc) {
+    resetState();
+
+    if (props.placeholder || props.custom) {
+      loadMainImage();
+    }
+  }
+});
+
+onMounted(() => {
+  if (!isValidImageSrc.value) {
+    useFallback.value = true;
+    return;
+  }
+
+  if (props.placeholder || props.custom) {
+    loadMainImage();
+    return;
+  }
+
+  setupImageListeners();
+});
+</script>
