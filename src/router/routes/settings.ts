@@ -7,7 +7,6 @@ export const settingsRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/settings/SettingsPage.vue"),
     meta: {
       titleKey: "nav.settings",
-      showInNav: false,
       depth: 0,
     },
   },

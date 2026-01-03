@@ -7,8 +7,6 @@ export const albumRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/AlbumPage.vue"),
     meta: {
       titleKey: "nav.album",
-      showInNav: false,
-      showInMobileNav: false,
     },
   },
 ];

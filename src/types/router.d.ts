@@ -5,9 +5,6 @@ declare module "vue-router" {
     titleKey?: string;
     layout?: string;
     icon?: string;
-    showInNav?: boolean;
-    showInMobileNav?: boolean;
-    navOrder?: number;
     // TODO: Implement that
     keepAlive?: boolean;
     depth?: number;

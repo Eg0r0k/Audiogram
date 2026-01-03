@@ -7,8 +7,6 @@ export const artistRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/ArtistPage.vue"),
     meta: {
       titleKey: "nav.artist",
-      showInNav: false,
-      showInMobileNav: false,
     },
   },
 ];

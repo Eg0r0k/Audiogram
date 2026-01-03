@@ -7,8 +7,6 @@ export const playlistRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/PlaylistPage.vue"),
     meta: {
       titleKey: "nav.playlist",
-      showInNav: false,
-      showInMobileNav: false,
     },
   },
 ];

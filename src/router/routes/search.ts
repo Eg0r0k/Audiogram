@@ -7,9 +7,6 @@ export const searchRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/SearchPage.vue"),
     meta: {
       titleKey: "nav.search",
-      showInNav: true,
-      showInMobileNav: true,
-      navOrder: 3,
     },
   },
 ];

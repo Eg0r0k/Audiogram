@@ -7,9 +7,6 @@ export const homeRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/IndexPage.vue"),
     meta: {
       titleKey: "nav.home",
-      showInNav: true,
-      showInMobileNav: true,
-      navOrder: 1,
     },
   },
 ];
