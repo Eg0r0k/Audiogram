@@ -5,8 +5,10 @@ import "./style.css";
 import { createPinia } from "pinia";
 import { i18n } from "./i18n";
 import vRipple from "./directives/ripple";
+import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 
 const pinia = createPinia();
+pinia.use(piniaPluginPersistedstate);
 const app = createApp(App);
 app.use(router);
 app.use(pinia);
