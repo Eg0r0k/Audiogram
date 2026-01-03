@@ -4,7 +4,7 @@
       <slot />
     </ContextMenuTrigger>
 
-    <ContextMenuContent class="w-60">
+    <ContextMenuContent class="w-65">
       <component
 
         :is="contextComponent"
