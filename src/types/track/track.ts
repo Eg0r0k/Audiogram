@@ -7,7 +7,21 @@ export interface Track {
   artistId: ArtistId;
   albumId: AlbumId;
   albumName: string;
+  url: string;
   cover: string;
   duration: number;
   isLiked: boolean;
+
 }
+
+export interface LocalTrack {
+  id: string;
+  title: string;
+  artist: string;
+  cover?: string;
+  duration?: number;
+  file?: File;
+  url?: string;
+}
+
+export type PlayerTrack = Track | LocalTrack;
