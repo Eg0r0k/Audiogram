@@ -5,7 +5,7 @@
         <component
           :is="Component"
           :key="route.fullPath"
-          class="page-wrapper"
+          class="page-wrapper bg-muted dark:bg-background"
         />
       </SlideTransition>
     </RouterView>
