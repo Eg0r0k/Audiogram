@@ -16,19 +16,21 @@
       <ResizableSidebar>
         <div class="relative flex-1 pt-4 h-full flex flex-col min-h-0 overflow-hidden">
           <SidebarHeader />
-          <Scrollable class="min-h-0 flex-1">
-            <Button
-              @click="handleThemeToggle"
-            >
-              <component :is="themeIcon" />
-            </Button>
+          <Scrollable class="flex-1 min-h-0">
+            <div class="p-2 flex flex-col ">
+              <Button @click="handleThemeToggle">
+                <component :is="themeIcon" />
+              </Button>
+              <Button
+                v-for="i in 30"
+                :key="i"
+                variant="ghost"
+              >
+                Item {{ i }}
+              </Button>
+            </div>
           </Scrollable>
-          <Button
-            size="icon-xs"
-            @click="handleThemeToggle"
-          >
-            <component :is="themeIcon" />
-          </Button>
+
           <Button class="absolute bottom-4 right-4 size-12 rounded-full">
             <IconPlus class="size-6" />
           </Button>
@@ -77,7 +79,7 @@
       </ResizableSidebar>
 
       <main
-        class="main"
+        class="main  "
       >
         <slot />
       </main>
