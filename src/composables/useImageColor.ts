@@ -62,7 +62,6 @@ export const getColorFromImage = async (
     };
   }
   catch (error) {
-    console.error("Error extracting color:", error);
     return {
       hex: opts.fallback!,
       rgb: opts.fallback!,
