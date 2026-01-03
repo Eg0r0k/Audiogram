@@ -1,8 +1,12 @@
 import "@testing-library/jest-dom/vitest";
-
+import { cleanup } from "@testing-library/vue";
 import { config } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
-import { beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
+
+afterEach(() => {
+  cleanup();
+});
 
 vi.mock("@tauri-apps/api", () => ({
   invoke: vi.fn(),
