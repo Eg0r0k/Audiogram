@@ -4,13 +4,14 @@
       <div
         class=" relative shrink-0  size-14 rounded overflow-hidden"
       >
-        <img
+        <NuxtImage
+          placeholder
           class="w-full h-full object-cover object-center absolute left-0 top-0"
           draggable="false"
           :src="currentTrack.cover"
           loading="eager"
           alt=""
-        >
+        />
       </div>
 
       <div class="data-track min-w-0 max-w-fit overflow-hidden mx-2">
@@ -58,6 +59,8 @@ import { ref, computed, useTemplateRef } from "vue";
 import MarqueeBlock from "../ui/marquee/MarqueeBlock.vue";
 import { Button } from "@/components/ui/button";
 import Like from "../player/actions/Like.vue";
+import NuxtImage from "@/components/ui/image/NuxtImage.vue";
+
 const likeRef = useTemplateRef("likeRef");
 const liked = ref(false);
 const toggle = () => {
