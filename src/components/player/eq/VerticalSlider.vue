@@ -1,18 +1,26 @@
 <template>
-  <Slider
-    v-model="proxyValue"
-    :min="min"
-    :max="max"
-    :step="step"
-    orientation="vertical"
-    class="min-h-0!"
-    @value-commit="onValueCommit"
-  />
+  <div
+    ref="wrapperRef"
+    class="flex-1 w-full flex justify-center py-1 relative"
+  >
+    <div class="absolute top-1/2 left-0 right-0 h-px bg-muted-foreground pointer-events-none z-0" />
+
+    <Slider
+      v-model="proxyValue"
+      :min="min"
+      :max="max"
+      :step="step"
+      orientation="vertical"
+      class="min-h-0!"
+      @value-commit="onValueCommit"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, useTemplateRef } from "vue";
 import { Slider } from "@/components/ui/slider";
+import { useEventListener } from "@vueuse/core";
 
 const props = withDefaults(defineProps<{
   modelValue: number;
@@ -24,6 +32,8 @@ const props = withDefaults(defineProps<{
   max: 12,
   step: 1,
 });
+
+const wrapperRef = useTemplateRef("wrapperRef");
 
 const emit = defineEmits<{
   "update:modelValue": [value: number];
@@ -44,4 +54,24 @@ const onValueCommit = (val: number[]) => {
     emit("change", val[0]);
   }
 };
+
+const handleScroll = (e: WheelEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const direction = e.deltaY < 0 ? 1 : -1;
+  const delta = direction * props.step;
+
+  const newValue = Math.max(
+    props.min,
+    Math.min(props.max, props.modelValue + delta),
+  );
+
+  if (newValue !== props.modelValue) {
+    emit("update:modelValue", newValue);
+    emit("change", newValue);
+  }
+};
+
+useEventListener(wrapperRef, "wheel", handleScroll, { passive: false });
 </script>
