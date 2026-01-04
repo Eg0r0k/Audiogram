@@ -2,7 +2,7 @@
   <component :is="Sub">
     <component :is="SubTrigger">
       <IconPlaylistAdd
-        class="mr-2 size-5.5"
+        class="mr-3 size-5.5"
       />
       {{ $t('track.contextMenu.addToPlaylist') }}
     </component>
@@ -33,7 +33,7 @@
         @click="emit('create')"
       >
         <IconPlus
-          class="size-5.5"
+          class=" size-5.5"
         />
         {{ $t('track.contextMenu.createPlaylist') }}
       </component>

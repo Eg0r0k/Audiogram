@@ -47,6 +47,7 @@ import { Track } from "@/types/track/track";
 const artistData: ArtistData = {
   type: "artist",
   image: "/",
+
   title: "ABOBUS",
   id: ArtistId("artist-1"),
   monthlyListeners: 10_000_000,
@@ -66,7 +67,7 @@ const mockTracks: Track[] = [
     cover: "https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36",
     duration: 203,
     isLiked: true,
-
+    url: "",
   },
   {
     id: TrackId("track-2"),
@@ -78,6 +79,7 @@ const mockTracks: Track[] = [
     cover: "https://i.scdn.co/image/ab67616d0000b273a048415db06a5b6fa7ec4e1a",
     duration: 230,
     isLiked: false,
+    url: "",
   },
 ];
 
