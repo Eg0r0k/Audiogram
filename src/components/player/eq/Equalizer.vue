@@ -57,9 +57,17 @@
           :key="band.frequency"
           class="flex flex-col items-center group relative h-full"
         >
-          <div class="absolute -top-5 text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-            {{ band.gain > 0 ? '+' : '' }}{{ Math.round(band.gain) }}
-          </div>
+          <EditableValue
+            v-model="band.gain"
+            :min="-15"
+            :max="15"
+            :step="1"
+            suffix=" dB"
+            class="absolute -top-4 z-10 [&:focus-within>span]:opacity-100!"
+            display-class="text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
+            input-class="text-[10px] w-[20px]"
+            @change="setCustomPreset"
+          />
 
           <VerticalSlider
             v-model="band.gain"
@@ -69,7 +77,9 @@
             @change="setCustomPreset"
           />
 
-          <span class="text-[9px] font-medium text-muted-foreground uppercase tracking-wider mt-1">
+          <span
+            class="text-[9px] font-medium text-muted-foreground uppercase tracking-wider mt-1"
+          >
             {{ formatFreq(band.frequency) }}
           </span>
         </div>
@@ -99,6 +109,7 @@ import {
   EQ_PRESET_CATEGORIES,
   getPresetsByCategory,
 } from "@/components/player/eq/constants";
+import { EditableValue } from "@/components/ui/editable";
 
 const playerStore = usePlayerStore();
 const isEnabled = ref(true);

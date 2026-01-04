@@ -1,9 +1,9 @@
 <template>
   <div
     ref="wrapperRef"
-    class="flex-1 w-full flex justify-center py-1 relative"
+    class="flex-1 w-full flex justify-center relative"
   >
-    <div class="absolute top-1/2 left-0 right-0 h-px bg-muted-foreground pointer-events-none z-0" />
+    <div class="absolute top-1/2 left-0 right-0 h-px bg-muted-foreground/30 pointer-events-none z-0" />
 
     <Slider
       v-model="proxyValue"
@@ -11,7 +11,7 @@
       :max="max"
       :step="step"
       orientation="vertical"
-      class="min-h-0!"
+      class="min-h-0! h-full!"
       @value-commit="onValueCommit"
     />
   </div>
