@@ -19,6 +19,13 @@
       }
     ],
     "security": {
+       "assetProtocol": {
+        "enable": true,
+        "scope": {
+          "allow": ["$APPDATA/**", "$DATA/**", "**"],
+          "deny": []
+        }
+      },
       "csp": null
     }
   },
