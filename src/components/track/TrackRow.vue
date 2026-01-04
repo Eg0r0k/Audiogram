@@ -60,7 +60,6 @@
 
 <script setup lang="ts">
 import { cva } from "class-variance-authority";
-import Image from "@/components/ui/image/Image.vue";
 import type { Track } from "@/types/track/track";
 import { formatDuration } from "@/helpers/formatter/time";
 import { useTrackMenu } from "@/composables/useTrackMenu";
