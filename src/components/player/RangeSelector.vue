@@ -12,6 +12,7 @@
       ref="seekRef"
       class="range-selector__input"
       type="range"
+      :disabled="disabled"
       :step="step"
       :min="min"
       :max="max"
@@ -33,7 +34,6 @@ export interface GrabEvent {
   y: number;
   originalEvent: MouseEvent | TouchEvent;
 }
-
 export interface RangeSelectorProps {
   step: number;
   keyboardStep?: number;
@@ -44,16 +44,19 @@ export interface RangeSelectorProps {
   vertical?: boolean;
   offsetAxisValue?: number;
   modelValue?: number;
+  disableTransition?: boolean;
+  disabled?: boolean;
 }
-
 const props = withDefaults(defineProps<RangeSelectorProps>(), {
   min: 0,
   max: 100,
   withTransition: false,
-  useTransform: false,
+  useTransform: true,
   vertical: false,
   offsetAxisValue: 0,
   modelValue: 0,
+  disableTransition: false,
+  disabled: false,
 });
 
 const emit = defineEmits<{
@@ -84,8 +87,10 @@ const containerClasses = computed(() => [
   "range-selector",
   {
     "range-selector--transform": props.useTransform,
-    "range-selector--transition": props.withTransition && !props.useTransform,
+    "range-selector--transition": props.withTransition && !props.useTransform && !props.disableTransition,
     "range-selector--active": mousedown.value,
+    "range-selector--no-transition": props.disableTransition,
+    "range-selector--disabled": props.disabled,
   },
 ]);
 
@@ -168,7 +173,7 @@ function scrub(event: GrabEvent, snapValue?: (value: number) => number): number 
 }
 
 function onInput(): void {
-  if (!seekRef.value) return;
+  if (props.disabled || !seekRef.value) return;
 
   const value = Number(seekRef.value.value);
   setFilled(value);
@@ -178,6 +183,7 @@ function onInput(): void {
 }
 
 function onPointerDown(e: MouseEvent | TouchEvent): void {
+  if (props.disabled) return;
   const grabEvent = createGrabEvent(e);
   mousedown.value = true;
   scrub(grabEvent);
@@ -201,6 +207,7 @@ function onPointerUp(e: MouseEvent | TouchEvent): void {
 }
 
 function onKeyDown(e: KeyboardEvent): void {
+  if (props.disabled) return;
   const isArrowKey = e.key === "ArrowLeft" || e.key === "ArrowRight"
     || e.key === "ArrowUp" || e.key === "ArrowDown";
 
@@ -268,7 +275,13 @@ defineExpose({
   height: var(--range-height);
   background-color: var(--range-bg);
   border-radius: var(--range-radius);
-  transition: height 0.15s var(--ease-standard), background-color 0.15s var(--ease-standard);
+  transition: height 0.15s ease, background-color 0.15s ease;
+}
+
+.range-selector--disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .range-selector:hover::before,
@@ -286,7 +299,7 @@ defineExpose({
   background-color: var(--range-filled);
   pointer-events: none;
   transform-origin: left center;
-  transition: height 0.15s var(--ease-standard);
+  transition: height 0.15s ease;
 }
 
 .range-selector:hover .range-selector__filled,
@@ -294,13 +307,26 @@ defineExpose({
   height: var(--range-height-hover);
 }
 
+/* Transform режим — БЕЗ transition на transform */
 .range-selector--transform .range-selector__filled {
   width: 100%;
+  transform: scaleX(0);
   will-change: transform;
 }
 
-.range-selector--transition:not(.range-selector--active) .range-selector__filled {
-  transition: width 0.1s linear, height 0.15s var(--ease-standard);
+/* Width режим с transition */
+.range-selector--transition .range-selector__filled {
+  transition: width 0.1s linear, height 0.15s ease;
+}
+
+/* Отключаем transition при скраббинге */
+.range-selector--active .range-selector__filled {
+  transition: height 0.15s ease !important;
+}
+
+/* Полное отключение transition (при смене трека) */
+.range-selector--no-transition .range-selector__filled {
+  transition: none !important;
 }
 
 .range-selector__input {
