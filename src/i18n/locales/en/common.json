@@ -63,5 +63,7 @@
     "restore": "Restore",
     "maximize": "Maximize",
     "close": "Close"
-  }
+  },
+  "editHint": "Double-click to edit",
+  "editLabel": "Edit value"
 }
