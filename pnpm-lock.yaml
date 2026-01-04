@@ -11,6 +11,9 @@ importers:
 
   .:
     dependencies:
+      '@egor/lyra':
+        specifier: link:../../AppData/Local/pnpm/global/5/node_modules/@egor/lyra
+        version: link:../../AppData/Local/pnpm/global/5/node_modules/@egor/lyra
       '@tailwindcss/vite':
         specifier: ^4.1.17
         version: 4.1.17(vite@6.4.1(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2))
@@ -20,8 +23,11 @@ importers:
       '@tauri-apps/api':
         specifier: ^2
         version: 2.9.0
+      '@tauri-apps/plugin-dialog':
+        specifier: ~2.4.2
+        version: 2.4.2
       '@tauri-apps/plugin-fs':
-        specifier: ^2.4.4
+        specifier: ~2
         version: 2.4.4
       '@tauri-apps/plugin-opener':
         specifier: ^2
@@ -44,9 +50,6 @@ importers:
       lucide-vue-next:
         specifier: ^0.555.0
         version: 0.555.0(vue@3.5.25(typescript@5.6.3))
-      lyra:
-        specifier: link:../../AppData/Local/pnpm/global/5/node_modules/@egor/lyra
-        version: link:../../AppData/Local/pnpm/global/5/node_modules/@egor/lyra
       motion-v:
         specifier: ^1.7.4
         version: 1.7.4(@vueuse/core@14.1.0(vue@3.5.25(typescript@5.6.3)))(vue@3.5.25(typescript@5.6.3))
@@ -978,6 +981,9 @@ packages:
     resolution: {integrity: sha512-pvylWC9QckrOS9ATWXIXcgu7g2hKK5xTL5ZQyZU/U0n9l88SEFGcWgLQNa8WZmd+wWIOWhkxOFcOl3i6ubDNNw==}
     engines: {node: '>= 10'}
     hasBin: true
+
+  '@tauri-apps/plugin-dialog@2.4.2':
+    resolution: {integrity: sha512-lNIn5CZuw8WZOn8zHzmFmDSzg5zfohWoa3mdULP0YFh/VogVdMVWZPcWSHlydsiJhRQYaTNSYKN7RmZKE2lCYQ==}
 
   '@tauri-apps/plugin-fs@2.4.4':
     resolution: {integrity: sha512-MTorXxIRmOnOPT1jZ3w96vjSuScER38ryXY88vl5F0uiKdnvTKKTtaEjTEo8uPbl4e3gnUtfsDVwC7h77GQLvQ==}
@@ -4122,6 +4128,10 @@ snapshots:
       '@tauri-apps/cli-win32-arm64-msvc': 2.9.4
       '@tauri-apps/cli-win32-ia32-msvc': 2.9.4
       '@tauri-apps/cli-win32-x64-msvc': 2.9.4
+
+  '@tauri-apps/plugin-dialog@2.4.2':
+    dependencies:
+      '@tauri-apps/api': 2.9.0
 
   '@tauri-apps/plugin-fs@2.4.4':
     dependencies:
