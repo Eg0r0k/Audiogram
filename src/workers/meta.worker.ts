@@ -1,5 +1,5 @@
 import { parseBlob, type IOptions } from "music-metadata";
-import type { ParseRequest, ParseResponse, NormalizedMetaRaw } from "./types";
+import type { BaseMetadata, ParseRequest, ParseResponse } from "./types";
 
 const PARSE_OPTIONS: IOptions = {
   duration: true,
@@ -19,7 +19,7 @@ self.onmessage = async (e: MessageEvent<ParseRequest>) => {
       pictureBlob = new Blob([pic.data], { type: pic.format });
     }
 
-    const meta: NormalizedMetaRaw = {
+    const meta: BaseMetadata = {
       title: metadata.common.title || "Unknown Title",
       artist: metadata.common.artist || "Unknown Artist",
       album: metadata.common.album || "Unknown Album",
@@ -40,7 +40,6 @@ self.onmessage = async (e: MessageEvent<ParseRequest>) => {
     const response: ParseResponse = { success: true, fileId, meta };
     self.postMessage(response);
   }
-  // TODO: Make better type for handler error
   catch (error: unknown) {
     if (error instanceof Error) {
       const response: ParseResponse = {
