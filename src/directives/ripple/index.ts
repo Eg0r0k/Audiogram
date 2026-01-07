@@ -164,7 +164,7 @@ function setupRipple(el: RippleHTMLElement, binding: DirectiveBinding): void {
       ripple.waves.set(waveId, {
         id: waveId,
         element: waveElement,
-        startTime: Date.now(),
+        startTime: performance.now(),
         released: false,
       });
     },
