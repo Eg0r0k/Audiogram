@@ -62,6 +62,9 @@ importers:
       music-metadata:
         specifier: ^11.10.4
         version: 11.10.4
+      neverthrow:
+        specifier: ^8.2.0
+        version: 8.2.0
       node-vibrant:
         specifier: ^4.0.3
         version: 4.0.3
@@ -2601,6 +2604,10 @@ packages:
 
   natural-orderby@5.0.0:
     resolution: {integrity: sha512-kKHJhxwpR/Okycz4HhQKKlhWe4ASEfPgkSWNmKFHd7+ezuQlxkA5cM3+XkBPvm1gmHen3w53qsYAv+8GwRrBlg==}
+    engines: {node: '>=18'}
+
+  neverthrow@8.2.0:
+    resolution: {integrity: sha512-kOCT/1MCPAxY5iUV3wytNFUMUolzuwd/VF/1KCx7kf6CutrOsTie+84zTGTpgQycjvfLdBBdvBvFLqFD2c0wkQ==}
     engines: {node: '>=18'}
 
   node-fetch-native@1.6.7:
@@ -5961,6 +5968,10 @@ snapshots:
   natural-compare@1.4.0: {}
 
   natural-orderby@5.0.0: {}
+
+  neverthrow@8.2.0:
+    optionalDependencies:
+      '@rollup/rollup-linux-x64-gnu': 4.53.3
 
   node-fetch-native@1.6.7: {}
 

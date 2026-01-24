@@ -36,6 +36,7 @@
     "lucide-vue-next": "^0.555.0",
     "motion-v": "^1.7.4",
     "music-metadata": "^11.10.4",
+    "neverthrow": "^8.2.0",
     "node-vibrant": "^4.0.3",
     "ofetch": "^1.5.1",
     "p-limit": "^7.2.0",
