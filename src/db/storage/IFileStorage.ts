@@ -1,0 +1,27 @@
+import type { ResultAsync } from "neverthrow";
+import type { StorageError } from "../errors/storage.errors";
+
+export interface IFileStorage {
+  saveFile(path: string, data: Blob | ArrayBuffer | Uint8Array): ResultAsync<string, StorageError>;
+  deleteFile(path: string): ResultAsync<void, StorageError>;
+  getFile(path: string): ResultAsync<Blob, StorageError>;
+  getAudioUrl(path: string): ResultAsync<string, StorageError>;
+  listFiles(folder: string): ResultAsync<string[], StorageError>;
+}
+
+export interface IFileStorageWithNativeSupport extends IFileStorage {
+  warmup(folders: string[]): Promise<void>;
+  importFile(sourceAbsPath: string, targetRelPath: string): ResultAsync<string, StorageError>;
+
+  readFile(absolutePath: string): ResultAsync<Uint8Array, StorageError>;
+  readBytes(absolutePath: string, length: number): ResultAsync<Uint8Array, StorageError>;
+
+  getAppDataDir(): Promise<string>;
+  clearCaches(): void;
+}
+
+export function hasNativeSupport(
+  storage: IFileStorage,
+): storage is IFileStorageWithNativeSupport {
+  return "importFile" in storage;
+}
