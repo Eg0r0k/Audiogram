@@ -1,17 +1,19 @@
-import { parseBlob, type IOptions } from "music-metadata";
+import { parseBuffer, type IOptions } from "music-metadata";
 import type { BaseMetadata, ParseRequest, ParseResponse } from "./types";
 
-const PARSE_OPTIONS: IOptions = {
+const OPTIONS: IOptions = {
   duration: true,
-  skipCovers: false,
-  skipPostHeaders: false,
+  skipCovers: true,
+  skipPostHeaders: true,
+  includeChapters: false,
+  mkvUseIndex: true,
 };
 
 self.onmessage = async (e: MessageEvent<ParseRequest>) => {
-  const { fileId, fileBlob } = e.data;
+  const { fileId, fileData } = e.data;
 
   try {
-    const metadata = await parseBlob(fileBlob, PARSE_OPTIONS);
+    const metadata = await parseBuffer(fileData, undefined, OPTIONS);
 
     let pictureBlob: Blob | undefined;
     if (metadata.common.picture?.[0]) {

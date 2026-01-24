@@ -2,7 +2,8 @@ import { AudioFormat } from "@/db/entities";
 
 export interface ParseRequest {
   fileId: string;
-  fileBlob: Blob;
+  fileData: Uint8Array;
+  extractCover?: boolean;
 }
 
 export type ParseResponse
