@@ -60,7 +60,7 @@ import { Button } from "./ui/button";
 import { useRouter } from "vue-router";
 import { IS_TAURI } from "@/helpers/environment/userAgent";
 import IconChevronLeft from "~icons/tabler/chevron-left";
-import IconChevronRight from "~icons/tabler/chevron-left";
+import IconChevronRight from "~icons/tabler/chevron-right";
 
 import useTauriEvent from "@/composables/tauri/useTauriEvent";
 
