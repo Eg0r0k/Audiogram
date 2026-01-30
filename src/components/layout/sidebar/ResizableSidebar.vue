@@ -1,52 +1,35 @@
 <template>
-  <AnimatePresence :initial="false">
-    <Motion
-      v-if="sidebar.isOpen"
-      :initial="{ width: 0 }"
-      :animate="{ width: sidebar.width }"
-      :exit="{ width: 0 }"
-      :transition="isResizing ? instantTransition : sidebarTransition"
-      class="sidebar-wrapper"
-      :class="{ 'is-resizing': isResizing }"
-    >
-      <div
-        class="sidebar-inner border-r"
-        :style="{ width: `${sidebar.width}px` }"
-      >
-        <div class="sidebar-content">
-          <div class="sidebar-header" />
+  <aside
+    v-if="sidebar.isOpen"
+    class="sidebar-wrapper border-r"
+    :class="{ 'is-resizing': isResizing }"
+    :style="{ width: `${sidebar.width}px` }"
+  >
+    <div class="sidebar-content">
+      <div class="sidebar-header" />
 
-          <nav class="sidebar-nav">
-            <slot />
-          </nav>
-        </div>
+      <nav class="sidebar-nav">
+        <slot />
+      </nav>
+    </div>
 
-        <button
-          type="button"
-          class="resize-handle"
-          aria-label="Resize sidebar"
-          @mousedown="startResize"
-          @touchstart="startResizeTouch"
-        />
-      </div>
-    </Motion>
-  </AnimatePresence>
+    <button
+      type="button"
+      class="resize-handle"
+      aria-label="Resize sidebar"
+      @mousedown="startResize"
+      @touchstart="startResizeTouch"
+    />
+  </aside>
 </template>
 
 <script setup lang="ts">
 import { ref, onUnmounted } from "vue";
-import { Motion, AnimatePresence, type Transition } from "motion-v";
 import { useEventListener } from "@vueuse/core";
 import { useSidebar } from "@/composables/useSidebar";
 
 const { leftSidebar: sidebar, setLeftSidebarWidth } = useSidebar();
 
-const sidebarTransition: Transition = {
-  type: "spring",
-  stiffness: 300,
-  damping: 30,
-};
-const instantTransition: Transition = { duration: 0 };
 const MIN_WIDTH = 280;
 const MAX_WIDTH = 500;
 
@@ -74,18 +57,12 @@ function startResize(e: MouseEvent) {
 function startResizeTouch(e: TouchEvent) {
   if (e.touches.length !== 1) return;
 
-  if (e.cancelable) {
-    e.preventDefault();
-  }
-
   isResizing.value = true;
   startX = e.touches[0].clientX;
   startWidth = sidebar.value.width;
 
   cleanupListeners.push(
-    useEventListener(document, "touchmove", handleResizeTouch, {
-      passive: false,
-    }),
+    useEventListener(document, "touchmove", handleResizeTouch, { passive: false }),
     useEventListener(document, "touchend", stopResize),
     useEventListener(document, "touchcancel", stopResize),
   );
@@ -98,11 +75,7 @@ function handleResize(e: MouseEvent) {
 
 function handleResizeTouch(e: TouchEvent) {
   if (!isResizing.value || e.touches.length !== 1) return;
-
-  if (e.cancelable) {
-    e.preventDefault();
-  }
-
+  if (e.cancelable) e.preventDefault();
   updateWidth(e.touches[0].clientX);
 }
 
@@ -113,8 +86,9 @@ function updateWidth(clientX: number) {
 }
 
 function stopResize() {
-  isResizing.value = false;
+  if (!isResizing.value) return;
 
+  isResizing.value = false;
   cleanupListeners.forEach(cleanup => cleanup());
   cleanupListeners.length = 0;
 
@@ -132,27 +106,20 @@ onUnmounted(() => {
   position: relative;
   flex-shrink: 0;
   height: 100%;
-  overflow: hidden;
-
+  background: var(--card);
+  display: flex;
+  transition: none;
+  will-change: width;
 }
 
 .sidebar-wrapper.is-resizing {
   user-select: none;
 }
 
-.sidebar-inner {
-  position: relative;
-  height: 100%;
-  display: flex;
-  background: var(--card);
-}
-
 .sidebar-content {
   flex: 1;
   height: 100%;
-
   overflow: hidden;
-
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -164,28 +131,30 @@ onUnmounted(() => {
 
 .sidebar-nav {
   flex: 1;
-
   overflow: hidden;
-
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
 .resize-handle {
-  position: relative;
-  flex-shrink: 0;
-  width: 2px;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
   cursor: col-resize;
   background: transparent;
-  transition: background-color 0.2s, box-shadow 0.2s;
+  transition: background-color 0.2s;
   touch-action: none;
+  z-index: 10;
+  border: none;
+  padding: 0;
 }
 
 .resize-handle:hover,
 .resize-handle:active {
   background: var(--primary);
-  box-shadow: 3px 0 0 0 var(--primary);
 }
 
 .resize-handle::before {
