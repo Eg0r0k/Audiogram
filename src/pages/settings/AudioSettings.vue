@@ -46,9 +46,9 @@ import { ref } from "vue";
 import { Scrollable } from "@/components/ui/scrollable";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Item, ItemContent, ItemSubtitle, ItemTitle } from "@/components/ui/item";
-import SettingsGroup from "@/components/settings/SettingsGroup.vue";
-import SettingsHeader from "@/components/settings/SettingsHeader.vue";
 import ItemMedia from "@/components/ui/item/ItemMedia.vue";
+import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
+import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 
 const streamingQuality = ref("high");
 

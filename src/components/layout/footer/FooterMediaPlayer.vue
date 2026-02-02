@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import PlayBarControls from "@/components/player/PlayBarControls.vue";
-import PlayerBarNotification from "@/components/player/PlayerBarNotification.vue";
-import SidebarControls from "@/components/player/SidebarControls.vue";
-import SidebarMusic from "@/components/player/SidebarMusic.vue";
 import { AnimatePresence, Motion } from "motion-v";
 import { ref, computed, watch, onUnmounted } from "vue";
+import { usePlayerStore } from "@/modules/player/store/player.store";
+import RangeSelector from "@/modules/player/components/RangeSelector.vue";
+import SidebarMusic from "@/modules/player/components/SidebarMusic.vue";
+import PlayBarControls from "@/modules/player/components/PlayBarControls.vue";
+import SidebarControls from "@/modules/player/components/SidebarControls.vue";
+import PlayerBarNotification from "@/modules/player/components/PlayerBarNotification.vue";
 import FooterMobile from "./FooterMobile.vue";
-import RangeSelector from "@/components/player/RangeSelector.vue";
-import { usePlayerStore } from "@/stores/player.store";
 
 const isOpen = ref(false);
 const playerStore = usePlayerStore();

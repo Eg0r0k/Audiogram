@@ -1,5 +1,5 @@
 import vRipple from "@/directives/ripple";
-import { IS_MOBILE, IS_TAURI } from "@/helpers/environment/userAgent";
+import { IS_MOBILE, IS_TAURI } from "@/lib/environment/userAgent";
 import { App, Component, createApp, ref, shallowRef } from "vue";
 
 export interface PipOptions {

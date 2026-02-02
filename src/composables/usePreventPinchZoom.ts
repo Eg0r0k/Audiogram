@@ -1,5 +1,5 @@
-import IS_TOUCH_SUPPORTED from "@/helpers/environment/touchSupport";
-import { IS_APP } from "@/helpers/environment/userAgent";
+import IS_TOUCH_SUPPORTED from "@/lib/environment/touchSupport";
+import { IS_APP } from "@/lib/environment/userAgent";
 import { watchEffect } from "vue";
 
 export const usePreventPinchZoom = (isDisabled: boolean = false) => {

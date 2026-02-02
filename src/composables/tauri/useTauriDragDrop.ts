@@ -1,4 +1,4 @@
-import { IS_TAURI } from "@/helpers/environment/userAgent";
+import { IS_TAURI } from "@/lib/environment/userAgent";
 import { Event } from "@tauri-apps/api/event";
 import type { DragDropEvent } from "@tauri-apps/api/webviewWindow";
 import { tryOnScopeDispose } from "@vueuse/core";

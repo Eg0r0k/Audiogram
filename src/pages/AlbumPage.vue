@@ -38,13 +38,13 @@
 import MediaHero from "@/components/media-hero/MediaHero.vue";
 import MediaHeroActions from "@/components/media-hero/MediaHeroActions.vue";
 import { AlbumData } from "@/components/media-hero/types";
-import TrackContextMenu from "@/components/track/menu/context-menu/TrackContextMenu.vue";
-import TrackDropdown from "@/components/track/menu/dropdown/TrackDropdown.vue";
-import TrackRow from "@/components/track/TrackRow.vue";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { useLibraryView } from "@/composables/useLibraryView";
+import { Track } from "@/modules/player/types";
+import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
+import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
+import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import { AlbumId, ArtistId, TrackId } from "@/types/ids";
-import { Track } from "@/types/track/track";
 
 const artistData: AlbumData = {
   type: "album",

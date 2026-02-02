@@ -2,11 +2,11 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import { VueQueryPlugin } from "@tanstack/vue-query";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
-import App from "./App.vue";
-import router from "./router";
-import { i18n } from "./i18n";
+import router from "./app/router";
 import vRipple from "./directives/ripple";
 import "./style.css";
+import { i18n } from "@/app/i18n";
+import App from "@/app/App.vue";
 
 const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate);

@@ -1,37 +1,33 @@
 <template>
   <MediaContextMenu :context="contextType">
     <div
-      class="relative flex items-end px-6 pb-6  h-[32vh] min-h-[260px] max-h-[340px]"
-      :style="{ backgroundColor: color.hsl }"
+      class="relative flex items-end px-6 pb-6 h-[32vh] min-h-[260px] max-h-[340px]"
+      :style="{ background: `linear-gradient(${color.hsl} 0%, transparent 100%)` }"
     >
       <div
-        class="absolute inset-0 bg-linear-to-b"
-        :class="[
-          'dark:from-black/10 dark:to-black/60',
-          'from-white/70 to-transparent'
-        ]"
-      />
-      <div class="relative flex items-end gap-6">
-        <HeroImage
-          :src="data.image"
-          :alt="data.title"
-          :rounded="isArtist(data)"
-          :editable="isPlaylist(data) && data.isOwner"
-          @edit="handleEditImage"
-        />
-        <div class="text-white">
-          <div class="text-xs font-medium opacity-90">
-            {{ typeLabel }}
-          </div>
-          <h1
-            class="font-black leading-tight mt-2 text-[6rem]"
-          >
-            {{ data.title }}
-          </h1>
-          <HeroMeta
-            :data="data"
-            class="mt-4"
+        class="relative flex   pt-6  max-h-[340px]"
+      >
+        <div class="relative flex gap-6">
+          <MediaHeroImage
+            :src="data.image"
+            :alt="data.title"
+            :rounded="isArtist(data)"
+            :editable="isPlaylist(data) && data.isOwner"
+            @edit="handleEditImage"
           />
+          <div class=" text-foreground">
+            <div class="text-xs font-medium opacity-90">
+              {{ typeLabel }}
+            </div>
+            <h1
+              class=" font-bold leading-tight mb-5 text-4xl"
+            >
+              {{ data.title }}
+            </h1>
+            <MediaHeroMeta
+              :data="data"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -42,9 +38,9 @@ import { isArtist, isPlaylist, MediaData } from "./types";
 import { useImageColor } from "@/composables/useImageColor";
 import { computed, onBeforeMount } from "vue";
 import { useI18n } from "vue-i18n";
-import HeroImage from "./HeroImage.vue";
-import HeroMeta from "./HeroMeta.vue";
+import MediaHeroImage from "./MediaHeroImage.vue";
 import MediaContextMenu from "./menu/context-menu/MediaContextMenu.vue";
+import MediaHeroMeta from "./MediaHeroMeta.vue";
 
 const props = defineProps<{
   data: MediaData;

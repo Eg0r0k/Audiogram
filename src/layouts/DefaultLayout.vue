@@ -10,7 +10,6 @@
     }"
   >
     <WindowToolbar class="toolbar" />
-    <!-- <Header class="header" /> -->
     <DropOverlay :show="isDragging" />
     <div class="content-area">
       <ResizableSidebar>
@@ -18,22 +17,13 @@
           <SidebarHeader />
           <Scrollable class="flex-1 min-h-0">
             <div class="p-2 flex flex-col ">
-              <Button @click="handleThemeToggle">
+              <!-- <Button @click="handleThemeToggle">
                 <component :is="themeIcon" />
-              </Button>
-              <Button
-                v-for="i in 30"
-                :key="i"
-                variant="ghost"
-              >
-                Item {{ i }}
-              </Button>
+              </Button> -->
             </div>
           </Scrollable>
 
-          <Button class="absolute bottom-4 right-4 size-12 rounded-full">
-            <IconPlus class="size-6" />
-          </Button>
+          <FloatingButton />
         </div>
         <!-- <Tabs v-model="currentTab" class="flex flex-col h-full">
           <Scrollable
@@ -94,16 +84,15 @@ import { useScreenSafeArea } from "@vueuse/core";
 import WindowToolbar from "@/components/WindowToolbar.vue";
 import FooterMediaPlayer from "@/components/layout/footer/FooterMediaPlayer.vue";
 import ResizableSidebar from "@/components/layout/sidebar/ResizableSidebar.vue";
-import { computed } from "vue";
-import DropOverlay from "@/components/layout/dropzone/DropOverlay.vue";
+// import { computed } from "vue";
 import { useFileDrop } from "@/composables/useFileDrop";
-import { useTheme } from "@/composables/useTheme";
-import { Moon, Sun } from "lucide-vue-next";
-import IconPlus from "~icons/tabler/plus";
+// import { useTheme } from "@/composables/useTheme";
+// import { Moon, Sun } from "lucide-vue-next";
 
-import Button from "@/components/ui/button/Button.vue";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import SidebarHeader from "@/components/layout/sidebar/header/SidebarHeader.vue";
+import FloatingButton from "@/components/layout/sidebar/floatingButton/FloatingButton.vue";
+import DropOverlay from "@/components/DropOverlay.vue";
 
 function processFiles(files: File[]) {
   files.forEach((file) => {
@@ -113,11 +102,11 @@ function processFiles(files: File[]) {
   });
 }
 
-const theme = useTheme();
-const themeIcon = computed(() => (theme.isDark.value ? Sun : Moon));
-const handleThemeToggle = (event: MouseEvent) => {
-  theme.toggleTheme(event);
-};
+// const theme = useTheme();
+// const themeIcon = computed(() => (theme.isDark.value ? Sun : Moon));
+// const handleThemeToggle = (event: MouseEvent) => {
+//   theme.toggleTheme(event);
+// };
 
 const { isDragging } = useFileDrop({
   acceptedExtensions: [".mp3", ".flac", ".wav", ".ogg"],

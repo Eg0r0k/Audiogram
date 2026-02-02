@@ -6,7 +6,7 @@ import {
   IS_MOBILE,
   IS_SAFARI,
   IS_TAURI,
-} from "@/helpers/environment/userAgent";
+} from "@/lib/environment/userAgent";
 
 export const useSetupRootClasses = () => {
   const add: string[] = [];

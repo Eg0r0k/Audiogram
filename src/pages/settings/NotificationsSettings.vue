@@ -135,9 +135,9 @@ import { Scrollable } from "@/components/ui/scrollable";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Item, ItemContent, ItemMedia, ItemSubtitle, ItemTitle } from "@/components/ui/item";
-import SettingsGroup from "@/components/settings/SettingsGroup.vue";
-import SettingsItem from "@/components/settings/SettingsItem.vue";
-import SettingsHeader from "@/components/settings/SettingsHeader.vue";
+import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
+import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
+import SettingsItem from "@/modules/settings/components/SettingsItem.vue";
 
 const pushEnabled = ref(true);
 const newMusic = ref(true);

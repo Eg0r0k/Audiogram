@@ -1,0 +1,114 @@
+<template>
+  <Motion
+    tabindex="-1"
+    :while-press="{ scale: 0.95 }"
+    class="size-fit"
+  >
+    <Button
+      :class="cn('p-0 size-10 min-w-10 rounded-full', props.class)"
+      :disabled="!canInteract"
+      @click="toggle"
+    >
+      <motion.svg
+        v-if="isLoading"
+        tabindex="-1"
+        width="32"
+        height="32"
+        viewBox="0 0 24 24"
+        :animate="{ rotate: 360 }"
+        :transition="{
+          duration: 1,
+          repeat: Infinity,
+          ease: 'linear',
+        }"
+      >
+        <path
+          d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+        />
+      </motion.svg>
+
+      <motion.svg
+        v-else
+        tabindex="-1"
+        width="32"
+        height="32"
+        viewBox="0 0 24 24"
+      >
+        <motion.path
+          tabindex="-1"
+          :d="morphedPath"
+          fill="currentColor"
+        />
+      </motion.svg>
+    </Button>
+  </Motion>
+</template>
+
+<script setup lang="ts">
+import { Motion, motion, motionValue, useTransform, animate } from "motion-v";
+import { interpolate } from "flubber";
+import { Button } from "@/components/ui/button";
+import { computed, watch, type HTMLAttributes } from "vue";
+import { cn } from "@/lib/utils";
+import { usePlayerStore } from "@/modules/player/store/player.store";
+
+interface Props {
+  class?: HTMLAttributes["class"];
+}
+
+const props = defineProps<Props>();
+const playerStore = usePlayerStore();
+
+const playPath
+  = "M21.409 9.353a2.998 2.998 0 0 1 0 5.294L8.597 21.614C6.534 22.737 4 21.277 4 18.968V5.033c0-2.31 2.534-3.769 4.597-2.648z";
+
+const pausePath
+  = "M2 6c0-1.886 0-2.828.586-3.414S4.114 2 6 2s2.828 0 3.414.586S10 4.114 10 6v12c0 1.886 0 2.828-.586 3.414S7.886 22 6 22s-2.828 0-3.414-.586S2 19.886 2 18zm12 0c0-1.886 0-2.828.586-3.414S16.114 2 18 2s2.828 0 3.414.586S22 4.114 22 6v12c0 1.886 0 2.828-.586 3.414S19.886 22 18 22s-2.828 0-3.414-.586S14 19.886 14 18z";
+
+const paths = [playPath, pausePath];
+
+const progress = motionValue(playerStore.isPlaying ? 1 : 0);
+
+function centerInterpolate(a: string, b: string) {
+  return interpolate(a, b, { maxSegmentLength: 2.5 });
+}
+
+const morphedPath = useTransform(progress, [0, 1], paths, {
+  mixer: centerInterpolate,
+});
+
+const isLoading = computed(() => playerStore.isLoading || playerStore.status === "loading");
+const canInteract = computed(() => !isLoading.value);
+
+watch(
+  () => playerStore.isPlaying,
+  (playing) => {
+    animate(progress, playing ? 1 : 0, {
+      duration: 0.25,
+      ease: "anticipate",
+    });
+  },
+);
+
+watch(
+  () => playerStore.status,
+  (status) => {
+    if (status === "playing") {
+      animate(progress, 1, { duration: 0.25, ease: "anticipate" });
+    }
+    else if (status === "paused" || status === "ready" || status === "idle") {
+      animate(progress, 0, { duration: 0.25, ease: "anticipate" });
+    }
+  },
+  { immediate: true },
+);
+
+function toggle() {
+  if (isLoading.value) return;
+  playerStore.togglePlay();
+}
+</script>

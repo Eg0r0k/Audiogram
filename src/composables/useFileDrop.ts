@@ -1,6 +1,6 @@
-import { IS_TAURI } from "@/helpers/environment/userAgent";
-import { filterFilesByExtension } from "@/helpers/files/filterFiles";
-import { getFilesFromEvent } from "@/helpers/files/getFilesFromEvent";
+import { IS_TAURI } from "@/lib/environment/userAgent";
+import { filterFilesByExtension } from "@/lib/files/filterFiles";
+import { getFilesFromEvent } from "@/lib/files/getFilesFromEvent";
 import { ref, onMounted } from "vue";
 import { useTauriDragDrop } from "./tauri/useTauriDragDrop";
 

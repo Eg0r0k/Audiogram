@@ -120,11 +120,10 @@ import IconExternalLink from "~icons/tabler/external-link";
 import IconBarBell from "~icons/tabler/barbell-filled";
 
 import { Scrollable } from "@/components/ui/scrollable";
-import SettingsGroup from "@/components/settings/SettingsGroup.vue";
-import SettingsItem from "@/components/settings/SettingsItem.vue";
-import SettingsHeader from "@/components/settings/SettingsHeader.vue";
 import Button from "@/components/ui/button/Button.vue";
 import Link from "@/components/ui/link/Link.vue";
+import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
+import SettingsItem from "@/modules/settings/components/SettingsItem.vue";
 
 const dateYear = new Date().getFullYear();
 const appVersion = __APP_VERSION__;

@@ -1,5 +1,9 @@
 <template>
-  <div>
+  <Scrollable>
     Search
-  </div>
+  </Scrollable>
 </template>
+<script setup lang="ts">
+import { Scrollable } from "@/components/ui/scrollable";
+
+</script>

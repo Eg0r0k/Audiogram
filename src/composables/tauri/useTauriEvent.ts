@@ -1,4 +1,4 @@
-import { IS_TAURI } from "@/helpers/environment/userAgent";
+import { IS_TAURI } from "@/lib/environment/userAgent";
 import type { Event } from "@tauri-apps/api/event";
 import { tryOnScopeDispose } from "@vueuse/core";
 

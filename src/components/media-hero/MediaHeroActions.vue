@@ -24,13 +24,13 @@
 </template>
 
 <script setup lang="ts">
-import PlayButton from "@/components/player/PlayButton.vue";
 import MediaDisplayDropdown from "@/components/media-hero/MediaDisplayDropdown.vue";
 import Button from "../ui/button/Button.vue";
 import { MediaType } from "./types";
 import { computed } from "vue";
 import MediaDropdown from "./menu/dropdown/MediaDropdown.vue";
 import IconShuffle from "~icons/tabler/arrows-shuffle";
+import PlayButton from "@/modules/player/components/PlayButton.vue";
 
 const props = defineProps<{
   type: MediaType;

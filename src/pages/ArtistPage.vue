@@ -5,20 +5,7 @@
     <MediaHeroActions
       :type="artistData.type"
     />
-    <!-- <div class="relative ">
-      <div
-        class="lists "
-        :style="{ backgroundColor: color.hsl }"
-      />
-      <div class="flex p-6 gap-4 items-center justify-between ">
-        <div class="flex gap-4 items-center">
-          <PlayButton class=" size-14 " />
-          <MediaDropdown />
-        </div>
 
-        <MediaDisplayDropdown />
-      </div>
-    </div> -->
     <TrackContextMenu context="album">
       <div class=" px-6">
         <TrackRow
@@ -37,17 +24,16 @@
 import MediaHero from "@/components/media-hero/MediaHero.vue";
 import MediaHeroActions from "@/components/media-hero/MediaHeroActions.vue";
 import { type ArtistData } from "@/components/media-hero/types";
-import TrackContextMenu from "@/components/track/menu/context-menu/TrackContextMenu.vue";
-import TrackRow from "@/components/track/TrackRow.vue";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { useLibraryView } from "@/composables/useLibraryView";
+import { Track } from "@/modules/player/types";
+import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
+import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import { AlbumId, ArtistId, TrackId } from "@/types/ids";
-import { Track } from "@/types/track/track";
 
 const artistData: ArtistData = {
   type: "artist",
   image: "/",
-
   title: "ABOBUS",
   id: ArtistId("artist-1"),
   monthlyListeners: 10_000_000,

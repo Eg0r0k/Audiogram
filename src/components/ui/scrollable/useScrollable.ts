@@ -1,6 +1,6 @@
-import { IS_OVERLAY_SCROLL_SUPPORTED } from "@/helpers/environment/overlayScrollSupport";
-import IS_TOUCH_SUPPORTED from "@/helpers/environment/touchSupport";
-import { IS_MOBILE_SAFARI, IS_SAFARI } from "@/helpers/environment/userAgent";
+import { IS_OVERLAY_SCROLL_SUPPORTED } from "@/lib/environment/overlayScrollSupport";
+import IS_TOUCH_SUPPORTED from "@/lib/environment/touchSupport";
+import { IS_MOBILE_SAFARI, IS_SAFARI } from "@/lib/environment/userAgent";
 import { ref, computed, onMounted, onUnmounted, type Ref, nextTick } from "vue";
 
 export interface ScrollableOptions {
