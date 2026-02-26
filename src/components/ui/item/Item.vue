@@ -21,7 +21,7 @@ const props = withDefaults(defineProps<PrimitiveProps & {
     data-slot="item"
     :as="as"
     :as-child="asChild"
-    :class="cn(itemVariants({ variant, size }), props.class)"
+    :class=" cn(itemVariants({ variant, size }), props.class)"
   >
     <slot />
   </Primitive>
