@@ -1,6 +1,6 @@
 <template>
   <SettingsGroup
-    class="sticky top-0 z-10 bg-background border-b  transition-colors duration-200"
+    class="sticky top-0 z-10 bg-background border-b  "
     :class="isScrolled ? 'border-b' : 'border-transparent'"
   >
     <div class="flex px-2 gap-6 items-center">

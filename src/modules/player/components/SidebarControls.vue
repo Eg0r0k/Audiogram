@@ -42,9 +42,7 @@
           side="top"
           :side-offset="32"
           class="w-90 p-0! mr-2"
-        >
-          <Equalizer />
-        </PopoverContent>
+        />
       </Popover>
 
       <!-- <Button
@@ -55,8 +53,7 @@
           class="size-4.5"
         />
       </Button> -->
-      <!-- <PIPTrigger />
-      <FullscreenTrigger /> -->
+      <!-- <PIPTrigger /> -->
     </div>
   </div>
 </template>
@@ -74,11 +71,10 @@ import IconPlaylist from "~icons/tabler/playlist";
 import IconDots from "~icons/tabler/dots";
 
 // import PIPTrigger from "@/components/pip/PIPTrigger.vue";
-// import FullscreenTrigger from "@/components/layout/fullscreen/FullscreenTrigger.vue";
+import FullscreenTrigger from "@/components/layout/fullscreen/FullscreenTrigger.vue";
 import VolumeButton from "./actions/VolumeButton.vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { computed } from "vue";
-import Equalizer from "./eq/Equalizer.vue";
 
 const playerStore = usePlayerStore();
 

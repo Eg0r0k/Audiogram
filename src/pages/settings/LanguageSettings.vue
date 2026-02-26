@@ -4,11 +4,11 @@
     class="flex-1"
   >
     <div class="pb-8">
-      <SettingsHeader title="Language" />
+      <SettingsHeader :title="$t('settings.index.language')" />
 
       <SettingsGroup>
         <RadioGroup
-          v-model="selectedLanguage"
+          :model-value="language"
           class="gap-0"
         >
           <Item
@@ -18,15 +18,24 @@
             tabindex="0"
             size="sm"
             class="cursor-pointer"
-            @click="handleChangeLanguage(lang.code)"
-            @keypress="handleChangeLanguage(lang.code)"
+            :class="{ 'bg-accent/10': language === lang.code }"
+            @click="setLanguage(lang.code)"
+            @keypress.enter.space="setLanguage(lang.code)"
           >
             <ItemMedia>
               <RadioGroupItem :value="lang.code" />
             </ItemMedia>
             <ItemContent class="ml-4">
-              <ItemTitle>{{ lang.name }}</ItemTitle>
-              <ItemSubtitle>{{ lang.native }}</ItemSubtitle>
+              <ItemTitle>{{ lang.native }}</ItemTitle>
+              <ItemSubtitle class="flex items-center gap-2">
+                <span>{{ lang.name }}</span>
+                <span
+                  v-if="lang.code === 'system'"
+                  class="text-xs text-muted-foreground/70"
+                >
+                  → {{ systemLanguageDisplay }}
+                </span>
+              </ItemSubtitle>
             </ItemContent>
           </Item>
         </RadioGroup>
@@ -36,29 +45,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed } from "vue";
 import { Scrollable } from "@/components/ui/scrollable";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Item, ItemContent, ItemTitle, ItemSubtitle, ItemMedia } from "@/components/ui/item";
 import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
+import { useGeneralSettings, LANGUAGE_OPTIONS } from "@/modules/settings/store/general";
 
-const selectedLanguage = ref("en");
+const {
+  language,
+  systemLanguage,
+  languages,
+  setLanguage,
+} = useGeneralSettings();
 
-const handleChangeLanguage = (lang: string) => {
-  selectedLanguage.value = lang;
-};
-
-const languages = [
-  { code: "en", name: "English", native: "English" },
-  { code: "ru", name: "Russian", native: "Русский" },
-  { code: "de", name: "German", native: "Deutsch" },
-  { code: "fr", name: "French", native: "Français" },
-  { code: "es", name: "Spanish", native: "Español" },
-  { code: "it", name: "Italian", native: "Italiano" },
-  { code: "pt", name: "Portuguese", native: "Português" },
-  { code: "ja", name: "Japanese", native: "日本語" },
-  { code: "ko", name: "Korean", native: "한국어" },
-  { code: "zh", name: "Chinese", native: "中文" },
-];
+const systemLanguageDisplay = computed(() => {
+  const lang = LANGUAGE_OPTIONS.find(l => l.code === systemLanguage.value);
+  return lang?.native || systemLanguage.value;
+});
 </script>

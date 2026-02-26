@@ -124,6 +124,7 @@ import Button from "@/components/ui/button/Button.vue";
 import Link from "@/components/ui/link/Link.vue";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsItem from "@/modules/settings/components/SettingsItem.vue";
+import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
 
 const dateYear = new Date().getFullYear();
 const appVersion = __APP_VERSION__;

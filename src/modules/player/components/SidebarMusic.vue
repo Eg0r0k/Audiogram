@@ -1,9 +1,7 @@
 <template>
   <div class="min-w-[180px] w-[30%] pl-1">
     <div class="flex justify-start items-center relative select-none">
-      <div
-        class=" relative shrink-0  size-14 rounded overflow-hidden"
-      >
+      <div class="relative shrink-0 group size-14 rounded overflow-hidden">
         <NuxtImage
           placeholder
           class="w-full h-full object-cover object-center absolute left-0 top-0"
@@ -12,8 +10,9 @@
           loading="eager"
           alt=""
         />
-      </div>
 
+        <FullscreenTrigger class="absolute rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
       <div class="data-track min-w-0 max-w-fit overflow-hidden mx-2">
         <MarqueeBlock
           :duration="10"
@@ -33,7 +32,7 @@
           gradient-color="var(--card)"
           gradient-length="20px"
         >
-          <span class="text-muted-foreground text-xs truncate capitalize">
+          <span class="text-muted-foreground text-xs  capitalize">
             {{ currentTrack.artist }}
           </span>
         </MarqueeBlock>
@@ -60,6 +59,8 @@ import { Button } from "@/components/ui/button";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
 import Like from "./actions/Like.vue";
+
+import FullscreenTrigger from "@/components/layout/fullscreen/FullscreenTrigger.vue";
 
 const likeRef = useTemplateRef("likeRef");
 const liked = ref(false);

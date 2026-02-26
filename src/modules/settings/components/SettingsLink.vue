@@ -20,7 +20,7 @@
       </ItemContent>
 
       <ItemActions>
-        <ItemSubtitle>
+        <ItemSubtitle class=" capitalize">
           {{ subtitle }}
         </ItemSubtitle>
       </ItemActions>

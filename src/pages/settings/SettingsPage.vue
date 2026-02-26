@@ -24,7 +24,7 @@
           to="/settings/language"
           :icon="IconLanguage"
           :title="$t('settings.index.language')"
-          subtitle="English"
+          :subtitle="language"
         />
       </SettingsGroup>
 
@@ -68,4 +68,8 @@ import IconBell from "~icons/tabler/bell";
 import IconInfo from "~icons/tabler/info-circle";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsLink from "@/modules/settings/components/SettingsLink.vue";
+import { useGeneralSettings } from "@/modules/settings/store/general";
+
+const { language } = useGeneralSettings();
+
 </script>
