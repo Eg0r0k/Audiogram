@@ -2,13 +2,14 @@
   <div>
     <Button
       v-if="isSupported"
-      size="icon-sm"
-      variant="ghost"
+      class=" rounded-full"
+      size="icon-lg"
+      variant="secondary"
       @click="toggle"
     >
       <component
         :is="ScreenIcon"
-        class="size-4.5"
+        class=" size-6"
       />
     </Button>
     <div
@@ -19,13 +20,13 @@
 
       <Button
         v-if="isFullscreen"
-        class="absolute top-4 right-4"
-        size="icon-sm"
+        class="absolute top-4 right-4 rounded-full"
+        size="icon-lg"
         variant="ghost"
         @click="exit"
       >
         <IconClose
-          class="size-4.5"
+          class="size-6"
         />
       </Button>
     </div>
