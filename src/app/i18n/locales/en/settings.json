@@ -12,5 +12,29 @@
     "about": {
         "madeWith": "Made with",
         "allRightsReserved": "All rights reserved"
+    },
+    "storage": {
+      "usage": "Storage usage",
+      "used": "used",
+      "free": "free",
+      "total": "total",
+      "tracks": "Audio files",
+      "tracksCount": "tracks",
+      "covers": "Cover art",
+      "albumCovers": "Album artwork cache",
+      "database": "Database",
+      "albumsCount": "albums",
+      "artistsCount": "artists",
+      "location": "Storage location",
+      "clearCovers": "Clear cover art",
+      "clearCoversDesc": "Remove all cached album artwork. Covers will be re-extracted when needed.",
+      "clearAll": "Delete all data",
+      "clearAllDesc": "Remove all tracks, covers, and database records. This cannot be undone.",
+      "clearAllDialogTitle": "Delete all data?",
+      "clearAllDialogDesc": "This will permanently delete all your tracks, album covers, and library data. This action cannot be undone.",
+      "clearAllConfirm": "Delete everything",
+      "coversCleared": "Cover art cleared",
+      "allDataCleared": "All data has been deleted"
     }
+  
 }

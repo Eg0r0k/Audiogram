@@ -1,11 +1,10 @@
 import { createI18n } from "vue-i18n";
 import { messages } from "./messages";
-
-const DEFAULT_LOCALE = "ru";
+import { DEFAULT_LOCALE, getInitialLocale } from "./utils";
 
 export const i18n = createI18n({
   legacy: false,
   messages,
-  locale: DEFAULT_LOCALE,
+  locale: getInitialLocale(),
   fallbackFormat: DEFAULT_LOCALE,
 });

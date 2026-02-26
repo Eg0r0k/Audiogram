@@ -1,4 +1,7 @@
 {
     "home": "Home",
-    "favorite": "Favorite"
+    "favorite": "Favorite",
+    "search": "Search",
+    "library":"Library",
+    "settings": "Settings"
 }
