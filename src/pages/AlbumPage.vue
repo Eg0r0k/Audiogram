@@ -2,25 +2,8 @@
   <Scrollable class="flex-1">
     <MediaHero :data="artistData" />
 
-    <MediaHeroActions
-      :type="artistData.type"
-    />
-    <!-- <div class="relative ">
-      <div
-        class="lists "
-        :style="{ backgroundColor: color.hsl }"
-      />
-      <div class="flex p-6 gap-4 items-center justify-between ">
-        <div class="flex gap-4 items-center">
-          <PlayButton class=" size-14 " />
-          <MediaDropdown />
-        </div>
-
-        <MediaDisplayDropdown />
-      </div>
-    </div> -->
     <TrackContextMenu context="album">
-      <div class="px-6">
+      <div class=" px-4">
         <TrackRow
           v-for="(track, index) in mockTracks"
           :key="track.id"
@@ -35,8 +18,8 @@
 </template>
 
 <script setup lang="ts">
+import MediaHeader from "@/components/media-hero/MediaHeader.vue";
 import MediaHero from "@/components/media-hero/MediaHero.vue";
-import MediaHeroActions from "@/components/media-hero/MediaHeroActions.vue";
 import { AlbumData } from "@/components/media-hero/types";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { useLibraryView } from "@/composables/useLibraryView";
@@ -45,6 +28,10 @@ import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/Trac
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import { AlbumId, ArtistId, TrackId } from "@/types/ids";
+
+const handlePlay = () => {
+  console.log("Play album");
+};
 
 const artistData: AlbumData = {
   type: "album",
@@ -72,6 +59,50 @@ const mockTracks: Track[] = [
     duration: 203,
     isLiked: true,
 
+  },
+  {
+    id: TrackId("track-2"),
+    title: "Starboy",
+    artist: "The Weeknd",
+    artistId: ArtistId("artist-1"),
+    albumId: AlbumId("album-2"),
+    albumName: "Starboy",
+    cover: "https://i.scdn.co/image/ab67616d0000b273a048415db06a5b6fa7ec4e1a",
+    duration: 230,
+    isLiked: false,
+  },
+  {
+    id: TrackId("track-2"),
+    title: "Starboy",
+    artist: "The Weeknd",
+    artistId: ArtistId("artist-1"),
+    albumId: AlbumId("album-2"),
+    albumName: "Starboy",
+    cover: "https://i.scdn.co/image/ab67616d0000b273a048415db06a5b6fa7ec4e1a",
+    duration: 230,
+    isLiked: false,
+  },
+  {
+    id: TrackId("track-2"),
+    title: "Starboy",
+    artist: "The Weeknd",
+    artistId: ArtistId("artist-1"),
+    albumId: AlbumId("album-2"),
+    albumName: "Starboy",
+    cover: "https://i.scdn.co/image/ab67616d0000b273a048415db06a5b6fa7ec4e1a",
+    duration: 230,
+    isLiked: false,
+  },
+  {
+    id: TrackId("track-2"),
+    title: "Starboy",
+    artist: "The Weeknd",
+    artistId: ArtistId("artist-1"),
+    albumId: AlbumId("album-2"),
+    albumName: "Starboy",
+    cover: "https://i.scdn.co/image/ab67616d0000b273a048415db06a5b6fa7ec4e1a",
+    duration: 230,
+    isLiked: false,
   },
   {
     id: TrackId("track-2"),

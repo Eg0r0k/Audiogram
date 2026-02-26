@@ -2,10 +2,6 @@
   <Scrollable class="flex-1">
     <MediaHero :data="artistData" />
 
-    <MediaHeroActions
-      :type="artistData.type"
-    />
-
     <TrackContextMenu context="album">
       <div class=" px-6">
         <TrackRow
@@ -22,7 +18,6 @@
 
 <script setup lang="ts">
 import MediaHero from "@/components/media-hero/MediaHero.vue";
-import MediaHeroActions from "@/components/media-hero/MediaHeroActions.vue";
 import { type ArtistData } from "@/components/media-hero/types";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { useLibraryView } from "@/composables/useLibraryView";
