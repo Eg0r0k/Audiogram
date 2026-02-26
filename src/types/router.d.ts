@@ -3,7 +3,7 @@ declare module "vue-router" {
   interface RouteMeta {
     title?: string;
     titleKey?: string;
-    layout?: string;
+    layout?: "default" | "mobile" | "blank";
     icon?: string;
     // TODO: Implement that
     keepAlive?: boolean;

@@ -1,0 +1,81 @@
+<template>
+  <nav
+    class="flex select-none items-stretch shrink-0 h-14 px-2 py-1  bg-card [&>*]:[tap-highlight:transparent]"
+    role="tablist"
+  >
+    <RouterLink
+      v-for="tab in tabs"
+      :key="tab.name"
+      v-slot="{ isActive, navigate }"
+      :to="tab.to"
+      custom
+    >
+      <Button
+        class="flex flex-1 press-scale flex-col gap-0.5 items-center justify-center h-full"
+        :class="isActive ? 'text-primary' : 'text-muted-foreground'"
+        variant="ghost"
+        role="tab"
+        :aria-selected="isActive"
+        :aria-label="$t(tab.labelKey)"
+        @click="navigate"
+      >
+        <component
+          :is="isActive ? tab.activeIcon : tab.icon"
+          class="size-6"
+        />
+        <span class="text-[10px] font-medium leading-none">{{ $t(tab.labelKey) }}</span>
+      </Button>
+    </RouterLink>
+  </nav>
+</template>
+
+<script setup lang="ts">
+import type { Component } from "vue";
+import type { RouteLocationRaw } from "vue-router";
+import IconHome from "~icons/tabler/home";
+import IconHomeFilled from "~icons/tabler/home-filled";
+import IconSearch from "~icons/tabler/search";
+import IconLibrary from "~icons/tabler/books";
+import IconSettings from "~icons/tabler/settings";
+import IconSettingsFilled from "~icons/tabler/settings-filled";
+import { Button } from "@/components/ui/button";
+
+interface TabItem {
+  name: string;
+  to: RouteLocationRaw;
+  labelKey: string;
+  icon: Component;
+  activeIcon: Component;
+}
+
+const tabs: TabItem[] = [
+  {
+    name: "home",
+    to: "/",
+    labelKey: "nav.home",
+    icon: IconHome,
+    activeIcon: IconHomeFilled,
+  },
+  {
+    name: "search",
+    to: "/search",
+    labelKey: "nav.search",
+    icon: IconSearch,
+    activeIcon: IconSearch,
+  },
+  {
+    name: "library",
+    to: "/library",
+    labelKey: "nav.library",
+    icon: IconLibrary,
+    activeIcon: IconLibrary,
+  },
+  {
+    name: "settings",
+    to: "/settings",
+    labelKey: "nav.settings",
+    icon: IconSettings,
+    activeIcon: IconSettingsFilled,
+  },
+];
+</script>
