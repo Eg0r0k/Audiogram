@@ -7,6 +7,7 @@ export const libraryRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/library/LibraryPage.vue"),
     meta: {
       titleKey: "nav.library",
+      depth: 2,
     },
     children: [],
   },
