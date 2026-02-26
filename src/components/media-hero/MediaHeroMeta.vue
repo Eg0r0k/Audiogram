@@ -1,34 +1,50 @@
 <template>
-  <div class="text-sm opacity-80">
-    <!-- Playlist -->
+  <div class="flex items-center flex-wrap gap-x-1 text-sm text-foreground/70 leading-relaxed">
     <template v-if="isPlaylist(data)">
-      <span v-if="data.ownerName">{{ data.ownerName }} · </span>
+      <span
+        v-if="data.ownerName"
+        class="font-medium text-foreground/90"
+      >
+        {{ data.ownerName }}
+      </span>
+      <span
+        v-if="data.ownerName"
+        class="opacity-60"
+      >·</span>
       <span>{{ t('media.trackCount', data.trackCount) }}</span>
-      <span v-if="data.duration"> · {{ data.duration }}</span>
+      <template v-if="data.duration">
+        <span class="opacity-60">·</span>
+        <span>{{ data.duration }}</span>
+      </template>
     </template>
 
-    <!-- Artist -->
     <template v-else-if="isArtist(data)">
       <span>{{ formatListeners(data.monthlyListeners) }}</span>
     </template>
 
-    <!-- Album -->
     <template v-else-if="isAlbum(data)">
       <RouterLink
         :to="`/artist/${data.artistId}`"
-        class="hover:underline"
+        class="font-medium text-foreground/90 hover:text-foreground hover:underline underline-offset-2 transition-colors duration-200"
       >
         {{ data.artistName }}
       </RouterLink>
-      <span> · {{ data.releaseYear }}</span>
-      <span> · {{ t('media.trackCount', data.trackCount) }}</span>
-      <span v-if="data.duration"> · {{ data.duration }}</span>
+      <span class="opacity-60">·</span>
+      <span>{{ data.releaseYear }}</span>
+      <span class="opacity-60">·</span>
+      <span>{{ t('media.trackCount', data.trackCount) }}</span>
+      <template v-if="data.duration">
+        <span class="opacity-60">·</span>
+        <span>{{ data.duration }}</span>
+      </template>
     </template>
 
-    <!-- Liked -->
     <template v-else-if="isLiked(data)">
       <span>{{ t('media.trackCount', data.trackCount) }}</span>
-      <span v-if="data.duration"> · {{ data.duration }}</span>
+      <template v-if="data.duration">
+        <span class="opacity-60">·</span>
+        <span>{{ data.duration }}</span>
+      </template>
     </template>
   </div>
 </template>
