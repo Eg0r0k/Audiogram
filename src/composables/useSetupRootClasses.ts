@@ -1,3 +1,4 @@
+import { IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL } from "@/lib/environment/overlayScrollSupport";
 import {
   IS_ANDROID,
   IS_APPLE,
@@ -10,6 +11,16 @@ import {
 
 export const useSetupRootClasses = () => {
   const add: string[] = [];
+
+  if (USE_NATIVE_SCROLL) {
+    add.push("native-scroll");
+  }
+  else if (IS_OVERLAY_SCROLL_SUPPORTED) {
+    add.push("overlay-scroll");
+  }
+  else if (USE_CUSTOM_SCROLL) {
+    add.push("custom-scroll");
+  }
 
   if (IS_TAURI) {
     add.push("is-tauri");
