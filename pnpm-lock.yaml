@@ -4,16 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  lyra: link:../../AppData/Local/pnpm/global/5/node_modules/@egor/lyra
 
 importers:
 
   .:
     dependencies:
-      '@egor/lyra':
-        specifier: link:../../AppData/Local/pnpm/global/5/node_modules/@egor/lyra
-        version: link:../../AppData/Local/pnpm/global/5/node_modules/@egor/lyra
       '@tailwindcss/vite':
         specifier: ^4.1.17
         version: 4.1.17(vite@6.4.1(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2))
@@ -56,6 +51,9 @@ importers:
       lucide-vue-next:
         specifier: ^0.555.0
         version: 0.555.0(vue@3.5.25(typescript@5.6.3))
+      lyra-audio:
+        specifier: ^0.1.0
+        version: 0.1.0(hls.js@1.6.15)
       minisearch:
         specifier: ^7.2.0
         version: 7.2.0
@@ -2516,6 +2514,14 @@ packages:
     resolution: {integrity: sha512-7hczPsiMD/y+VNLpal5Q5Wv09kQxlHS0l/cM1xagrd+MA3i5umMm+PUXqllvsbgwAl3PHv27fo59h4PN02GM5A==}
     peerDependencies:
       vue: '>=3.0.1'
+
+  lyra-audio@0.1.0:
+    resolution: {integrity: sha512-QdOJuAbVeojgxEFh6QfnX3Y2hoSCiQ/d3/WeHBVfLYsG1+oDMspU6mKFKzkOo9OcZzC0hjYQTDIB20OLpJALyQ==}
+    peerDependencies:
+      hls.js: ^1.4.0
+    peerDependenciesMeta:
+      hls.js:
+        optional: true
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -5887,6 +5893,10 @@ snapshots:
   lucide-vue-next@0.555.0(vue@3.5.25(typescript@5.6.3)):
     dependencies:
       vue: 3.5.25(typescript@5.6.3)
+
+  lyra-audio@0.1.0(hls.js@1.6.15):
+    optionalDependencies:
+      hls.js: 1.6.15
 
   lz-string@1.5.0: {}
 

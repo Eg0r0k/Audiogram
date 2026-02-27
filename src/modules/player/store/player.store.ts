@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { computed, ref, shallowRef, markRaw } from "vue";
-import { Player } from "@egor/lyra";
+import { Player } from "lyra-audio";
 import Hls from "hls.js";
 import { LocalTrack, PlayerTrack, RepeatMode } from "../types";
 
@@ -16,16 +16,17 @@ export const usePlayerStore = defineStore("player", () => {
   const repeatMode = ref<RepeatMode>("off");
   const isShuffled = ref(false);
   const status = ref<"idle" | "loading" | "ready" | "playing" | "paused" | "error">("idle");
-
   const currentTrack = ref<PlayerTrack | null>(null);
+
+  const graphRevision = ref(0);
 
   const progress = computed(() => {
     if (duration.value <= 0) return 0;
     return (currentTime.value / duration.value) * 100;
   });
   const canPlay = computed(() => player.value?.isReady ?? false);
-  const canGoNext = computed(() => false); // TODO: implement with queue
-  const canGoPrevious = computed(() => false); // TODO: implement with queue
+  const canGoNext = computed(() => false);
+  const canGoPrevious = computed(() => false);
 
   const initPlayer = async () => {
     if (player.value) {
@@ -59,9 +60,6 @@ export const usePlayerStore = defineStore("player", () => {
       if (repeatMode.value === "one") {
         play();
       }
-      else {
-        // TODO: next track from queue
-      }
     });
 
     newPlayer.on("timeupdate", (payload) => {
@@ -71,6 +69,7 @@ export const usePlayerStore = defineStore("player", () => {
     newPlayer.on("durationchange", (dur) => {
       duration.value = dur as number;
     });
+
     newPlayer.on("loadstart", () => {
       isLoading.value = true;
       status.value = "loading";
@@ -82,7 +81,10 @@ export const usePlayerStore = defineStore("player", () => {
       if (player.value) {
         duration.value = player.value.duration as number;
       }
+
+      graphRevision.value++;
     });
+
     newPlayer.on("loadedmetadata", ({ duration: dur }) => {
       duration.value = dur as number;
     });
@@ -95,6 +97,7 @@ export const usePlayerStore = defineStore("player", () => {
       volume.value = vol;
       isMuted.value = muted;
     });
+
     newPlayer.on("error", (err) => {
       console.error("Player error:", err);
       status.value = "error";
@@ -105,7 +108,6 @@ export const usePlayerStore = defineStore("player", () => {
   };
 
   const play = async () => {
-    // Try to restore source
     if (!player.value) {
       if (currentTrack.value && "url" in currentTrack.value) {
         await playUrl(currentTrack.value.url as string);
@@ -119,6 +121,7 @@ export const usePlayerStore = defineStore("player", () => {
 
     await player.value.play();
   };
+
   const pause = () => {
     player.value?.pause();
   };
@@ -140,7 +143,6 @@ export const usePlayerStore = defineStore("player", () => {
 
   const playTrack = async (track: LocalTrack) => {
     await initPlayer();
-
     if (!player.value) return;
 
     currentTrack.value = track;
@@ -157,9 +159,9 @@ export const usePlayerStore = defineStore("player", () => {
       status.value = "error";
     }
   };
+
   const playFile = async (file: File) => {
     await initPlayer();
-
     if (!player.value) return;
 
     const localTrack: LocalTrack = {
@@ -184,7 +186,6 @@ export const usePlayerStore = defineStore("player", () => {
 
   const playUrl = async (url: string) => {
     await initPlayer();
-
     if (!player.value) return;
 
     const localTrack: LocalTrack = {
@@ -225,10 +226,7 @@ export const usePlayerStore = defineStore("player", () => {
   });
 
   const seekTo = (seconds: number) => {
-    if (!canSeek.value) {
-      console.log("[Store] Seek disabled for live stream");
-      return;
-    }
+    if (!canSeek.value) return;
     player.value?.seek(seconds);
   };
 
@@ -240,10 +238,7 @@ export const usePlayerStore = defineStore("player", () => {
   });
 
   const seekPercent = (percent: number) => {
-    if (!canSeek.value) {
-      console.log("[Store] Seek disabled for live stream");
-      return;
-    }
+    if (!canSeek.value) return;
     player.value?.seekPercent(percent / 100);
   };
 
@@ -264,7 +259,6 @@ export const usePlayerStore = defineStore("player", () => {
 
   const toggleShuffle = () => {
     isShuffled.value = !isShuffled.value;
-    // TODO: shuffle queue
   };
 
   const toggleRepeat = () => {
@@ -274,16 +268,13 @@ export const usePlayerStore = defineStore("player", () => {
   };
 
   const next = () => {
-    // TODO: implement with queue
     console.log("next");
   };
 
   const previous = () => {
-    // TODO: implement with queue
     console.log("previous");
   };
 
-  // Cleanup
   const dispose = async () => {
     if (player.value) {
       await player.value.dispose();
@@ -291,13 +282,11 @@ export const usePlayerStore = defineStore("player", () => {
     }
   };
 
-  // Get audio graph for equalizer
   const getAudioGraph = () => {
     return player.value?.graph ?? null;
   };
 
   return {
-    // State
     player,
     status,
     currentTime,
@@ -309,15 +298,15 @@ export const usePlayerStore = defineStore("player", () => {
     repeatMode,
     isShuffled,
     currentTrack,
+    graphRevision,
 
-    // Computed
     progress,
     canPlay,
     canGoNext,
     canGoPrevious,
     isLiveStream,
     canSeek,
-    // Actions
+
     play,
     pause,
     togglePlay,
@@ -337,8 +326,7 @@ export const usePlayerStore = defineStore("player", () => {
     dispose,
     setMuted,
   };
-},
-{
+}, {
   persist: {
     key: "lyra-player",
     pick: [
@@ -349,10 +337,6 @@ export const usePlayerStore = defineStore("player", () => {
       "currentTrack",
       "currentTime",
       "duration",
-
     ],
-
   },
-},
-
-);
+});
