@@ -42,6 +42,9 @@ export default defineConfig({
       template: "treemap",
     }),
   ],
+  worker: {
+    format: "es",
+  },
 
   clearScreen: false,
 
