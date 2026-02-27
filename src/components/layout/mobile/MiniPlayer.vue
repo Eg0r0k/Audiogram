@@ -55,8 +55,8 @@
         <div class="flex items-center gap-1 shrink-0">
           <Button
             variant="ghost"
-            size="icon-sm"
-            class="rounded-full text-white hover:bg-white/20"
+            size="icon-lg"
+            class="rounded-full text-white"
             :aria-label="playerStore.isPlaying ? $t('player.pause') : $t('player.play')"
             @click.stop="playerStore.togglePlay()"
           >
@@ -67,9 +67,9 @@
           </Button>
           <Button
             variant="ghost"
-            size="icon-sm"
-            class="rounded-full text-white hover:bg-white/20"
-            :aria-label="$t('player.next')"
+            size="icon-lg"
+            class="rounded-full text-white"
+            :aria-label="$t('player.nextTrack')"
             @click.stop="playerStore.next()"
           >
             <IconSkipForward class="size-5" />

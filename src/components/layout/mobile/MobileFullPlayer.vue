@@ -14,7 +14,7 @@
     </div>
 
     <div class=" pt-5">
-      <div class="text-center">
+      <div class="flex items-center gap-2">
         <div class="data-track min-w-0 max-w-fit overflow-hidden mx-2">
           <MarqueeBlock
             :duration="10"
@@ -39,6 +39,13 @@
             </span>
           </MarqueeBlock>
         </div>
+        <Button
+          class=" rounded-full"
+          variant="ghost"
+          size="icon-lg"
+        >
+          <IconDots class="size-5" />
+        </Button>
       </div>
       <div class="flex flex-col gap-3 pt-4">
         <Slider />
@@ -115,6 +122,8 @@ import IconForvard from "~icons/tabler/player-skip-forward-filled";
 
 import IconRepeat from "~icons/tabler/repeat";
 import IconShuffle from "~icons/tabler/arrows-shuffle";
+
+import IconDots from "~icons/tabler/dots";
 
 import Slider from "@/components/ui/slider/Slider.vue";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
