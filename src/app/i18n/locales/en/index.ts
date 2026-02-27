@@ -4,6 +4,7 @@ import player from "./player.json";
 import media from "./media.json";
 import settings from "./settings.json";
 import nav from "./nav.json";
+import library from "./library.json";
 
 export default {
   common,
@@ -12,4 +13,5 @@ export default {
   media,
   settings,
   nav,
+  library,
 };
