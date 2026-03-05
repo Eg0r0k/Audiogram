@@ -9,7 +9,25 @@ export const VALID_AUDIO_MIME_TYPES = new Set<string>(
 );
 
 const audioElement = typeof document !== "undefined" ? document.createElement("audio") : null;
+
 const imageCache = new Map<string, boolean>();
+
+export const VALID_IMAGE_EXTENSIONS = new Set<string>(
+  Object.keys(IMAGE_MIME_TYPES),
+);
+
+export const VALID_IMAGE_MIME_TYPES = new Set<string>(
+  Object.values(IMAGE_MIME_TYPES).map(mime => mime.split(";")[0].trim()),
+);
+
+export const isValidImageExtension = (ext: string): boolean => {
+  return VALID_IMAGE_EXTENSIONS.has(ext.toLowerCase());
+};
+
+export const isValidImageMimeType = (mimeType: string): boolean => {
+  const baseMime = mimeType.split(";")[0].trim();
+  return VALID_IMAGE_MIME_TYPES.has(baseMime);
+};
 
 export const canPlayAudioType = (mimeType: string): SupportLevel => {
   if (!audioElement) return "";
@@ -47,6 +65,15 @@ export const checkAudioSupport = (key: AudioMimeKey): MimeSupport => {
     level,
     supported: level === "probably" || level === "maybe",
   };
+};
+
+export const isValidImageFile = (name: string, mimeType?: string): boolean => {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+
+  if (isValidImageExtension(ext)) return true;
+  if (mimeType && isValidImageMimeType(mimeType)) return true;
+
+  return false;
 };
 
 const TEST_IMAGES: Record<ImageMimeKey, string> = {
@@ -126,6 +153,6 @@ export async function isImageTypeSupported(mimeType: string): Promise<boolean> {
 }
 
 export const getMimeType = (filename: string): string => {
-  const ext = filename.split(".").pop()?.toLocaleLowerCase() ?? "";
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
   return AUDIO_MIME_TYPES[ext as AudioMimeKey] || IMAGE_MIME_TYPES[ext as ImageMimeKey] || "";
 };
