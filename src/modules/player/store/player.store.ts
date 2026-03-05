@@ -20,13 +20,13 @@ export const usePlayerStore = defineStore("player", () => {
 
   const graphRevision = ref(0);
 
+  const trackEndedSignal = ref(0);
+
   const progress = computed(() => {
     if (duration.value <= 0) return 0;
     return (currentTime.value / duration.value) * 100;
   });
   const canPlay = computed(() => player.value?.isReady ?? false);
-  const canGoNext = computed(() => false);
-  const canGoPrevious = computed(() => false);
 
   const initPlayer = async () => {
     if (player.value) {
@@ -57,9 +57,7 @@ export const usePlayerStore = defineStore("player", () => {
       currentTime.value = 0;
       status.value = "ready";
 
-      if (repeatMode.value === "one") {
-        play();
-      }
+      trackEndedSignal.value++;
     });
 
     newPlayer.on("timeupdate", (payload) => {
@@ -188,18 +186,8 @@ export const usePlayerStore = defineStore("player", () => {
     await initPlayer();
     if (!player.value) return;
 
-    const localTrack: LocalTrack = {
-      id: crypto.randomUUID(),
-      title: url.split("/").pop()?.split("?")[0] || "Stream",
-      artist: "Stream",
-      url,
-    };
-
-    currentTrack.value = localTrack;
-
     try {
       await player.value.load(url);
-      localTrack.duration = player.value.duration;
       await player.value.play();
     }
     catch (err) {
@@ -257,22 +245,10 @@ export const usePlayerStore = defineStore("player", () => {
     isMuted.value = player.value?.muted ?? false;
   };
 
-  const toggleShuffle = () => {
-    isShuffled.value = !isShuffled.value;
-  };
-
   const toggleRepeat = () => {
     const modes: RepeatMode[] = ["off", "all", "one"];
-    const currentIndex = modes.indexOf(repeatMode.value);
-    repeatMode.value = modes[(currentIndex + 1) % modes.length];
-  };
-
-  const next = () => {
-    console.log("next");
-  };
-
-  const previous = () => {
-    console.log("previous");
+    const idx = modes.indexOf(repeatMode.value);
+    repeatMode.value = modes[(idx + 1) % modes.length];
   };
 
   const dispose = async () => {
@@ -299,11 +275,10 @@ export const usePlayerStore = defineStore("player", () => {
     isShuffled,
     currentTrack,
     graphRevision,
+    trackEndedSignal,
 
     progress,
     canPlay,
-    canGoNext,
-    canGoPrevious,
     isLiveStream,
     canSeek,
 
@@ -314,13 +289,10 @@ export const usePlayerStore = defineStore("player", () => {
     playFile,
     playUrl,
     stop,
-    next,
-    previous,
     seekTo,
     seekPercent,
     setVolume,
     toggleMute,
-    toggleShuffle,
     toggleRepeat,
     getAudioGraph,
     dispose,
