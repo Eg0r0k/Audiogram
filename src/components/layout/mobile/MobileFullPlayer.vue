@@ -14,8 +14,8 @@
     </div>
 
     <div class=" pt-5">
-      <div class="flex items-center gap-2">
-        <div class="data-track min-w-0 max-w-fit overflow-hidden mx-2">
+      <div class="flex items-center justify-between gap-2">
+        <div class="data-track min-w-0 w-fill max-w-fit overflow-hidden mx-2">
           <MarqueeBlock
             :duration="10"
             animate-on-overflow-only
