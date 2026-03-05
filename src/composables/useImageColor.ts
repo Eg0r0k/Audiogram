@@ -22,6 +22,15 @@ const defaultOptions: UseImageColorOptions = {
   fallback: "#535353",
 };
 
+function createFallbackColor(fallback: string): ColorResult {
+  return {
+    hex: fallback,
+    rgb: fallback,
+    hsl: fallback,
+    isDark: true,
+  };
+}
+
 export const getColorFromImage = async (
   source: string | HTMLImageElement,
   options: UseImageColorOptions = {},
@@ -61,25 +70,17 @@ export const getColorFromImage = async (
       isDark: l < 50,
     };
   }
-  catch (error) {
-    return {
-      hex: opts.fallback!,
-      rgb: opts.fallback!,
-      hsl: opts.fallback!,
-      isDark: true,
-    };
+  catch {
+    return createFallbackColor(opts.fallback!);
   }
 };
 
 export const useImageColor = (initialOptions: UseImageColorOptions = {}) => {
   const options = { ...defaultOptions, ...initialOptions };
 
-  const color = ref<ColorResult>({
-    hex: options.fallback!,
-    rgb: options.fallback!,
-    hsl: options.fallback!,
-    isDark: true,
-  });
+  const fallbackColor = createFallbackColor(options.fallback!);
+
+  const color = ref<ColorResult>({ ...fallbackColor });
 
   const isLoading = ref(false);
   const error = ref<Error | null>(null);
@@ -97,10 +98,16 @@ export const useImageColor = (initialOptions: UseImageColorOptions = {}) => {
     }
     catch (e) {
       error.value = e as Error;
+      color.value = { ...fallbackColor };
     }
     finally {
       isLoading.value = false;
     }
+  };
+
+  const resetColor = () => {
+    color.value = { ...fallbackColor };
+    error.value = null;
   };
 
   return {
@@ -108,5 +115,6 @@ export const useImageColor = (initialOptions: UseImageColorOptions = {}) => {
     isLoading,
     error,
     extractColor,
+    resetColor,
   };
 };
