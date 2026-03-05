@@ -189,3 +189,34 @@ video {
 
 }
 
+/* Cropper style */
+
+.cropper-view-box {
+  outline: 2px solid var(--primary) !important;
+}
+
+.cropper-point {
+  background-color: var(--primary) !important;
+  border-radius: 50%;
+  opacity: 1 !important;
+  transform: scale(1.8) !important;
+}
+
+.cropper-line {
+  background-color: var(--primary) !important;
+}
+
+.cropper-dashed {
+  border-color: var(--primary) !important;
+  opacity: 0.5;
+}
+
+.cropper-center:before,
+.cropper-center:after {
+  background-color: var(--primary) !important;
+}
+
+.cropper-modal {
+  background-color: var(--background) !important;
+  opacity: 0.5 !important;
+}
