@@ -1,0 +1,93 @@
+<template>
+  <div
+    role="button"
+    tabindex="0"
+    class="group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors hover:bg-accent/50"
+    :class="{
+      'bg-primary/10 hover:bg-primary/15': isCurrent,
+      'opacity-50': isPrevious,
+      'opacity-30': isBeingDragged,
+    }"
+    @click="$emit('play')"
+    @keypress.enter="$emit('play')"
+  >
+    <button
+      class="shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+      :aria-label="$t('queue.drag')"
+      @pointerdown="$emit('dragStart', $event)"
+      @click.stop
+    >
+      <IconGripVertical class="size-4" />
+    </button>
+
+    <div class="size-10 shrink-0 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+      <NuxtImage
+        v-if="item.track.cover"
+        :src="item.track.cover"
+        :alt="item.track.title"
+        :placeholder="true"
+        class="size-full object-cover"
+      />
+      <IconMusic
+        v-else
+        class="size-4 text-muted-foreground"
+      />
+    </div>
+
+    <div class="flex-1 min-w-0 flex flex-col gap-0.5">
+      <span
+        class="text-sm font-medium truncate"
+        :class="isCurrent ? 'text-primary' : 'text-foreground'"
+      >
+        {{ item.track.title }}
+      </span>
+      <span class="text-xs text-muted-foreground truncate">
+        {{ item.track.artist }}
+      </span>
+    </div>
+
+    <span class="text-xs text-muted-foreground tabular-nums shrink-0 w-10 text-right sm:group-hover:hidden">
+      {{ formattedDuration }}
+    </span>
+
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      class="rounded-full shrink-0 hidden sm:opacity-0 sm:group-hover:flex sm:group-hover:opacity-100 transition-opacity"
+      :aria-label="$t('queue.remove')"
+      @click.stop="$emit('remove')"
+    >
+      <IconX class="size-4" />
+    </Button>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed } from "vue";
+import type { QueueItem } from "../types";
+import { formatDuration } from "@/lib/format/time";
+import { Button } from "@/components/ui/button";
+import NuxtImage from "@/components/ui/image/NuxtImage.vue";
+import IconGripVertical from "~icons/tabler/grip-vertical";
+import IconMusic from "~icons/tabler/music";
+import IconX from "~icons/tabler/x";
+
+const props = defineProps<{
+  item: QueueItem;
+  isCurrent?: boolean;
+  isPrevious?: boolean;
+  isBeingDragged?: boolean;
+}>();
+
+defineEmits<{
+  play: [];
+  remove: [];
+  dragStart: [event: PointerEvent];
+}>();
+
+const formattedDuration = computed(() => {
+  const track = props.item.track;
+  const dur = "duration" in track ? track.duration : undefined;
+  return dur ? formatDuration(dur) : "--:--";
+});
+</script>
