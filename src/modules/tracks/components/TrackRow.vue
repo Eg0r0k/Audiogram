@@ -1,30 +1,90 @@
 <template>
   <div
+    ref="rowRef"
     v-ripple
     role="button"
     tabindex="0"
     :data-compact="compact"
-    :class="styles.root"
-    @click="handlePlay"
-    @keypress="handlePlay"
+    :class="[
+      styles.root,
+      (highlighted || isCurrentTrack) && 'bg-primary/10 hover:bg-primary/15',
+      dimmed && 'opacity-50',
+      beingDragged && 'opacity-30',
+    ]"
+    @click="handleClick"
+    @keypress="handleClick"
     @contextmenu="onContextMenu"
   >
-    <span :class="styles.index">
+    <button
+      v-if="draggable"
+      class="shrink-0 w-8 h-full cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none flex items-center justify-center"
+      :aria-label="$t('queue.drag')"
+      @pointerdown.stop="$emit('dragStart', $event)"
+      @click.stop
+    >
+      <IconGripVertical class="size-4.5" />
+    </button>
+
+    <span
+      v-else
+      :class="styles.index"
+    >
       {{ index }}
     </span>
 
-    <NuxtImage
-      :src="track.cover"
-      :alt="track.title"
-      :class="styles.image"
-    />
+    <div class="relative shrink-0 size-10 group-data-[compact=true]:hidden">
+      <NuxtImage
+        :src="track.cover"
+        :alt="track.title"
+        fallback-src="/img/fallback.svg"
+        :class="styles.image"
+      />
+
+      <div
+        :class="[
+          styles.imageOverlay,
+          showOverlay ? 'opacity-100' : 'opacity-0',
+        ]"
+      >
+        <span
+          v-if="isCurrentTrack && isPlaying && !isRowHovered"
+          class="size-2 rounded-full bg-primary"
+        />
+
+        <IconPause
+          v-else-if="isCurrentTrack && isPlaying && isRowHovered"
+          class="size-5 text-white drop-shadow-md"
+        />
+
+        <IconPlay
+          v-else
+          class="size-5 text-white drop-shadow-md"
+        />
+      </div>
+    </div>
 
     <div :class="styles.info">
-      <div :class="styles.title">
+      <div
+        :class="[styles.title, (highlighted || isCurrentTrack) && 'text-primary']"
+      >
         {{ track.title }}
       </div>
       <div :class="styles.artist">
-        {{ track.artist }}
+        <template
+          v-for="(artist, i) in artists"
+          :key="i"
+        >
+          <span
+            role="link"
+            tabindex="0"
+            class="hover:text-foreground underline-offset-2 transition-colors duration-200 cursor-pointer"
+            @click.stop="handleArtistClick(artist)"
+            @keypress.enter.stop="handleArtistClick(artist)"
+          >
+            {{ artist }}
+          </span>
+          <span v-if="i < artists.length - 1">,&nbsp;</span>
+        </template>
       </div>
     </div>
 
@@ -34,84 +94,123 @@
       class="rounded-full"
       @click.stop="toggle"
     >
-      <Like
-        ref="likeRef"
-        class="text-xl"
-        :is-liked="liked"
-      />
+      <IconLike />
     </Button>
 
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      class="rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-      @click.stop="onDotsClick"
-    >
-      <IconDots
-        class="size-4"
-      />
-    </Button>
-
-    <span :class="styles.duration">
-      {{ formatDuration(track.duration) }}
-    </span>
+    <div class="w-7 flex justify-end items-center">
+      <span :class="styles.duration">
+        {{ formatDuration(track.duration) }}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        :class="styles.dots"
+        @click.stop="onDotsClick"
+      >
+        <IconDots class="size-4" />
+      </Button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { cva } from "class-variance-authority";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
-import { ref, useTemplateRef } from "vue";
+import { computed, ref, useTemplateRef } from "vue";
+import { useElementHover } from "@vueuse/core";
 import IconDots from "~icons/tabler/dots";
+import IconGripVertical from "~icons/tabler/grip-vertical";
+import IconLike from "~icons/tabler/heart";
+import IconPlay from "~icons/tabler/player-play-filled";
+import IconPause from "~icons/tabler/player-pause-filled";
+
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import { formatDuration } from "@/lib/format/time";
 import type { Track } from "@/modules/player/types";
-import Like from "@/modules/player/components/actions/Like.vue";
 import { Button } from "@/components/ui/button";
+import { usePlayerStore } from "@/modules/player/store/player.store";
 
 interface Props {
   track: Track;
   index?: number;
   compact?: boolean;
+  draggable?: boolean;
+  highlighted?: boolean;
+  dimmed?: boolean;
+  beingDragged?: boolean;
 }
 
-const likeRef = useTemplateRef("likeRef");
-const liked = ref(false);
-
 const toggle = () => {
-  if (!liked.value) {
-    likeRef.value?.playAnimation();
-  }
-  liked.value = !liked.value;
+
 };
 
 const props = withDefaults(defineProps<Props>(), {
   index: 0,
   compact: false,
+  draggable: false,
+  highlighted: false,
+  dimmed: false,
+  beingDragged: false,
 });
 
 const emit = defineEmits<{
   play: [track: Track];
+  artistClick: [artist: string];
+  dragStart: [event: PointerEvent];
 }>();
+
+const playerStore = usePlayerStore();
+
+const rowRef = useTemplateRef("rowRef");
+const isRowHovered = useElementHover(() => rowRef.value);
+
+const isCurrentTrack = computed(() => playerStore.currentTrack?.id === props.track.id);
+
+const isPlaying = computed(() => playerStore.isPlaying);
+
+const showOverlay = computed(() => {
+  return isCurrentTrack.value || isRowHovered.value;
+});
+
+const artists = computed(() =>
+  props.track.artist
+    .split(/,\s*/)
+    .map(a => a.trim())
+    .filter(Boolean),
+);
 
 const styles = {
   root: cva([
-    "group track-row flex rounded select-none items-center gap-3 px-4 w-full cursor-pointer hover:bg-muted/50",
+    "group track-row flex rounded select-none items-center gap-3 w-full cursor-pointer hover:bg-muted/50 px-2.5",
     "h-16 data-[compact=true]:h-8",
     "focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none focus-visible:border-ring",
   ])(),
-  index: "text-center text-muted-foreground font-mono w-8 text-base group-data-[compact=true]:w-6 group-data-[compact=true]:text-xs",
-  image: "shrink-0 rounded z-1 size-10 group-data-[compact=true]:hidden",
+  index: "text-center font-semibold text-muted-foreground font-mono w-8 text-base group-data-[compact=true]:w-6 group-data-[compact=true]:text-xs",
+  image: "size-full rounded object-cover",
+  imageOverlay: [
+    "absolute inset-0 rounded flex items-center justify-center",
+    "bg-black/50 transition-opacity duration-200 ease-out",
+  ].join(" "),
   info: "flex-1 min-w-0 flex flex-col group-data-[compact=true]:flex-row group-data-[compact=true]:items-baseline group-data-[compact=true]:gap-2",
-  title: "font-medium truncate text-base group-data-[compact=true]:text-sm",
+  title: "font-medium truncate text-base group-data-[compact=true]:text-sm hover:underline",
   artist: "flex items-center text-muted-foreground truncate text-sm group-data-[compact=true]:text-xs",
-  duration: "text-muted-foreground ml-auto text-sm group-data-[compact=true]:text-xs",
+  duration: "text-muted-foreground text-sm group-data-[compact=true]:text-xs hidden sm:block sm:group-hover:hidden",
+  dots: "rounded-full sm:hidden sm:group-hover:flex",
 };
 
 const { openMenu, openDropdown } = useTrackMenu();
 
-const handlePlay = () => {
-  emit("play", props.track);
+const handleClick = () => {
+  if (isCurrentTrack.value) {
+    playerStore.togglePlay();
+  }
+  else {
+    emit("play", props.track);
+  }
+};
+
+const handleArtistClick = (artist: string) => {
+  emit("artistClick", artist);
 };
 
 const onContextMenu = () => {

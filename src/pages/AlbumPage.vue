@@ -1,120 +1,183 @@
 <template>
   <Scrollable class="flex-1">
-    <MediaHero :data="artistData" />
-
-    <TrackContextMenu context="album">
-      <div class=" px-4">
-        <TrackRow
-          v-for="(track, index) in mockTracks"
-          :key="track.id"
-          :compact="isCompact"
-          :track="track"
-          :index="index + 1"
-        />
+    <template v-if="isLoading">
+      <div class="flex items-center justify-center h-full">
+        <IconLoader2 class="size-8 animate-spin text-muted-foreground" />
       </div>
-    </TrackContextMenu>
-    <TrackDropdown context="album" />
+    </template>
+
+    <template v-else-if="isError">
+      <div class="flex flex-col items-center justify-center h-full gap-1">
+        <div class="flex flex-col items-center pb-4">
+          <h2 class="text-2xl font-bold mb-2">
+            {{ $t("errors.title") }}
+          </h2>
+          <p class="text-lg text-muted-foreground">
+            {{ errorMessage }}
+          </p>
+        </div>
+        <Button
+          size="xl"
+          @click="refetch"
+        >
+          {{ $t("common.retry") }}
+        </Button>
+      </div>
+    </template>
+
+    <template v-else-if="albumData">
+      <MediaHero
+        :data="albumData"
+        @play="handlePlayAll"
+        @edit="showEditDialog = true"
+        @delete="showDeleteDialog = true"
+        @add-to-queue="handleAddToQueue"
+        @share="handleShare"
+      />
+
+      <TrackContextMenu
+        context="album"
+        :album-id="album?.id"
+      >
+        <div class="px-4">
+          <TrackRow
+            v-for="(track, index) in tracks"
+            :key="track.id"
+            :compact="isCompact"
+            :track="track"
+            :index="index + 1"
+            @play="handlePlayTrack(index)"
+          />
+        </div>
+      </TrackContextMenu>
+      <TrackDropdown
+        context="album"
+        :album-id="album?.id"
+      />
+    </template>
+
+    <DeleteAlbumDialog
+      v-model:open="showDeleteDialog"
+      :album="album"
+      :track-count="tracks.length"
+      @confirm="handleDelete"
+    />
+
+    <EditAlbumDialog
+      v-model:open="showEditDialog"
+      :album="album"
+      @save="handleSave"
+    />
   </Scrollable>
 </template>
 
 <script setup lang="ts">
-import MediaHeader from "@/components/media-hero/MediaHeader.vue";
+import { ref, computed } from "vue";
+import { toast } from "vue-sonner";
+import { useI18n } from "vue-i18n";
 import MediaHero from "@/components/media-hero/MediaHero.vue";
-import { AlbumData } from "@/components/media-hero/types";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
+import { Button } from "@/components/ui/button";
 import { useLibraryView } from "@/composables/useLibraryView";
-import { Track } from "@/modules/player/types";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
-import { AlbumId, ArtistId, TrackId } from "@/types/ids";
+import IconLoader2 from "~icons/tabler/loader-2";
+import { useAlbumPage } from "@/modules/albums/composables/useAlbumPage";
+import DeleteAlbumDialog from "@/modules/albums/components/dialogs/DeleteAlbumDialog.vue";
+import EditAlbumDialog from "@/modules/albums/components/dialogs/EditAlbumDialog.vue";
 
-const handlePlay = () => {
-  console.log("Play album");
-};
+interface AlbumChanges {
+  title?: string;
+  description?: string;
+  coverBlob?: Blob;
+  removeCover?: boolean;
+}
 
-const artistData: AlbumData = {
-  type: "album",
-  id: AlbumId("album-1"),
-  artistName: "Emenem",
-  artistId: ArtistId("artist-1"),
-  image: "/favorite.jpg",
-
-  title: "The Weeknd",
-  trackCount: 50,
-  releaseYear: 2020,
-};
-
+const { t } = useI18n();
 const { isCompact } = useLibraryView();
+const queueStore = useQueueStore();
 
-const mockTracks: Track[] = [
-  {
-    id: TrackId("track-1"),
-    title: "Blinding Lights",
-    artist: "The Weeknd",
-    artistId: ArtistId("artist-1"),
-    albumId: AlbumId("album-1"),
-    albumName: "After Hours",
-    cover: "https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36",
-    duration: 203,
-    isLiked: true,
+const {
+  album,
+  tracks,
+  albumData,
+  isLoading,
+  isError,
+  error,
+  deleteAlbum,
+  updateAlbum,
+  refetch,
+} = useAlbumPage();
 
-  },
-  {
-    id: TrackId("track-2"),
-    title: "Starboy",
-    artist: "The Weeknd",
-    artistId: ArtistId("artist-1"),
-    albumId: AlbumId("album-2"),
-    albumName: "Starboy",
-    cover: "https://i.scdn.co/image/ab67616d0000b273a048415db06a5b6fa7ec4e1a",
-    duration: 230,
-    isLiked: false,
-  },
-  {
-    id: TrackId("track-2"),
-    title: "Starboy",
-    artist: "The Weeknd",
-    artistId: ArtistId("artist-1"),
-    albumId: AlbumId("album-2"),
-    albumName: "Starboy",
-    cover: "https://i.scdn.co/image/ab67616d0000b273a048415db06a5b6fa7ec4e1a",
-    duration: 230,
-    isLiked: false,
-  },
-  {
-    id: TrackId("track-2"),
-    title: "Starboy",
-    artist: "The Weeknd",
-    artistId: ArtistId("artist-1"),
-    albumId: AlbumId("album-2"),
-    albumName: "Starboy",
-    cover: "https://i.scdn.co/image/ab67616d0000b273a048415db06a5b6fa7ec4e1a",
-    duration: 230,
-    isLiked: false,
-  },
-  {
-    id: TrackId("track-2"),
-    title: "Starboy",
-    artist: "The Weeknd",
-    artistId: ArtistId("artist-1"),
-    albumId: AlbumId("album-2"),
-    albumName: "Starboy",
-    cover: "https://i.scdn.co/image/ab67616d0000b273a048415db06a5b6fa7ec4e1a",
-    duration: 230,
-    isLiked: false,
-  },
-  {
-    id: TrackId("track-2"),
-    title: "Starboy",
-    artist: "The Weeknd",
-    artistId: ArtistId("artist-1"),
-    albumId: AlbumId("album-2"),
-    albumName: "Starboy",
-    cover: "https://i.scdn.co/image/ab67616d0000b273a048415db06a5b6fa7ec4e1a",
-    duration: 230,
-    isLiked: false,
-  },
-];
+const showDeleteDialog = ref(false);
+const showEditDialog = ref(false);
+const isSaving = ref(false);
 
+const errorMessage = computed(() => {
+  if (!error.value) return t("errors.unknown");
+
+  const message = error.value.message;
+
+  if (message === "Album not found") {
+    return t("errors.notFound");
+  }
+
+  return t("errors.loadFailed");
+});
+
+function handlePlayAll() {
+  if (tracks.value.length === 0 || !album.value) return;
+  queueStore.setQueue(tracks.value, 0, {
+    type: "album",
+    albumId: album.value.id,
+  });
+}
+
+function handlePlayTrack(index: number) {
+  if (!album.value) return;
+  queueStore.setQueue(tracks.value, index, {
+    type: "album",
+    albumId: album.value.id,
+  });
+}
+
+function handleAddToQueue() {
+  if (tracks.value.length === 0) return;
+  queueStore.addToQueue(tracks.value);
+}
+
+function handleShare() {
+  toast.info(t("common.comingSoon"));
+}
+
+async function handleDelete() {
+  try {
+    await deleteAlbum();
+    showDeleteDialog.value = false;
+    toast.success(t("album.deleted"));
+  }
+  catch {
+    toast.error(t("album.deleteFailed"));
+  }
+}
+
+async function handleSave(changes: AlbumChanges) {
+  if (isSaving.value) return;
+
+  isSaving.value = true;
+
+  try {
+    await updateAlbum(changes);
+    showEditDialog.value = false;
+  }
+  catch (e) {
+    const message = e instanceof Error ? e.message : t("album.updateFailed");
+    toast.error(message);
+  }
+  finally {
+    isSaving.value = false;
+  }
+}
 </script>

@@ -9,25 +9,6 @@
 
   <component
     :is="Item"
-    :disabled="queueIndex === 0"
-    @click="emit('moveUp')"
-  >
-    <Icon icon="tabler:arrow-up" />
-
-    {{ $t('track.contextMenu.moveUp') }}
-  </component>
-
-  <component
-    :is="Item"
-    :disabled="queueIndex === queueLength - 1"
-    @click="emit('moveDown')"
-  >
-    <Icon icon="tabler:arrow-down" />
-    {{ $t('track.contextMenu.moveDown') }}
-  </component>
-
-  <component
-    :is="Item"
     variant="destructive"
     @click="actions.removeFromQueue?.()"
   >

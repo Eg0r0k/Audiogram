@@ -1,16 +1,6 @@
 <template>
   <component
     :is="Item"
-    @click="emit('play')"
-  >
-    <IconPlayFilled
-      class="size-5"
-    />
-    {{ $t('track.contextMenu.play') }}
-  </component>
-
-  <component
-    :is="Item"
     @click="emit('playNext')"
   >
     <IconPlaylistAdd
