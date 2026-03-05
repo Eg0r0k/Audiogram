@@ -25,6 +25,23 @@ const emits = defineEmits<PopoverContentEmits>();
 const delegatedProps = reactiveOmit(props, "class");
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
+
+function handleInteractOutside(event: Event) {
+  const target = event.target as HTMLElement | null;
+  if (!target) return;
+
+  const isInsideOverlay = target.closest(
+    "[data-slot='context-menu-content'], "
+    + "[data-slot='dropdown-menu-content'], "
+    + "[role='menu'], "
+    + "[data-reka-context-menu-content], "
+    + "[data-reka-dropdown-menu-content]",
+  );
+
+  if (isInsideOverlay) {
+    event.preventDefault();
+  }
+}
 </script>
 
 <template>
@@ -38,6 +55,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
           props.class,
         )
       "
+      @interact-outside="handleInteractOutside"
     >
       <slot />
     </PopoverContent>
