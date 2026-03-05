@@ -27,7 +27,7 @@
           variant="destructive-link"
           @click="closeDialog"
         >
-          Cancel
+          {{ $t("common.cancel") }}
         </Button>
         <Button
           variant="link"
