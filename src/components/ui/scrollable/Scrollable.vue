@@ -239,6 +239,8 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
 }
 
 .scrollable-x {
+  position: relative;
+  inset: auto;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -246,7 +248,6 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
   overscroll-behavior-x: contain;
   white-space: nowrap;
 }
-
 .no-scrollbar,
 .scrollable.no-scrollbar {
   scrollbar-width: none;

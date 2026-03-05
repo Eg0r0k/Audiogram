@@ -212,27 +212,71 @@ html.is-firefox .scrollable-y {
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0) rgba(0, 0, 0, 0);
 }
-
 html.overlay-scroll .scrollable-y:hover {
   scrollbar-color: var(--scrollbar-color) transparent;
 }
 
-.scrollable-wrapper {
-  position: relative;
-  overflow: hidden;
-  width: 100%;
+html.overlay-scroll .scrollable::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  opacity: 0;
+  width: 0.375rem;
 }
 
+html.overlay-scroll .scrollable::-webkit-scrollbar-thumb {
+  width: 0;
+  height: 0;
+  opacity: 0;
+  transition: 0.2s ease-in-out;
+}
+
+html.overlay-scroll .scrollable::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+html.overlay-scroll .scrollable::-webkit-scrollbar-corner {
+  background-color: transparent;
+}
+
+html.overlay-scroll .scrollable:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+html.overlay-scroll .scrollable:hover::-webkit-scrollbar-thumb {
+  min-height: 5rem;
+  max-height: 12.5rem;
+  border-radius: 3px;
+  background-color: var(--scrollbar-color);
+  opacity: 1;
+}
+
+html.custom-scroll .scrollable::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.scrollable-wrapper {
+  position: relative;
+  overflow: hidden !important;
+  width: 100%;
+}
 .scrollable-direction-y {
   height: 100%;
 }
 .scrollable-direction-x {
   height: auto;
 }
+
 .scrollable {
-  height: 100%;
   width: 100%;
-  overflow: auto;
+  height: 100%;
+  max-height: 100%;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  position: absolute;
+  inset: 0;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -272,39 +316,45 @@ html.overlay-scroll .scrollable-y:hover {
 .scrollable-y {
   overflow-x: hidden;
   overflow-y: auto;
+  overflow-y: overlay;
+  scrollbar-width: none;
+  overscroll-behavior-y: contain;
 }
 
 .scrollable-x {
+  position: relative;
+  inset: auto;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
   white-space: nowrap;
 }
-
 .no-scrollbar,
 .scrollable.no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-
 .scrollable-x::-webkit-scrollbar,
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 /* Thumb */
 .scrollable-thumb-container {
-  position: absolute;
+  position: sticky;
+  top: 0;
   z-index: var(--z-thumb);
   pointer-events: none;
+  height: 0;
+  width: 0;
 }
 
 .scrollable-thumb-container-y {
-  top: 0;
-  right: 2px;
-  bottom: 0;
-  width: 6px;
+  float: right;
+  margin-right: 1px;
 }
-
 .scrollable-thumb-container-x {
   left: 0;
   right: 0;
@@ -314,12 +364,14 @@ html.overlay-scroll .scrollable-y:hover {
 
 .scrollable-thumb {
   position: absolute;
+  width: 5px;
   background: var(--color-muted-foreground);
   border-radius: 3px;
   pointer-events: auto;
-  cursor: pointer;
-  transition: background 0.2s, opacity 0.2s;
+  cursor: default;
   opacity: 0;
+  transition: opacity 0.1s ease-in-out;
+  inset-inline-end: 1px;
 }
 
 .scrollable-thumb-container-y .scrollable-thumb {
@@ -338,7 +390,6 @@ html.overlay-scroll .scrollable-y:hover {
 .scrollable-thumb.is-focused {
   opacity: 1;
 }
-
 .scrollable-thumb:hover,
 .scrollable-thumb.is-focused {
   background: rgba(0, 0, 0, 0.5);
