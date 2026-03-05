@@ -14,7 +14,7 @@ const props = defineProps<{
     :class="
       cn(
         'audiogram-input-group',
-        'relative flex w-full items-center rounded-md shadow-xs outline-none',
+        'relative flex w-full items-center rounded-md  outline-none',
         'h-9 min-w-0 has-[>textarea]:h-auto',
 
         'has-[>[data-align=inline-start]]:[&>input]:pl-2',
