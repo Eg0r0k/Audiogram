@@ -6,7 +6,7 @@
     <ContextMenuContent class="w-60">
       <component
         :is="contextComponent"
-        v-bind="contextProps"
+        :actions="actions"
       />
     </ContextMenuContent>
   </ContextMenu>
@@ -17,18 +17,16 @@ import { ContextMenu, ContextMenuTrigger, ContextMenuContent } from "@/component
 import { computed, type Component } from "vue";
 import { useMediaContext } from "@/composables/useMediaContext";
 import { contextMenuComponents, provideMenuComponents } from "@/components/media-hero/useMenuComponents";
-import { MediaContext } from "../types";
+import type { MediaContext } from "../types";
 import AlbumContext from "../contexts/AlbumContext.vue";
 import ArtistContext from "../contexts/ArtistContext.vue";
+import PlaylistContext from "@/modules/tracks/components/menu/contexts/PlaylistContext.vue";
 
 provideMenuComponents(contextMenuComponents);
 
-interface Props {
+const props = withDefaults(defineProps<{
   context?: MediaContext;
-  isPlaylistOwner?: boolean;
-}
-
-const props = withDefaults(defineProps<Props>(), {
+}>(), {
   context: "album",
 });
 
@@ -36,20 +34,10 @@ const contexts: Record<MediaContext, Component> = {
   "album": AlbumContext,
   "artist-page": ArtistContext,
   "liked": AlbumContext,
-  "playlist": AlbumContext,
+  "playlist": PlaylistContext,
 };
 
 const actions = useMediaContext();
 
 const contextComponent = computed(() => contexts[props.context]);
-
-const contextProps = computed(() => {
-  const base = { actions };
-  switch (props.context) {
-    case "playlist":
-      return { ...base, isOwner: props.isPlaylistOwner };
-    default:
-      return base;
-  }
-});
 </script>

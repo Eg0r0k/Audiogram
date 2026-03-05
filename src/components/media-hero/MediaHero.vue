@@ -12,15 +12,15 @@
         @play="$emit('play')"
       />
 
-      <div class="relative flex flex-col sm:flex-row sm:items-end px-4 sm:px-7 pb-6 sm:pb-7 min-h-[265px]">
+      <div class="relative flex flex-col pt-[72px] sm:flex-row sm:items-end px-4 sm:px-7 pb-6 sm:pb-7 min-h-[265px]">
         <div class="flex justify-center sm:hidden mb-4">
           <MediaHeroImage
             :src="data.image"
             :alt="data.title"
             :rounded="isArtist(data)"
-            :editable="isPlaylist(data) && data.isOwner"
+            :editable="canEdit"
             class="size-48"
-            @edit="handleEditImage"
+            @edit="$emit('edit')"
           />
         </div>
 
@@ -29,8 +29,8 @@
             :src="data.image"
             :alt="data.title"
             :rounded="isArtist(data)"
-            :editable="isPlaylist(data) && data.isOwner"
-            @edit="handleEditImage"
+            :editable="canEdit"
+            @edit="$emit('edit')"
           />
         </div>
 
@@ -61,11 +61,13 @@
     </div>
   </MediaContextMenu>
 </template>
+
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { isArtist, isPlaylist, MediaData } from "./types";
+import { isArtist, isPlaylist, isAlbum, MediaData } from "./types";
 import { useImageColor } from "@/composables/useImageColor";
+import { provideMediaContext } from "@/composables/useMediaContext";
 import MediaHeader from "./MediaHeader.vue";
 import MediaHeroImage from "./MediaHeroImage.vue";
 import MediaContextMenu from "./menu/context-menu/MediaContextMenu.vue";
@@ -77,13 +79,23 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  editImage: [];
+  edit: [];
+  delete: [];
   play: [];
+  addToQueue: [];
+  share: [];
 }>();
 
 const { t } = useI18n();
 
-const { color, extractColor } = useImageColor({
+provideMediaContext({
+  addToQueue: () => emit("addToQueue"),
+  edit: () => emit("edit"),
+  delete: () => emit("delete"),
+  share: () => emit("share"),
+});
+
+const { color, extractColor, resetColor } = useImageColor({
   colorType: "Muted",
   lightness: 38,
   saturation: 47,
@@ -91,13 +103,33 @@ const { color, extractColor } = useImageColor({
 
 const showGradient = ref(false);
 
-onMounted(async () => {
-  await extractColor(props.data.image);
-  requestAnimationFrame(() => {
+watch(
+  () => props.data.image,
+  async (newImage, oldImage) => {
+    if (newImage === oldImage) return;
+
+    showGradient.value = false;
+
+    if (newImage) {
+      await extractColor(newImage);
+    }
+    else {
+      resetColor();
+    }
+
     requestAnimationFrame(() => {
-      showGradient.value = true;
+      requestAnimationFrame(() => {
+        showGradient.value = true;
+      });
     });
-  });
+  },
+  { immediate: true },
+);
+
+const canEdit = computed(() => {
+  if (isPlaylist(props.data)) return props.data.isOwner;
+  if (isAlbum(props.data)) return true;
+  return false;
 });
 
 const titleClass = computed(() => {
@@ -127,8 +159,4 @@ const typeLabel = computed(() => {
     default: return t("media.type.album");
   }
 });
-
-const handleEditImage = () => {
-  emit("editImage");
-};
 </script>
