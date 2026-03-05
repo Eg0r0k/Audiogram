@@ -17,6 +17,11 @@
         >
           <DropdownMenuGroup>
             <DropdownMenuItem
+              @click="goSettings"
+            >
+              <IconFavorite class=" size-5" />  Favorite
+            </DropdownMenuItem>
+            <DropdownMenuItem
               @click="handleThemeToggle"
             >
               <component
@@ -25,6 +30,7 @@
               /> Change Theme
             </DropdownMenuItem>
           </DropdownMenuGroup>
+
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuItem
@@ -70,6 +76,8 @@
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
 import IconMenu2 from "~icons/tabler/menu-2";
+import IconFavorite from "~icons/tabler/bookmark";
+
 import IconSearch from "~icons/tabler/search";
 import IconX from "~icons/tabler/x";
 import IconSun from "~icons/tabler/sun";
