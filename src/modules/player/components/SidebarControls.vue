@@ -1,7 +1,7 @@
 <template>
   <div class="flex min-w-[180px] w-[30%] justify-end pr-1">
     <div class="flex w-full gap-0.5 justify-end items-center grow">
-      <div class="text-xs text-muted-foreground font-mono whitespace-nowrap mr-2 flex items-center tabular-nums">
+      <div class="text-sm font-medium text-foreground/50  whitespace-nowrap mr-2 flex items-center">
         <span>{{ timeDisplay.current }}</span>
         <span class="mx-1">/</span>
         <span :class="{ 'text-red-500 font-semibold': playerStore.isLiveStream }">
@@ -17,42 +17,38 @@
           class="size-4.5"
         />
       </Button> -->
+
       <Button
         size="icon-sm"
         variant="ghost"
       >
-        <IconPlaylist
+        <IconCategory
           class="size-4.5"
         />
       </Button>
 
-      <Popover>
+      <Popover :modal="false">
         <PopoverTrigger as-child>
           <Button
             size="icon-sm"
             variant="ghost"
           >
-            <IconDots
+            <IconPlaylist
               class="size-4.5"
             />
           </Button>
         </PopoverTrigger>
         <PopoverContent
+
           align="center"
           side="top"
           :side-offset="32"
-          class="w-90 p-0! mr-2"
-        />
+          class="w-80 p-0 h-[82dvh] mr-2"
+        >
+          <QueueList />
+        </PopoverContent>
       </Popover>
 
-      <!-- <Button
-        size="icon-sm"
-        variant="ghost"
-      >
-        <IconDevices2
-          class="size-4.5"
-        />
-      </Button> -->
       <!-- <PIPTrigger /> -->
     </div>
   </div>
@@ -68,13 +64,13 @@ import {
 import IconPlaylist from "~icons/tabler/playlist";
 // import IconDevices2 from "~icons/tabler/devices-2";
 // import IconDeviceSpeaker from "~icons/tabler/device-speaker-filled";
-import IconDots from "~icons/tabler/dots";
+import IconCategory from "~icons/tabler/category";
 
 // import PIPTrigger from "@/components/pip/PIPTrigger.vue";
-import FullscreenTrigger from "@/components/layout/fullscreen/FullscreenTrigger.vue";
 import VolumeButton from "./actions/VolumeButton.vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { computed } from "vue";
+import QueueList from "@/modules/queue/components/QueueList.vue";
 
 const playerStore = usePlayerStore();
 

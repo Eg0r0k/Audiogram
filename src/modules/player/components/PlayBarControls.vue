@@ -8,7 +8,7 @@
             size="icon"
             variant="ghost"
             :class="{ 'text-primary': playerStore.isShuffled }"
-            @click="playerStore.toggleShuffle"
+            @click="queueStore.toggleShuffle()"
           >
             <IconArrowsShuffle2 class="size-4.5" />
           </Button>
@@ -16,8 +16,8 @@
             class="rounded-full"
             size="icon"
             variant="ghost"
-            :disabled="!playerStore.canGoPrevious"
-            @click="playerStore.previous"
+            :disabled="!queueStore.hasPrevious"
+            @click="queueStore.previous()"
           >
             <IconPlayerTrackPrevFilled class="size-5" />
           </Button>
@@ -30,8 +30,8 @@
             class="rounded-full"
             size="icon"
             variant="ghost"
-            :disabled="!playerStore.canGoNext"
-            @click="playerStore.next"
+            :disabled="!queueStore.hasNext"
+            @click="queueStore.next()"
           >
             <IconPlayerTrackNextFilled class="size-5" />
           </Button>
@@ -67,9 +67,10 @@ import IconPlayerTrackPrevFilled from "~icons/tabler/player-track-prev-filled";
 import IconPlayerTrackNextFilled from "~icons/tabler/player-track-next-filled";
 import IconRepeat from "~icons/tabler/repeat";
 import IconRepeatOnce from "~icons/tabler/repeat-once";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
 
 const playerStore = usePlayerStore();
-
+const queueStore = useQueueStore();
 const repeatModeClass = computed(() => ({
   "text-primary": playerStore.repeatMode !== "off",
 }));
