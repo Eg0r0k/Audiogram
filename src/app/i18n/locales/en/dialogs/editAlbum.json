@@ -1,0 +1,17 @@
+{
+  "title": "Edit Album",
+  "albumTitle": "Album Title",
+  "titlePlaceholder": "Enter album title",
+  "description": "Description",
+  "descriptionPlaceholder": "Enter album description",
+  "validation": {
+    "titleRequired": "Title is required",
+    "titleMaxLength": "Title must be {max} characters or less",
+    "descriptionMaxLength": "Description must be {max} characters or less"
+  },
+  "errors": {
+    "invalidFormat": "Invalid image format. Please select a valid image file (JPEG, PNG, WebP, etc.)",
+    "readError": "Failed to read the file. Please try again.",
+    "unknown": "An unexpected error occurred. Please try again."
+  }
+}

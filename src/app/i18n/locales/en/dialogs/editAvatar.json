@@ -1,0 +1,11 @@
+{
+  "title": "Edit Cover",
+  "noImage": "No image selected",
+  "errors": {
+    "loadFailed": "Failed to load the file",
+    "invalidFormat": "Invalid image format",
+    "readFailed": "Failed to read the file",
+    "cropFailed": "Failed to crop the image",
+    "createFailed": "Failed to create the image"
+  }
+}

@@ -1,0 +1,6 @@
+{
+    "title": "Something went wrong",
+    "notFound":"Not Found",
+    "loadFailed": "Failed to load data",
+    "unknown": "An unexpected error occurred"
+}

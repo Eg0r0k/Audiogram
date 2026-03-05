@@ -1,7 +1,9 @@
 {
   "error": "Error",
   "save": "Save",
+  "change": "Change",
   "cancel": "Cancel",
+  "comingSoon": "Сoming Soon",
   "continue": "Continue",
   "loading": "Loading",
   "unknown": "Unknown",

@@ -5,6 +5,8 @@ import media from "./media.json";
 import settings from "./settings.json";
 import nav from "./nav.json";
 import library from "./library.json";
+import dialogs from "./dialogs";
+import errors from "./errors.json";
 
 export default {
   common,
@@ -14,4 +16,6 @@ export default {
   settings,
   nav,
   library,
+  dialogs,
+  errors,
 };
