@@ -22,15 +22,10 @@
 
     <div class="size-10 shrink-0 rounded-md overflow-hidden bg-muted flex items-center justify-center">
       <NuxtImage
-        v-if="item.track.cover"
         :src="item.track.cover"
         :alt="item.track.title"
-        :placeholder="true"
+        fallback-src="/img/fallback.svg"
         class="size-full object-cover"
-      />
-      <IconMusic
-        v-else
-        class="size-4 text-muted-foreground"
       />
     </div>
 
@@ -69,7 +64,6 @@ import { formatDuration } from "@/lib/format/time";
 import { Button } from "@/components/ui/button";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import IconGripVertical from "~icons/tabler/grip-vertical";
-import IconMusic from "~icons/tabler/music";
 import IconX from "~icons/tabler/x";
 
 const props = defineProps<{

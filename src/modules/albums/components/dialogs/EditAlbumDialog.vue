@@ -124,10 +124,6 @@
           :disabled="isSaving || !meta.valid || !hasChanges"
           @click="onSubmit"
         >
-          <IconLoader2
-            v-if="isSaving"
-            class="mr-2 size-4 animate-spin"
-          />
           {{ $t("common.save") }}
         </Button>
       </DialogFooter>
@@ -169,7 +165,6 @@ import { isValidImageFile } from "@/lib/environment/mimeSupport";
 import { storageService } from "@/db/storage";
 import EditAvatarDialog from "@/components/dialogs/EditAvatarDialog.vue";
 
-import IconLoader2 from "~icons/tabler/loader-2";
 import IconPhoto from "~icons/tabler/photo";
 import IconTrash from "~icons/tabler/trash";
 import IconAlertCircle from "~icons/tabler/alert-circle";
@@ -203,7 +198,6 @@ interface FileSelectionError {
 const props = defineProps<{
   open: boolean;
   album: AlbumEntity | null;
-  coverUrl?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -270,17 +264,12 @@ async function initializeForm(album: AlbumEntity): Promise<void> {
   });
 
   if (album.coverPath) {
-    if (props.coverUrl) {
-      originalCoverUrl.value = props.coverUrl;
+    const urlResult = await storageService.getAudioUrl(album.coverPath);
+    if (urlResult.isOk()) {
+      originalCoverUrl.value = urlResult.value;
     }
     else {
-      const urlResult = await storageService.getAudioUrl(album.coverPath);
-      if (urlResult.isOk()) {
-        originalCoverUrl.value = urlResult.value;
-      }
-      else {
-        originalCoverUrl.value = null;
-      }
+      originalCoverUrl.value = null;
     }
   }
   else {

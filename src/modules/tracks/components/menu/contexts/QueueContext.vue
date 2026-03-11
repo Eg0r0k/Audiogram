@@ -12,7 +12,7 @@
     variant="destructive"
     @click="actions.removeFromQueue?.()"
   >
-    <Icon icon="tabler:trash" />
+    <IconTrash class="size-5.5" />
     {{ $t('track.contextMenu.removeFromQueue') }}
   </component>
 
@@ -49,6 +49,7 @@ import { PlaylistId } from "@/types/ids";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
 import { ContextActions } from "../type";
 import type { Track } from "@/modules/player/types";
+import IconTrash from "~icons/tabler/trash";
 
 const { Separator, Item } = useTrackMenuComponents();
 

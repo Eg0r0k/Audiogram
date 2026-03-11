@@ -6,7 +6,7 @@ export interface NormalizedMeta extends BaseMetadata {
 
 export const normalizeMetadata = (file: File, raw: BaseMetadata) => {
   const artist = sanitizeString(raw.artist) || extractArtistFromPath(file) || "Unknown Artist";
-  const title = sanitizeString(raw.title) || extractTitleFromFilename(file.name);
+  const title = sanitizeString(raw.title) || "Unknown Title";
   const album = sanitizeString(raw.album) || "Unknown Album";
 
   const searchKey = [title, artist, album].filter(Boolean).join(" ").toLowerCase();
@@ -19,16 +19,11 @@ export const normalizeMetadata = (file: File, raw: BaseMetadata) => {
     searchKey,
   };
 };
-
 const extractArtistFromPath = (file: File): string | null => {
   const path = file.webkitRelativePath;
   if (!path) return null;
   const parts = path.split("/");
   return parts.length >= 2 ? parts[0] : null;
-};
-
-export const extractTitleFromFilename = (filename: string): string => {
-  return filename.replace(/\.[^/.]+$/, "");
 };
 
 export const sanitizeString = (str: unknown): string | null => {

@@ -3,7 +3,7 @@
     <div class="relative">
       <div
         class="absolute inset-0 h-[420px] sm:h-[340px] transition-opacity duration-400 ease-standard pointer-events-none"
-        :class="showGradient ? 'opacity-100' : 'opacity-0'"
+        :class="colorReady ? 'opacity-100' : 'opacity-0'"
         :style="{ background: `linear-gradient(${color.hsl} 0%, transparent 100%)` }"
       />
 
@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { isArtist, isPlaylist, isAlbum, MediaData } from "./types";
 import { useImageColor } from "@/composables/useImageColor";
@@ -101,14 +101,16 @@ const { color, extractColor, resetColor } = useImageColor({
   saturation: 47,
 });
 
-const showGradient = ref(false);
+const colorReady = ref(false);
 
 watch(
   () => props.data.image,
   async (newImage, oldImage) => {
     if (newImage === oldImage) return;
 
-    showGradient.value = false;
+    colorReady.value = false;
+
+    await nextTick();
 
     if (newImage) {
       await extractColor(newImage);
@@ -117,11 +119,7 @@ watch(
       resetColor();
     }
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        showGradient.value = true;
-      });
-    });
+    colorReady.value = true;
   },
   { immediate: true },
 );

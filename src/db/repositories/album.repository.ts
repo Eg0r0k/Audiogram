@@ -1,12 +1,27 @@
 import { db } from "@/db";
 import type { AlbumEntity } from "@/db/entities";
 import type { AlbumId, ArtistId } from "@/types/ids";
+import type { UpdateSpec } from "dexie";
 import { Result, ok, err } from "neverthrow";
 import { BaseRepository } from "./base.repository";
 
 class AlbumRepository extends BaseRepository<AlbumEntity, AlbumId> {
   constructor() {
     super(db.albums);
+  }
+
+  async update(id: AlbumId, changes: Partial<AlbumEntity>): Promise<Result<number, Error>> {
+    try {
+      const withTimestamp: Partial<AlbumEntity> = {
+        ...changes,
+        updatedAt: Date.now(),
+      };
+      const count = await this.table.update(id, withTimestamp as UpdateSpec<AlbumEntity>);
+      return ok(count);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
   }
 
   async findByArtistId(artistId: ArtistId): Promise<Result<AlbumEntity[], Error>> {

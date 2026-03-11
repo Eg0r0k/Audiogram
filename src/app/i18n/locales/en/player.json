@@ -27,5 +27,6 @@
   "airplay": "AirPlay",
   "pip": "Picture in picture",
   "cover": "Cover",
-  "equalizer": "Equalizer"
+  "equalizer": "Equalizer",
+  "emptyDescription": "For now..."
 }

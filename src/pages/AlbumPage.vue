@@ -47,6 +47,7 @@
             :track="track"
             :index="index + 1"
             @play="handlePlayTrack(index)"
+            @artist-click="handleArtist(artist)"
           />
         </div>
       </TrackContextMenu>
@@ -87,6 +88,7 @@ import IconLoader2 from "~icons/tabler/loader-2";
 import { useAlbumPage } from "@/modules/albums/composables/useAlbumPage";
 import DeleteAlbumDialog from "@/modules/albums/components/dialogs/DeleteAlbumDialog.vue";
 import EditAlbumDialog from "@/modules/albums/components/dialogs/EditAlbumDialog.vue";
+import { useRouter } from "vue-router";
 
 interface AlbumChanges {
   title?: string;
@@ -111,9 +113,10 @@ const {
   refetch,
 } = useAlbumPage();
 
+const route = useRouter();
+
 const showDeleteDialog = ref(false);
 const showEditDialog = ref(false);
-const isSaving = ref(false);
 
 const errorMessage = computed(() => {
   if (!error.value) return t("errors.unknown");
@@ -126,6 +129,10 @@ const errorMessage = computed(() => {
 
   return t("errors.loadFailed");
 });
+
+const handleArtist = (artist: string) => {
+  route.push({ name: "artist", params: { id: album?.value?.artistId, name: artist } });
+};
 
 function handlePlayAll() {
   if (tracks.value.length === 0 || !album.value) return;
@@ -145,7 +152,7 @@ function handlePlayTrack(index: number) {
 
 function handleAddToQueue() {
   if (tracks.value.length === 0) return;
-  queueStore.addToQueue(tracks.value);
+  queueStore.addMultipleToQueue(tracks.value);
 }
 
 function handleShare() {
@@ -164,10 +171,6 @@ async function handleDelete() {
 }
 
 async function handleSave(changes: AlbumChanges) {
-  if (isSaving.value) return;
-
-  isSaving.value = true;
-
   try {
     await updateAlbum(changes);
     showEditDialog.value = false;
@@ -175,9 +178,6 @@ async function handleSave(changes: AlbumChanges) {
   catch (e) {
     const message = e instanceof Error ? e.message : t("album.updateFailed");
     toast.error(message);
-  }
-  finally {
-    isSaving.value = false;
   }
 }
 </script>

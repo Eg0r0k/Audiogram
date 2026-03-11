@@ -38,7 +38,7 @@
               <div
                 v-if="showDropIndicator(index)"
                 class="absolute left-3 right-3 h-0.5 bg-primary rounded-full z-10"
-                :class="dropIndicatorPosition(index)"
+                :class="dropIndicatorPosition()"
               />
             </div>
           </template>
@@ -86,9 +86,9 @@ const rootRef = useTemplateRef("rootRef");
 
 const containerRect = reactive(useElementBounding(rootRef));
 
-function getScrollContainer(): HTMLElement | null {
+const getScrollContainer = (): HTMLElement | null => {
   return (virtualRef.value as { container?: HTMLElement | null })?.container ?? null;
-}
+};
 
 const drag = useDragReorder({
   itemCount: computed(() => queueStore.size),
@@ -117,7 +117,7 @@ function showDropIndicator(index: number): boolean {
   return index === drop;
 }
 
-function dropIndicatorPosition(index: number): string {
+function dropIndicatorPosition(): string {
   const drop = drag.dropIndex.value;
   const from = drag.dragIndex.value;
   if (drop <= from) return "top-0";

@@ -32,7 +32,7 @@
       {{ index }}
     </span>
 
-    <div class="relative shrink-0 size-10 group-data-[compact=true]:hidden">
+    <div class="relative shrink-0 size-10 group-data-[compact=true]:hidden z-10">
       <NuxtImage
         :src="track.cover"
         :alt="track.title"
@@ -77,9 +77,9 @@
           <span
             role="link"
             tabindex="0"
-            class="hover:text-foreground underline-offset-2 transition-colors duration-200 cursor-pointer"
-            @click.stop="handleArtistClick(artist)"
-            @keypress.enter.stop="handleArtistClick(artist)"
+            class="hover:text-foreground underline-offset-2 transition-colors duration-200 cursor-pointer truncate"
+            @click.stop="handleArtistClick"
+            @keypress.enter.stop="handleArtistClick "
           >
             {{ artist }}
           </span>
@@ -116,7 +116,7 @@
 <script setup lang="ts">
 import { cva } from "class-variance-authority";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
-import { computed, ref, useTemplateRef } from "vue";
+import { computed, useTemplateRef } from "vue";
 import { useElementHover } from "@vueuse/core";
 import IconDots from "~icons/tabler/dots";
 import IconGripVertical from "~icons/tabler/grip-vertical";
@@ -129,6 +129,7 @@ import { formatDuration } from "@/lib/format/time";
 import type { Track } from "@/modules/player/types";
 import { Button } from "@/components/ui/button";
 import { usePlayerStore } from "@/modules/player/store/player.store";
+import { useRouter } from "vue-router";
 
 interface Props {
   track: Track;
@@ -200,6 +201,8 @@ const styles = {
 
 const { openMenu, openDropdown } = useTrackMenu();
 
+const route = useRouter();
+
 const handleClick = () => {
   if (isCurrentTrack.value) {
     playerStore.togglePlay();
@@ -209,8 +212,8 @@ const handleClick = () => {
   }
 };
 
-const handleArtistClick = (artist: string) => {
-  emit("artistClick", artist);
+const handleArtistClick = () => {
+  route.push({ name: "artist", params: { id: props.track.artistId } });
 };
 
 const onContextMenu = () => {

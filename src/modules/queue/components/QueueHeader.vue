@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center justify-between px-4 py-3 ">
+  <div class="flex items-center  border-background border-b justify-between px-4 py-3 ">
     <div>
       <h2 class="text-lg font-bold">
         Очередь
@@ -25,7 +25,6 @@
 
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
-import IconShuffle from "~icons/tabler/arrows-shuffle";
 import IconTrash from "~icons/tabler/trash";
 
 defineProps<{

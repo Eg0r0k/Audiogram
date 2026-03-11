@@ -1,4 +1,3 @@
-// modules/settings/store/audio.composable.ts
 import { watch } from "vue";
 import { storeToRefs } from "pinia";
 import { usePlayerStore } from "@/modules/player/store/player.store";
@@ -15,6 +14,9 @@ export function useAudioSettings() {
     currentPreset,
     bands,
     bandGains,
+    isFadeEnabled,
+    fadeInDuration,
+    fadeOutDuration,
   } = storeToRefs(store);
 
   if (!watcherRegistered) {
@@ -25,7 +27,6 @@ export function useAudioSettings() {
       () => {
         const graph = playerStore.getAudioGraph();
         if (graph) {
-          console.log("[EQ] Graph ready, applying saved settings");
           store.pushToGraph();
         }
       },
@@ -41,6 +42,9 @@ export function useAudioSettings() {
     currentPreset,
     bands,
     bandGains,
+    isFadeEnabled,
+    fadeInDuration,
+    fadeOutDuration,
 
     presetCategories: store.presetCategories,
     getPresetsByCategory: store.getPresetsByCategory,
@@ -49,5 +53,8 @@ export function useAudioSettings() {
     applyPreset: store.applyPreset,
     resetEqualizer: store.resetEqualizer,
     setEqEnabled: store.setEqEnabled,
+    setFadeEnabled: store.setFadeEnabled,
+    setFadeInDuration: store.setFadeInDuration,
+    setFadeOutDuration: store.setFadeOutDuration,
   };
 }

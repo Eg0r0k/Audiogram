@@ -5,6 +5,9 @@ import {
   EQ_FREQUENCIES,
   EQ_PRESETS,
   EQ_PRESET_CATEGORIES,
+  FADE_DURATION_MIN,
+  FADE_DURATION_MAX,
+  FADE_DURATION_DEFAULT,
   getPresetsByCategory,
   type EQPresetKey,
 } from "../schema/audio";
@@ -19,6 +22,10 @@ export const useAudioSettingsStore = defineStore("audio-settings", () => {
   const currentPreset = ref<EQPresetKey>("Flat");
   const bandGains = ref<number[]>(Array.from({ length: 10 }, () => 0));
 
+  const isFadeEnabled = ref(false);
+  const fadeInDuration = ref(FADE_DURATION_DEFAULT);
+  const fadeOutDuration = ref(FADE_DURATION_DEFAULT);
+
   const bands = computed<EQBand[]>(() =>
     EQ_FREQUENCIES.map((f, i) => ({
       frequency: f,
@@ -29,8 +36,6 @@ export const useAudioSettingsStore = defineStore("audio-settings", () => {
   function pushToGraph() {
     const playerStore = usePlayerStore();
     const graph = playerStore.getAudioGraph();
-    console.log("[EQ] pushToGraph called, graph:", graph);
-    console.log("[EQ] isEqEnabled:", isEqEnabled.value);
     if (!graph) return;
 
     if (graph.eqEnabled !== isEqEnabled.value) {
@@ -74,29 +79,57 @@ export const useAudioSettingsStore = defineStore("audio-settings", () => {
     pushToGraph();
   }
 
+  function setFadeEnabled(enabled: boolean) {
+    isFadeEnabled.value = enabled;
+  }
+
+  function setFadeInDuration(duration: number) {
+    fadeInDuration.value = Math.max(
+      FADE_DURATION_MIN,
+      Math.min(FADE_DURATION_MAX, duration),
+    );
+  }
+
+  function setFadeOutDuration(duration: number) {
+    fadeOutDuration.value = Math.max(
+      FADE_DURATION_MIN,
+      Math.min(FADE_DURATION_MAX, duration),
+    );
+  }
+
   return {
-    // State (persisted)
     isEqEnabled,
     currentPreset,
     bandGains,
 
-    // Derived
+    isFadeEnabled,
+    fadeInDuration,
+    fadeOutDuration,
+
     bands,
 
-    // Constants
     presetCategories: EQ_PRESET_CATEGORIES,
     getPresetsByCategory,
 
-    // Actions
     setBandGain,
     applyPreset,
     resetEqualizer,
     setEqEnabled,
     pushToGraph,
+    setFadeEnabled,
+    setFadeInDuration,
+    setFadeOutDuration,
   };
 }, {
   persist: {
     key: "audiogram-audio-settings",
-    pick: ["isEqEnabled", "currentPreset", "bandGains"],
+    pick: [
+      "isEqEnabled",
+      "currentPreset",
+      "bandGains",
+      "isFadeEnabled",
+      "fadeInDuration",
+      "fadeOutDuration",
+    ],
   },
 });

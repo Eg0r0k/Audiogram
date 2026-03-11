@@ -477,7 +477,10 @@ export class LibraryImporter {
         this.pendingRequests.set(id, { resolve, reject, timeoutId });
 
         const worker = this.getNextWorker();
-        worker.postMessage({ fileId: id, fileData }, [fileData.buffer]);
+        worker.postMessage(
+          { fileId: id, fileData, fileName },
+          [fileData.buffer],
+        );
       }),
       error => ImportError.parseFailed(fileName, error),
     );
@@ -622,10 +625,14 @@ export class LibraryImporter {
         }
 
         if (artistsToAdd.size > 0) {
-          await db.artists.bulkAdd([...artistsToAdd.values()].map(a => ({ ...a, addedAt: now })));
+          await db.artists.bulkAdd(
+            [...artistsToAdd.values()].map(a => ({ ...a, addedAt: now, updatedAt: now })),
+          );
         }
         if (albumsToAdd.size > 0) {
-          await db.albums.bulkAdd([...albumsToAdd.values()].map(a => ({ ...a, addedAt: now })));
+          await db.albums.bulkAdd(
+            [...albumsToAdd.values()].map(a => ({ ...a, addedAt: now, updatedAt: now })),
+          );
         }
 
         return results;

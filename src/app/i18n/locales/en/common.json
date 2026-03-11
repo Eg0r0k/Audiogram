@@ -67,5 +67,6 @@
     "close": "Close"
   },
   "editHint": "Double-click to edit",
-  "editLabel": "Edit value"
+  "editLabel": "Edit value",
+  "trackCount": "{count} track | {count} traks"
 }

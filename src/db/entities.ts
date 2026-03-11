@@ -1,4 +1,4 @@
-import { AlbumId, ArtistId, TagId, TrackId } from "@/types/ids";
+import { AlbumId, ArtistId, PlaylistId, TagId, TrackId } from "@/types/ids";
 export enum TrackSource {
   LOCAL_INTERNAL = "local_internal", // (OPFS / AppData)
   LOCAL_EXTERNAL = "local_external", // (Tauri only)
@@ -25,23 +25,32 @@ export interface TagEntity {
 
 export interface ArtistEntity {
   id: ArtistId;
-
   name: string;
   bio?: string;
-
   addedAt: number;
+  updatedAt: number;
 }
 
 export interface AlbumEntity {
   id: AlbumId;
   title: string;
-
   artistId: ArtistId;
-
   year?: number;
   coverPath?: string;
-
   addedAt: number;
+  updatedAt: number;
+
+}
+
+export interface PlaylistEntity {
+  id: PlaylistId;
+  name: string;
+  description?: string;
+  coverPath?: string;
+  trackIds: TrackId[];
+  addedAt: number;
+  updatedAt: number;
+
 }
 
 export interface TrackEntity {

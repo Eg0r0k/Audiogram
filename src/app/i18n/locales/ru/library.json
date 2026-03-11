@@ -1,3 +1,16 @@
 {
-    "title":"Моя медиатека"
+  "title": "Моя медиатека",
+  "filterPlaylists": "Плейлисты",
+  "filterArtists": "Исполнители",
+  "filterAlbums": "Альбомы",
+  "sortLabel": "Сортировка",
+  "sortRecent": "Недавние",
+  "sortUpdated": "Обновленные",
+  "sortAlphabetical": "По алфавиту",
+  "sortAuthor": "По автору",
+  "createPlaylist": "Создать плейлист",
+  "empty": "Ваша медиатека пуста",
+  "emptyDescription": "Добавьте музыку или создайте плейлисты, чтобы начать",
+  "pinned": "Закреплено",
+  "searchPlaceholder": "Поиск в медиатеке"
 }

@@ -10,7 +10,7 @@ const OPTIONS: IOptions = {
 };
 
 self.onmessage = async (e: MessageEvent<ParseRequest>) => {
-  const { fileId, fileData } = e.data;
+  const { fileId, fileData, fileName } = e.data;
 
   try {
     const metadata = await parseBuffer(fileData, undefined, OPTIONS);
@@ -21,8 +21,10 @@ self.onmessage = async (e: MessageEvent<ParseRequest>) => {
       pictureBlob = new Blob([pic.data], { type: pic.format });
     }
 
+    const titleFromFile = fileName.replace(/\.[^/.]+$/, "");
+
     const meta: BaseMetadata = {
-      title: metadata.common.title || "Unknown Title",
+      title: metadata.common.title || titleFromFile,
       artist: metadata.common.artist || "Unknown Artist",
       album: metadata.common.album || "Unknown Album",
       year: metadata.common.year,

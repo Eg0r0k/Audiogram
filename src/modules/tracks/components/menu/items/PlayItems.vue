@@ -22,7 +22,6 @@
 
 <script setup lang="ts">
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
-import IconPlayFilled from "~icons/tabler/player-play-filled";
 import IconPlaylistAdd from "~icons/tabler/playlist-add";
 import IconListNumbers from "~icons/tabler/list-numbers";
 

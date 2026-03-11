@@ -1,3 +1,16 @@
 {
-    "title":"My library"
+  "title": "My Library",
+  "filterPlaylists": "Playlists",
+  "filterArtists": "Artists",
+  "filterAlbums": "Albums",
+  "sortLabel": "Sort by",
+  "sortRecent": "Recent",
+  "sortUpdated": "Updated",
+  "sortAlphabetical": "Alphabetical",
+  "sortAuthor": "Author",
+  "createPlaylist": "Create Playlist",
+  "empty": "Your library is empty",
+  "emptyDescription": "Add music or create playlists to get started",
+  "pinned": "Pinned",
+  "searchPlaceholder": "Search in library"
 }

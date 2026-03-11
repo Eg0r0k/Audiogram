@@ -70,7 +70,7 @@
             size="icon-lg"
             class="rounded-full text-white"
             :aria-label="$t('player.nextTrack')"
-            @click.stop="playerStore.next()"
+            @click.stop="queueStore.next()"
           >
             <IconSkipForward class="size-5" />
           </Button>
@@ -90,13 +90,14 @@ import IconPlay from "~icons/tabler/player-play-filled";
 import IconPause from "~icons/tabler/player-pause-filled";
 import IconSkipForward from "~icons/tabler/player-track-next-filled";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
 
 defineEmits<{
   click: [];
 }>();
 
 const playerStore = usePlayerStore();
-
+const queueStore = useQueueStore();
 const currentTrack = computed(() => playerStore.currentTrack);
 const artistName = computed(() => currentTrack.value?.artist);
 const coverUrl = computed(() => {

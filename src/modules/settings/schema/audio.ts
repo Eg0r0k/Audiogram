@@ -63,10 +63,18 @@ export const getPresetsByCategory = (category: EQPresetCategory): EQPreset[] => 
   return Object.values(EQ_PRESETS).filter(p => p.category === category);
 };
 
+export const FADE_DURATION_MIN = 0;
+export const FADE_DURATION_MAX = 10;
+export const FADE_DURATION_STEP = 0.1;
+export const FADE_DURATION_DEFAULT = 1;
+
 export const AudioSettingsSchema = z.object({
   equalizerEnabled: z.boolean().default(false),
   equalizerPreset: z.string().default("Flat"),
   equalizerBands: EqualizerBandsSchema,
+  fadeEnabled: z.boolean().default(false),
+  fadeInDuration: z.number().min(FADE_DURATION_MIN).max(FADE_DURATION_MAX).default(FADE_DURATION_DEFAULT),
+  fadeOutDuration: z.number().min(FADE_DURATION_MIN).max(FADE_DURATION_MAX).default(FADE_DURATION_DEFAULT),
 });
 
 export type AudioSettings = z.infer<typeof AudioSettingsSchema>;

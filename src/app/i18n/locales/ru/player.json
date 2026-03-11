@@ -27,5 +27,6 @@
   "airplay": "AirPlay",
   "pip": "Картинка в картинке",
   "cover": "Обложка",
-  "equalizer": "Эквалайзер"
+  "equalizer": "Эквалайзер",
+  "emptyDescription": "Пока что..."
 }

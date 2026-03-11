@@ -9,19 +9,15 @@
         width: `${containerWidth}px`,
       }"
     >
-      <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-card border border-border shadow-xl opacity-90">
+      <div class="flex items-center gap-3 px-3 py-2 rounded-sm bg-accent opacity-90">
         <IconGripVertical class="size-4 text-muted-foreground shrink-0" />
 
         <div class="size-10 shrink-0 rounded-md overflow-hidden bg-muted flex items-center justify-center">
           <NuxtImage
-            v-if="draggedItem.track.cover"
             :src="draggedItem.track.cover"
             alt=""
+            fallback-src="/img/fallback.svg"
             class="size-full object-cover"
-          />
-          <IconMusic
-            v-else
-            class="size-4 text-muted-foreground"
           />
         </div>
 
@@ -42,7 +38,6 @@
 import type { QueueItem } from "../types";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import IconGripVertical from "~icons/tabler/grip-vertical";
-import IconMusic from "~icons/tabler/music";
 
 defineProps<{
   isDragging: boolean;

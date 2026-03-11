@@ -37,7 +37,6 @@ export function useAlbumPage() {
       const tracksRes = await trackRepository.findByAlbumId(albumId.value);
       if (tracksRes.isErr()) throw tracksRes.error;
 
-      // Получаем URL обложки альбома
       let coverUrl: string | undefined;
       if (album.coverPath) {
         const coverUrlResult = await storageService.getAudioUrl(album.coverPath);
@@ -58,7 +57,6 @@ export function useAlbumPage() {
             artistId: entity.artistId,
             albumId: entity.albumId,
             albumName: album.title,
-            // Обложка трека пока не фетчится, оставляем undefined
             cover: undefined,
             url: urlResult.value,
             duration: entity.duration,
@@ -107,7 +105,7 @@ export function useAlbumPage() {
       await albumRepository.delete(currentAlbum.id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["albums"] });
+      queryClient.invalidateQueries({ queryKey: ["library"] });
       router.push("/library");
     },
   });
@@ -157,7 +155,7 @@ export function useAlbumPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["album-page", albumId] });
-      queryClient.invalidateQueries({ queryKey: ["albums"] });
+      queryClient.invalidateQueries({ queryKey: ["library"] });
     },
   });
 

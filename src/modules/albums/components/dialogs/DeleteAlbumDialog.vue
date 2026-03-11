@@ -3,26 +3,33 @@
     :open="open"
     @update:open="$emit('update:open', $event)"
   >
-    <DialogContent class="sm:max-w-md">
+    <DialogContent class="sm:max-w-sm">
       <DialogHeader>
-        <DialogTitle>{{ $t("dialogs.deleteAlbum.title") }}</DialogTitle>
+        <DialogTitle>{{ $t("dialogs.editAlbum.delete.title") }}</DialogTitle>
       </DialogHeader>
 
-      <div class="flex items-center gap-4 ">
-        <div class="size-16 rounded-lg bg-muted overflow-hidden  shrink-0">
+      <div class="flex items-start gap-4 overflow-hidden">
+        <div class="size-16 rounded-lg bg-muted overflow-hidden shrink-0">
           <img
-            v-if="album?.coverPath"
-            :src="album.coverPath"
-            :alt="album.title"
+            v-if="coverUrl"
+            :src="coverUrl"
+            :alt="album?.title"
             class="size-full object-cover"
           >
+          <div
+            v-else
+            class="size-full flex items-center justify-center"
+          >
+            <IconMusic class="size-6 text-muted-foreground" />
+          </div>
         </div>
-        <div class="flex-1 min-w-0">
-          <p class="font-medium truncate">
+
+        <div class="flex-1 min-w-0 overflow-hidden">
+          <p class="font-medium truncate w-full">
             {{ album?.title }}
           </p>
           <p class="text-sm text-muted-foreground">
-            {{ trackCount }} {{ $t("common.tracks", trackCount) }}
+            {{ $t("common.trackCount", trackCount) }}
           </p>
         </div>
       </div>
@@ -40,19 +47,14 @@
           :disabled="isDeleting"
           @click="handleDelete"
         >
-          <IconLoader2
-            v-if="isDeleting"
-            class="size-4 animate-spin"
-          />
           {{ $t("common.delete") }}
         </Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>
-
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import {
   Dialog,
   DialogContent,
@@ -62,9 +64,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { AlbumEntity } from "@/db/entities";
-import IconLoader2 from "~icons/tabler/loader-2";
+import { storageService } from "@/db/storage";
+import IconMusic from "~icons/tabler/music";
 
-defineProps<{
+const props = defineProps<{
   open: boolean;
   album: AlbumEntity | null;
   trackCount: number;
@@ -76,8 +79,35 @@ const emit = defineEmits<{
 }>();
 
 const isDeleting = ref(false);
+const coverUrl = ref<string | null>(null);
 
-async function handleDelete() {
+watch(
+  () => [props.open, props.album] as const,
+  async ([isOpen, album]) => {
+    if (isOpen && album?.coverPath) {
+      const urlResult = await storageService.getAudioUrl(album.coverPath);
+      if (urlResult.isOk()) {
+        coverUrl.value = urlResult.value;
+      }
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (!isOpen) {
+      if (coverUrl.value?.startsWith("blob:")) {
+        URL.revokeObjectURL(coverUrl.value);
+      }
+      coverUrl.value = null;
+      isDeleting.value = false;
+    }
+  },
+);
+
+function handleDelete() {
   isDeleting.value = true;
   emit("confirm");
 }

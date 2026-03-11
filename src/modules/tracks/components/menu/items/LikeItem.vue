@@ -3,8 +3,7 @@
     :is="Item"
     @click="emit('toggle')"
   >
-    <Like
-      :is-liked="isLiked"
+    <IconLike
       class=" size-5.5 "
     />
     {{
@@ -15,7 +14,7 @@
   </component>
 </template>
 <script setup lang="ts">
-import Like from "@/modules/player/components/actions/Like.vue";
+import IconLike from "~icons/tabler/heart";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
 
 defineProps<{

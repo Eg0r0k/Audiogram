@@ -46,11 +46,7 @@
         size="icon-sm"
         variant="ghost"
       >
-        <Like
-          ref="likeRef"
-          class="text-xl"
-          :is-liked="false"
-        />
+        <IconLike class="size-5" />
       </Button>
     </div>
 
@@ -85,7 +81,7 @@ import { Button } from "@/components/ui/button";
 import PlayButton from "../player/PlayButton.vue";
 import VolumeButton from "../player/actions/VolumeButton.vue";
 import MarqueeBlock from "../ui/marquee/MarqueeBlock.vue";
-import Like from "../player/actions/Like.vue";
+import IconLike from "~icons/tabler/heart";
 import IconArrowsShuffle2 from "~icons/tabler/arrows-shuffle-2";
 import IconPlayerTrackPrevFilled from "~icons/tabler/player-track-prev-filled";
 import IconPlayerTrackNextFilled from "~icons/tabler/player-track-next-filled";

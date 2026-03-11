@@ -125,10 +125,8 @@ const onScrubStart = () => {
   if (!playerStore.canSeek) return;
 
   isScrubbing.value = true;
-  scrubValue.value = localProgress.value;
   stopRAF();
 };
-
 const onScrub = (value: number) => {
   if (!playerStore.canSeek) return;
   scrubValue.value = value;

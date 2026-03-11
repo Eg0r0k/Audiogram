@@ -1,14 +1,16 @@
 <template>
-  <div class="min-w-[180px] w-[30%] pl-1">
-    <div class="flex justify-start items-center relative select-none">
+  <div class="min-w-[180px] w-[30%] h-14 pl-1">
+    <div
+      v-if="currentTrack"
+      class="flex justify-start items-center relative select-none "
+    >
       <div class="relative shrink-0 group size-14 rounded overflow-hidden">
         <NuxtImage
-          placeholder
-          class="w-full h-full object-cover object-center absolute left-0 top-0"
+          class="w-full  h-full object-cover object-center absolute left-0 top-0"
           draggable="false"
-          :src="currentTrack.cover"
-          loading="eager"
-          alt=""
+          :src="currentTrack?.cover"
+          fallback-src="/img/fallback.svg"
+          :alt="currentTrack?.title ?? ''"
         />
 
         <FullscreenTrigger class="absolute rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -22,7 +24,7 @@
           gradient-color="var(--card)"
           gradient-length="20px"
         >
-          <span class="text-sm font-medium">{{ currentTrack.title }}</span>
+          <span class="text-sm font-medium">{{ currentTrack?.title }}</span>
         </MarqueeBlock>
         <MarqueeBlock
           :duration="6"
@@ -32,8 +34,8 @@
           gradient-color="var(--card)"
           gradient-length="20px"
         >
-          <span class="text-muted-foreground text-xs  capitalize">
-            {{ currentTrack.artist }}
+          <span class="text-muted-foreground text-xs">
+            {{ currentTrack?.artist }}
           </span>
         </MarqueeBlock>
       </div>
@@ -50,55 +52,30 @@
         class="rounded-full"
         @click.stop="toggle"
       >
-        <Like
-          ref="likeRef"
-          class="text-xl"
-          :is-liked="liked"
-        />
+        <IconLike class="size-5" />
       </Button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, useTemplateRef } from "vue";
+import { computed, ref } from "vue";
 import { Button } from "@/components/ui/button";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
-import Like from "./actions/Like.vue";
 
 import IconDots from "~icons/tabler/dots";
+import IconLike from "~icons/tabler/heart";
 
 import FullscreenTrigger from "@/components/layout/fullscreen/FullscreenTrigger.vue";
+import { usePlayerStore } from "@/modules/player/store/player.store";
+const playerStore = usePlayerStore();
 
-const likeRef = useTemplateRef("likeRef");
+const currentTrack = computed(() => playerStore.currentTrack);
+
 const liked = ref(false);
 const toggle = () => {
-  if (!liked.value) {
-    likeRef.value?.playAnimation();
-  }
   liked.value = !liked.value;
 };
-
-const tracks = [
-  {
-    title: "Название трека",
-    artist: "ЛСП",
-    cover: "https://i.scdn.co/image/ab67616d000048514feb42ff53928276cf9d9f5a",
-  },
-  {
-    title: "Короткий",
-    artist: "Oxxxymiron",
-    cover: "https://i.scdn.co/image/ab67616d00004851a1c37f3fd969287c03482c3b",
-  },
-  {
-    title: "Ещё один трек с супер длинным названием для теста marquee",
-    artist: "Скриптонит",
-    cover: "https://i.scdn.co/image/ab67616d00004851e419ccba0baa8bd3f3d7abf4",
-  },
-];
-
-const currentIndex = ref(0);
-const currentTrack = computed(() => tracks[currentIndex.value]);
 
 </script>

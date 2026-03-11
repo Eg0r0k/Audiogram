@@ -1,3 +1,4 @@
+<!-- eslint-disable vuejs-accessibility/form-control-has-label -->
 <template>
   <Scrollable
     direction="vertical"
@@ -9,10 +10,7 @@
       <SettingsGroup>
         <Item @click="setEqEnabled(!isEqEnabled)">
           <ItemContent>
-            <ItemTitle>{{ $t('settings.audio.equalizer') }}</ItemTitle>
-            <ItemDescription>
-              {{ $t('settings.audio.equalizerDesc') }}
-            </ItemDescription>
+            <ItemTitle>{{ $t('player.equalizer') }}</ItemTitle>
           </ItemContent>
           <ItemActions>
             <Switch
@@ -22,47 +20,65 @@
             />
           </ItemActions>
         </Item>
-        <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -->
-        <Select
 
-          :model-value="currentPreset"
-          @update:model-value="(val) => applyPreset(val as string)"
+        <div
+          class="px-4 pb-4 pt-2 transition-all duration-300 max-w-3xl mx-auto"
+          :class="{ 'opacity-40 pointer-events-none grayscale': !isEqEnabled }"
         >
-          <SelectTrigger class="w-fit bg-background! text-xs font-medium">
-            <SelectValue placeholder="Preset" />
-          </SelectTrigger>
-          <SelectContent class="max-h-[300px]">
-            <SelectGroup
-              v-for="(label, category) in presetCategories"
-              :key="category"
-            >
-              <SelectLabel>{{ label }}</SelectLabel>
-              <SelectItem
-                v-for="preset in getPresetsByCategory(category)"
-                :key="preset.name"
-                :value="preset.name"
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+              <span class="  font-medium ">
+                Preset
+              </span>
+              <Select
+                :model-value="currentPreset"
+                @update:model-value="(val) => applyPreset(val as string)"
               >
-                {{ preset.name }}
-              </SelectItem>
-            </SelectGroup>
-            <SelectSeparator />
-            <SelectItem value="custom">
-              Custom
-            </SelectItem>
-          </SelectContent>
-        </Select>
-        <div class="px-4 pt-4 pb-2">
-          <div class="flex gap-3 h-32 select-none">
-            <div class="flex flex-col justify-between text-[10px] font-mono text-muted-foreground/60 w-6 text-right">
+                <SelectTrigger class="w-[180px] h-8 font-medium">
+                  <SelectValue placeholder="Select preset..." />
+                </SelectTrigger>
+                <SelectContent class="max-h-[300px]">
+                  <SelectGroup
+                    v-for="(label, category) in presetCategories"
+                    :key="category"
+                  >
+                    <SelectLabel>{{ label }}</SelectLabel>
+                    <SelectItem
+                      v-for="preset in getPresetsByCategory(category)"
+                      :key="preset.name"
+                      class="font-medium"
+                      :value="preset.name"
+                    >
+                      {{ preset.name }}
+                    </SelectItem>
+                  </SelectGroup>
+                  <SelectSeparator />
+                  <SelectItem value="custom">
+                    Custom
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              size="sm"
+              variant="ghost-primary"
+              @click="resetEqualizer"
+            >
+              <TrashIcon class="size-4.5" />
+
+              Reset
+            </Button>
+          </div>
+
+          <div class="flex gap-4 h-48 select-none">
+            <div class="flex flex-col justify-between py-2  font-medium text-muted-foreground/60 text-right w-6">
               <span>+15</span>
               <span>0</span>
               <span>-15</span>
             </div>
 
-            <div
-              class="grid grid-cols-10 gap-2 flex-1 transition-opacity duration-300"
-              :class="{ 'opacity-40 pointer-events-none grayscale': !isEqEnabled }"
-            >
+            <div class="grid grid-cols-10 gap-1.5 flex-1">
               <div
                 v-for="(band, index) in bands"
                 :key="band.frequency"
@@ -74,9 +90,9 @@
                   :max="15"
                   :step="1"
                   suffix=" dB"
-                  class="absolute -top-4 z-10 [&:focus-within>span]:opacity-100!"
-                  display-class="text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
-                  input-class="text-[10px] w-[20px]"
+                  class="absolute -top-6 z-10 [&:focus-within>span]:opacity-100!"
+                  display-class="text-[11px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-background/80 px-1 rounded backdrop-blur-sm"
+                  input-class="text-[11px] w-[24px] text-center"
                   @update:model-value="(val: number) => setBandGain(index, val)"
                 />
 
@@ -85,10 +101,11 @@
                   :min="-15"
                   :max="15"
                   :step="1"
+                  class="flex-1"
                   @update:model-value="(val: number) => setBandGain(index, val)"
                 />
 
-                <span class="text-[9px] font-medium text-muted-foreground uppercase tracking-wider mt-1">
+                <span class="text-[10px] font-semibold text-muted-foreground mt-3">
                   {{ formatFreq(band.frequency) }}
                 </span>
               </div>
@@ -98,15 +115,55 @@
       </SettingsGroup>
 
       <SettingsGroup class="mt-2">
-        <Button
-          class="w-full justify-start"
-          size="xl"
-          variant="ghost-primary"
-          @click="resetEqualizer"
+        <Item @click="setFadeEnabled(!isFadeEnabled)">
+          <ItemContent>
+            <ItemTitle>{{ $t('settings.audio.fade') }}</ItemTitle>
+          </ItemContent>
+          <ItemActions>
+            <Switch
+              :model-value="isFadeEnabled"
+              @click.stop
+              @update:model-value="setFadeEnabled"
+            />
+          </ItemActions>
+        </Item>
+
+        <div
+          class="px-4 py-4 space-y-5 transition-opacity duration-300"
+          :class="{ 'opacity-40 pointer-events-none': !isFadeEnabled }"
         >
-          <TrashIcon class=" size-6" />
-          Reset EQ
-        </Button>
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-foreground  font-medium">Fade In</span>
+              <span class=" font-medium text-muted-foreground">
+                {{ fadeInDuration.toFixed(1) }}s
+              </span>
+            </div>
+            <Slider
+              :model-value="[fadeInDuration]"
+              :min="0"
+              :max="10"
+              :step="0.1"
+              @update:model-value="(val) => setFadeInDuration(val[0])"
+            />
+          </div>
+
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-foreground  font-medium">Fade Out</span>
+              <span class=" font-medium text-muted-foreground">
+                {{ fadeOutDuration.toFixed(1) }}s
+              </span>
+            </div>
+            <Slider
+              :model-value="[fadeOutDuration]"
+              :min="0"
+              :max="10"
+              :step="0.1"
+              @update:model-value="(val) => setFadeOutDuration(val[0])"
+            />
+          </div>
+        </div>
       </SettingsGroup>
     </div>
   </Scrollable>
@@ -117,7 +174,6 @@ import {
   Item,
   ItemActions,
   ItemContent,
-  ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
 import {
@@ -131,6 +187,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { Scrollable } from "@/components/ui/scrollable";
 import { EditableValue } from "@/components/ui/editable";
 
@@ -142,6 +199,7 @@ import { Button } from "@/components/ui/button";
 import { useAudioSettings } from "@/modules/settings/composables/useAudioSettings";
 
 import TrashIcon from "~icons/tabler/trash";
+import { formatFreq } from "@/lib/format";
 
 const {
   isEqEnabled,
@@ -153,9 +211,12 @@ const {
   applyPreset,
   resetEqualizer,
   setEqEnabled,
+  isFadeEnabled,
+  fadeInDuration,
+  fadeOutDuration,
+  setFadeEnabled,
+  setFadeInDuration,
+  setFadeOutDuration,
 } = useAudioSettings();
 
-function formatFreq(hz: number): string {
-  return hz >= 1000 ? `${hz / 1000}k` : String(hz);
-}
 </script>
