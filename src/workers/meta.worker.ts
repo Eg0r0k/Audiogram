@@ -3,7 +3,7 @@ import type { BaseMetadata, ParseRequest, ParseResponse } from "./types";
 
 const OPTIONS: IOptions = {
   duration: true,
-  skipCovers: true,
+  skipCovers: false,
   skipPostHeaders: true,
   includeChapters: false,
   mkvUseIndex: true,

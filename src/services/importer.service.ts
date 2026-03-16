@@ -1,18 +1,25 @@
 import pLimit from "p-limit";
 import { ResultAsync } from "neverthrow";
 import { open } from "@tauri-apps/plugin-dialog";
+import { stat } from "@tauri-apps/plugin-fs";
 
-import MetaWorker from "../workers/meta.worker?worker";
+import MetaWorker from "@/workers/meta.worker?worker";
 import { db } from "@/db/index";
 import type { BaseMetadata, ParseResponse } from "@/workers/types";
 import { normalizeMetadata, type NormalizedMeta } from "@/lib/metadata";
 import { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { storageService } from "@/db/storage";
-import { hasNativeSupport } from "@/db/storage/IFileStorage";
+import {
+  hasNativeSupport,
+  type IFileStorageWithNativeSupport,
+} from "@/db/storage/IFileStorage";
 import { TrackSource, TrackState } from "@/db/entities";
-import { StorageError } from "@/db/errors/storage.errors";
+import type { StorageError } from "@/db/errors/storage.errors";
 import { isValidImportItem } from "@/lib/environment/mimeSupport";
 import { TimeProfiler } from "@/lib/profiler";
+import { ScannedFile, SyncResult, WatchedFolder } from "@/modules/watched-folders/types";
+import { scanFolder } from "@/modules/watched-folders/services/folder-scanner";
+import { computeFileFingerprint, computeFileFingerprintFromBlob } from "@/modules/watched-folders/services/file-fingerprint";
 
 // ═══════════════════════════════════════════════════════
 // CONSTANTS
@@ -94,25 +101,29 @@ export interface ImportSuccess {
 export interface ImportBatchResult {
   successful: ImportSuccess[];
   failed: Array<{ fileName: string; error: ImportError }>;
+  skipped: number;
   total: number;
   timings?: Record<string, number>;
 }
 
 interface ImportItem {
   type: "native" | "web";
-  id: string;
   name: string;
   ext: string;
   file?: File;
   path?: string;
+  fileSize: number;
+  fingerprint?: string;
 }
 
-interface ProcessedItem {
+interface TrackToSave {
   trackId: TrackId;
   fileName: string;
   storagePath: string;
+  fingerprint: string;
+  source: TrackSource;
   meta: NormalizedMeta;
-  item: ImportItem;
+  coverPath?: string;
 }
 
 interface PendingWorkerRequest {
@@ -127,18 +138,14 @@ interface SessionCache {
 }
 
 // ═══════════════════════════════════════════════════════
-// LIBRARY IMPORTER
+// MUSIC LIBRARY ENGINE
 // ═══════════════════════════════════════════════════════
 
-export class LibraryImporter {
+export class MusicLibraryEngine {
   private workerPool: Worker[] = [];
   private workerIndex = 0;
-
-  // Strict typing for pending requests
   private pendingRequests = new Map<string, PendingWorkerRequest>();
-
   private limit = pLimit(PROCESS_CONCURRENCY);
-
   private sessionCache: SessionCache = {
     artists: new Map(),
     albums: new Map(),
@@ -150,6 +157,10 @@ export class LibraryImporter {
     this.initWorkerPool();
   }
 
+  // ═══════════════════════════════════════════════════════
+  // PUBLIC — LIBRARY IMPORT (copies into internal storage)
+  // ═══════════════════════════════════════════════════════
+
   get isNativeImportAvailable(): boolean {
     return hasNativeSupport(storageService);
   }
@@ -158,14 +169,14 @@ export class LibraryImporter {
     const result = await open({
       multiple: true,
       title: "Выберите аудио файлы",
-      filters: [
-        {
-          name: "Audio",
-          extensions: ["mp3", "flac", "wav", "ogg", "m4a", "aac", "opus", "wma", "alac"],
-        },
-      ],
+      filters: [{
+        name: "Audio",
+        extensions: [
+          "mp3", "flac", "wav", "ogg",
+          "m4a", "aac", "opus", "wma", "alac",
+        ],
+      }],
     });
-
     if (!result) return null;
     return Array.isArray(result) ? result : [result];
   }
@@ -175,25 +186,33 @@ export class LibraryImporter {
     onProgress?: (current: number, total: number) => void,
   ): Promise<ImportBatchResult> {
     if (!hasNativeSupport(storageService)) {
-      return this.createFailResult(paths, "Native support missing");
+      return this.createEmptyFailResult(paths, "Native support missing");
     }
 
     this.profiler.start("0_warmup");
     await storageService.warmup(["tracks", "covers"]);
     this.profiler.end("0_warmup");
 
-    const items: ImportItem[] = paths.map((path) => {
-      const name = path.split(/[\\/]/).pop() ?? "unknown";
-      return {
-        type: "native",
-        id: crypto.randomUUID(),
-        name,
-        ext: name.split(".").pop()?.toLowerCase() ?? "",
-        path,
-      };
-    });
+    const items: ImportItem[] = await Promise.all(
+      paths.map(async (path) => {
+        const name = path.split(/[\\/]/).pop() ?? "unknown";
+        let fileSize = 0;
+        try {
+          const s = await stat(path);
+          fileSize = s.size;
+        }
+        catch { /* fallback */ }
+        return {
+          type: "native" as const,
+          name,
+          ext: name.split(".").pop()?.toLowerCase() ?? "",
+          path,
+          fileSize,
+        };
+      }),
+    );
 
-    return this.runPipeline(items, onProgress, "Native Import");
+    return this.runImportPipeline(items, onProgress, "Native Import");
   }
 
   async importFiles(
@@ -201,29 +220,204 @@ export class LibraryImporter {
     onProgress?: (current: number, total: number) => void,
   ): Promise<ImportBatchResult> {
     const items: ImportItem[] = files.map(file => ({
-      type: "web",
-      id: crypto.randomUUID(),
+      type: "web" as const,
       name: file.name,
       ext: file.name.split(".").pop()?.toLowerCase() ?? "",
       file,
+      fileSize: file.size,
     }));
 
-    return this.runPipeline(items, onProgress, "Web Import");
+    return this.runImportPipeline(items, onProgress, "Web Import");
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // PUBLIC — WATCHED FOLDERS (external refs, no copy)
+  // ═══════════════════════════════════════════════════════
+
+  async syncFolder(
+    folder: WatchedFolder,
+    onProgress?: (current: number, total: number) => void,
+    excludedPaths?: string[],
+  ): Promise<SyncResult> {
+    const result: SyncResult = {
+      folderId: folder.id,
+      added: 0,
+      removed: 0,
+      failed: 0,
+      errors: [],
+    };
+
+    if (!hasNativeSupport(storageService)) return result;
+    const nativeStorage = storageService as IFileStorageWithNativeSupport;
+
+    // ── 1. Scan filesystem ──────────────────────────────
+    const excludeSet = new Set(excludedPaths ?? []);
+    const scanned = await scanFolder(folder.path, undefined, excludeSet);
+    const scannedPaths = new Set(scanned.map(f => f.absolutePath));
+
+    // ── 2. Load existing tracks for this folder ─────────
+    let existingTracks = await db.tracks
+      .where("storagePath")
+      .startsWith(folder.path + "/")
+      .toArray();
+
+    if (excludedPaths && excludedPaths.length > 0) {
+      existingTracks = existingTracks.filter(
+        t => !excludedPaths.some(ep => t.storagePath.startsWith(ep + "/")),
+      );
+    }
+
+    const existingPaths = new Set(existingTracks.map(t => t.storagePath));
+    const newFiles = scanned.filter(f => !existingPaths.has(f.absolutePath));
+    const removedTracks = existingTracks.filter(
+      t => !scannedPaths.has(t.storagePath),
+    );
+
+    const totalWork = newFiles.length + removedTracks.length;
+    let processed = 0;
+    onProgress?.(0, totalWork);
+
+    // ── 3. Fingerprint dedup ────────────────────────────
+    const knownFingerprints = await this.loadKnownFingerprints();
+    const filesToImport: Array<{ file: ScannedFile; fingerprint: string }> = [];
+
+    for (const file of newFiles) {
+      try {
+        const fp = await computeFileFingerprint(file.absolutePath, file.size);
+        if (knownFingerprints.has(fp)) {
+          processed++;
+          onProgress?.(processed, totalWork);
+          continue;
+        }
+        knownFingerprints.add(fp);
+        filesToImport.push({ file, fingerprint: fp });
+      }
+      catch {
+        result.failed++;
+        processed++;
+        onProgress?.(processed, totalWork);
+      }
+    }
+
+    // ── 4. Parse metadata ───────────────────────────────
+    const allParsed: TrackToSave[] = [];
+
+    const parseResults = await Promise.all(
+      filesToImport.map(({ file, fingerprint }) =>
+        this.limit(() =>
+          this.parseExternalFile(file, fingerprint, nativeStorage),
+        ),
+      ),
+    );
+
+    for (const r of parseResults) {
+      if (r !== null) allParsed.push(r);
+      else result.failed++;
+    }
+
+    const failedParseCount = filesToImport.length - allParsed.length;
+    processed += failedParseCount;
+    onProgress?.(processed, totalWork);
+
+    // ── 5. Resolve entities & save ──────────────────────
+    if (allParsed.length > 0) {
+      this.clearSessionCache();
+      await this.batchPreResolveEntities(allParsed.map(p => p.meta));
+
+      for (let i = 0; i < allParsed.length; i += DB_BATCH_SIZE) {
+        const batch = allParsed.slice(i, i + DB_BATCH_SIZE);
+
+        const withCovers = await Promise.all(
+          batch.map(async item => ({
+            ...item,
+            coverPath: await this.saveCoverIfNeeded(item.meta),
+          })),
+        );
+
+        try {
+          const saved = await this.saveBatchToDatabase(withCovers);
+          result.added += saved.length;
+        }
+        catch (e) {
+          result.failed += batch.length;
+          result.errors.push({
+            path: folder.path,
+            message: `DB batch failed: ${String(e)}`,
+          });
+        }
+
+        processed += batch.length;
+        onProgress?.(processed, totalWork);
+      }
+    }
+
+    // ── 6. Remove deleted tracks ────────────────────────
+    if (removedTracks.length > 0) {
+      await db.tracks.bulkDelete(removedTracks.map(t => t.id));
+      result.removed = removedTracks.length;
+      processed += removedTracks.length;
+      onProgress?.(processed, totalWork);
+    }
+
+    return result;
+  }
+
+  async importSingleExternalFile(file: ScannedFile): Promise<boolean> {
+    if (!hasNativeSupport(storageService)) return false;
+    const nativeStorage = storageService as IFileStorageWithNativeSupport;
+
+    const existsByPath = await db.tracks
+      .where("storagePath")
+      .equals(file.absolutePath)
+      .count();
+    if (existsByPath > 0) return false;
+
+    const fp = await computeFileFingerprint(file.absolutePath, file.size);
+    const existsByFp = await db.tracks
+      .where("fingerprint")
+      .equals(fp)
+      .count();
+    if (existsByFp > 0) return false;
+
+    const trackToSave = await this.parseExternalFile(file, fp, nativeStorage);
+    if (!trackToSave) return false;
+
+    try {
+      this.clearSessionCache();
+      await this.batchPreResolveEntities([trackToSave.meta]);
+      const withCover = {
+        ...trackToSave,
+        coverPath: await this.saveCoverIfNeeded(trackToSave.meta),
+      };
+      await this.saveBatchToDatabase([withCover]);
+      return true;
+    }
+    catch {
+      return false;
+    }
+  }
+
+  async removeSingleFile(absolutePath: string): Promise<boolean> {
+    const track = await db.tracks
+      .where("storagePath")
+      .equals(absolutePath)
+      .first();
+    if (!track) return false;
+    await db.tracks.delete(track.id);
+    return true;
   }
 
   dispose(): void {
-    for (const worker of this.workerPool) {
-      worker.terminate();
-    }
+    for (const worker of this.workerPool) worker.terminate();
     this.workerPool = [];
     this.pendingRequests.clear();
   }
 
   // ═══════════════════════════════════════════════════════
-  // PIPELINE
+  // IMPORT PIPELINE (internal storage — copies files)
   // ═══════════════════════════════════════════════════════
 
-  private async runPipeline(
+  private async runImportPipeline(
     items: ImportItem[],
     onProgress: ((c: number, t: number) => void) | undefined,
     label: string,
@@ -233,12 +427,13 @@ export class LibraryImporter {
 
     const total = items.length;
     let processed = 0;
+    let skipped = 0;
     const successful: ImportSuccess[] = [];
     const failed: Array<{ fileName: string; error: ImportError }> = [];
 
     onProgress?.(0, total);
 
-    // 1. VALIDATION
+    // ── 1. Validation ───────────────────────────────────
     this.profiler.start("1_validation");
     const validItems: ImportItem[] = [];
 
@@ -258,22 +453,50 @@ export class LibraryImporter {
 
     if (validItems.length === 0) {
       this.profiler.printReport(`${label} (No valid items)`);
-      return { successful, failed, total, timings: this.profiler.getTimings() };
+      return { successful, failed, skipped, total, timings: this.profiler.getTimings() };
     }
 
-    // 2. PROCESSING
-    this.profiler.start("2_processFiles");
+    // ── 2. Fingerprint dedup ────────────────────────────
+    this.profiler.start("2_fingerprint");
+    const knownFingerprints = await this.loadKnownFingerprints();
+    const dedupedItems: ImportItem[] = [];
 
+    for (const item of validItems) {
+      const fp = await this.computeItemFingerprint(item);
+
+      if (fp && knownFingerprints.has(fp)) {
+        skipped++;
+        processed++;
+        onProgress?.(processed, total);
+        continue;
+      }
+
+      if (fp) {
+        knownFingerprints.add(fp);
+        item.fingerprint = fp;
+      }
+      dedupedItems.push(item);
+    }
+    this.profiler.end("2_fingerprint");
+
+    if (dedupedItems.length === 0) {
+      this.profiler.printReport(`${label} (All duplicates)`);
+      return { successful, failed, skipped, total, timings: this.profiler.getTimings() };
+    }
+
+    // ── 3. Process (copy + parse in parallel) ───────────
+    this.profiler.start("3_processFiles");
     const processResults = await Promise.all(
-      validItems.map(item => this.limit(() => this.processItem(item))),
+      dedupedItems.map(item =>
+        this.limit(() => this.processInternalItem(item)),
+      ),
     );
+    this.profiler.end("3_processFiles");
 
-    this.profiler.end("2_processFiles");
+    const readyToSave: TrackToSave[] = [];
 
-    const readyToSave: ProcessedItem[] = [];
-
-    for (const result of processResults) {
-      result.match(
+    for (const r of processResults) {
+      r.match(
         data => readyToSave.push(data),
         (error) => {
           failed.push({ fileName: error.fileName || "unknown", error });
@@ -285,30 +508,30 @@ export class LibraryImporter {
 
     if (readyToSave.length === 0) {
       this.profiler.printReport(`${label} (All failed)`);
-      return { successful, failed, total, timings: this.profiler.getTimings() };
+      return { successful, failed, skipped, total, timings: this.profiler.getTimings() };
     }
 
-    // 3. RESOLVE ENTITIES
-    this.profiler.start("3_entityResolution");
+    // ── 4. Resolve entities ─────────────────────────────
+    this.profiler.start("4_entityResolution");
     await this.batchPreResolveEntities(readyToSave.map(i => i.meta));
-    this.profiler.end("3_entityResolution");
+    this.profiler.end("4_entityResolution");
 
-    // 4. SAVE TO DB
+    // ── 5. Save in DB batches ───────────────────────────
     for (let i = 0; i < readyToSave.length; i += DB_BATCH_SIZE) {
       const batch = readyToSave.slice(i, i + DB_BATCH_SIZE);
 
-      this.profiler.start("4_coverSaving");
-      const itemsWithCovers = await Promise.all(
-        batch.map(async (pItem) => {
-          const coverPath = await this.saveCoverIfNeeded(pItem.meta);
-          return { ...pItem, coverPath };
-        }),
+      this.profiler.start("5_coverSaving");
+      const withCovers = await Promise.all(
+        batch.map(async item => ({
+          ...item,
+          coverPath: await this.saveCoverIfNeeded(item.meta),
+        })),
       );
-      this.profiler.end("4_coverSaving");
+      this.profiler.end("5_coverSaving");
 
-      this.profiler.start("5_database");
-      const dbResult = await this.batchSaveToDatabase(itemsWithCovers);
-      this.profiler.end("5_database");
+      this.profiler.start("6_database");
+      const dbResult = await this.saveBatchToDatabaseSafe(withCovers);
+      this.profiler.end("6_database");
 
       dbResult.match(
         (results) => {
@@ -331,6 +554,7 @@ export class LibraryImporter {
     return {
       successful,
       failed,
+      skipped,
       total,
       timings: this.profiler.getTimings(),
     };
@@ -340,35 +564,79 @@ export class LibraryImporter {
   // ITEM PROCESSING
   // ═══════════════════════════════════════════════════════
 
-  private processItem(item: ImportItem): ResultAsync<ProcessedItem, ImportError> {
+  /** Internal import: copy file to storage + parse metadata */
+  private processInternalItem(
+    item: ImportItem,
+  ): ResultAsync<TrackToSave, ImportError> {
     const trackId = TrackId(crypto.randomUUID());
     const storagePath = `tracks/${trackId}.${item.ext}`;
 
-    const copyPromise = this.performCopy(item, storagePath);
-    const parsePromise = this.performParse(item);
-
     return ResultAsync.fromPromise(
-      Promise.all([copyPromise, parsePromise]),
+      Promise.all([
+        this.performCopy(item, storagePath),
+        this.performParse(item),
+      ]),
       (e: unknown) => {
         if (e instanceof ImportError) return e;
-        // Оборачиваем неизвестную ошибку
         return ImportError.parseFailed(item.name, e);
       },
     ).map(([_, rawMeta]) => {
-      const fileMock = item.file || ({ name: item.name, webkitRelativePath: "" } as File);
+      const fileMock = item.file
+        || ({ name: item.name, webkitRelativePath: "" } as File);
       const meta = normalizeMetadata(fileMock, rawMeta);
 
       return {
         trackId,
         fileName: item.name,
         storagePath,
+        fingerprint: item.fingerprint ?? "",
+        source: TrackSource.LOCAL_INTERNAL,
         meta,
-        item,
       };
     });
   }
 
-  private async performCopy(item: ImportItem, targetPath: string): Promise<string> {
+  private async parseExternalFile(
+    file: ScannedFile,
+    fingerprint: string,
+    nativeStorage: IFileStorageWithNativeSupport,
+  ): Promise<TrackToSave | null> {
+    try {
+      const readResult = await nativeStorage.readBytes(
+        file.absolutePath,
+        HEAD_READ_SIZE,
+      );
+      if (readResult.isErr()) return null;
+
+      const rawMeta = await this.parseMeta(file.name, readResult.value);
+      const fileMock = {
+        name: file.name,
+        webkitRelativePath: "",
+      } as File;
+      const meta = normalizeMetadata(fileMock, rawMeta);
+
+      return {
+        trackId: TrackId(crypto.randomUUID()),
+        fileName: file.name,
+        storagePath: file.absolutePath,
+        fingerprint,
+        source: TrackSource.LOCAL_EXTERNAL,
+        meta,
+      };
+    }
+    catch {
+      return null;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // FILE OPERATIONS (internal import only)
+  // ═══════════════════════════════════════════════════════
+
+  private async performCopy(
+    item: ImportItem,
+    targetPath: string,
+  ): Promise<string> {
     let result: ResultAsync<string, StorageError>;
 
     if (item.type === "native" && hasNativeSupport(storageService) && item.path) {
@@ -382,9 +650,7 @@ export class LibraryImporter {
     }
 
     const res = await result;
-    if (res.isErr()) {
-      throw ImportError.storageFailed(item.name, res.error);
-    }
+    if (res.isErr()) throw ImportError.storageFailed(item.name, res.error);
     return res.value;
   }
 
@@ -409,29 +675,12 @@ export class LibraryImporter {
       throw ImportError.nativeImportUnavailable(item.name);
     }
 
-    const parseRes = await this.parseMetaInWorker(item.name, data);
-
-    if (parseRes.isErr()) {
-      throw parseRes.error;
-    }
-
-    return parseRes.value;
+    return this.parseMeta(item.name, data);
   }
 
   // ═══════════════════════════════════════════════════════
-  // HELPERS
+  // WORKER POOL
   // ═══════════════════════════════════════════════════════
-
-  private createFailResult(paths: string[], error: string): ImportBatchResult {
-    return {
-      successful: [],
-      failed: paths.map(p => ({
-        fileName: p.split(/[\\/]/).pop() ?? "unknown",
-        error: new ImportError(ImportErrorCode.NATIVE_IMPORT_UNAVAILABLE, error),
-      })),
-      total: paths.length,
-    };
-  }
 
   private initWorkerPool(): void {
     for (let i = 0; i < WORKER_POOL_SIZE; i++) {
@@ -454,48 +703,76 @@ export class LibraryImporter {
     clearTimeout(pending.timeoutId);
     this.pendingRequests.delete(e.data.fileId);
 
-    if (e.data.success) {
-      pending.resolve(e.data.meta);
-    }
-    else {
-      pending.reject(new Error(e.data.error || "Worker error"));
-    }
+    if (e.data.success) pending.resolve(e.data.meta);
+    else pending.reject(new Error(e.data.error || "Worker error"));
   }
 
-  private parseMetaInWorker(
+  private parseMeta(
     fileName: string,
-    fileData: Uint8Array,
-  ): ResultAsync<BaseMetadata, ImportError> {
-    return ResultAsync.fromPromise(
-      new Promise<BaseMetadata>((resolve, reject) => {
-        const id = crypto.randomUUID();
-        const timeoutId = setTimeout(() => {
-          this.pendingRequests.delete(id);
-          reject(ImportError.workerTimeout(fileName));
-        }, WORKER_TIMEOUT);
+    data: Uint8Array,
+  ): Promise<BaseMetadata> {
+    return new Promise((resolve, reject) => {
+      const id = crypto.randomUUID();
+      const timeoutId = setTimeout(() => {
+        this.pendingRequests.delete(id);
+        reject(ImportError.workerTimeout(fileName));
+      }, WORKER_TIMEOUT);
 
-        this.pendingRequests.set(id, { resolve, reject, timeoutId });
-
-        const worker = this.getNextWorker();
-        worker.postMessage(
-          { fileId: id, fileData, fileName },
-          [fileData.buffer],
-        );
-      }),
-      error => ImportError.parseFailed(fileName, error),
-    );
+      this.pendingRequests.set(id, { resolve, reject, timeoutId });
+      this.getNextWorker().postMessage(
+        { fileId: id, fileData: data, fileName },
+        [data.buffer],
+      );
+    });
   }
+
+  // ═══════════════════════════════════════════════════════
+  // FINGERPRINT
+  // ═══════════════════════════════════════════════════════
+
+  private async loadKnownFingerprints(): Promise<Set<string>> {
+    const tracks = await db.tracks
+      .where("fingerprint")
+      .above("")
+      .toArray();
+
+    const set = new Set<string>();
+    for (const t of tracks) {
+      if (t.fingerprint) set.add(t.fingerprint);
+    }
+    return set;
+  }
+
+  private async computeItemFingerprint(
+    item: ImportItem,
+  ): Promise<string | null> {
+    try {
+      if (item.type === "native" && item.path && hasNativeSupport(storageService)) {
+        return await computeFileFingerprint(item.path, item.fileSize);
+      }
+      if (item.type === "web" && item.file) {
+        return await computeFileFingerprintFromBlob(item.file);
+      }
+      return null;
+    }
+    catch {
+      return null;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // ENTITY RESOLUTION
+  // ═══════════════════════════════════════════════════════
 
   private clearSessionCache(): void {
     this.sessionCache.artists.clear();
     this.sessionCache.albums.clear();
   }
 
-  // ═══════════════════════════════════════════════════════
-  // ENTITY RESOLUTION & DB
-  // ═══════════════════════════════════════════════════════
-
-  private async batchPreResolveEntities(metas: NormalizedMeta[]): Promise<void> {
+  private async batchPreResolveEntities(
+    metas: NormalizedMeta[],
+  ): Promise<void> {
+    // ── Artists ──────────────────────────────────────────
     const artistNames = [...new Set(metas.map(m => m.artist))];
 
     const existingArtists = await db.artists
@@ -513,8 +790,11 @@ export class LibraryImporter {
       }
     }
 
+    // ── Albums ──────────────────────────────────────────
     const uniqueArtistIds = [
-      ...new Set(metas.map(m => this.sessionCache.artists.get(m.artist)!)),
+      ...new Set(
+        metas.map(m => this.sessionCache.artists.get(m.artist)!),
+      ),
     ];
 
     const existingAlbums = await db.albums
@@ -540,11 +820,15 @@ export class LibraryImporter {
     }
   }
 
-  private async saveCoverIfNeeded(meta: NormalizedMeta): Promise<string | undefined> {
+  private async saveCoverIfNeeded(
+    meta: NormalizedMeta,
+  ): Promise<string | undefined> {
     const artistId = this.sessionCache.artists.get(meta.artist);
     if (!artistId) return undefined;
 
-    const albumData = this.sessionCache.albums.get(`${artistId}_${meta.album}`);
+    const albumData = this.sessionCache.albums.get(
+      `${artistId}_${meta.album}`,
+    );
     if (!albumData?.isNew || !meta.pictureBlob) return undefined;
 
     const coverPath = `covers/art_${albumData.id}`;
@@ -552,94 +836,160 @@ export class LibraryImporter {
     return result.isOk() ? coverPath : undefined;
   }
 
-  private batchSaveToDatabase(
-    items: Array<{
-      trackId: TrackId;
-      fileName: string;
-      storagePath: string;
-      meta: NormalizedMeta;
-      coverPath?: string;
-    }>,
+  // ═══════════════════════════════════════════════════════
+  // DATABASE
+  // ═══════════════════════════════════════════════════════
+
+  /** Wrapped version for the import pipeline (returns ResultAsync) */
+  private saveBatchToDatabaseSafe(
+    items: TrackToSave[],
   ): ResultAsync<ImportSuccess[], ImportError> {
     return ResultAsync.fromPromise(
-      db.transaction("rw", db.artists, db.albums, db.tracks, async () => {
-        const now = Date.now();
+      this.saveBatchToDatabase(items),
+      error => ImportError.databaseFailed("batch", error),
+    );
+  }
+
+  /** Core save — used by both import pipeline and watched-folder sync */
+  private async saveBatchToDatabase(
+    items: TrackToSave[],
+  ): Promise<ImportSuccess[]> {
+    const now = Date.now();
+
+    return db.transaction(
+      "rw",
+      db.artists,
+      db.albums,
+      db.tracks,
+      async () => {
         const results: ImportSuccess[] = [];
 
-        const artistsToAdd = new Map<ArtistId, { id: ArtistId; name: string }>();
+        const artistsToAdd = new Map<
+          ArtistId,
+          { id: ArtistId; name: string }
+        >();
         const albumsToAdd = new Map<
           AlbumId,
-          { id: AlbumId; title: string; artistId: ArtistId; year?: number; coverPath?: string }
+          {
+            id: AlbumId;
+            title: string;
+            artistId: ArtistId;
+            year?: number;
+            coverPath?: string;
+          }
         >();
 
-        for (const { trackId, fileName, storagePath, meta, coverPath } of items) {
-          const artistId = this.sessionCache.artists.get(meta.artist)!;
-          const albumData = this.sessionCache.albums.get(`${artistId}_${meta.album}`)!;
+        for (const item of items) {
+          const artistId = this.sessionCache.artists.get(item.meta.artist)!;
+          const albumData = this.sessionCache.albums.get(
+            `${artistId}_${item.meta.album}`,
+          )!;
 
+          // Collect artists to add
           if (!artistsToAdd.has(artistId)) {
             const exists = await db.artists.get(artistId);
             if (!exists) {
-              artistsToAdd.set(artistId, { id: artistId, name: meta.artist });
+              artistsToAdd.set(artistId, {
+                id: artistId,
+                name: item.meta.artist,
+              });
             }
           }
 
+          // Collect albums to add
           if (albumData.isNew && !albumsToAdd.has(albumData.id)) {
             const exists = await db.albums.get(albumData.id);
             if (!exists) {
               albumsToAdd.set(albumData.id, {
                 id: albumData.id,
-                title: meta.album,
+                title: item.meta.album,
                 artistId,
-                year: meta.year,
-                coverPath,
+                year: item.meta.year,
+                coverPath: item.coverPath,
               });
             }
           }
 
+          // Add track
           await db.tracks.add({
-            id: trackId,
-            title: meta.title,
+            id: item.trackId,
+            title: item.meta.title,
             artistId,
             albumId: albumData.id,
             tagIds: [],
-            source: TrackSource.LOCAL_INTERNAL,
+            source: item.source,
             state: TrackState.READY,
-            storagePath,
-            duration: meta.duration,
-            format: meta.format,
-            trackNo: meta.trackNo,
-            diskNo: meta.diskNo,
+            storagePath: item.storagePath,
+            duration: item.meta.duration,
+            format: item.meta.format,
+            trackNo: item.meta.trackNo,
+            diskNo: item.meta.diskNo,
             isLiked: false,
             playCount: 0,
-            searchKey: meta.searchKey,
+            searchKey: item.meta.searchKey,
             addedAt: now,
+            fingerprint: item.fingerprint,
           });
 
           results.push({
-            trackId,
-            fileName,
-            title: meta.title,
-            artist: meta.artist,
-            album: meta.album,
+            trackId: item.trackId,
+            fileName: item.fileName,
+            title: item.meta.title,
+            artist: item.meta.artist,
+            album: item.meta.album,
           });
         }
 
+        // Bulk-insert new artists & albums
         if (artistsToAdd.size > 0) {
           await db.artists.bulkAdd(
-            [...artistsToAdd.values()].map(a => ({ ...a, addedAt: now, updatedAt: now })),
+            [...artistsToAdd.values()].map(a => ({
+              ...a,
+              addedAt: now,
+              updatedAt: now,
+            })),
           );
         }
         if (albumsToAdd.size > 0) {
           await db.albums.bulkAdd(
-            [...albumsToAdd.values()].map(a => ({ ...a, addedAt: now, updatedAt: now })),
+            [...albumsToAdd.values()].map(a => ({
+              ...a,
+              addedAt: now,
+              updatedAt: now,
+            })),
           );
         }
 
         return results;
-      }),
-      error => ImportError.databaseFailed("batch", error),
+      },
     );
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // HELPERS
+  // ═══════════════════════════════════════════════════════
+
+  private createEmptyFailResult(
+    paths: string[],
+    error: string,
+  ): ImportBatchResult {
+    return {
+      successful: [],
+      failed: paths.map(p => ({
+        fileName: p.split(/[\\/]/).pop() ?? "unknown",
+        error: new ImportError(
+          ImportErrorCode.NATIVE_IMPORT_UNAVAILABLE,
+          error,
+        ),
+      })),
+      skipped: 0,
+      total: paths.length,
+    };
   }
 }
 
-export const libraryImporter = new LibraryImporter();
+// ═══════════════════════════════════════════════════════
+// SINGLETON + BACKWARD-COMPATIBLE ALIASES
+// ═══════════════════════════════════════════════════════
+
+export const musicLibraryEngine = new MusicLibraryEngine();

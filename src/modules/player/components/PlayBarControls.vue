@@ -10,7 +10,7 @@
             :class="{ 'text-primary': playerStore.isShuffled }"
             @click="queueStore.toggleShuffle()"
           >
-            <IconArrowsShuffle2 class="size-4.5" />
+            <IconShuffle class="size-4.5" />
           </Button>
           <Button
             class="rounded-full"
@@ -62,7 +62,7 @@ import { computed } from "vue";
 import { Button } from "@/components/ui/button";
 import PlayButton from "./PlayButton.vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import IconArrowsShuffle2 from "~icons/tabler/arrows-shuffle-2";
+import IconShuffle from "~icons/tabler/arrows-shuffle-2";
 import IconPlayerTrackPrevFilled from "~icons/tabler/player-track-prev-filled";
 import IconPlayerTrackNextFilled from "~icons/tabler/player-track-next-filled";
 import IconRepeat from "~icons/tabler/repeat";

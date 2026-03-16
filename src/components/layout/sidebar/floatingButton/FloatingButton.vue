@@ -13,7 +13,10 @@
     >
       <DropdownMenuGroup>
         <DropdownMenuItem>
-          Add track
+          Add Track
+        </DropdownMenuItem>
+        <DropdownMenuItem>
+          Add Playlist
         </DropdownMenuItem>
       </DropdownMenuGroup>
     </DropdownMenuContent>

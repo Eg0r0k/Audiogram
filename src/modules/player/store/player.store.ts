@@ -140,6 +140,7 @@ export const usePlayerStore = defineStore("player", () => {
       if (currentTrack.value && "url" in currentTrack.value) {
         const url = currentTrack.value.url as string;
         // TODO: rewrite this
+        // for now its not possible to restore blob URLs across sessions, so just skip trying to play them
         if (url.startsWith("blob:")) {
           console.warn("[Player] Cannot restore blob URL from previous session");
           currentTrack.value = null;

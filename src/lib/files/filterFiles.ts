@@ -23,3 +23,7 @@ export const filterFilesByType = (files: File[], types: string[]): File[] => {
     }),
   );
 };
+
+export const normalizePath = (path: string): string => {
+  return path.replace(/\\/g, "/").replace(/\/+$/, "");
+};

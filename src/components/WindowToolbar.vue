@@ -17,7 +17,6 @@
       <Button
         size="icon-xs"
         variant="ghost"
-        :disabled="!canGoForward"
         @click="goNext"
       >
         <IconChevronRight />
@@ -66,7 +65,6 @@ import useTauriEvent from "@/composables/tauri/useTauriEvent";
 
 const router = useRouter();
 const canGoBack = computed(() => window.history.length > 1);
-const canGoForward = computed(() => false);
 const goNext = () => router.go(1);
 const goBack = () => router.back();
 

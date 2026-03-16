@@ -87,11 +87,11 @@ watch(
 }
 .slide-left-enter-from {
   transform: translate3d(100%, 0, 0);
-  z-index: 100;
+  z-index: 50;
 }
 .slide-left-enter-to {
   transform: translate3d(0, 0, 0);
-  z-index: 100;
+  z-index: 50;
 }
 
 .slide-left-leave-from {
@@ -117,11 +117,11 @@ watch(
 
 .slide-right-leave-from {
   transform: translate3d(0, 0, 0);
-  z-index: 100;
+  z-index: 50;
 }
 .slide-right-leave-to {
   transform: translate3d(100%, 0, 0);
-  z-index: 100;
+  z-index: 50;
 }
 
 </style>

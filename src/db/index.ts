@@ -27,14 +27,28 @@ export class AppDatabase extends Dexie {
       playlists: "&id, name, updatedAt, addedAt",
     }).upgrade(async (tx) => {
       const now = Date.now();
-
       await tx.table("artists").toCollection().modify((artist) => {
         if (!artist.updatedAt) artist.updatedAt = artist.addedAt ?? now;
       });
-
       await tx.table("albums").toCollection().modify((album) => {
         if (!album.updatedAt) album.updatedAt = album.addedAt ?? now;
       });
+    });
+
+    this.version(4).stores({
+      tracks: "&id, title, artistId, albumId, *tagIds, state, addedAt, storagePath, [artistId+albumId+trackNo]",
+      artists: "&id, name, updatedAt",
+      albums: "&id, title, artistId, year, updatedAt, [artistId+year], [title+artistId]",
+      tags: "&id, &name",
+      playlists: "&id, name, updatedAt, addedAt",
+    });
+
+    this.version(5).stores({
+      tracks: "&id, title, artistId, albumId, *tagIds, state, addedAt, storagePath, fingerprint, [artistId+albumId+trackNo]",
+      artists: "&id, name, updatedAt",
+      albums: "&id, title, artistId, year, updatedAt, [artistId+year], [title+artistId]",
+      tags: "&id, &name",
+      playlists: "&id, name, updatedAt, addedAt",
     });
 
     this.tracks = this.table("tracks");

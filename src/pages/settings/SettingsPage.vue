@@ -4,12 +4,9 @@
     class="flex-1"
   >
     <div class="pb-8">
+      <SettingsHeader :title="$t('settings.index.title')" />
+
       <SettingsGroup>
-        <div class="flex pl-4 gap-6 items-center">
-          <h1 class="font-bold text-xl py-3">
-            {{ $t('settings.index.title') }}
-          </h1>
-        </div>
         <SettingsLink
           to="/settings/general"
           :icon="IconSettings"
@@ -69,6 +66,7 @@ import IconInfo from "~icons/tabler/info-circle";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsLink from "@/modules/settings/components/SettingsLink.vue";
 import { useGeneralSettings } from "@/modules/settings/store/general";
+import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
 
 const { language } = useGeneralSettings();
 

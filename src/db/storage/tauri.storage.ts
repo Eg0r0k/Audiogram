@@ -44,6 +44,10 @@ export class TauriStorage implements IFileStorageWithNativeSupport {
     this.createdDirs.add(folder);
   }
 
+  private isAbsolutePath(path: string): boolean {
+    return /^(?:[a-zA-Z]:[\\/]|\/)/.test(path);
+  }
+
   private getFolder(path: string): string {
     const lastSlash = path.lastIndexOf("/");
     return lastSlash > 0 ? path.substring(0, lastSlash) : "";
@@ -122,9 +126,16 @@ export class TauriStorage implements IFileStorageWithNativeSupport {
 
   getAudioUrl(path: string): ResultAsync<string, StorageError> {
     return fromPromise(
-      this.getAppDataDir().then(appData =>
-        convertFileSrc(this.joinPath(appData, path)),
-      ),
+      (async () => {
+        const normalizedPath = path.replace(/\\/g, "/");
+
+        if (this.isAbsolutePath(normalizedPath)) {
+          return convertFileSrc(normalizedPath);
+        }
+
+        const appData = await this.getAppDataDir();
+        return convertFileSrc(this.joinPath(appData, normalizedPath));
+      })(),
       error => StorageError.readFailed(path, error),
     );
   }

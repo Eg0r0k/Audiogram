@@ -36,9 +36,15 @@ import ExternalLinkDialog from "@/components/dialogs/ExternalLinkDialog.vue";
 import { useAccentColor } from "@/modules/settings/composables/useAccentColor";
 import { useAudioSettings } from "@/modules/settings/composables/useAudioSettings";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
+import { IS_TAURI } from "@/lib/environment/userAgent";
+import { useWatchedFolders } from "@/modules/watched-folders/composables/useWatchedFolders";
+import { useGlobalHotKeys } from "@/modules/hotkeys";
+import { useTauriGlobalShortcuts } from "@/modules/hotkeys/composables/useTauriGlobalShortcuts";
+import { useMediaSession } from "@/modules/player/composables/useMediaSession";
 
 const route = useRoute();
 const { isMobileLayout } = useDeviceLayout();
+const { init } = useWatchedFolders();
 
 const layouts: Record<string, Component> = {
   default: DefaultLayout,
@@ -68,6 +74,7 @@ onMounted(async () => {
       });
     });
   });
+  init();
 });
 
 onUnmounted(() => {
@@ -79,6 +86,9 @@ useAccentColor();
 useSetupRootClasses();
 usePreventPinchZoom();
 useAudioSettings();
+useGlobalHotKeys();
+useTauriGlobalShortcuts();
+useMediaSession();
 </script>
 
 <style scoped>

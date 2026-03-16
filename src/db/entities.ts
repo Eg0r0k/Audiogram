@@ -56,26 +56,20 @@ export interface PlaylistEntity {
 export interface TrackEntity {
   id: TrackId;
   title: string;
-
   artistId: ArtistId;
   albumId: AlbumId;
   tagIds: TagId[];
-
   source: TrackSource;
   storagePath: string;
   state: TrackState;
-
   duration: number;
   format: AudioFormat;
-
   trackNo?: number;
   diskNo?: number;
-
   isLiked: boolean;
   playCount: number;
   lastPlayedAt?: number;
-
   searchKey: string;
-
   addedAt: number;
+  fingerprint?: string;
 }

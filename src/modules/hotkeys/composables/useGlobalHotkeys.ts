@@ -1,0 +1,87 @@
+import { usePlayerStore } from "@/modules/player";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
+import { computed, ref } from "vue";
+import { useActiveElement, useMagicKeys, whenever } from "@vueuse/core";
+import { SEEK_STEP, VOLUME_STEP } from "../constants";
+import { clamp } from "@/lib/math";
+
+const EDITABLE_TAGS = new Set(["INPUT", "SELECT", "TEXTAREA"]);
+const PREVENT_DEFAULT_KEYS = new Set([" ", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowUp"]);
+
+export const useGlobalHotKeys = () => {
+  const player = usePlayerStore();
+  const queue = useQueueStore();
+  const isEnabled = ref(true);
+
+  const activeElement = useActiveElement();
+
+  const canFire = computed(() => {
+    if (!isEnabled.value) return false;
+    const el = activeElement.value;
+    if (!el) return true;
+    if (EDITABLE_TAGS.has(el.tagName)) return false;
+    if (el instanceof HTMLElement && el.isContentEditable) return false;
+    return true;
+  });
+
+  const keys = useMagicKeys(
+    {
+      passive: false,
+      onEventFired(e) {
+        if (e.type !== "keydown" || !canFire.value) return;
+        if (PREVENT_DEFAULT_KEYS.has(e.key)) {
+          e.preventDefault();
+        }
+      },
+    },
+  );
+
+  whenever(() => keys.space.value && canFire.value, () => player.togglePlay());
+  whenever(() => keys.MediaPlayPause.value && isEnabled.value, () => player.togglePlay());
+  whenever(() => keys.MediaStop.value && isEnabled.value, () => player.stop());
+  whenever(() => keys.MediaTrackNext.value && isEnabled.value, () => queue.next());
+  whenever(() => keys.MediaTrackPrevious.value && isEnabled.value, () => queue.previous());
+
+  whenever(
+    () => (keys["ctrl+arrowright"].value || keys["meta+arrowright"].value) && canFire.value,
+    () => queue.next(),
+  );
+  whenever(
+    () => (keys["ctrl+arrowleft"].value || keys["meta+arrowleft"].value) && canFire.value,
+    () => queue.previous(),
+  );
+
+  whenever(
+    () => keys.arrowright.value && !keys.ctrl.value && !keys.meta.value && canFire.value,
+    () => {
+      if (!player.canSeek) return;
+      player.seekTo(Math.min(player.duration, player.currentTime + SEEK_STEP));
+    },
+  );
+
+  whenever(
+    () => keys.arrowleft.value && !keys.ctrl.value && !keys.meta.value && canFire.value,
+    () => {
+      if (!player.canSeek) return;
+      player.seekTo(Math.max(0, player.currentTime - SEEK_STEP));
+    },
+  );
+
+  // Volume
+  whenever(
+    () => keys.arrowup.value && canFire.value,
+    () => player.setVolume(clamp(player.volume + VOLUME_STEP, 0, 100)),
+  );
+
+  whenever(
+    () => keys.arrowdown.value && canFire.value,
+    () => player.setVolume(clamp(player.volume - VOLUME_STEP, 0, 100)),
+  );
+
+  // Toggles
+  whenever(() => keys.m.value && canFire.value, () => player.toggleMute());
+  whenever(() => keys.s.value && canFire.value, () => queue.toggleShuffle());
+  whenever(() => keys.r.value && canFire.value, () => player.toggleRepeat());
+
+  return { isEnabled };
+};

@@ -51,32 +51,34 @@
         <Slider />
         <div class="flex justify-between w-full text-foreground/50 text-sm ">
           <span>
-            00:00
+            {{ timeDisplay.current }}
           </span>
           <span>
-            00:00
+            {{ timeDisplay.duration }}
           </span>
         </div>
       </div>
       <div class="flex pb-4 gap-2 w-full justify-center items-center mt-7">
         <Button
-          class=" rounded-full"
+          class="rounded-full"
 
           size="icon-lg"
           variant="ghost"
+
+          :disabled="!queueStore.hasPrevious"
+          @click="queueStore.previous()"
         >
           <IconBack class="size-6" />
         </Button>
+        <PlayButton class="size-16!" />
         <Button
-          class="rounded-full size-16! "
-        >
-          <IconPlay class=" size-7" />
-        </Button>
-        <Button
-          class=" rounded-full"
+          class="rounded-full"
 
           variant="ghost"
           size="icon-lg"
+
+          :disabled="!queueStore.hasNext"
+          @click="queueStore.next()"
         >
           <IconForvard class="size-6" />
         </Button>
@@ -86,12 +88,23 @@
       <Button
         size="icon-lg"
         variant="ghost"
+        :class="repeatModeClass"
+        @click="playerStore.toggleRepeat"
       >
-        <IconRepeat class=" size-7" />
+        <IconRepeatOnce
+          v-if="playerStore.repeatMode === 'one'"
+          class="size-7"
+        />
+        <IconRepeat
+          v-else
+          class="size-7"
+        />
       </Button>
       <Button
         size="icon-lg"
         variant="ghost"
+        :class="{ 'text-primary': playerStore.isShuffled }"
+        @click="queueStore.toggleShuffle()"
       >
         <IconShuffle class=" size-7" />
       </Button>
@@ -115,13 +128,13 @@
 import { computed } from "vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import IconMusic from "~icons/tabler/music";
-import IconPlay from "~icons/tabler/player-play-filled";
 
 import IconBack from "~icons/tabler/player-skip-back-filled";
 import IconForvard from "~icons/tabler/player-skip-forward-filled";
 
 import IconRepeat from "~icons/tabler/repeat";
 import IconShuffle from "~icons/tabler/arrows-shuffle";
+import IconRepeatOnce from "~icons/tabler/repeat-once";
 
 import IconDots from "~icons/tabler/dots";
 
@@ -129,13 +142,26 @@ import Slider from "@/components/ui/slider/Slider.vue";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
 import { Button } from "@/components/ui/button";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
+import PlayButton from "@/modules/player/components/PlayButton.vue";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
+import { formatDuration } from "@/lib/format/time";
 
 defineEmits<{
   close: [];
 }>();
 
 const playerStore = usePlayerStore();
+const queueStore = useQueueStore();
 
 const currentTrack = computed(() => playerStore.currentTrack);
-
+const repeatModeClass = computed(() => ({
+  "text-primary": playerStore.repeatMode !== "off",
+}));
+const timeDisplay = computed(() => {
+  if (playerStore.isLiveStream) return { current: "🔴", duration: "LIVE" };
+  return {
+    current: formatDuration(playerStore.currentTime),
+    duration: formatDuration(playerStore.duration),
+  };
+});
 </script>

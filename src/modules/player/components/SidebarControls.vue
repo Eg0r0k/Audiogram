@@ -75,22 +75,16 @@ import VolumeButton from "./actions/VolumeButton.vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { computed, ref } from "vue";
 import QueueList from "@/modules/queue/components/QueueList.vue";
+import { formatDuration } from "@/lib/format/time";
 
 const playerStore = usePlayerStore();
 const isQueueOpen = ref(false);
 
-const formatTime = (s: number): string => {
-  if (!isFinite(s) || s < 0) return "0:00";
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
-  return `${m}:${sec.toString().padStart(2, "0")}`;
-};
-
 const timeDisplay = computed(() => {
   if (playerStore.isLiveStream) return { current: "🔴", duration: "LIVE" };
   return {
-    current: formatTime(playerStore.currentTime),
-    duration: formatTime(playerStore.duration),
+    current: formatDuration(playerStore.currentTime),
+    duration: formatDuration(playerStore.duration),
   };
 });
 

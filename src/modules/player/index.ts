@@ -4,4 +4,3 @@ export { default as PlayerBarNotification } from "./components/PlayerBarNotifica
 export { default as SidebarControls } from "./components/SidebarControls.vue";
 export { default as RangeSelector } from "./components/RangeSelector.vue";
 export { default as SidebarMusic } from "./components/SidebarMusic.vue";
-export { default as Equalizer } from "./components/eq/Equalizer.vue";

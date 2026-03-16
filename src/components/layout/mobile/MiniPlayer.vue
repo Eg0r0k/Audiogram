@@ -68,8 +68,9 @@
           <Button
             variant="ghost"
             size="icon-lg"
-            class="rounded-full text-white"
+            class="rounded-full "
             :aria-label="$t('player.nextTrack')"
+            :disabled="!queueStore.hasNext"
             @click.stop="queueStore.next()"
           >
             <IconSkipForward class="size-5" />
@@ -105,8 +106,6 @@ const coverUrl = computed(() => {
   if (!track) return undefined;
   return "cover" in track ? track.cover : undefined;
 });
-
-console.log(coverUrl);
 
 const { color, extractColor } = useImageColor({
   colorType: "Muted",
