@@ -12,7 +12,7 @@
           v-for="filter in filters"
           :key="filter.value"
           class=" rounded-full"
-          :variant=" activeFilter === filter.value ? 'default' : 'secondary'"
+          :variant=" activeFilter === filter.value ? 'default' :'ghost-primary'"
           size="sm"
           @click="$emit('filter', filter.value)"
         >

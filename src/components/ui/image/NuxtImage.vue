@@ -62,6 +62,7 @@ const imgEl = useTemplateRef<HTMLImageElement>("imgEl");
 const placeholderLoaded = ref(false);
 const useFallback = ref(false);
 const loadAttempted = ref(false);
+const originalSrcFailed = ref(false);
 
 defineExpose({
   imgEl,
@@ -135,7 +136,7 @@ const imageSrc = computed(() => {
     return props.fallbackSrc || generatePlaceholderDataUrl(100, 100);
   }
 
-  if (useFallback.value) {
+  if (useFallback.value || originalSrcFailed.value) {
     return props.fallbackSrc || generatePlaceholderDataUrl(100, 100);
   }
 
@@ -160,26 +161,26 @@ function resetState() {
   placeholderLoaded.value = false;
   useFallback.value = false;
   loadAttempted.value = false;
+  originalSrcFailed.value = false;
 }
 
 function handleLoadSuccess(event?: Event) {
   placeholderLoaded.value = true;
-  useFallback.value = false;
   emit("load", event || new Event("load"));
 }
 
 function handleLoadError(error: unknown) {
-  if (loadAttempted.value && useFallback.value) {
+  if (originalSrcFailed.value) {
     return;
   }
 
+  originalSrcFailed.value = true;
   loadAttempted.value = true;
   useFallback.value = true;
   emit("error", error instanceof Event ? error : String(error));
 }
-
 function loadMainImage() {
-  if (!isValidImageSrc.value || loadAttempted.value) {
+  if (!isValidImageSrc.value || originalSrcFailed.value) {
     return;
   }
 
@@ -201,15 +202,20 @@ function loadMainImage() {
 
   if (typeof img.decode === "function") {
     img.decode()
-      .then(() => handleLoadSuccess())
+      .then(() => {
+        originalSrcFailed.value = false;
+        handleLoadSuccess();
+      })
       .catch(error => handleLoadError(error));
   }
   else {
-    img.onload = event => handleLoadSuccess(event);
+    img.onload = (event) => {
+      originalSrcFailed.value = false;
+      handleLoadSuccess(event);
+    };
     img.onerror = event => handleLoadError(event);
   }
 }
-
 function setupImageListeners() {
   if (!imgEl.value) {
     return;
@@ -225,7 +231,15 @@ function setupImageListeners() {
     return;
   }
 
-  imgEl.value.onload = event => handleLoadSuccess(event);
+  imgEl.value.onload = (event) => {
+    if (!originalSrcFailed.value) {
+      handleLoadSuccess(event);
+    }
+    else {
+      placeholderLoaded.value = true;
+    }
+  };
+
   imgEl.value.onerror = event => handleLoadError(event);
 }
 
@@ -242,6 +256,7 @@ watch(() => props.src, (newSrc, oldSrc) => {
 onMounted(() => {
   if (!isValidImageSrc.value) {
     useFallback.value = true;
+    originalSrcFailed.value = true;
     return;
   }
 

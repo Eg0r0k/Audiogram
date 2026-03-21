@@ -44,7 +44,7 @@
           variant="ghost"
           size="icon-lg"
         >
-          <IconDots class="size-5" />
+          <IconDots class="size-7" />
         </Button>
       </div>
       <div class="flex flex-col gap-3 pt-4">
@@ -58,7 +58,7 @@
           </span>
         </div>
       </div>
-      <div class="flex pb-4 gap-2 w-full justify-center items-center mt-7">
+      <div class="flex pb-4 gap-5 w-full justify-center items-center mt-7">
         <Button
           class="rounded-full"
 
@@ -112,13 +112,13 @@
         size="icon-lg"
         variant="ghost"
       >
-        <IconMusic class=" size-7" />
+        <IconPlaylist class=" size-7" />
       </Button>
       <Button
         size="icon-lg"
         variant="ghost"
       >
-        <IconMusic class=" size-7" />
+        <IconClocs class=" size-7" />
       </Button>
     </div>
   </div>
@@ -128,6 +128,10 @@
 import { computed } from "vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import IconMusic from "~icons/tabler/music";
+
+import IconPlaylist from "~icons/tabler/playlist";
+
+import IconClocs from "~icons/tabler/stopwatch";
 
 import IconBack from "~icons/tabler/player-skip-back-filled";
 import IconForvard from "~icons/tabler/player-skip-forward-filled";
@@ -145,6 +149,7 @@ import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import PlayButton from "@/modules/player/components/PlayButton.vue";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { formatDuration } from "@/lib/format/time";
+import { ref } from "vue";
 
 defineEmits<{
   close: [];

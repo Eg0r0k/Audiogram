@@ -35,7 +35,6 @@ interface Props {
   playlistId?: PlaylistId;
   queueIndex?: number;
   albumId?: AlbumId;
-
 }
 
 const props = withDefaults(defineProps<Props>(), {

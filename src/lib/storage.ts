@@ -1,81 +1,54 @@
 import { IS_TAURI } from "@/lib/environment/userAgent";
-import type { IFileStorage } from "@/db/storage/IFileStorage";
+import { TrackSource } from "@/db/entities";
+import { storageService } from "@/db/storage";
 
-let instance: IFileStorage | null = null;
+// ── Cover URL cache ──────────────────────────────────────────────
+// coverPath → blob URL
+// Глобальный кэш: один blob на путь, переиспользуется всеми компонентами.
+// invalidateCover() обязателен перед записью новой обложки — иначе старый blob утечёт.
 
-export async function getFileStorage(): Promise<IFileStorage> {
-  if (instance) return instance;
+const cache = new Map<string, string>();
 
-  if (IS_TAURI) {
-    const { TauriStorage } = await import("@/db/storage/tauri.storage");
-    instance = new TauriStorage();
-  }
-  else {
-    const { WebOpfsStorage } = await import("@/db/storage/web-opfs.storage");
-    instance = new WebOpfsStorage();
-  }
-
-  return instance;
-}
-
-const coverUrlCache = new Map<string, string>();
-
-export async function resolveCoverUrl(coverPath: string | undefined): Promise<string | undefined> {
+export async function getCoverUrl(coverPath: string | undefined): Promise<string | undefined> {
   if (!coverPath) return undefined;
 
-  const cached = coverUrlCache.get(coverPath);
+  const cached = cache.get(coverPath);
   if (cached) return cached;
 
-  try {
-    const storage = await getFileStorage();
-    const result = await storage.getAudioUrl(coverPath);
-    if (result.isOk()) {
-      coverUrlCache.set(coverPath, result.value);
-      return result.value;
-    }
-  }
-  catch {
-    // noop
-  }
+  const result = await storageService.getFile(coverPath);
+  if (result.isErr()) return undefined;
 
-  return undefined;
+  const url = URL.createObjectURL(result.value);
+  cache.set(coverPath, url);
+  return url;
 }
 
-export async function resolveCoverUrls(
-  paths: (string | undefined)[],
-): Promise<Map<string, string>> {
-  const resolved = new Map<string, string>();
-  const toResolve: string[] = [];
-
-  for (const p of paths) {
-    if (!p) continue;
-    const cached = coverUrlCache.get(p);
-    if (cached) {
-      resolved.set(p, cached);
-    }
-    else {
-      toResolve.push(p);
-    }
+export function invalidateCover(coverPath: string): void {
+  const url = cache.get(coverPath);
+  if (url) {
+    URL.revokeObjectURL(url);
+    cache.delete(coverPath);
   }
+}
 
-  if (toResolve.length === 0) return resolved;
+export function invalidateAllCovers(): void {
+  for (const url of cache.values()) {
+    URL.revokeObjectURL(url);
+  }
+  cache.clear();
+}
 
-  const storage = await getFileStorage();
+// ── Track source resolution ──────────────────────────────────────
+// Не возвращает blob URL — только для Tauri (convertFileSrc).
+// В вебе треки резолвятся через resolveTrackBlob() напрямую в Blob.
 
-  await Promise.all(
-    toResolve.map(async (path) => {
-      try {
-        const result = await storage.getAudioUrl(path);
-        if (result.isOk()) {
-          coverUrlCache.set(path, result.value);
-          resolved.set(path, result.value);
-        }
-      }
-      catch {
-        // noop
-      }
-    }),
-  );
-
-  return resolved;
+export async function resolveTrackUrl(
+  source: TrackSource,
+  storagePath: string,
+): Promise<string | null> {
+  if (source === TrackSource.LOCAL_EXTERNAL && !IS_TAURI) {
+    return null;
+  }
+  const result = await storageService.getAudioUrl(storagePath);
+  return result.isOk() ? result.value : null;
 }

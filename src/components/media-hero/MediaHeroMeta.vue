@@ -25,7 +25,7 @@
     <template v-else-if="isAlbum(data)">
       <RouterLink
         :to="`/artist/${data.artistId}`"
-        class="font-medium text-foreground/90 hover:text-foreground hover:underline underline-offset-2 transition-colors duration-200"
+        class="font-medium text-white/90 hover:text-white hover:underline underline-offset-2 transition-colors duration-200"
       >
         {{ data.artistName }}
       </RouterLink>

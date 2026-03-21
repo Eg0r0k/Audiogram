@@ -16,7 +16,8 @@
           Add Track
         </DropdownMenuItem>
         <DropdownMenuItem>
-          Add Playlist
+          <IconPlaylist class="size-4" />
+          {{ $t('track.contextMenu.createPlaylist') }}
         </DropdownMenuItem>
       </DropdownMenuGroup>
     </DropdownMenuContent>
@@ -26,5 +27,6 @@
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import IconPlus from "~icons/tabler/plus";
+import IconPlaylist from "~icons/tabler/playlist";
 
 </script>

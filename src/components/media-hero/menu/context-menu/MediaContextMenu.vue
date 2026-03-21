@@ -6,7 +6,7 @@
     <ContextMenuContent class="w-60">
       <component
         :is="contextComponent"
-        :actions="actions"
+        v-bind="contextProps"
       />
     </ContextMenuContent>
   </ContextMenu>
@@ -20,12 +20,13 @@ import { contextMenuComponents, provideMenuComponents } from "@/components/media
 import type { MediaContext } from "../types";
 import AlbumContext from "../contexts/AlbumContext.vue";
 import ArtistContext from "../contexts/ArtistContext.vue";
-import PlaylistContext from "@/modules/tracks/components/menu/contexts/PlaylistContext.vue";
+import PlaylistContext from "../contexts/PlaylistContext.vue";
 
 provideMenuComponents(contextMenuComponents);
 
 const props = withDefaults(defineProps<{
   context?: MediaContext;
+  isPlaylistOwner?: boolean;
 }>(), {
   context: "album",
 });
@@ -38,6 +39,15 @@ const contexts: Record<MediaContext, Component> = {
 };
 
 const actions = useMediaContext();
-
 const contextComponent = computed(() => contexts[props.context]);
+
+const contextProps = computed(() => {
+  const base = { actions };
+  switch (props.context) {
+    case "playlist":
+      return { ...base, isOwner: props.isPlaylistOwner };
+    default:
+      return base;
+  }
+});
 </script>

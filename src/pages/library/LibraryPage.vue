@@ -1,17 +1,25 @@
 <template>
-  <Scrollable class="flex-1">
-    <LibraryHeader
-      :search-query="searchQuery"
-      @create-playlist="createPlaylist"
-      @search="setSearchQuery"
-    />
+  <Scrollable
+    class="flex-1"
+    @scroll="onScroll"
+  >
+    <div
+      class="sticky top-0 z-10 bg-background transition-shadow duration-200"
+      :class="isScrolled ? 'shadow-xl' : ''"
+    >
+      <LibraryHeader
+        :search-query="searchQuery"
+        @create-playlist="createPlaylist"
+        @search="setSearchQuery"
+      />
 
-    <LibraryToolbar
-      :active-filter="activeFilter"
-      :sort-by="sortBy"
-      @filter="handleFilter"
-      @sort="setSortBy"
-    />
+      <LibraryToolbar
+        :active-filter="activeFilter"
+        :sort-by="sortBy"
+        @filter="handleFilter"
+        @sort="setSortBy"
+      />
+    </div>
 
     <LibraryGrid
       :pinned="pinnedItems"
@@ -24,6 +32,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import LibraryHeader from "@/modules/library/components/LibraryHeader.vue";
 import LibraryToolbar from "@/modules/library/components/LibraryToolbar.vue";
@@ -43,6 +52,13 @@ const {
   setSearchQuery,
   createPlaylist,
 } = useLibrary();
+
+const isScrolled = ref(false);
+
+function onScroll(event: Event) {
+  const target = event.target as HTMLElement;
+  isScrolled.value = target.scrollTop > 0;
+}
 
 function handleFilter(filter: LibraryFilter) {
   if (activeFilter.value === filter) {

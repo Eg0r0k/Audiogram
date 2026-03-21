@@ -3,22 +3,6 @@
     direction="vertical"
     class="flex-1"
   >
-    <Scrollable
-      class="flex-1"
-      :hide-thumb="true"
-      direction="horizontal"
-    >
-      <div class="flex w-full flex-row gap-2">
-        <AlbumRow />
-        <AlbumRow />
-        <AlbumRow />
-        <AlbumRow />
-        <AlbumRow />
-        <AlbumRow />
-        <AlbumRow />
-      </div>
-    </Scrollable>
-
     <div class="flex flex-wrap gap-2">
       <Button
         as-child
@@ -28,12 +12,13 @@
           Profile
         </Link>
       </Button>
+
       <Button
         as-child
         variant="ghost-primary"
       >
-        <Link to="/album/album-1">
-          Example Album
+        <Link to="/library">
+          Lib
         </Link>
       </Button>
 
@@ -41,7 +26,7 @@
         <div class="flex justify-between">
           <span class="text-muted-foreground">Status:</span>
           <Badge :variant="statusVariant">
-            {{ playerStore.status }}
+            {{ playerStore.status }}A
           </Badge>
         </div>
         <div class="flex justify-between">
@@ -97,7 +82,6 @@ import {
 import { formatDuration } from "@/lib/format/time";
 import { LocalTrack } from "@/modules/player/types";
 import AlbumContext from "@/components/media-hero/menu/contexts/AlbumContext.vue";
-import AlbumRow from "@/modules/albums/components/AlbumRow.vue";
 
 const playerStore = usePlayerStore();
 

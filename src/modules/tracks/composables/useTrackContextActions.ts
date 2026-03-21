@@ -1,9 +1,14 @@
 import type { Track } from "@/modules/player/types";
-import { ContextActions } from "@/modules/tracks/components/menu/type";
-// import { usePlayerStore } from "@/stores/player.store";
-// import { useQueueStore } from "@/stores/queue.store";
+import type { ContextActions } from "@/modules/tracks/components/menu/type";
+import { playlistRepository } from "@/db/repositories/playlist.repository";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
+import { usePlayerStore } from "@/modules/player/store/player.store";
+import { queryKeys } from "@/lib/query-keys";
 import { PlaylistId } from "@/types/ids";
-import { Ref } from "vue";
+import { useQueryClient } from "@tanstack/vue-query";
+import { toast } from "vue-sonner";
+import { useI18n } from "vue-i18n";
+import type { Ref } from "vue";
 import { useRouter } from "vue-router";
 
 interface RefLike<T> {
@@ -12,68 +17,89 @@ interface RefLike<T> {
 
 export const useTrackContextActions = (
   track: Ref<Track | null>,
-  // context: RefLike<TrackContext>,
   options: {
     playlistId?: RefLike<PlaylistId | undefined>;
     queueIndex?: RefLike<number | null>;
   } = {},
 ): ContextActions => {
   const router = useRouter();
-  // const playerStore = usePlayerStore();
-  // const queueStore = useQueueStore();
+  const queueStore = useQueueStore();
+  const playerStore = usePlayerStore();
+  const queryClient = useQueryClient();
+  const { t } = useI18n();
 
   const play = () => {
-    console.log("not implemented");
+    if (!track.value) return;
+    playerStore.playTrack(track.value);
   };
+
   const playNext = () => {
-    console.log("not implemented");
+    if (!track.value) return;
+    queueStore.insertNext(track.value);
   };
 
   const addToQueue = () => {
-    console.log("not implemented");
+    if (!track.value) return;
+    queueStore.addToQueue(track.value);
+    toast.success(t("queue.added"));
   };
 
   const toggleLike = async () => {
     if (!track.value) return;
+    // TODO: trackRepository.update(track.value.id, { isLiked: !track.value.isLiked })
     console.log("Toggle like:", track.value.id);
   };
 
   const addToPlaylist = async (playlistId: PlaylistId) => {
     if (!track.value) return;
-    console.log("Add to playlist:", track.value.id, "->", playlistId);
+    const result = await playlistRepository.addTrack(playlistId, track.value.id);
+    if (result.isErr()) {
+      toast.error(t("playlist.addTrackFailed"));
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.detail(playlistId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() });
   };
 
   const removeFromQueue = () => {
-    if (options.queueIndex?.value !== undefined) {
-      console.log("Remove from queue at index:", options.queueIndex.value);
-    }
+    const idx = options.queueIndex?.value;
+    if (idx == null) return;
+    const item = queueStore.queue[idx];
+    if (item) queueStore.removeFromQueue(item.id);
   };
 
   const removeFromPlaylist = async () => {
-    if (options.playlistId?.value) {
-      console.log("Remove from playlist:", options.playlistId.value);
+    if (!track.value || !options.playlistId?.value) return;
+    const result = await playlistRepository.removeTrack(
+      options.playlistId.value,
+      track.value.id,
+    );
+    if (result.isErr()) {
+      toast.error(t("playlist.removeTrackFailed"));
+      return;
     }
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.detail(options.playlistId.value) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() });
   };
 
   const removeFromHistory = async () => {
-    if (!track.value) return;
-    console.log("Remove from history:", track.value.id);
+    // TODO: history service
+    console.log("Remove from history:", track.value?.id);
   };
 
   const goToArtist = () => {
     if (!track.value) return;
-    router.push(`/artist/${track.value.artistId}`);
+    router.push({ name: "artist", params: { id: track.value.artistId } });
   };
 
   const goToAlbum = () => {
     if (!track.value) return;
-    router.push(`/album/${track.value.albumId}`);
+    router.push({ name: "album", params: { id: track.value.albumId } });
   };
 
   const download = () => {
-    if (!track.value) return;
-    // TODO: Download service
-    console.log("Download:", track.value.id);
+    // TODO: download service
+    console.log("Download:", track.value?.id);
   };
 
   return {

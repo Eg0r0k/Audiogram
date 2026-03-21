@@ -1,3 +1,4 @@
+import { TrackSource } from "@/db/entities";
 import { AlbumId, ArtistId, TrackId } from "@/types/ids";
 
 export const REPEAT_MODES = ["off", "all", "one"] as const;
@@ -10,13 +11,13 @@ export interface Track {
   artistId: ArtistId;
   albumId: AlbumId;
   albumName: string;
-  url?: string;
-  storagePath?: string;
+  storagePath: string;
+  source: TrackSource;
+  // ! Mb change this to BLOB
   cover?: string;
   duration: number;
   isLiked: boolean;
 }
-
 export interface LocalTrack {
   id: string;
   title: string;

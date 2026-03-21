@@ -16,9 +16,10 @@
           :key="`${item.type}:${item.id}`"
           :title="item.title"
           :subtitle="item.subtitle"
-          :image="item.coverUrl"
+          :cover-path="item.coverPath"
           :to="item.to"
           :rounded="item.rounded"
+          :source="itemToSource(item)"
           @play="$emit('play', item)"
           @contextmenu="$emit('contextmenu', $event, item)"
         />
@@ -34,9 +35,10 @@
         :key="`${item.type}:${item.id}`"
         :title="item.title"
         :subtitle="item.subtitle"
-        :image="item.coverUrl"
+        :cover-path="item.coverPath"
         :to="item.to"
         :rounded="item.rounded"
+        :source="itemToSource(item)"
         @play="$emit('play', item)"
         @contextmenu="$emit('contextmenu', $event, item)"
       />
@@ -61,6 +63,8 @@
 import IconPinFilled from "~icons/tabler/pin-filled";
 import IconMusicOff from "~icons/tabler/music-off";
 import type { LibraryItem } from "../types";
+import type { QueueSource } from "@/modules/queue/types";
+import { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 import MediaCard from "@/components/media-hero/MediaCard.vue";
 
 defineProps<{
@@ -73,6 +77,15 @@ defineEmits<{
   play: [item: LibraryItem];
   contextmenu: [event: MouseEvent, item: LibraryItem];
 }>();
+
+function itemToSource(item: LibraryItem): QueueSource {
+  switch (item.type) {
+    case "album": return { type: "album", albumId: AlbumId(item.id) };
+    case "artist": return { type: "artist", artistId: ArtistId(item.id) };
+    case "playlist": return { type: "playlist", playlistId: PlaylistId(item.id) };
+    default: return { type: "unknown" };
+  }
+}
 </script>
 
 <style scoped>

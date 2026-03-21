@@ -29,6 +29,9 @@ export const useGlobalHotKeys = () => {
       passive: false,
       onEventFired(e) {
         if (e.type !== "keydown" || !canFire.value) return;
+        const isArrowKey = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key);
+        if (isArrowKey && e.altKey) return;
+
         if (PREVENT_DEFAULT_KEYS.has(e.key)) {
           e.preventDefault();
         }
@@ -52,7 +55,7 @@ export const useGlobalHotKeys = () => {
   );
 
   whenever(
-    () => keys.arrowright.value && !keys.ctrl.value && !keys.meta.value && canFire.value,
+    () => keys["shift+arrowright"].value && canFire.value,
     () => {
       if (!player.canSeek) return;
       player.seekTo(Math.min(player.duration, player.currentTime + SEEK_STEP));
@@ -60,7 +63,7 @@ export const useGlobalHotKeys = () => {
   );
 
   whenever(
-    () => keys.arrowleft.value && !keys.ctrl.value && !keys.meta.value && canFire.value,
+    () => keys["shift+arrowleft"].value && canFire.value,
     () => {
       if (!player.canSeek) return;
       player.seekTo(Math.max(0, player.currentTime - SEEK_STEP));

@@ -141,7 +141,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useForm } from "vee-validate";
-import { toTypedSchema } from "@vee-validate/zod";
 import { z } from "zod";
 import { err, ok, Result } from "neverthrow";
 import { useI18n } from "vue-i18n";
@@ -169,6 +168,7 @@ import IconPhoto from "~icons/tabler/photo";
 import IconTrash from "~icons/tabler/trash";
 import IconAlertCircle from "~icons/tabler/alert-circle";
 import type { AlbumChanges } from "../../composables/useAlbumPage";
+import { toTypedSchema } from "@vee-validate/zod";
 
 const { t } = useI18n();
 

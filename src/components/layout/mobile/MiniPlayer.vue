@@ -5,17 +5,11 @@
     @click="$emit('click')"
   >
     <div
-      class="rounded-lg overflow-hidden transition-colors duration-300"
+      class="relative rounded-lg overflow-hidden transition-colors duration-300 w-full"
       :style="containerStyle"
     >
-      <div class="h-0.5 w-full bg-white/20">
-        <div
-          class="h-full bg-white transition-[width] duration-300 ease-linear will-change-[width]"
-          :style="{ width: `${progressPercent}%` }"
-        />
-      </div>
-
-      <div class="flex items-center gap-2.5 px-3 py-2">
+      <!-- Контент: высота 56px, паддинги 8px -->
+      <div class="flex items-center gap-2.5 px-2 h-14">
         <div class="size-10 shrink-0 rounded-md overflow-hidden flex items-center justify-center bg-black/20">
           <NuxtImage
             :src="coverUrl"
@@ -68,13 +62,22 @@
           <Button
             variant="ghost"
             size="icon-lg"
-            class="rounded-full "
+            class="rounded-full"
             :aria-label="$t('player.nextTrack')"
             :disabled="!queueStore.hasNext"
             @click.stop="queueStore.next()"
           >
             <IconSkipForward class="size-5" />
           </Button>
+        </div>
+      </div>
+
+      <div class="absolute bottom-0 left-2 right-2">
+        <div class="h-0.5 w-full bg-white/50 rounded-full">
+          <div
+            class="h-full bg-white rounded-full transition-[width] duration-300 ease-linear will-change-[width]"
+            :style="{ width: `${progressPercent}%` }"
+          />
         </div>
       </div>
     </div>
@@ -93,9 +96,7 @@ import IconSkipForward from "~icons/tabler/player-track-next-filled";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 
-defineEmits<{
-  click: [];
-}>();
+defineEmits<{ click: [] }>();
 
 const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
@@ -107,12 +108,7 @@ const coverUrl = computed(() => {
   return "cover" in track ? track.cover : undefined;
 });
 
-const { color, extractColor } = useImageColor({
-  colorType: "Muted",
-  lightness: 35,
-  saturation: 50,
-  fallback: "#2c2c2c",
-});
+const { color, extractColor } = useImageColor();
 
 const containerStyle = computed(() => ({
   backgroundColor: color.value.hsl,
@@ -120,15 +116,9 @@ const containerStyle = computed(() => ({
 
 const gradientColor = computed(() => color.value.hsl);
 
-watch(
-  coverUrl,
-  async (newCover) => {
-    if (newCover) {
-      await extractColor(newCover);
-    }
-  },
-  { immediate: true },
-);
+watch(coverUrl, async (newCover) => {
+  if (newCover) await extractColor(newCover);
+}, { immediate: true });
 
 const progressPercent = ref(0);
 let rafId: number | null = null;
@@ -138,36 +128,26 @@ const updateProgress = () => {
   if (player && player.duration > 0 && isFinite(player.duration as number)) {
     progressPercent.value = ((player.currentTime as number) / (player.duration as number)) * 100;
   }
-
   if (playerStore.isPlaying) {
     rafId = requestAnimationFrame(updateProgress);
   }
 };
 
-watch(
-  () => playerStore.isPlaying,
-  (playing) => {
-    if (playing) {
-      rafId = requestAnimationFrame(updateProgress);
-    }
-    else if (rafId) {
-      cancelAnimationFrame(rafId);
-      rafId = null;
-    }
-  },
-  { immediate: true },
-);
+watch(() => playerStore.isPlaying, (playing) => {
+  if (playing) {
+    rafId = requestAnimationFrame(updateProgress);
+  }
+  else if (rafId) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+}, { immediate: true });
 
-watch(
-  () => currentTrack.value?.id,
-  () => {
-    progressPercent.value = 0;
-  },
-);
+watch(() => currentTrack.value?.id, () => {
+  progressPercent.value = 0;
+});
 
 onUnmounted(() => {
-  if (rafId) {
-    cancelAnimationFrame(rafId);
-  }
+  if (rafId) cancelAnimationFrame(rafId);
 });
 </script>

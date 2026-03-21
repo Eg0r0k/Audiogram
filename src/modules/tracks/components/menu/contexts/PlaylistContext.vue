@@ -14,6 +14,7 @@
 
   <AddToPlaylistSub
     :playlists="playlists"
+    :is-loading="isLoading"
     @add="actions.addToPlaylist"
     @create="handleCreatePlaylist"
   />
@@ -34,7 +35,7 @@
       variant="destructive"
       @click="actions.removeFromPlaylist"
     >
-      <IconTrash />
+      <IconTrash class="size-5.5" />
       {{ $t('track.contextMenu.removeFromPlaylist') }}
     </component>
   </template>
@@ -45,28 +46,20 @@ import PlayItems from "../items/PlayItems.vue";
 import LikeItem from "../items/LikeItem.vue";
 import AddToPlaylistSub from "../items/AddToPlaylistSub.vue";
 import NavigationItems from "../items/NavigationItems.vue";
-import type { PlaylistId } from "@/types/ids";
-import { PlaylistId as createPlaylistId } from "@/types/ids";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
-import { ContextActions } from "../type";
+import { usePlaylistMenu } from "../composables/usePlaylistMenu";
+import type { ContextActions } from "../type";
+import type { Track } from "@/modules/player/types";
+import type { PlaylistId } from "@/types/ids";
 import IconTrash from "~icons/tabler/trash";
-import { Track } from "@/modules/player/types";
-const { Separator, Item } = useTrackMenuComponents();
 
-defineProps<{
+const props = defineProps<{
   track: Track;
   actions: ContextActions;
   playlistId?: PlaylistId;
   isOwner?: boolean;
 }>();
 
-const playlists: { id: PlaylistId; name: string }[] = [
-  { id: createPlaylistId("1"), name: "Избранное" },
-  { id: createPlaylistId("2"), name: "Для тренировок" },
-  { id: createPlaylistId("3"), name: "Вечерний плейлист" },
-];
-
-const handleCreatePlaylist = () => {
-  console.log("Create playlist");
-};
+const { Separator, Item } = useTrackMenuComponents();
+const { playlists, isLoading, handleCreatePlaylist } = usePlaylistMenu();
 </script>

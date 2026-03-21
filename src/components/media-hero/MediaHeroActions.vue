@@ -3,9 +3,17 @@
     <div class="flex items-center gap-3">
       <Button
         class="size-14 rounded-full"
-        @click="emit('play')"
+        :disabled="isLoading"
+        @click="handlePlay"
       >
-        <IconPlay class="size-5" />
+        <IconPause
+          v-if="isPlaying"
+          class="size-5 fill-current"
+        />
+        <IconPlay
+          v-else
+          class="size-5 fill-current"
+        />
       </Button>
 
       <Button
@@ -18,7 +26,10 @@
         <IconShuffle class="size-5" />
       </Button>
 
-      <MediaDropdown :context="contextType" />
+      <MediaDropdown
+        :context="contextType"
+        :is-playlist-owner="props.isPlaylistOwner"
+      />
     </div>
 
     <MediaDisplayDropdown />
@@ -26,21 +37,40 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import Button from "../ui/button/Button.vue";
 import { MediaType } from "./types";
-import { computed } from "vue";
 import MediaDropdown from "./menu/dropdown/MediaDropdown.vue";
-import IconShuffle from "~icons/tabler/arrows-shuffle";
-import IconPlay from "~icons/tabler/player-play-filled";
 import MediaDisplayDropdown from "./MediaDisplayDropdown.vue";
+import IconPlay from "~icons/tabler/player-play-filled";
+import IconPause from "~icons/tabler/player-pause-filled";
+import IconShuffle from "~icons/tabler/arrows-shuffle";
+import type { QueueSource } from "@/modules/queue/types";
+import { usePlayerStore } from "@/modules/player/store/player.store";
+import { usePlaybackState } from "@/modules/player/composables/usePlaybackState";
 
 const props = defineProps<{
   type: MediaType;
+  source: QueueSource;
+  isPlaylistOwner?: boolean;
 }>();
+
 const emit = defineEmits<{
   play: [];
   shuffle: [];
 }>();
+
+const playerStore = usePlayerStore();
+const { isActiveSource, isPlaying, isLoading } = usePlaybackState(() => props.source);
+
+function handlePlay() {
+  if (isActiveSource.value) {
+    playerStore.togglePlay();
+  }
+  else {
+    emit("play");
+  }
+}
 
 const contextType = computed(() => {
   switch (props.type) {

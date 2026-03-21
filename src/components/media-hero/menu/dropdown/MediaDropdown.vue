@@ -39,6 +39,7 @@ import { MediaContext } from "../types";
 import AlbumContext from "../contexts/AlbumContext.vue";
 import ArtistContext from "../contexts/ArtistContext.vue";
 import IconDots from "~icons/tabler/dots";
+import PlaylistContext from "../contexts/PlaylistContext.vue";
 
 provideMenuComponents(dropdownMenuComponents);
 
@@ -55,7 +56,7 @@ const contexts: Record<MediaContext, Component> = {
   "album": AlbumContext,
   "artist-page": ArtistContext,
   "liked": AlbumContext,
-  "playlist": AlbumContext,
+  "playlist": PlaylistContext,
 };
 
 const actions = useMediaContext();

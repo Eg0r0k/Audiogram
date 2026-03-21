@@ -34,7 +34,7 @@
 
     <div class="relative shrink-0 size-10 group-data-[compact=true]:hidden z-10">
       <NuxtImage
-        :src="track.cover"
+        :src="coverUrl"
         :alt="track.title"
         fallback-src="/img/fallback.svg"
         :class="styles.image"
@@ -79,7 +79,7 @@
             tabindex="0"
             class="hover:text-foreground underline-offset-2 transition-colors duration-200 cursor-pointer truncate"
             @click.stop="handleArtistClick"
-            @keypress.enter.stop="handleArtistClick "
+            @keypress.enter.stop="handleArtistClick"
           >
             {{ artist }}
           </span>
@@ -91,13 +91,16 @@
     <Button
       variant="ghost"
       size="icon-sm"
-      class="rounded-full"
+      :class="[
+        'rounded-full transition-opacity',
+        isLiked ? 'opacity-100 text-primary' : 'opacity-0 sm:group-hover:opacity-100'
+      ]"
       @click.stop="toggle"
     >
-      <IconLike />
+      <IconLike :filled="isLiked" />
     </Button>
 
-    <div class="w-7 flex justify-end items-center">
+    <div class="w-7 flex justify-end items-center relative">
       <span :class="styles.duration">
         {{ formatDuration(track.duration) }}
       </span>
@@ -116,7 +119,7 @@
 <script setup lang="ts">
 import { cva } from "class-variance-authority";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
-import { computed, useTemplateRef } from "vue";
+import { computed, ref, useTemplateRef } from "vue";
 import { useElementHover } from "@vueuse/core";
 import IconDots from "~icons/tabler/dots";
 import IconGripVertical from "~icons/tabler/grip-vertical";
@@ -130,6 +133,7 @@ import type { Track } from "@/modules/player/types";
 import { Button } from "@/components/ui/button";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useRouter } from "vue-router";
+import { useCoverUrl } from "@/modules/player/composables/useCoverUrl";
 
 interface Props {
   track: Track;
@@ -141,9 +145,8 @@ interface Props {
   beingDragged?: boolean;
 }
 
-const toggle = () => {
-
-};
+const toggle = () => {};
+const isLiked = ref(false);
 
 const props = withDefaults(defineProps<Props>(), {
   index: 0,
@@ -164,14 +167,11 @@ const playerStore = usePlayerStore();
 
 const rowRef = useTemplateRef("rowRef");
 const isRowHovered = useElementHover(() => rowRef.value);
-
 const isCurrentTrack = computed(() => playerStore.currentTrack?.id === props.track.id);
-
 const isPlaying = computed(() => playerStore.isPlaying);
+const showOverlay = computed(() => isCurrentTrack.value || isRowHovered.value);
 
-const showOverlay = computed(() => {
-  return isCurrentTrack.value || isRowHovered.value;
-});
+const coverUrl = useCoverUrl(() => props.track.cover);
 
 const artists = computed(() =>
   props.track.artist
@@ -195,12 +195,11 @@ const styles = {
   info: "flex-1 min-w-0 flex flex-col group-data-[compact=true]:flex-row group-data-[compact=true]:items-baseline group-data-[compact=true]:gap-2",
   title: "font-medium truncate text-base group-data-[compact=true]:text-sm hover:underline",
   artist: "flex items-center text-muted-foreground truncate text-sm group-data-[compact=true]:text-xs",
-  duration: "text-muted-foreground text-sm group-data-[compact=true]:text-xs hidden sm:block sm:group-hover:hidden",
-  dots: "rounded-full sm:hidden sm:group-hover:flex",
+  duration: "text-muted-foreground font-medium text-sm group-data-[compact=true]:text-xs hidden sm:block sm:group-hover:hidden",
+  dots: "absolute  rounded-full transition-opacity opacity-0 sm:group-hover:opacity-100",
 };
 
 const { openMenu, openDropdown } = useTrackMenu();
-
 const route = useRouter();
 
 const handleClick = () => {

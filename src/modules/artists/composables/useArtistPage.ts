@@ -1,17 +1,20 @@
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
-import { ArtistId } from "@/types/ids";
+import { AlbumId, ArtistId } from "@/types/ids";
 import { albumRepository, artistRepository, trackRepository } from "@/db/repositories";
 import { storageService } from "@/db/storage";
 import type { ArtistEntity } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
 import type { ArtistData } from "@/components/media-hero/types";
+import { getCoverUrl, invalidateCover } from "@/lib/storage";
+import { queryKeys } from "@/lib/query-keys";
+import { mapTracks } from "@/modules/tracks/lib/mappers";
 
 export interface AlbumWithCover {
-  id: string;
+  id: AlbumId;
   title: string;
-  artistId: string;
+  artistId: ArtistId;
+  coverPath?: string;
   coverUrl: string | null;
   year?: number;
 }
@@ -24,68 +27,37 @@ export function useArtistPage() {
   const artistId = computed(() => ArtistId(route.params.id as string));
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["artist-page", artistId],
+    queryKey: computed(() => queryKeys.artists.detail(artistId.value)),
     queryFn: async () => {
       const artistRes = await artistRepository.findById(artistId.value);
       if (artistRes.isErr()) throw artistRes.error;
       const artist = artistRes.value;
       if (!artist) throw new Error("Artist not found");
 
-      const albumsRes = await albumRepository.findByArtistId(artistId.value);
-      const albumEntities = albumsRes.isOk() ? albumsRes.value : [];
+      const [albumsRes, tracksRes] = await Promise.all([
+        albumRepository.findByArtistId(artistId.value),
+        trackRepository.findByArtistId(artistId.value),
+      ]);
 
-      const tracksRes = await trackRepository.findByArtistId(artistId.value);
+      const albumEntities = albumsRes.isOk() ? albumsRes.value : [];
       const trackEntities = tracksRes.isOk() ? tracksRes.value : [];
 
       const albums: AlbumWithCover[] = await Promise.all(
-        albumEntities.map(async (album) => {
-          let coverUrl: string | null = null;
-
-          if (album.coverPath) {
-            const urlResult = await storageService.getAudioUrl(album.coverPath);
-            coverUrl = urlResult.isOk() ? urlResult.value : null;
-          }
-
-          return {
-            id: album.id,
-            title: album.title,
-            artistId: album.artistId,
-            coverUrl,
-            year: album.year,
-          };
-        }),
+        albumEntities.map(async album => ({
+          id: album.id,
+          title: album.title,
+          artistId: album.artistId,
+          coverPath: album.coverPath,
+          coverUrl: await getCoverUrl(album.coverPath) ?? null,
+          year: album.year,
+        })),
       );
 
-      const albumsMap = new Map(albumEntities.map(a => [a.id, a]));
+      const tracks = mapTracks(trackEntities, [artist], albumEntities);
 
-      const tracks = await Promise.all(
-        trackEntities.map(async (entity) => {
-          const urlResult = await storageService.getAudioUrl(entity.storagePath);
-          if (urlResult.isErr()) return null;
-
-          const album = albumsMap.get(entity.albumId);
-
-          return {
-            id: entity.id,
-            title: entity.title,
-            artist: artist.name,
-            artistId: entity.artistId,
-            albumId: entity.albumId,
-            albumName: album?.title ?? "Unknown",
-            cover: undefined,
-            url: urlResult.value,
-            duration: entity.duration,
-            isLiked: entity.isLiked,
-          } as Track;
-        }),
-      );
-
-      return {
-        artist,
-        albums,
-        tracks: tracks.filter((t): t is Track => t !== null),
-      };
+      return { artist, albums, tracks };
     },
+    staleTime: Infinity,
   });
 
   const artist = computed(() => data.value?.artist ?? null);
@@ -107,32 +79,22 @@ export function useArtistPage() {
   const { mutateAsync: deleteArtist } = useMutation({
     mutationFn: async () => {
       if (!artistId.value) return;
-
-      if (data.value?.albums) {
-        for (const album of data.value.albums) {
-          if (album.coverUrl?.startsWith("blob:")) {
-            URL.revokeObjectURL(album.coverUrl);
-          }
-        }
-      }
-
-      await trackRepository.deleteByArtistId(artistId.value);
-
       const albumsRes = await albumRepository.findByArtistId(artistId.value);
       if (albumsRes.isOk()) {
         for (const album of albumsRes.value) {
           if (album.coverPath) {
+            invalidateCover(album.coverPath);
             await storageService.deleteFile(album.coverPath);
           }
           await albumRepository.delete(album.id);
         }
       }
-
+      await trackRepository.deleteByArtistId(artistId.value);
       await artistRepository.delete(artistId.value);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["artists"] });
-      queryClient.invalidateQueries({ queryKey: ["albums"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.artists.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.albums.all() });
       router.push("/library");
     },
   });
@@ -140,14 +102,12 @@ export function useArtistPage() {
   const { mutateAsync: updateArtist } = useMutation({
     mutationFn: async (changes: Partial<ArtistEntity>) => {
       if (!artistId.value) return;
-      const updateResult = await artistRepository.update(artistId.value, changes);
-      if (updateResult.isErr()) {
-        throw new Error(`Failed to update artist: ${updateResult.error.message}`);
-      }
+      const result = await artistRepository.update(artistId.value, changes);
+      if (result.isErr()) throw new Error(`Failed to update artist: ${result.error.message}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["artist-page", artistId] });
-      queryClient.invalidateQueries({ queryKey: ["artists"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.artists.detail(artistId.value) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.artists.all() });
     },
   });
 

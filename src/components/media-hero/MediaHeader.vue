@@ -48,7 +48,7 @@
       >
         <Button
           v-if="isScrolled"
-          size="icon"
+          size="icon-lg"
           class="rounded-full shrink-0"
           :aria-label="$t('player.play')"
           @click="$emit('play')"

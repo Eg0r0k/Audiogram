@@ -3,8 +3,22 @@ import { computed, ref, shallowRef, markRaw } from "vue";
 import { Player, type PlayerState } from "lyra-audio";
 import Hls from "hls.js";
 import { useAudioSettingsStore } from "@/modules/settings/store/audio";
-import type { LocalTrack, PlayerTrack, RepeatMode } from "../types";
+import type { LocalTrack, PlayerTrack, RepeatMode, Track } from "../types";
 import { isLiveStreamTrack } from "../utils";
+import { TrackSource } from "@/db/entities";
+import { IS_TAURI } from "@/lib/environment/userAgent";
+import { storageService } from "@/db/storage";
+
+export async function resolveTrackBlob(
+  storagePath: string,
+  source: TrackSource,
+): Promise<Blob | null> {
+  if (source === TrackSource.LOCAL_EXTERNAL && !IS_TAURI) {
+    return null;
+  }
+  const result = await storageService.getFile(storagePath);
+  return result.isOk() ? result.value : null;
+}
 
 export const usePlayerStore = defineStore("player", () => {
   const player = shallowRef<Player | null>(null);
@@ -137,21 +151,23 @@ export const usePlayerStore = defineStore("player", () => {
 
   const play = async () => {
     if (!player.value) {
-      if (currentTrack.value && "url" in currentTrack.value) {
-        const url = currentTrack.value.url as string;
-        // TODO: rewrite this
-        // for now its not possible to restore blob URLs across sessions, so just skip trying to play them
-        if (url.startsWith("blob:")) {
-          console.warn("[Player] Cannot restore blob URL from previous session");
+      const track = currentTrack.value;
+      if (track && "storagePath" in track) {
+        const blob = await resolveTrackBlob(
+          track.storagePath!,
+          (track as Track).source,
+        );
+        if (!blob) {
           currentTrack.value = null;
           status.value = "idle";
           return;
         }
-        await playUrl(url);
-        if (currentTime.value > 0 && player.value) {
-          (player.value as Player).seek(currentTime.value);
+        await initPlayer();
+        await player.value!.load(blob);
+        if (currentTime.value > 0) {
+          player.value!.seek(currentTime.value);
         }
-        return;
+        await player.value!.play();
       }
       return;
     }
@@ -177,7 +193,6 @@ export const usePlayerStore = defineStore("player", () => {
       await player.value.fadeIn(audioSettings.fadeInDuration);
     }
     else {
-    // Gain might be 0 from previous fadeOut — restore before playing
       player.value.setVolume(volume.value);
       await player.value.play();
     }
@@ -246,17 +261,21 @@ export const usePlayerStore = defineStore("player", () => {
     }
   };
 
-  const playTrack = async (track: LocalTrack) => {
+  const playTrack = async (track: Track) => {
     await initPlayer();
     if (!player.value) return;
 
     currentTrack.value = track;
 
+    const blob = await resolveTrackBlob(track.storagePath, track.source);
+    if (!blob) {
+      console.error("[Player] Failed to resolve track blob:", track.storagePath);
+      status.value = "error";
+      return;
+    }
+
     try {
-      if (!track.url) {
-        throw new Error("Track has no URL");
-      }
-      await player.value.load(track.url);
+      await player.value.load(blob); // Player.load() принимает Blob напрямую ✓
       await play();
     }
     catch (err) {
@@ -264,7 +283,6 @@ export const usePlayerStore = defineStore("player", () => {
       status.value = "error";
     }
   };
-
   const playFile = async (file: File) => {
     await initPlayer();
     if (!player.value) return;

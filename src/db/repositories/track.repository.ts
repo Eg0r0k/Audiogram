@@ -86,6 +86,20 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
       return err(error as Error);
     }
   }
+
+  async findByIds(ids: TrackId[]): Promise<Result<TrackEntity[], Error>> {
+    try {
+      const tracks = await this.table
+        .where("id")
+        .anyOf(ids)
+        .toArray();
+      const map = new Map(tracks.map(t => [t.id, t]));
+      return ok(ids.flatMap(id => map.get(id) ? [map.get(id)!] : []));
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
 }
 
 export const trackRepository = new TrackRepository();

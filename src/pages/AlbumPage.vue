@@ -29,6 +29,7 @@
       <MediaHero
         :data="albumData"
         @play="handlePlayAll"
+        @shuffle="handleShuffle"
         @edit="showEditDialog = true"
         @delete="showDeleteDialog = true"
         @add-to-queue="handleAddToQueue"
@@ -39,7 +40,7 @@
         context="album"
         :album-id="album?.id"
       >
-        <div class="px-4">
+        <div class="px-4 mt-4">
           <TrackRow
             v-for="(track, index) in tracks"
             :key="track.id"
@@ -180,4 +181,14 @@ async function handleSave(changes: AlbumChanges) {
     toast.error(message);
   }
 }
+
+function handleShuffle() {
+  if (tracks.value.length === 0 || !album.value) return;
+  queueStore.setQueue(tracks.value, 0, {
+    type: "album",
+    albumId: album.value.id,
+  });
+  queueStore.toggleShuffle();
+}
+
 </script>

@@ -49,7 +49,7 @@
           >
             <DropdownMenuItem @click="$emit('createPlaylist')">
               <IconPlaylist class="size-4" />
-              {{ $t('library.createPlaylist') }}
+              {{ $t('track.contextMenu.createPlaylist') }}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

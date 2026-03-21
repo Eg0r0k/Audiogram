@@ -14,6 +14,7 @@
 
   <AddToPlaylistSub
     :playlists="playlists"
+    :is-loading="isLoading"
     @add="actions.addToPlaylist"
     @create="handleCreatePlaylist"
   />
@@ -30,30 +31,19 @@
 
 <script setup lang="ts">
 import PlayItems from "../items/PlayItems.vue";
-import { useTrackMenuComponents } from "../useTrackMenuComponents";
-import { PlaylistId } from "@/types/ids";
-import { ContextActions } from "../type";
 import NavigationItems from "../items/NavigationItems.vue";
 import AddToPlaylistSub from "../items/AddToPlaylistSub.vue";
 import LikeItem from "../items/LikeItem.vue";
+import { useTrackMenuComponents } from "../useTrackMenuComponents";
+import { usePlaylistMenu } from "../composables/usePlaylistMenu";
+import type { ContextActions } from "../type";
 import type { Track } from "@/modules/player/types";
 
-const { Separator } = useTrackMenuComponents();
-
-defineProps<{
+const props = defineProps<{
   track: Track;
   actions: ContextActions;
 }>();
 
-// TODO delete this later
-
-const playlists: { id: PlaylistId; name: string }[] = [
-  { id: PlaylistId("1"), name: "Избранное" },
-  { id: PlaylistId("2"), name: "Для тренировок" },
-  { id: PlaylistId("3"), name: "Вечерний плейлист" },
-];
-
-const handleCreatePlaylist = () => {
-  console.log("Create playlist");
-};
+const { Separator } = useTrackMenuComponents();
+const { playlists, isLoading, handleCreatePlaylist } = usePlaylistMenu(() => props.track.id);
 </script>

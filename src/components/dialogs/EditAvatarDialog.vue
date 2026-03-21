@@ -35,6 +35,13 @@
 
       <DialogFooter>
         <Button
+          variant="destructive-link"
+          :disabled="isSaving"
+          @click="handleClose"
+        >
+          {{ $t("common.cancel") }}
+        </Button>
+        <Button
           variant="ghost-primary"
           class="sm:mr-auto"
           :disabled="isSaving"
@@ -44,15 +51,9 @@
         </Button>
 
         <Button
-          variant="destructive-link"
-          :disabled="isSaving"
-          @click="handleClose"
-        >
-          {{ $t("common.cancel") }}
-        </Button>
-
-        <Button
           v-if="currentImageSrc"
+          variant="ghost-primary"
+
           :disabled="isSaving || !isReady"
           @click="handleSave"
         >
