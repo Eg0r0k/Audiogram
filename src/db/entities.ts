@@ -73,3 +73,15 @@ export interface TrackEntity {
   addedAt: number;
   fingerprint?: string;
 }
+
+export interface ListenEventEntity {
+  id: string;
+  trackId: TrackId;
+  artistId: ArtistId;
+  albumId: AlbumId;
+  startedAt: number;
+  secondsListened: number;
+  trackDuration: number;
+  completed: boolean;
+  skipped: boolean;
+}

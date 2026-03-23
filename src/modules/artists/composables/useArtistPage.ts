@@ -26,24 +26,31 @@ export function useArtistPage() {
 
   const artistId = computed(() => ArtistId(route.params.id as string));
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const {
+    data: artist,
+    isLoading: isArtistLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: computed(() => queryKeys.artists.detail(artistId.value)),
     queryFn: async () => {
-      const artistRes = await artistRepository.findById(artistId.value);
-      if (artistRes.isErr()) throw artistRes.error;
-      const artist = artistRes.value;
-      if (!artist) throw new Error("Artist not found");
+      const res = await artistRepository.findById(artistId.value);
+      if (res.isErr()) throw res.error;
+      if (!res.value) throw new Error("Artist not found");
+      return res.value;
+    },
+  });
 
-      const [albumsRes, tracksRes] = await Promise.all([
-        albumRepository.findByArtistId(artistId.value),
-        trackRepository.findByArtistId(artistId.value),
-      ]);
+  const { data: albumsData, isLoading: isAlbumsLoading } = useQuery({
+    queryKey: computed(() => queryKeys.artists.albums(artistId.value)),
+    queryFn: async () => {
+      const res = await albumRepository.findByArtistId(artistId.value);
+      if (res.isErr()) throw res.error;
 
-      const albumEntities = albumsRes.isOk() ? albumsRes.value : [];
-      const trackEntities = tracksRes.isOk() ? tracksRes.value : [];
-
-      const albums: AlbumWithCover[] = await Promise.all(
-        albumEntities.map(async album => ({
+      const entities = res.value;
+      const withCovers: AlbumWithCover[] = await Promise.all(
+        entities.map(async album => ({
           id: album.id,
           title: album.title,
           artistId: album.artistId,
@@ -53,23 +60,38 @@ export function useArtistPage() {
         })),
       );
 
-      const tracks = mapTracks(trackEntities, [artist], albumEntities);
-
-      return { artist, albums, tracks };
+      return { entities, withCovers };
     },
-    staleTime: Infinity,
+    enabled: computed(() => !!artist.value),
   });
 
-  const artist = computed(() => data.value?.artist ?? null);
-  const albums = computed(() => data.value?.albums ?? []);
-  const tracks = computed(() => data.value?.tracks ?? []);
+  const { data: rawTracks, isLoading: isTracksLoading } = useQuery({
+    queryKey: computed(() => queryKeys.artists.tracks(artistId.value)),
+    queryFn: async () => {
+      const res = await trackRepository.findByArtistId(artistId.value);
+      if (res.isErr()) throw res.error;
+      return res.value;
+    },
+    enabled: computed(() => !!artist.value),
+  });
+
+  const isLoading = computed(
+    () => isArtistLoading.value || isAlbumsLoading.value || isTracksLoading.value,
+  );
+
+  const albums = computed(() => albumsData.value?.withCovers ?? []);
+
+  const tracks = computed(() => {
+    if (!rawTracks.value || !artist.value || !albumsData.value) return [];
+    return mapTracks(rawTracks.value, [artist.value], albumsData.value.entities);
+  });
 
   const artistData = computed<ArtistData | null>(() => {
-    if (!data.value?.artist) return null;
+    if (!artist.value) return null;
     return {
       type: "artist",
-      id: data.value.artist.id,
-      title: data.value.artist.name,
+      id: artist.value.id,
+      title: artist.value.name,
       image: "",
       monthlyListeners: 0,
       isFollowing: false,
@@ -78,17 +100,16 @@ export function useArtistPage() {
 
   const { mutateAsync: deleteArtist } = useMutation({
     mutationFn: async () => {
-      if (!artistId.value) return;
-      const albumsRes = await albumRepository.findByArtistId(artistId.value);
-      if (albumsRes.isOk()) {
-        for (const album of albumsRes.value) {
-          if (album.coverPath) {
-            invalidateCover(album.coverPath);
-            await storageService.deleteFile(album.coverPath);
-          }
-          await albumRepository.delete(album.id);
+      const albumEntities = albumsData.value?.entities ?? [];
+
+      for (const album of albumEntities) {
+        if (album.coverPath) {
+          invalidateCover(album.coverPath);
+          await storageService.deleteFile(album.coverPath);
         }
+        await albumRepository.delete(album.id);
       }
+
       await trackRepository.deleteByArtistId(artistId.value);
       await artistRepository.delete(artistId.value);
     },
@@ -101,7 +122,6 @@ export function useArtistPage() {
 
   const { mutateAsync: updateArtist } = useMutation({
     mutationFn: async (changes: Partial<ArtistEntity>) => {
-      if (!artistId.value) return;
       const result = await artistRepository.update(artistId.value, changes);
       if (result.isErr()) throw new Error(`Failed to update artist: ${result.error.message}`);
     },

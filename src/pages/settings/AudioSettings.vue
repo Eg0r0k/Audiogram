@@ -27,9 +27,6 @@
         >
           <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-3">
-              <span class="  font-medium ">
-                Preset
-              </span>
               <Select
                 :model-value="currentPreset"
                 @update:model-value="(val) => applyPreset(val as string)"
@@ -144,7 +141,7 @@
               :min="0"
               :max="10"
               :step="0.1"
-              @update:model-value="(val) => setFadeInDuration(val[0])"
+              @update:model-value="(val) => setFadeInDuration(val![0])"
             />
           </div>
 
@@ -160,7 +157,7 @@
               :min="0"
               :max="10"
               :step="0.1"
-              @update:model-value="(val) => setFadeOutDuration(val[0])"
+              @update:model-value="(val) => setFadeOutDuration(val![0])"
             />
           </div>
         </div>

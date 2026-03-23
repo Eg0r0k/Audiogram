@@ -1,5 +1,5 @@
 <template>
-  <ContextMenu>
+  <ContextMenu v-model:open="isContextMenuOpen">
     <ContextMenuTrigger as-child>
       <slot />
     </ContextMenuTrigger>
@@ -41,7 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
   context: "default",
 });
 
-const { activeTrack, activeIndex } = useTrackMenu();
+const { activeTrack, activeIndex, isContextMenuOpen } = useTrackMenu();
 
 const contexts: Record<TrackContext, Component> = {
   "default": DefaultContext,

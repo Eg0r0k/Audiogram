@@ -37,8 +37,8 @@
         v-if="albums.length > 0"
         class="px-4 py-6"
       >
-        <h2 class="text-lg font-semibold mb-4">
-          {{ $t("artist.albums") }}
+        <h2 class="text-2xl ml-3 mb-2 font-bold">
+          Альбомы
         </h2>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
           <MediaCard
@@ -77,13 +77,13 @@
       </section>
     </template>
 
-    <DeleteArtistDialog
+    <!-- <DeleteArtistDialog
       v-model:open="showDeleteDialog"
       :artist="artist"
       :album-count="albums.length"
       :track-count="tracks.length"
       @confirm="handleDelete"
-    />
+    /> -->
   </Scrollable>
 </template>
 
@@ -104,6 +104,7 @@ import { useArtistPage } from "@/modules/artists/composables/useArtistPage";
 import type { ArtistEntity } from "@/db/entities";
 import MediaCard from "@/components/media-hero/MediaCard.vue";
 import { AlbumId } from "@/types/ids";
+import TrackMenuOverlay from "@/modules/tracks/components/TrackMenuOverlay.vue";
 
 const { t } = useI18n();
 const { isCompact } = useLibraryView();

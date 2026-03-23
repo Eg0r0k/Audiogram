@@ -7,6 +7,8 @@ import vRipple from "./directives/ripple";
 import "./style.css";
 import { i18n } from "@/app/i18n";
 import App from "@/app/App.vue";
+import { IS_TAURI } from "./lib/environment/userAgent";
+import { vCopy } from "./directives/copy";
 
 const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate);
@@ -28,5 +30,13 @@ app.use(VueQueryPlugin, {
   },
 });
 
+// TODO: Fix restore player with set with queue, becouse this stop repitting without queue store.
+
+if ("serviceWorker" in navigator && !IS_TAURI) {
+  navigator.serviceWorker.register("/opfs-sw.js").catch(console.error);
+}
+
 app.directive("ripple", vRipple);
+app.directive("copy", vCopy);
+
 app.mount("#app");

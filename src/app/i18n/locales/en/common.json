@@ -68,5 +68,8 @@
   },
   "editHint": "Double-click to edit",
   "editLabel": "Edit value",
-  "trackCount": "{count} track | {count} traks"
+  "trackCount": "{count} track | {count} traks",
+
+  "hoursShort": "{count} hr",
+  "minutesShort": "{count} min"
 }

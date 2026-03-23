@@ -28,7 +28,7 @@
           </div>
         </SettingsGroup>
 
-        <SettingsGroup class="mt-3">
+        <SettingsGroup class="mt-3 mb-3">
           <div class="px-4 py-3">
             <div class="text-primary font-medium mb-1">
               Storage Size
@@ -71,9 +71,6 @@
               </ItemSubtitle>
             </ItemContent>
           </Item>
-        </SettingsGroup>
-
-        <SettingsGroup class="mt-3">
           <Item>
             <ItemContent>
               <ItemTitle>{{ $t('settings.storage.location') }}</ItemTitle>
@@ -82,19 +79,20 @@
               </ItemSubtitle>
             </ItemContent>
           </Item>
-        </SettingsGroup>
-
-        <SettingsGroup class="mt-3">
           <Button
             class="w-full h-14 justify-start  "
             variant="ghost-primary"
             size="xl"
+            @click="clearAllData"
           >
             <TrashIcon class=" size-6" />
             {{ $t('settings.storage.clearAll') }}
           </Button>
         </SettingsGroup>
       </template>
+      <WatchedFoldersSection
+        v-if="IS_TAURI"
+      />
     </div>
   </Scrollable>
 </template>
@@ -126,6 +124,8 @@ import MusicIcon from "~icons/tabler/music";
 
 import IconLoader2 from "~icons/tabler/loader-2";
 import { Button } from "@/components/ui/button";
+import { IS_TAURI } from "@/lib/environment/userAgent";
+import WatchedFoldersSection from "@/modules/watched-folders/components/WatchedFoldersSection.vue";
 
 const { t } = useI18n();
 

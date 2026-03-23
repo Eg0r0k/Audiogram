@@ -1,6 +1,7 @@
-import { ok, err, ResultAsync, fromPromise, errAsync } from "neverthrow";
+import { ok, err, ResultAsync, fromPromise, errAsync, okAsync } from "neverthrow";
 import { IFileStorage } from "./IFileStorage";
 import { StorageError, StorageErrorCode } from "../errors/storage.errors";
+import { getMimeType } from "@/lib/environment/mimeSupport";
 
 export class WebOpfsStorage implements IFileStorage {
   private rootPromise: Promise<FileSystemDirectoryHandle> | null = null;
@@ -23,6 +24,7 @@ export class WebOpfsStorage implements IFileStorage {
     if (typeof data === "string") {
       return errAsync(StorageError.writeFailed(path, "File paths are not supported in Web Storage"));
     }
+
     return this.getRoot()
       .andThen(root => this.resolvePath(root, path, true))
       .andThen(({ dirHandle, filename }) =>
@@ -30,6 +32,7 @@ export class WebOpfsStorage implements IFileStorage {
           (async () => {
             const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
             const writable = await fileHandle.createWritable();
+
             try {
               await writable.write(data);
               await writable.close();
@@ -38,6 +41,7 @@ export class WebOpfsStorage implements IFileStorage {
               await writable.abort().catch(() => {});
               throw e;
             }
+
             return path;
           })(),
           error => StorageError.writeFailed(path, error),
@@ -50,7 +54,14 @@ export class WebOpfsStorage implements IFileStorage {
       .andThen(root => this.resolvePath(root, path, false))
       .andThen(({ dirHandle, filename }) =>
         fromPromise(
-          dirHandle.getFileHandle(filename).then(h => h.getFile()),
+          dirHandle.getFileHandle(filename).then(async (h) => {
+            const file = await h.getFile();
+            if (file.type) return file;
+
+            return new File([file], file.name, {
+              type: getMimeType(path) || "audio/mpeg",
+            });
+          }),
           error =>
             this.isNotFoundError(error)
               ? StorageError.fileNotFound(path, error)
@@ -60,7 +71,7 @@ export class WebOpfsStorage implements IFileStorage {
   }
 
   getAudioUrl(path: string): ResultAsync<string, StorageError> {
-    return this.getFile(path).map(blob => URL.createObjectURL(blob));
+    return okAsync(`/opfs/${encodeURIComponent(path)}`);
   }
 
   deleteFile(path: string): ResultAsync<void, StorageError> {
@@ -100,6 +111,7 @@ export class WebOpfsStorage implements IFileStorage {
               files.push(`${folder}/${handle.name}`);
             }
           }
+
           return files;
         })(),
         () => null,
@@ -122,9 +134,11 @@ export class WebOpfsStorage implements IFileStorage {
     return fromPromise(
       (async () => {
         let currentDir = root;
+
         for (const dirName of parts) {
           currentDir = await currentDir.getDirectoryHandle(dirName, { create });
         }
+
         return { dirHandle: currentDir, filename };
       })(),
       error =>

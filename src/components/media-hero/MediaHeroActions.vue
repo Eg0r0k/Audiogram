@@ -2,7 +2,7 @@
   <div class="flex items-center justify-between">
     <div class="flex items-center gap-3">
       <Button
-        class="size-14 rounded-full"
+        class="size-14 rounded-full "
         :disabled="isLoading"
         @click="handlePlay"
       >
@@ -18,7 +18,7 @@
 
       <Button
         v-if="showShuffle"
-        class="rounded-full"
+        class="rounded-full text-white"
         size="icon-lg"
         variant="ghost"
         @click="emit('shuffle')"

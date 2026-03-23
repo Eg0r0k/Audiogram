@@ -32,7 +32,7 @@ export function usePlaylistMenu() {
 
     const result = await playlistRepository.create({
       id,
-      name: t("playlist.newPlaylist"),
+      name: "New playlist",
       trackIds: [],
       addedAt: now,
       updatedAt: now,

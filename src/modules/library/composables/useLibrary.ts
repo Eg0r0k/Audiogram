@@ -9,13 +9,11 @@ import { playlistRepository } from "@/db/repositories/playlist.repository";
 import { LibraryItem } from "../types";
 import { PlaylistId } from "@/types/ids";
 import { queryKeys } from "@/lib/query-keys";
-import { useI18n } from "vue-i18n";
 
 export const useLibrary = () => {
   const store = useLibraryStore();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { t } = useI18n();
 
   const { sortBy, activeFilter, searchQuery } = storeToRefs(store);
 
@@ -98,7 +96,7 @@ export const useLibrary = () => {
         type: "playlist",
         title: playlist.name,
         subtitle: `${playlist.trackIds.length} tracks`,
-        coverPath: playlist.coverPath, // только путь — компонент сам резолвит
+        coverPath: playlist.coverPath,
         isPinned: store.isPinned("playlist", playlist.id),
         addedAt: playlist.addedAt,
         updatedAt: playlist.updatedAt,
@@ -171,7 +169,7 @@ export const useLibrary = () => {
 
     const result = await playlistRepository.create({
       id,
-      name: t("playlist.newPlaylist"),
+      name: "New playlist",
       trackIds: [],
       addedAt: now,
       updatedAt: now,

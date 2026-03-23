@@ -9,9 +9,12 @@ import { albumRepository } from "@/db/repositories/album.repository";
 import { storageService } from "@/db/storage";
 import { generateCoverFileName } from "@/lib/uniqeName";
 import type { PlaylistEntity } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
 import type { PlaylistData } from "@/components/media-hero/types";
-import { invalidateCoverCache, resolveTrackUrl } from "@/lib/storage";
+import { getCoverUrl, invalidateCover } from "@/lib/storage";
+import { queryKeys } from "@/lib/query-keys";
+import { mapTracks } from "@/modules/tracks/lib/mappers";
+import { formatTotalDuration } from "@/lib/format/time";
+import { useI18n } from "vue-i18n";
 
 export interface PlaylistChanges {
   name?: string;
@@ -25,60 +28,51 @@ export function usePlaylistPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  const { t } = useI18n();
+
   const playlistId = computed(() => PlaylistId(route.params.id as string));
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["playlist-page", playlistId],
+    queryKey: computed(() => queryKeys.playlists.detail(playlistId.value)),
     queryFn: async () => {
       const playlistRes = await playlistRepository.findById(playlistId.value);
       if (playlistRes.isErr()) throw playlistRes.error;
       const playlist = playlistRes.value;
       if (!playlist) throw new Error("Playlist not found");
 
-      let coverUrl: string | undefined;
-      if (playlist.coverPath) {
-        const coverUrlResult = await storageService.getAudioUrl(playlist.coverPath);
-        if (coverUrlResult.isOk()) {
-          coverUrl = coverUrlResult.value;
-        }
+      const coverUrl = await getCoverUrl(playlist.coverPath);
+
+      if (playlist.trackIds.length === 0) {
+        return { playlist, tracks: [], coverUrl };
       }
 
-      const tracks: Track[] = [];
+      const tracksRes = await trackRepository.findByIds(playlist.trackIds);
+      if (tracksRes.isErr()) throw tracksRes.error;
+      const rawTracks = tracksRes.value;
 
-      for (const trackId of playlist.trackIds) {
-        const trackRes = await trackRepository.findById(trackId);
-        if (trackRes.isErr() || !trackRes.value) continue;
+      // Collect only the IDs that actually appear in this playlist — no findAll()
+      const artistIds = [...new Set(rawTracks.map(t => t.artistId))];
+      const albumIds = [...new Set(rawTracks.map(t => t.albumId))];
 
-        const entity = trackRes.value;
+      const [artistsRes, albumsRes] = await Promise.all([
+        artistRepository.findByIds(artistIds),
+        albumRepository.findByIds(albumIds),
+      ]);
 
-        const url = await resolveTrackUrl(entity.source, entity.storagePath);
-        if (!url) continue;
+      // Preserve the playlist track order defined by playlist.trackIds
+      const trackMap = new Map(rawTracks.map(t => [t.id, t]));
+      const orderedEntities = playlist.trackIds.flatMap((id) => {
+        const t = trackMap.get(id);
+        return t ? [t] : [];
+      });
 
-        const artistRes = await artistRepository.findById(entity.artistId);
-        const artistName = artistRes.isOk() ? artistRes.value?.name ?? "Unknown" : "Unknown";
+      const tracks = mapTracks(
+        orderedEntities,
+        artistsRes.isOk() ? artistsRes.value : [],
+        albumsRes.isOk() ? albumsRes.value : [],
+      );
 
-        const albumRes = await albumRepository.findById(entity.albumId);
-        const albumName = albumRes.isOk() ? albumRes.value?.title ?? "Unknown" : "Unknown";
-
-        tracks.push({
-          id: entity.id,
-          title: entity.title,
-          artist: artistName,
-          artistId: entity.artistId,
-          albumId: entity.albumId,
-          albumName,
-          cover: undefined,
-          url: url,
-          duration: entity.duration,
-          isLiked: entity.isLiked,
-        });
-      }
-
-      return {
-        playlist,
-        tracks,
-        coverUrl,
-      };
+      return { playlist, tracks, coverUrl };
     },
   });
 
@@ -88,24 +82,21 @@ export function usePlaylistPage() {
 
   const totalDuration = computed(() => {
     const seconds = tracks.value.reduce((sum, t) => sum + t.duration, 0);
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} min`;
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    return `${hours} hr ${remainingMinutes} min`;
+    return formatTotalDuration(seconds, t);
   });
 
   const playlistData = computed<PlaylistData | null>(() => {
-    if (!data.value?.playlist) return null;
+    const d = data.value;
+    if (!d?.playlist) return null;
     return {
       type: "playlist",
-      id: data.value.playlist.id,
-      title: data.value.playlist.name,
-      image: data.value.coverUrl ?? "",
+      id: d.playlist.id,
+      title: d.playlist.name,
+      image: d.coverUrl ?? "",
       isOwner: true,
-      trackCount: data.value.tracks.length,
+      trackCount: d.tracks.length,
       duration: totalDuration.value,
-      description: data.value.playlist.description,
+      description: d.playlist.description,
     };
   });
 
@@ -113,15 +104,14 @@ export function usePlaylistPage() {
     mutationFn: async () => {
       const current = playlist.value;
       if (!current) return;
-
       if (current.coverPath) {
+        invalidateCover(current.coverPath);
         await storageService.deleteFile(current.coverPath);
       }
-
       await playlistRepository.delete(current.id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["library"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() });
       router.push("/library");
     },
   });
@@ -136,42 +126,34 @@ export function usePlaylistPage() {
       if (changes.name && changes.name !== current.name) {
         updateData.name = changes.name;
       }
-
       if (changes.description !== undefined) {
         updateData.description = changes.description;
       }
 
       if (changes.coverBlob) {
         if (current.coverPath) {
+          invalidateCover(current.coverPath);
           await storageService.deleteFile(current.coverPath);
-          invalidateCoverCache(current.coverPath);
         }
-
         const coverPath = generateCoverFileName(current.id, changes.coverBlob.type);
         const saveResult = await storageService.saveFile(coverPath, changes.coverBlob);
-
-        if (saveResult.isErr()) {
-          throw new Error(`Failed to save cover: ${saveResult.error.message}`);
-        }
-
+        if (saveResult.isErr()) throw new Error(`Failed to save cover: ${saveResult.error.message}`);
         updateData.coverPath = saveResult.value;
       }
       else if (changes.removeCover && current.coverPath) {
-        invalidateCoverCache(current.coverPath);
+        invalidateCover(current.coverPath);
         await storageService.deleteFile(current.coverPath);
         updateData.coverPath = undefined;
       }
 
       if (Object.keys(updateData).length > 0) {
-        const updateResult = await playlistRepository.update(current.id, updateData);
-        if (updateResult.isErr()) {
-          throw new Error(`Failed to update playlist: ${updateResult.error.message}`);
-        }
+        const result = await playlistRepository.update(current.id, updateData);
+        if (result.isErr()) throw new Error(`Failed to update playlist: ${result.error.message}`);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["playlist-page", playlistId] });
-      queryClient.invalidateQueries({ queryKey: ["library"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.playlists.detail(playlistId.value) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() });
     },
   });
 
@@ -184,8 +166,8 @@ export function usePlaylistPage() {
       if (result.isErr()) throw result.error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["playlist-page", playlistId] });
-      queryClient.invalidateQueries({ queryKey: ["library"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.playlists.detail(playlistId.value) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() });
     },
   });
 

@@ -30,7 +30,7 @@ export const useTrackContextActions = (
 
   const play = () => {
     if (!track.value) return;
-    playerStore.playTrack(track.value);
+    playerStore.playPlayerTrack(track.value);
   };
 
   const playNext = () => {

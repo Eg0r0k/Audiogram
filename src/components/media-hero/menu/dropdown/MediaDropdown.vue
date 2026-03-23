@@ -1,17 +1,15 @@
 <template>
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
-      <slot>
-        <Button
-          class="rounded-full"
-          size="icon-lg"
-          variant="ghost"
-        >
-          <IconDots
-            class="size-5"
-          />
-        </Button>
-      </slot>
+      <Button
+        class="rounded-full text-white"
+        size="icon-lg"
+        variant="ghost"
+      >
+        <IconDots
+          class="size-5"
+        />
+      </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent
       class="w-60"

@@ -7,8 +7,7 @@
     :data-compact="compact"
     :class="[
       styles.root,
-      (highlighted || isCurrentTrack) && 'bg-primary/10 hover:bg-primary/15',
-      dimmed && 'opacity-50',
+      rowStateClass, dimmed && 'opacity-50',
       beingDragged && 'opacity-30',
     ]"
     @click="handleClick"
@@ -32,7 +31,7 @@
       {{ index }}
     </span>
 
-    <div class="relative shrink-0 size-10 group-data-[compact=true]:hidden z-10">
+    <div class="relative shrink-0  size-10 group-data-[compact=true]:hidden z-10">
       <NuxtImage
         :src="coverUrl"
         :alt="track.title"
@@ -159,7 +158,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   play: [track: Track];
-  artistClick: [artist: string];
   dragStart: [event: PointerEvent];
 }>();
 
@@ -199,8 +197,24 @@ const styles = {
   dots: "absolute  rounded-full transition-opacity opacity-0 sm:group-hover:opacity-100",
 };
 
-const { openMenu, openDropdown } = useTrackMenu();
+const { openMenu, openDropdown, activeTrack, isDropdownOpen, isContextMenuOpen } = useTrackMenu();
 const route = useRouter();
+
+const isMenuSelected = computed(() => {
+  return (isDropdownOpen.value || isContextMenuOpen.value)
+    && activeTrack.value?.id === props.track.id;
+});
+
+const isActivePlayback = computed(() => props.highlighted || isCurrentTrack.value);
+
+const rowStateClass = computed(() => {
+  if (isActivePlayback.value)
+    return "bg-primary/10 ";
+  if (isMenuSelected.value)
+    return "bg-accent/80  ";
+
+  return "";
+});
 
 const handleClick = () => {
   if (isCurrentTrack.value) {

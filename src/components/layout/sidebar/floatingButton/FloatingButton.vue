@@ -7,7 +7,7 @@
     </DropdownMenuTrigger>
     <DropdownMenuContent
       :side-offset="10"
-      class="bg-background/50"
+      class="bg-background/30"
       align="end"
       side="top"
     >
@@ -16,7 +16,7 @@
           Add Track
         </DropdownMenuItem>
         <DropdownMenuItem>
-          <IconPlaylist class="size-4" />
+          <IconPlaylist class="size-5.5" />
           {{ $t('track.contextMenu.createPlaylist') }}
         </DropdownMenuItem>
       </DropdownMenuGroup>

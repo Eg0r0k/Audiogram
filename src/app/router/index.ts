@@ -16,6 +16,7 @@ const router = createRouter({
     }
     return false;
   },
+
 });
 router.beforeEach(titleMiddleware);
 

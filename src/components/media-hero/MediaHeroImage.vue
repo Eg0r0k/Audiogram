@@ -8,7 +8,7 @@
         :height="232"
         loading="eager"
         class="size-full object-cover"
-        fallback-src="/img/fallback.svg"
+        :fallback-src="fallbackSrc"
       />
     </div>
 
@@ -37,9 +37,12 @@ const props = withDefaults(defineProps<{
   alt: string;
   rounded?: boolean;
   editable?: boolean;
+  fallbackSrc?: string;
 }>(), {
   rounded: false,
   editable: false,
+  fallbackSrc: "/img/fallback.svg",
+
 });
 
 const emit = defineEmits<{

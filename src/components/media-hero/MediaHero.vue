@@ -16,23 +16,25 @@
       />
 
       <div class="relative flex flex-col pt-[72px] lg:flex-row lg:items-end px-4 lg:px-7 pb-6 lg:pb-7 min-h-[265px]">
-        <div class="flex justify-center lg:hidden mb-4">
+        <div class="flex  justify-center lg:hidden mb-4">
           <MediaHeroImage
             :src="data.image"
             :alt="data.title"
             :rounded="isArtist(data)"
             :editable="canEdit"
+            :fallback-src="fallbackSrc"
             class="size-48"
             @edit="$emit('edit')"
           />
         </div>
 
-        <div class="hidden lg:block shrink-0 mr-7">
+        <div class="hidden lg:block shrink-0 mr-7 w-[232px]">
           <MediaHeroImage
             :src="data.image"
             :alt="data.title"
             :rounded="isArtist(data)"
             :editable="canEdit"
+            :fallback-src="fallbackSrc"
             @edit="$emit('edit')"
           />
         </div>
@@ -95,6 +97,12 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const fallbackSrc = computed(() => {
+  return isArtist(props.data)
+    ? "/img/artist-fallback.svg"
+    : "/img/fallback.svg";
+});
 
 provideMediaContext({
   addToQueue: () => emit("addToQueue"),

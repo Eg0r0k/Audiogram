@@ -1,15 +1,16 @@
 {
-    "type": {
-        "playlist": "Playlist",
-        "artist": "Artist",
-        "album": "Album"
-    },
-    "display": {
-        "label": "Library format",
-        "list": "List",
-        "compact": "Сompact"
-    },
-    "monthlyListeners": "{count} Listenings",
-    "trackCount": "{count} track | {count} traks",
-    "editImage": "Edit Cover"
+  "type": {
+    "playlist": "Playlist",
+    "artist": "Artist",
+    "album": "Album",
+    "liked": "Liked Songs"
+  },
+  "display": {
+    "label": "Library format",
+    "list": "List",
+    "compact": "Compact"
+  },
+  "monthlyListeners": "{count} listens",
+  "trackCount": "{count} track | {count} tracks",
+  "editImage": "Edit cover"
 }

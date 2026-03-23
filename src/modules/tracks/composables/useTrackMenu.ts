@@ -3,7 +3,10 @@ import { ref, watch } from "vue";
 
 const activeTrack = ref<Track | null>(null);
 const activeIndex = ref<number | null>(null);
+
 const isDropdownOpen = ref(false);
+const isContextMenuOpen = ref(false);
+
 const dropdownAnchor = ref({ x: 0, y: 0, width: 0, height: 0 });
 
 let lastCloseTime = 0;
@@ -13,6 +16,20 @@ watch(isDropdownOpen, (isOpen, wasOpen) => {
   if (wasOpen && !isOpen) {
     lastCloseTime = Date.now();
     lastClosedTrackId = activeTrack.value?.id ?? null;
+
+    if (!isContextMenuOpen.value) {
+      activeTrack.value = null;
+      activeIndex.value = null;
+    }
+  }
+});
+
+watch(isContextMenuOpen, (isOpen, wasOpen) => {
+  if (wasOpen && !isOpen) {
+    if (!isDropdownOpen.value) {
+      activeTrack.value = null;
+      activeIndex.value = null;
+    }
   }
 });
 
@@ -20,6 +37,11 @@ export function useTrackMenu() {
   const openMenu = (track: Track, index: number) => {
     activeTrack.value = track;
     activeIndex.value = index;
+    isContextMenuOpen.value = true;
+  };
+
+  const closeMenu = () => {
+    isContextMenuOpen.value = false;
   };
 
   const openDropdown = (track: Track, index: number, event: MouseEvent) => {
@@ -52,8 +74,10 @@ export function useTrackMenu() {
     activeTrack,
     activeIndex,
     isDropdownOpen,
+    isContextMenuOpen,
     dropdownAnchor,
     openMenu,
+    closeMenu,
     openDropdown,
     closeDropdown,
   };

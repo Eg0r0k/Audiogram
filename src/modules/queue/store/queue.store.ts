@@ -4,7 +4,6 @@ import { QueueItemId } from "@/types/ids";
 import type { PlayerTrack } from "@/modules/player/types";
 import type { QueueItem, QueueSource } from "../types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import { resolveTrackSource } from "../lib/resolveTrackSource";
 import { fisherYatesShuffle } from "@/lib/shuffle";
 
 const RESTART_THRESHOLD = 3;
@@ -68,26 +67,12 @@ export const useQueueStore = defineStore("queue", () => {
     currentIndex.value = index;
     const item = queue.value[index];
 
-    const resolved = await resolveTrackSource(item.track);
-
-    if (!resolved) {
-      console.error(`Failed to resolve source for track: ${item.track.title}`);
-      return false;
-    }
-
-    playerStore.currentTrack = item.track;
-
     try {
-      if (resolved.type === "file" && resolved.file) {
-        await playerStore.playFile(resolved.file);
-      }
-      else if (resolved.type === "url" && resolved.url) {
-        await playerStore.playUrl(resolved.url);
-      }
+      await playerStore.playPlayerTrack(item.track);
       return true;
     }
     catch (err) {
-      console.error("Failed to play track:", err);
+      console.error(`[Queue] Failed to play "${item.track.title}":`, err);
       return false;
     }
   }

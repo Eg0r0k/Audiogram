@@ -31,7 +31,7 @@ import { useSidebar } from "@/composables/useSidebar";
 const { leftSidebar: sidebar, setLeftSidebarWidth } = useSidebar();
 
 const MIN_WIDTH = 280;
-const MAX_WIDTH = 500;
+const MAX_WIDTH = 400;
 
 const isResizing = ref(false);
 let startX = 0;

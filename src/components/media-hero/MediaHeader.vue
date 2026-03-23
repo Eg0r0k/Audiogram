@@ -3,7 +3,7 @@
     class="fixed w-full top-0 z-20 transition-all duration-200 ease-standard"
     :class="[
       isScrolled
-        ? 'bg-background/80 backdrop-blur-lg '
+        ? 'bg-background '
         : 'bg-transparent'
     ]"
   >

@@ -3,6 +3,7 @@ import { Result, ok, err } from "neverthrow";
 
 export abstract class BaseRepository<TEntity, TId> {
   constructor(protected table: Table<TEntity, TId>) {}
+
   async findById(id: TId): Promise<Result<TEntity | undefined, Error>> {
     try {
       const entity = await this.table.get(id);
@@ -16,6 +17,17 @@ export abstract class BaseRepository<TEntity, TId> {
   async findAll(): Promise<Result<TEntity[], Error>> {
     try {
       const entities = await this.table.toArray();
+      return ok(entities);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async findByIds(ids: TId[]): Promise<Result<TEntity[], Error>> {
+    try {
+      const results = await this.table.bulkGet(ids);
+      const entities = results.filter((e): e is TEntity => e !== undefined);
       return ok(entities);
     }
     catch (error) {

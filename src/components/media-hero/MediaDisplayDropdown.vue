@@ -1,7 +1,10 @@
 <template>
   <DropdownMenu :modal="false">
     <DropdownMenuTrigger as-child>
-      <Button variant="ghost">
+      <Button
+        variant="ghost"
+        class="text-white"
+      >
         <component
           :is="currentOption.icon"
           class="size-5"

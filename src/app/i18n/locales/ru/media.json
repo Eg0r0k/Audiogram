@@ -1,16 +1,16 @@
 {
-    "type": {
-        "playlist": "Плейлист",
-        "artist": "Артист",
-        "album": "Альбом"
-    },
-        "display": {
-        "label": "Формат библиотеки",
-        "list": "Список",
-        "compact": "Компактный"
-    },
-    "monthlyListeners": "{count} Прослушиваний",
-    "trackCount": "{count} трек | {count} трека | {count} треков",
-    "editImage": "Изменить обложку"
-    
+  "type": {
+    "playlist": "Плейлист",
+    "artist": "Артист",
+    "album": "Альбом",
+    "liked": "Любимые треки"
+  },
+  "display": {
+    "label": "Формат библиотеки",
+    "list": "Список",
+    "compact": "Компактный"
+  },
+  "monthlyListeners": "{count} прослушиваний",
+  "trackCount": "{count} трек | {count} трека | {count} треков",
+  "editImage": "Изменить обложку"
 }

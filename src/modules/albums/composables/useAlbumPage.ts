@@ -25,46 +25,65 @@ export function useAlbumPage() {
 
   const albumId = computed(() => AlbumId(route.params.id as string));
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const {
+    data: albumDetail,
+    isLoading: isAlbumLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: computed(() => queryKeys.albums.detail(albumId.value)),
     queryFn: async () => {
-      const albumRes = await albumRepository.findById(albumId.value);
-      if (albumRes.isErr()) throw albumRes.error;
-      const album = albumRes.value;
-      if (!album) throw new Error("Album not found");
-
-      const [artistRes, tracksRes] = await Promise.all([
-        artistRepository.findById(album.artistId),
-        trackRepository.findByAlbumId(albumId.value),
-      ]);
-
-      const artist = artistRes.isOk() ? artistRes.value : null;
-      if (tracksRes.isErr()) throw tracksRes.error;
-
-      const coverUrl = await getCoverUrl(album.coverPath);
-      const tracks = mapTracks(tracksRes.value, artist ? [artist] : [], [album]);
-
-      return { album, artist, tracks, coverUrl };
+      const res = await albumRepository.findById(albumId.value);
+      if (res.isErr()) throw res.error;
+      if (!res.value) throw new Error("Album not found");
+      const coverUrl = await getCoverUrl(res.value.coverPath);
+      return { album: res.value, coverUrl };
     },
-    staleTime: Infinity,
   });
 
-  const album = computed(() => data.value?.album ?? null);
-  const tracks = computed(() => data.value?.tracks ?? []);
-  const coverUrl = computed(() => data.value?.coverUrl);
+  const { data: rawTracks, isLoading: isTracksLoading } = useQuery({
+    queryKey: computed(() => queryKeys.albums.tracks(albumId.value)),
+    queryFn: async () => {
+      const res = await trackRepository.findByAlbumId(albumId.value);
+      if (res.isErr()) throw res.error;
+      return res.value;
+    },
+    enabled: computed(() => !!albumDetail.value),
+  });
+
+  const artistId = computed(() => albumDetail.value?.album.artistId);
+
+  const { data: artist } = useQuery({
+    queryKey: computed(() => queryKeys.artists.detail(artistId.value!)),
+    queryFn: async () => {
+      const res = await artistRepository.findById(artistId.value!);
+      if (res.isErr()) throw res.error;
+      return res.value ?? null;
+    },
+    enabled: computed(() => !!artistId.value),
+  });
+
+  const album = computed(() => albumDetail.value?.album ?? null);
+  const coverUrl = computed(() => albumDetail.value?.coverUrl);
+  const isLoading = computed(() => isAlbumLoading.value || isTracksLoading.value);
+
+  const tracks = computed(() => {
+    if (!rawTracks.value || !artist.value || !album.value) return [];
+    return mapTracks(rawTracks.value, [artist.value], [album.value]);
+  });
 
   const albumData = computed<AlbumData | null>(() => {
-    const d = data.value;
-    if (!d?.album || !d?.artist) return null;
+    if (!album.value || !artist.value) return null;
     return {
       type: "album",
-      id: d.album.id,
-      title: d.album.title,
-      artistName: d.artist.name,
-      artistId: d.artist.id,
-      image: d.coverUrl ?? "",
-      releaseYear: d.album.year ?? 0,
-      trackCount: d.tracks.length,
+      id: album.value.id,
+      title: album.value.title,
+      artistName: artist.value.name,
+      artistId: artist.value.id,
+      image: coverUrl.value ?? "",
+      releaseYear: album.value.year ?? 0,
+      trackCount: tracks.value.length,
     };
   });
 

@@ -64,6 +64,9 @@
   },
   "editHint": "Двойное нажатие для изменения",
   "editLabel": "Изменить значение",
-  "trackCount": "{count} трек | {count} трека | {count} треков"
+  "trackCount": "{count} трек | {count} трека | {count} треков",
+
+  "hoursShort": "{count} ч",
+  "minutesShort": "{count} мин"
 
 }

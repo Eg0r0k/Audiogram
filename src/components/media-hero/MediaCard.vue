@@ -15,7 +15,7 @@
           :class="rounded ? 'rounded-full' : 'rounded-md'"
         >
           <NuxtImage
-            :src="image"
+            :src="resolvedCoverUrl"
             :alt="title"
             :placeholder="true"
             fallback-src="/img/fallback.svg"
@@ -29,10 +29,20 @@
         >
           <Button
             size="icon-lg"
-            class="rounded-full size-12 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-200 shadow-lg"
-            @click.prevent.stop="$emit('play')"
+            class="rounded-full size-12 transition-all duration-200 shadow-lg"
+            :class="isActiveSource
+              ? 'translate-y-0 opacity-100'
+              : 'translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100'"
+            @click.prevent.stop="handlePlay"
           >
-            <IconPlay class="size-5 fill-current" />
+            <IconPause
+              v-if="isPlaying"
+              class="size-5 fill-current"
+            />
+            <IconPlay
+              v-else
+              class="size-5 fill-current"
+            />
           </Button>
         </div>
       </div>
@@ -61,22 +71,45 @@ import { Button } from "@/components/ui/button";
 import { Link } from "@/components/ui/link";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import IconPlay from "~icons/tabler/player-play-filled";
+import IconPause from "~icons/tabler/player-pause-filled";
 import type { RouteLocationRaw } from "vue-router";
+import type { QueueSource } from "@/modules/queue/types";
+import { useCoverUrl } from "@/modules/player/composables/useCoverUrl";
+import { usePlaybackState } from "@/modules/player/composables/usePlaybackState";
+import { usePlayerStore } from "@/modules/player/store/player.store";
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   title: string;
   subtitle?: string;
-  image?: string | null;
+  coverPath?: string | null;
   to: RouteLocationRaw;
   rounded?: boolean;
+  source?: QueueSource;
 }>(), {
   subtitle: undefined,
-  image: null,
+  coverPath: null,
   rounded: false,
+  source: undefined,
 });
 
-defineEmits<{
+const emit = defineEmits<{
   play: [];
   contextmenu: [event: MouseEvent];
 }>();
+
+const playerStore = usePlayerStore();
+const { isActiveSource, isPlaying } = usePlaybackState(
+  () => props.source ?? { type: "unknown" },
+);
+
+function handlePlay() {
+  if (isActiveSource.value) {
+    playerStore.togglePlay();
+  }
+  else {
+    emit("play");
+  }
+}
+
+const resolvedCoverUrl = useCoverUrl(() => props.coverPath ?? undefined);
 </script>

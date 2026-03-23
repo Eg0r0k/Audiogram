@@ -10,3 +10,27 @@ export const formatDuration = (s: number): string => {
   }
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
+
+export const formatTotalDuration = (
+  seconds: number,
+  t: (key: string, params?: Record<string, unknown>) => string,
+): string => {
+  if (!isFinite(seconds) || seconds <= 0) {
+    return t("common.minutesShort", { count: 0 });
+  }
+
+  const totalMinutes = Math.floor(seconds / 60);
+
+  if (totalMinutes < 60) {
+    return t("common.minutesShort", { count: totalMinutes });
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (minutes === 0) {
+    return t("common.hoursShort", { count: hours });
+  }
+
+  return `${t("common.hoursShort", { count: hours })} ${t("common.minutesShort", { count: minutes })}`;
+};

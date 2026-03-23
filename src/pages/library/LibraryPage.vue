@@ -1,5 +1,6 @@
 <template>
   <Scrollable
+    ref="scrollableRef"
     class="flex-1"
     @scroll="onScroll"
   >
@@ -39,7 +40,7 @@ import LibraryToolbar from "@/modules/library/components/LibraryToolbar.vue";
 import LibraryGrid from "@/modules/library/components/LibraryGrid.vue";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
 import type { LibraryFilter, LibraryItem } from "@/modules/library/types";
-
+import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 const {
   sortBy,
   activeFilter,
@@ -69,6 +70,8 @@ function handleFilter(filter: LibraryFilter) {
   }
 }
 
+const scrollableRef = ref<InstanceType<typeof Scrollable> | null>(null);
+useScrollRestoration(scrollableRef);
 function handlePlay(_item: LibraryItem) {
   // TODO: implement play for each entity type
 }

@@ -3,22 +3,14 @@ import { computed, ref, shallowRef, markRaw } from "vue";
 import { Player, type PlayerState } from "lyra-audio";
 import Hls from "hls.js";
 import { useAudioSettingsStore } from "@/modules/settings/store/audio";
-import type { LocalTrack, PlayerTrack, RepeatMode, Track } from "../types";
+import type { PlayerTrack, RepeatMode, Track } from "../types";
 import { isLiveStreamTrack } from "../utils";
 import { TrackSource } from "@/db/entities";
 import { IS_TAURI } from "@/lib/environment/userAgent";
 import { storageService } from "@/db/storage";
-
-export async function resolveTrackBlob(
-  storagePath: string,
-  source: TrackSource,
-): Promise<Blob | null> {
-  if (source === TrackSource.LOCAL_EXTERNAL && !IS_TAURI) {
-    return null;
-  }
-  const result = await storageService.getFile(storagePath);
-  return result.isOk() ? result.value : null;
-}
+import { watch } from "vue";
+import { statsService } from "@/services/stats.service";
+import { TrackId } from "@/types/ids";
 
 export const usePlayerStore = defineStore("player", () => {
   const player = shallowRef<Player | null>(null);
@@ -27,26 +19,26 @@ export const usePlayerStore = defineStore("player", () => {
   const duration = ref(0);
   const volume = ref(1);
   const isMuted = ref(false);
-  const isPlaying = ref(false);
-  const isLoading = ref(false);
   const repeatMode = ref<RepeatMode>("off");
   const isShuffled = ref(false);
-
   const status = ref<PlayerState>("idle");
-
   const currentTrack = ref<PlayerTrack | null>(null);
-
   const graphRevision = ref(0);
   const trackEndedSignal = ref(0);
 
-  let _pauseFadeAbort: AbortController | null = null;
+  let _activeFadeAbort: AbortController | null = null;
 
-  const cancelPauseFade = () => {
-    if (_pauseFadeAbort) {
-      _pauseFadeAbort.abort();
-      _pauseFadeAbort = null;
+  const cancelActiveFade = () => {
+    if (_activeFadeAbort) {
+      _activeFadeAbort.abort();
+      _activeFadeAbort = null;
     }
   };
+
+  const isPlaying = computed(
+    () => status.value === "playing" || status.value === "buffering",
+  );
+  const isLoading = computed(() => status.value === "loading");
 
   const progress = computed(() => {
     if (duration.value <= 0) return 0;
@@ -58,11 +50,7 @@ export const usePlayerStore = defineStore("player", () => {
   const isLiveStream = computed(() => {
     const track = currentTrack.value;
     const url = track && "url" in track ? track.url : undefined;
-
-    return isLiveStreamTrack({
-      duration: duration.value,
-      url,
-    });
+    return isLiveStreamTrack({ duration: duration.value, url });
   });
 
   const canSeek = computed(() => {
@@ -73,115 +61,144 @@ export const usePlayerStore = defineStore("player", () => {
   });
 
   const initPlayer = async () => {
-    cancelPauseFade();
+    cancelActiveFade();
 
     if (player.value) {
-      await player.value.dispose();
+      const oldPlayer = player.value;
+      player.value = null;
+      await oldPlayer.dispose();
     }
 
-    const newPlayer = new Player({
-      mode: "auto",
-      Hls: Hls,
-    });
+    const newPlayer = new Player({ mode: "auto", Hls });
     newPlayer.setVolume(volume.value);
     newPlayer.setMuted(isMuted.value);
 
     player.value = markRaw(newPlayer);
 
-    newPlayer.on("play", () => {
-      isPlaying.value = true;
-      status.value = "playing";
-    });
-
-    newPlayer.on("pause", () => {
-      isPlaying.value = false;
-      status.value = "paused";
+    newPlayer.on("statechange", ({ to }) => {
+      if (player.value !== newPlayer) return;
+      status.value = to;
     });
 
     newPlayer.on("ended", () => {
-      isPlaying.value = false;
+      if (player.value !== newPlayer) return;
       currentTime.value = 0;
-      status.value = "ready";
       trackEndedSignal.value++;
     });
 
-    newPlayer.on("timeupdate", (payload) => {
-      currentTime.value = payload.currentTime as number;
+    newPlayer.on("timeupdate", ({ currentTime: t }) => {
+      if (player.value !== newPlayer) return;
+      currentTime.value = t;
     });
 
     newPlayer.on("durationchange", (dur) => {
-      duration.value = dur as number;
-    });
-
-    newPlayer.on("loadstart", () => {
-      isLoading.value = true;
-      status.value = "loading";
-    });
-
-    newPlayer.on("canplay", () => {
-      isLoading.value = false;
-      status.value = "ready";
-      if (player.value) {
-        duration.value = player.value.duration as number;
-      }
-      graphRevision.value++;
+      if (player.value !== newPlayer) return;
+      duration.value = dur;
     });
 
     newPlayer.on("loadedmetadata", ({ duration: dur }) => {
-      duration.value = dur as number;
+      if (player.value !== newPlayer) return;
+      duration.value = dur;
     });
 
-    newPlayer.on("statechange", ({ to }) => {
-      status.value = to as typeof status.value;
+    newPlayer.on("canplay", () => {
+      if (player.value !== newPlayer) return;
+      if (player.value) duration.value = player.value.duration;
+      graphRevision.value++;
     });
 
     newPlayer.on("volumechange", ({ volume: vol, muted }) => {
+      if (player.value !== newPlayer) return;
       volume.value = vol;
       isMuted.value = muted;
     });
 
     newPlayer.on("error", (err) => {
-      console.error("Player error:", err);
-      status.value = "error";
-      isLoading.value = false;
+      if (player.value !== newPlayer) return;
+      console.error("[Player] error:", err);
     });
 
     return newPlayer;
   };
 
+  const resolveTrackUrl = async (track: PlayerTrack): Promise<string | null> => {
+    if ("url" in track && track.url) {
+      return track.url;
+    }
+
+    if (!("storagePath" in track) || !track.storagePath) {
+      return null;
+    }
+
+    if ("source" in track && track.source === TrackSource.LOCAL_EXTERNAL) {
+      if (!IS_TAURI) return null;
+      const result = await storageService.getAudioUrl(track.storagePath);
+      return result.isOk() ? result.value : null;
+    }
+
+    const result = await storageService.getFile(track.storagePath);
+    if (result.isErr()) return null;
+
+    return URL.createObjectURL(result.value);
+  };
+
+  const loadUrl = async (p: Player, url: string) => {
+    const normalized = String(url).trim().toLowerCase();
+    const isHlsUrl
+      = normalized.includes(".m3u8")
+        || normalized.includes("application/vnd.apple.mpegurl");
+
+    console.log("[PlayerStore] loadUrl", {
+      originalUrl: url,
+      normalized,
+      isHlsUrl,
+      playerModeBeforeLoad: p.mode,
+      hasHlsCtor: !!Hls,
+    });
+
+    if (isHlsUrl) {
+      console.log("[PlayerStore] loadUrl -> HLS source");
+      await p.load({ url, type: "hls" });
+      console.log("[PlayerStore] loadUrl <- HLS loaded");
+    }
+    else {
+      console.log("[PlayerStore] loadUrl -> regular url");
+      await p.load(url);
+      console.log("[PlayerStore] loadUrl <- regular url loaded");
+    }
+  };
   const play = async () => {
     if (!player.value) {
       const track = currentTrack.value;
-      if (track && "storagePath" in track) {
-        const blob = await resolveTrackBlob(
-          track.storagePath!,
-          (track as Track).source,
-        );
-        if (!blob) {
-          currentTrack.value = null;
-          status.value = "idle";
-          return;
-        }
-        await initPlayer();
-        await player.value!.load(blob);
-        if (currentTime.value > 0) {
-          player.value!.seek(currentTime.value);
-        }
-        await player.value!.play();
+      if (!track) return;
+
+      const url = await resolveTrackUrl(track);
+      if (!url) {
+        currentTrack.value = null;
+        status.value = "idle";
+        return;
       }
+
+      const p = await initPlayer();
+      await loadUrl(p, url);
+      if (currentTime.value > 0) p.seek(currentTime.value);
+      await p.play();
       return;
     }
 
-    const wasCancellingFade = _pauseFadeAbort !== null;
-    cancelPauseFade();
+    const wasCancellingFade = _activeFadeAbort !== null;
+    cancelActiveFade();
+    if (wasCancellingFade) player.value.cancelFade();
 
     const audioSettings = useAudioSettingsStore();
     const shouldFade = audioSettings.isFadeEnabled && audioSettings.fadeInDuration > 0;
 
     if (wasCancellingFade && player.value.isPlaying) {
       if (shouldFade) {
-        const target = isMuted.value ? 0 : volume.value;
-        await player.value.fadeTo(target, audioSettings.fadeInDuration);
+        await player.value.fadeTo(
+          isMuted.value ? 0 : volume.value,
+          audioSettings.fadeInDuration,
+        );
       }
       else {
         player.value.setVolume(volume.value);
@@ -197,31 +214,29 @@ export const usePlayerStore = defineStore("player", () => {
       await player.value.play();
     }
   };
-
   const pause = () => {
-    if (!player.value || !isPlaying.value || _pauseFadeAbort) return;
+    if (!player.value || !isPlaying.value || _activeFadeAbort) return;
 
     const audioSettings = useAudioSettingsStore();
     const shouldFade = audioSettings.isFadeEnabled && audioSettings.fadeOutDuration > 0;
 
     if (shouldFade) {
       const ac = new AbortController();
-      _pauseFadeAbort = ac;
-
+      _activeFadeAbort = ac;
       player.value.fadeOut(audioSettings.fadeOutDuration).then(() => {
         if (ac.signal.aborted) return;
         player.value?.pause();
-        _pauseFadeAbort = null;
-      // Gain stays at 0 — play() will restore it
+        _activeFadeAbort = null;
       });
     }
     else {
       player.value.pause();
     }
   };
+
   const togglePlay = async () => {
-    if (_pauseFadeAbort) {
-      cancelPauseFade();
+    if (_activeFadeAbort) {
+      cancelActiveFade();
       player.value?.cancelFade();
       player.value?.setVolume(volume.value);
       return;
@@ -237,118 +252,104 @@ export const usePlayerStore = defineStore("player", () => {
   const stop = () => {
     if (!player.value) return;
 
-    cancelPauseFade();
+    cancelActiveFade();
 
     const audioSettings = useAudioSettingsStore();
     const shouldFade = audioSettings.isFadeEnabled && audioSettings.fadeOutDuration > 0;
 
     if (shouldFade) {
       const ac = new AbortController();
-      _pauseFadeAbort = ac;
-
+      _activeFadeAbort = ac;
       player.value.fadeOut(audioSettings.fadeOutDuration).then(() => {
         if (ac.signal.aborted) return;
         player.value?.stop();
-        _pauseFadeAbort = null;
+        _activeFadeAbort = null;
         currentTime.value = 0;
-      // Gain stays at 0 — play() will restore it
       });
     }
     else {
       player.value.stop();
       currentTime.value = 0;
-      status.value = "ready";
     }
   };
 
-  const playTrack = async (track: Track) => {
-    await initPlayer();
-    if (!player.value) return;
-
+  const playPlayerTrack = async (track: PlayerTrack) => {
+    statsService.stopListening(currentTime.value);
+    const p = await initPlayer();
     currentTrack.value = track;
 
-    const blob = await resolveTrackBlob(track.storagePath, track.source);
-    if (!blob) {
-      console.error("[Player] Failed to resolve track blob:", track.storagePath);
-      status.value = "error";
-      return;
-    }
-
     try {
-      await player.value.load(blob); // Player.load() принимает Blob напрямую ✓
+      if ("file" in track && track.file) {
+        await p.load(track.file);
+        await play();
+        return;
+      }
+
+      let url: string | null = null;
+
+      if ("url" in track && track.url) {
+        url = track.url;
+      }
+      else if ("source" in track && track.source === TrackSource.LOCAL_EXTERNAL) {
+        if (!IS_TAURI) {
+          console.warn("[Player] LOCAL_EXTERNAL not supported in web");
+          status.value = "error";
+          player.value = null;
+          return;
+        }
+
+        const result = await storageService.getAudioUrl(track.storagePath);
+        if (result.isErr()) {
+          throw new Error(`getAudioUrl failed: ${result.error.message}`);
+        }
+        url = result.value;
+      }
+      else if ("storagePath" in track && track.storagePath) {
+        const result = await storageService.getAudioUrl(track.storagePath);
+        if (result.isErr()) {
+          throw new Error(`getAudioUrl failed: ${result.error.message}`);
+        }
+        url = result.value;
+      }
+
+      if (!url) {
+        throw new Error("Cannot resolve track source");
+      }
+
+      await loadUrl(p, url);
       await play();
     }
     catch (err) {
-      console.error("Failed to play track:", err);
+      console.error("[Player] playPlayerTrack failed:", err);
       status.value = "error";
-    }
-  };
-  const playFile = async (file: File) => {
-    await initPlayer();
-    if (!player.value) return;
-
-    const localTrack: LocalTrack = {
-      id: crypto.randomUUID(),
-      title: file.name.replace(/\.[^/.]+$/, ""),
-      artist: "Unknown Artist",
-      file,
-    };
-
-    currentTrack.value = localTrack;
-
-    try {
-      await player.value.load(file);
-      localTrack.duration = player.value.duration;
-      await play();
-    }
-    catch (err) {
-      console.error("Failed to play file:", err);
-      status.value = "error";
-    }
-  };
-
-  const playUrl = async (url: string) => {
-    await initPlayer();
-    if (!player.value) return;
-
-    try {
-      await player.value.load(url);
-      await play();
-    }
-    catch (err) {
-      console.error("Failed to play URL:", err);
-      status.value = "error";
+      player.value = null;
     }
   };
 
   const seekTo = (seconds: number) => {
     if (!canSeek.value) return;
-    cancelPauseFade();
+    cancelActiveFade();
     player.value?.seek(seconds);
   };
 
   const seekPercent = (percent: number) => {
     if (!canSeek.value) return;
-    cancelPauseFade();
+    cancelActiveFade();
     player.value?.seekPercent(percent / 100);
   };
 
   const setVolume = (value: number) => {
-    cancelPauseFade();
     volume.value = value;
     player.value?.setVolume(value);
   };
 
   const setMuted = (muted: boolean) => {
-    cancelPauseFade();
     isMuted.value = muted;
     player.value?.setMuted(muted);
   };
 
   const toggleMute = () => {
-    cancelPauseFade();
     player.value?.toggleMute();
-    isMuted.value = player.value?.muted ?? false;
   };
 
   const toggleRepeat = () => {
@@ -358,7 +359,7 @@ export const usePlayerStore = defineStore("player", () => {
   };
 
   const dispose = async () => {
-    cancelPauseFade();
+    cancelActiveFade();
     if (player.value) {
       await player.value.dispose();
       player.value = null;
@@ -368,6 +369,21 @@ export const usePlayerStore = defineStore("player", () => {
   const getAudioGraph = () => {
     return player.value?.graph ?? null;
   };
+
+  watch(currentTrack, (track) => {
+    if (!track || !("artistId" in track)) return;
+    statsService.startListening(
+      track.id as TrackId,
+      (track as Track).artistId,
+      (track as Track).albumId,
+      (track as Track).duration, // ← из трека, не из duration.value
+    );
+  });
+
+  watch(trackEndedSignal, (val) => {
+    if (val === 0) return;
+    statsService.stopListening(currentTime.value, true);
+  });
 
   return {
     player,
@@ -383,18 +399,14 @@ export const usePlayerStore = defineStore("player", () => {
     currentTrack,
     graphRevision,
     trackEndedSignal,
-
     progress,
     canPlay,
     isLiveStream,
     canSeek,
-
     play,
     pause,
     togglePlay,
-    playTrack,
-    playFile,
-    playUrl,
+    playPlayerTrack,
     stop,
     seekTo,
     seekPercent,

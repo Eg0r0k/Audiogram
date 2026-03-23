@@ -48,7 +48,6 @@
             :track="track"
             :index="index + 1"
             @play="handlePlayTrack(index)"
-            @artist-click="handleArtist(artist)"
           />
         </div>
       </TrackContextMenu>
@@ -77,6 +76,7 @@
 import { ref, computed } from "vue";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
 import MediaHero from "@/components/media-hero/MediaHero.vue";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { Button } from "@/components/ui/button";
@@ -89,7 +89,6 @@ import IconLoader2 from "~icons/tabler/loader-2";
 import { useAlbumPage } from "@/modules/albums/composables/useAlbumPage";
 import DeleteAlbumDialog from "@/modules/albums/components/dialogs/DeleteAlbumDialog.vue";
 import EditAlbumDialog from "@/modules/albums/components/dialogs/EditAlbumDialog.vue";
-import { useRouter } from "vue-router";
 
 interface AlbumChanges {
   title?: string;
@@ -114,26 +113,14 @@ const {
   refetch,
 } = useAlbumPage();
 
-const route = useRouter();
-
 const showDeleteDialog = ref(false);
 const showEditDialog = ref(false);
 
 const errorMessage = computed(() => {
   if (!error.value) return t("errors.unknown");
-
-  const message = error.value.message;
-
-  if (message === "Album not found") {
-    return t("errors.notFound");
-  }
-
+  if (error.value.message === "Album not found") return t("errors.notFound");
   return t("errors.loadFailed");
 });
-
-const handleArtist = (artist: string) => {
-  route.push({ name: "artist", params: { id: album?.value?.artistId, name: artist } });
-};
 
 function handlePlayAll() {
   if (tracks.value.length === 0 || !album.value) return;
@@ -190,5 +177,4 @@ function handleShuffle() {
   });
   queueStore.toggleShuffle();
 }
-
 </script>
