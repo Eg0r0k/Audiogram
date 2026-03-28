@@ -39,6 +39,7 @@ import {
 import type { TrackContext } from "../type";
 import type { PlaylistId, AlbumId } from "@/types/ids";
 import DefaultContext from "../contexts/DefaultContext.vue";
+import LikedContext from "../contexts/LikedContext.vue";
 import PlaylistContext from "../contexts/PlaylistContext.vue";
 import QueueContext from "../contexts/QueueContext.vue";
 
@@ -67,7 +68,7 @@ const anchorStyle = computed(() => ({
 const contexts: Record<TrackContext, Component> = {
   "default": DefaultContext,
   "search": DefaultContext,
-  "liked": DefaultContext,
+  "liked": LikedContext,
   "artist-page": DefaultContext,
   "queue": QueueContext,
   "playlist": PlaylistContext,

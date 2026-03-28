@@ -198,6 +198,10 @@ export async function removeTrackFromPlaylistAndSync(
 
   syncPlaylistCaches(queryClient, nextPlaylist);
   syncPlaylistTrackRemoval(queryClient, playlistId, trackId);
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.detail(playlistId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.page(playlistId) }),
+  ]);
 
   return nextPlaylist;
 }
@@ -221,6 +225,10 @@ export async function addTrackToPlaylistAndSync(
 
   syncPlaylistCaches(queryClient, nextPlaylist);
   syncPlaylistTrackAddition(queryClient, playlistId, track);
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.detail(playlistId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.page(playlistId) }),
+  ]);
 
   return nextPlaylist;
 }

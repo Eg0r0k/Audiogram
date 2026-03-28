@@ -1,8 +1,10 @@
-import { Track } from "@/modules/player/types";
+import type { Track } from "@/modules/player/types";
+import type { QueueItemId } from "@/types/ids";
 import { ref, watch } from "vue";
 
 const activeTrack = ref<Track | null>(null);
 const activeIndex = ref<number | null>(null);
+const activeQueueItemId = ref<QueueItemId | null>(null);
 
 const isDropdownOpen = ref(false);
 const isContextMenuOpen = ref(false);
@@ -20,6 +22,7 @@ watch(isDropdownOpen, (isOpen, wasOpen) => {
     if (!isContextMenuOpen.value) {
       activeTrack.value = null;
       activeIndex.value = null;
+      activeQueueItemId.value = null;
     }
   }
 });
@@ -29,14 +32,24 @@ watch(isContextMenuOpen, (isOpen, wasOpen) => {
     if (!isDropdownOpen.value) {
       activeTrack.value = null;
       activeIndex.value = null;
+      activeQueueItemId.value = null;
     }
   }
 });
 
+interface OpenTrackMenuOptions {
+  queueItemId?: QueueItemId | null;
+}
+
 export function useTrackMenu() {
-  const openMenu = (track: Track, index: number) => {
+  const openMenu = (
+    track: Track,
+    index: number,
+    options?: OpenTrackMenuOptions,
+  ) => {
     activeTrack.value = track;
     activeIndex.value = index;
+    activeQueueItemId.value = options?.queueItemId ?? null;
     isContextMenuOpen.value = true;
   };
 
@@ -44,7 +57,12 @@ export function useTrackMenu() {
     isContextMenuOpen.value = false;
   };
 
-  const openDropdown = (track: Track, index: number, event: MouseEvent) => {
+  const openDropdown = (
+    track: Track,
+    index: number,
+    event: MouseEvent,
+    options?: OpenTrackMenuOptions,
+  ) => {
     const timeSinceClose = Date.now() - lastCloseTime;
     if (timeSinceClose < 150 && lastClosedTrackId === track.id) {
       return;
@@ -55,6 +73,7 @@ export function useTrackMenu() {
 
     activeTrack.value = track;
     activeIndex.value = index;
+    activeQueueItemId.value = options?.queueItemId ?? null;
 
     dropdownAnchor.value = {
       x: rect.left,
@@ -73,6 +92,7 @@ export function useTrackMenu() {
   return {
     activeTrack,
     activeIndex,
+    activeQueueItemId,
     isDropdownOpen,
     isContextMenuOpen,
     dropdownAnchor,

@@ -31,17 +31,21 @@
         @add-to-queue="handleAddToQueue"
       />
 
-      <div
-        class="px-4 mt-4"
-      >
-        <TrackRow
-          v-for="(track, index) in tracks"
-          :key="track.id"
-          :track="track"
-          :index="index + 1"
-          @play="handlePlayTrack(index)"
-        />
-      </div>
+      <TrackContextMenu context="liked">
+        <div
+          class="px-4 mt-4"
+        >
+          <TrackRow
+            v-for="(track, index) in tracks"
+            :key="track.id"
+            :track="track"
+            :index="index + 1"
+            @play="handlePlayTrack(index)"
+          />
+        </div>
+      </TrackContextMenu>
+
+      <TrackDropdown context="liked" />
     </template>
   </Scrollable>
 </template>
@@ -54,6 +58,8 @@ import { Button } from "@/components/ui/button";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import IconLoader2 from "~icons/tabler/loader-2";
 import { useLikedTracksPage } from "@/modules/favorite/composables/useLikedTracksPage";
+import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
+import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 
 const queueStore = useQueueStore();
 

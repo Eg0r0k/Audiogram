@@ -10,14 +10,12 @@
     </div>
 
     <ContextMenuContent
-      class="w-44 bg-popover/50 backdrop-blur-[50px]"
+      class="w-50 bg-popover/50 backdrop-blur-[50px]"
     >
       <template v-if="activeItem">
         <component
           :is="contextComponent"
-          :item="activeItem"
-          :on-toggle-pin="handleTogglePin"
-          :on-delete="handleDelete"
+          v-bind="contextProps"
         />
       </template>
     </ContextMenuContent>
@@ -36,21 +34,53 @@ import { useLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
 import type { LibraryItem } from "@/modules/library/types";
 import ArtistContext from "./contexts/ArtistContext.vue";
-import AlbumContext from "./contexts/AlbumContext.vue";
-import PlaylistContext from "./contexts/PlaylistContext.vue";
+import DefaultContext from "./contexts/DefaultContext.vue";
+import FavoriteContext from "./contexts/FavoriteContext.vue";
+import { useLibraryContextActions } from "../composables/useLibraryContextActions";
 
 const { activeItem, isContextMenuOpen } = useLibraryMenu();
-const { togglePin } = useLibrary();
+const { togglePin, createPlaylist } = useLibrary();
+const { addToQueue } = useLibraryContextActions();
 
 const contexts: Record<LibraryItem["type"], Component> = {
   artist: ArtistContext,
-  album: AlbumContext,
-  playlist: PlaylistContext,
+  album: DefaultContext,
+  playlist: DefaultContext,
+  liked: FavoriteContext,
 };
 
 const contextComponent = computed(() =>
   activeItem.value ? contexts[activeItem.value.type] : null,
 );
+
+const contextProps = computed(() => {
+  if (!activeItem.value) {
+    return {};
+  }
+
+  switch (activeItem.value.type) {
+    case "artist":
+      return {
+        item: activeItem.value,
+        onTogglePin: handleTogglePin,
+        onDelete: handleDelete,
+      };
+    case "liked":
+      return {
+        item: activeItem.value,
+        addToQueue: handleAddToQueue,
+        createPlaylist: handleCreatePlaylist,
+      };
+    default:
+      return {
+        item: activeItem.value,
+        togglePin: handleTogglePin,
+        addToQueue: handleAddToQueue,
+        createPlaylist: handleCreatePlaylist,
+        deleteItem: handleDelete,
+      };
+  }
+});
 
 const guardRef = useTemplateRef<HTMLElement>("guardRef");
 
@@ -63,8 +93,17 @@ useEventListener(guardRef, "contextmenu", (e: MouseEvent) => {
 }, { capture: true });
 
 const handleTogglePin = () => {
-  if (!activeItem.value) return;
+  if (!activeItem.value || activeItem.value.type === "liked") return;
   togglePin(activeItem.value.type, activeItem.value.id);
+};
+
+const handleAddToQueue = async () => {
+  if (!activeItem.value || activeItem.value.type === "artist") return;
+  await addToQueue(activeItem.value);
+};
+
+const handleCreatePlaylist = async () => {
+  await createPlaylist();
 };
 
 const emit = defineEmits<{
@@ -72,7 +111,7 @@ const emit = defineEmits<{
 }>();
 
 const handleDelete = () => {
-  if (!activeItem.value) return;
+  if (!activeItem.value || activeItem.value.type === "liked") return;
   emit("delete", activeItem.value);
 };
 </script>

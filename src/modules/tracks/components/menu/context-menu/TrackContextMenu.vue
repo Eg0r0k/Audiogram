@@ -28,6 +28,7 @@ import type { AlbumId, PlaylistId } from "@/types/ids";
 import { contextMenuTrackComponents, provideTrackMenuComponents } from "../useTrackMenuComponents";
 import { TrackContext } from "../type";
 import DefaultContext from "../contexts/DefaultContext.vue";
+import LikedContext from "../contexts/LikedContext.vue";
 import QueueContext from "../contexts/QueueContext.vue";
 import PlaylistContext from "../contexts/PlaylistContext.vue";
 import { useTrackContextActions } from "@/modules/tracks/composables/useTrackContextActions";
@@ -53,7 +54,7 @@ const queueStore = useQueueStore();
 const contexts: Record<TrackContext, Component> = {
   "default": DefaultContext,
   "search": DefaultContext,
-  "liked": DefaultContext,
+  "liked": LikedContext,
   "artist-page": DefaultContext,
   "queue": QueueContext,
   "playlist": PlaylistContext,
