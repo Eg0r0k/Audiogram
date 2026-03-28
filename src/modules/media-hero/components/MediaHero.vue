@@ -46,7 +46,7 @@
           </span>
 
           <h1
-            class="font-black tracking-tight line-clamp-2
+            class="font-black tracking-tight truncate
                text-2xl @lg:text-3xl @md:text-4xl @lg:text-5xl @xl:text-6xl
                leading-tight"
           >
@@ -74,7 +74,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { isArtist, isPlaylist, isAlbum, isLiked, type MediaData } from "./types";
 import { useImageColor } from "@/composables/useImageColor";
 import { provideMediaContext } from "@/composables/useMediaContext";
 import MediaHeader from "./MediaHeader.vue";
@@ -83,6 +82,7 @@ import MediaContextMenu from "./menu/context-menu/MediaContextMenu.vue";
 import MediaHeroMeta from "./MediaHeroMeta.vue";
 import MediaHeroActions from "./MediaHeroActions.vue";
 import type { QueueSource } from "@/modules/queue/types";
+import { isAlbum, isArtist, isLiked, isPlaylist, MediaData } from "../types";
 
 const props = defineProps<{
   data: MediaData;

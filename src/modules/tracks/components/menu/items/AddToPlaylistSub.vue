@@ -7,10 +7,10 @@
 
     <component
       :is="SubContent"
-      class="w-56"
+      class="w-56 "
     >
       <div class="p-0.5">
-        <InputGroup class="bg-background! h-8">
+        <InputGroup class="dark:bg-background! bg-muted!   h-8">
           <InputGroupInput
             v-model="searchQuery"
             :placeholder="$t('track.contextMenu.searchPlaylist')"
@@ -41,7 +41,7 @@
 
       <template v-else-if="filteredPlaylists.length">
         <component :is="Separator" />
-        <div class="max-h-48 overflow-y-auto">
+        <Scrollable class=" h-24!">
           <component
             :is="Item"
             v-for="playlist in filteredPlaylists"
@@ -51,7 +51,7 @@
             <IconPlaylist class="size-5.5" />
             <span class="truncate">{{ playlist.name }}</span>
           </component>
-        </div>
+        </Scrollable>
       </template>
 
       <template v-else-if="searchQuery && playlists.length">
@@ -85,6 +85,7 @@ import IconPlaylist from "~icons/tabler/playlist";
 import IconLoader2 from "~icons/tabler/loader-2";
 import type { PlaylistId } from "@/types/ids";
 import { useTrackMenuComponents } from "../../menu/useTrackMenuComponents";
+import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 
 interface Playlist {
   id: PlaylistId;

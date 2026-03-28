@@ -37,9 +37,9 @@
 import IconPencil from "~icons/tabler/pencil";
 import IconTrash from "~icons/tabler/trash";
 import IconPlaylistAdd from "~icons/tabler/playlist-add";
-import { useMenuComponents } from "@/components/media-hero/useMenuComponents";
-import type { MediaActions } from "@/components/media-hero/menu/types";
-import ShareItem from "@/components/media-hero/menu/items/ShareItem.vue";
+import { useMenuComponents } from "@/modules/media-hero/composables/useMenuComponents";
+import { MediaActions } from "../types";
+import ShareItem from "../items/ShareItem.vue";
 
 defineProps<{
   actions: MediaActions;

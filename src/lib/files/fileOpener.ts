@@ -1,5 +1,3 @@
-import { listen } from "@tauri-apps/api/event";
-import { readFile } from "@tauri-apps/plugin-fs";
 import { IS_TAURI } from "../environment/userAgent";
 import { getMimeType, isAudioTypeSupported } from "../environment/mimeSupport";
 
@@ -16,6 +14,11 @@ export async function listenForOpenedFiles(
     return () => {};
   }
 
+  const [{ listen }, { readFile }] = await Promise.all([
+    import("@tauri-apps/api/event"),
+    import("@tauri-apps/plugin-fs"),
+  ]);
+
   const unlisten = await listen<string[]>("files-opened", async (event) => {
     const filePaths = event.payload;
     const files: OpenedFile[] = [];
@@ -26,7 +29,9 @@ export async function listenForOpenedFiles(
         const mimeType = getMimeType(name);
 
         if (!isAudioTypeSupported(mimeType)) {
-          console.warn(`[fileOpener] Skipped unsupported audio type: ${mimeType} (${name})`);
+          console.warn(
+            `[fileOpener] Skipped unsupported audio type: ${mimeType} (${name})`,
+          );
           continue;
         }
 

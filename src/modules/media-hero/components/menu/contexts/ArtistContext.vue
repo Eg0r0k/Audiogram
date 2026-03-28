@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import ShareItem from "@/components/media-hero/menu/items/ShareItem.vue";
+import ShareItem from "../items/ShareItem.vue";
 import type { MediaActions } from "../types";
 
 defineProps<{

@@ -1,5 +1,3 @@
-// src/modules/player/composables/useMediaSession.ts
-
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { usePlayerStore } from "../store/player.store";
 import { onMounted, onUnmounted, ref } from "vue";

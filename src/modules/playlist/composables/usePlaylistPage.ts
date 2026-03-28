@@ -8,12 +8,12 @@ import { artistRepository } from "@/db/repositories/artist.repository";
 import { albumRepository } from "@/db/repositories/album.repository";
 import { coverRepository } from "@/db/repositories/cover.repository";
 import type { PlaylistEntity } from "@/db/entities";
-import type { PlaylistData } from "@/components/media-hero/types";
 import { queryKeys } from "@/lib/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import { formatTotalDuration } from "@/lib/format/time";
 import { useI18n } from "vue-i18n";
 import { usePlaylistCover } from "@/modules/covers/composables/usePlaylistCover";
+import { PlaylistData } from "@/modules/media-hero/types";
 
 export interface PlaylistChanges {
   name?: string;

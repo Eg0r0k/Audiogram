@@ -28,9 +28,9 @@
 </template>
 
 <script setup lang="ts">
+import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import { computed } from "vue";
 import IconPencil from "~icons/tabler/pencil";
-import NuxtImage from "../ui/image/NuxtImage.vue";
 
 const props = withDefaults(defineProps<{
   src: string;

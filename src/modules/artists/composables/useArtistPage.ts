@@ -9,9 +9,9 @@ import {
   trackRepository,
 } from "@/db/repositories";
 import type { ArtistEntity } from "@/db/entities";
-import type { ArtistData } from "@/components/media-hero/types";
 import { queryKeys } from "@/lib/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
+import { ArtistData } from "@/modules/media-hero/types";
 
 export function useArtistPage() {
   const route = useRoute();

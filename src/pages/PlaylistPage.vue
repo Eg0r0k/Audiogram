@@ -79,10 +79,9 @@
 import { ref, computed } from "vue";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
-import MediaHero from "@/components/media-hero/MediaHero.vue";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { Button } from "@/components/ui/button";
-import { useLibraryView } from "@/composables/useLibraryView";
+import { useLibraryView } from "@/modules/library/composables/useLibraryView";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
@@ -91,6 +90,7 @@ import IconLoader2 from "~icons/tabler/loader-2";
 import { PlaylistChanges, usePlaylistPage } from "@/modules/playlist/composables/usePlaylistPage";
 import DeletePlaylistDialog from "@/modules/playlist/components/dialogs/DeletePlaylistDialog.vue";
 import EditPlaylistDialog from "@/modules/playlist/components/dialogs/EditPlaylistDialog.vue";
+import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 
 const { t } = useI18n();
 const { isCompact } = useLibraryView();

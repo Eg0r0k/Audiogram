@@ -11,9 +11,9 @@
 </template>
 
 <script setup lang="ts">
-import { useMenuComponents } from "@/components/media-hero/useMenuComponents";
+import { useMenuComponents } from "@/modules/media-hero/composables/useMenuComponents";
 import IconShare2 from "~icons/tabler/share-2";
-const { Item } = useMenuComponents();
+const { Item } = useMenuComponents ();
 
 const emit = defineEmits<{
   share: [];

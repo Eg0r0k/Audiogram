@@ -90,10 +90,9 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import MediaHero from "@/components/media-hero/MediaHero.vue";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { Button } from "@/components/ui/button";
-import { useLibraryView } from "@/composables/useLibraryView";
+import { useLibraryView } from "@/modules/library/composables/useLibraryView";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
@@ -102,8 +101,9 @@ import DeleteArtistDialog from "@/modules/artists/components/dialogs/DeleteArtis
 import IconLoader2 from "~icons/tabler/loader-2";
 import { useArtistPage } from "@/modules/artists/composables/useArtistPage";
 import type { ArtistEntity } from "@/db/entities";
-import MediaCard from "@/components/media-hero/MediaCard.vue";
 import { AlbumId } from "@/types/ids";
+import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
+import MediaCard from "@/modules/media-hero/components/MediaCard.vue";
 
 const { t } = useI18n();
 const { isCompact } = useLibraryView();

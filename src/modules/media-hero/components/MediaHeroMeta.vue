@@ -51,7 +51,7 @@
 
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
-import { isAlbum, isArtist, isLiked, isPlaylist, MediaData } from "./types";
+import { isAlbum, isArtist, isLiked, isPlaylist, MediaData } from "@/modules/media-hero/types";
 
 defineProps<{
   data: MediaData;

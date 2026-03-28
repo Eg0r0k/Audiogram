@@ -10,13 +10,15 @@
           {{ $t('library.pinned') }}
         </span>
       </div>
+
       <div class="library-grid">
         <MediaCard
           v-for="item in pinned"
           :key="`${item.type}:${item.id}`"
           :title="item.title"
           :subtitle="item.subtitle"
-          :cover-path="item.coverPath"
+          :cover-owner-type="getCoverOwnerType(item)"
+          :cover-owner-id="getCoverOwnerId(item)"
           :to="item.to"
           :rounded="item.rounded"
           :source="itemToSource(item)"
@@ -35,7 +37,8 @@
         :key="`${item.type}:${item.id}`"
         :title="item.title"
         :subtitle="item.subtitle"
-        :cover-path="item.coverPath"
+        :cover-owner-type="getCoverOwnerType(item)"
+        :cover-owner-id="getCoverOwnerId(item)"
         :to="item.to"
         :rounded="item.rounded"
         :source="itemToSource(item)"
@@ -65,7 +68,8 @@ import IconMusicOff from "~icons/tabler/music-off";
 import type { LibraryItem } from "../types";
 import type { QueueSource } from "@/modules/queue/types";
 import { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
-import MediaCard from "@/components/media-hero/MediaCard.vue";
+import type { CoverOwnerType } from "@/db/entities";
+import MediaCard from "@/modules/media-hero/components/MediaCard.vue";
 
 defineProps<{
   pinned: LibraryItem[];
@@ -80,11 +84,28 @@ defineEmits<{
 
 function itemToSource(item: LibraryItem): QueueSource {
   switch (item.type) {
-    case "album": return { type: "album", albumId: AlbumId(item.id) };
-    case "artist": return { type: "artist", artistId: ArtistId(item.id) };
-    case "playlist": return { type: "playlist", playlistId: PlaylistId(item.id) };
-    default: return { type: "unknown" };
+    case "album":
+      return { type: "album", albumId: AlbumId(item.id) };
+    case "artist":
+      return { type: "artist", artistId: ArtistId(item.id) };
+    case "playlist":
+      return { type: "playlist", playlistId: PlaylistId(item.id) };
+    default:
+      return { type: "unknown" };
   }
+}
+
+function getCoverOwnerType(item: LibraryItem): CoverOwnerType | null {
+  if (item.type === "album") return "album";
+  if (item.type === "playlist") return "playlist";
+  return null;
+}
+
+function getCoverOwnerId(item: LibraryItem): string | null {
+  if (item.type === "album" || item.type === "playlist") {
+    return item.id;
+  }
+  return null;
 }
 </script>
 

@@ -55,7 +55,7 @@ import { Button } from "@/components/ui/button";
 
 import IconCheck from "~icons/tabler/check";
 
-import { useLibraryView, viewOptions } from "@/composables/useLibraryView";
+import { useLibraryView, viewOptions } from "@/modules/library/composables/useLibraryView";
 
 const { viewMode, currentOption } = useLibraryView();
 </script>

@@ -77,11 +77,9 @@
 import { ref, computed } from "vue";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
-import { useRouter } from "vue-router";
-import MediaHero from "@/components/media-hero/MediaHero.vue";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { Button } from "@/components/ui/button";
-import { useLibraryView } from "@/composables/useLibraryView";
+import { useLibraryView } from "@/modules/library/composables/useLibraryView";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
@@ -90,6 +88,7 @@ import IconLoader2 from "~icons/tabler/loader-2";
 import { useAlbumPage } from "@/modules/albums/composables/useAlbumPage";
 import DeleteAlbumDialog from "@/modules/albums/components/dialogs/DeleteAlbumDialog.vue";
 import EditAlbumDialog from "@/modules/albums/components/dialogs/EditAlbumDialog.vue";
+import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 
 interface AlbumChanges {
   title?: string;

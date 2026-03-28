@@ -19,7 +19,7 @@
           <Scrollable
             direction="horizontal"
             hide-thumb
-            class="shrink-0  border-b border-background "
+            class="shrink-0  border-b dark:border-background border-border "
           >
             <Tabs
               :model-value="activeFilter"
@@ -100,7 +100,7 @@ import FloatingButton from "@/components/layout/sidebar/floatingButton/FloatingB
 import DropOverlay from "@/components/DropOverlay.vue";
 import { useImport } from "@/composables/useImport";
 import ImportProgressSheet from "@/components/ImportProgressSheet.vue";
-import SearchPanel from "@/components/layout/sidebar/SearchPanel.vue";
+import SearchPanel from "@/modules/search/components/SearchPanel.vue";
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";

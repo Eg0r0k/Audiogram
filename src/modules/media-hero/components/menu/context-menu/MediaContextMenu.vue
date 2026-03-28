@@ -1,52 +1,33 @@
 <template>
-  <DropdownMenu>
-    <DropdownMenuTrigger as-child>
-      <Button
-        class="rounded-full text-white"
-        size="icon-lg"
-        variant="ghost"
-      >
-        <IconDots
-          class="size-5"
-        />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent
-      class="w-60"
-      align="start"
-    >
+  <ContextMenu>
+    <ContextMenuTrigger as-child>
+      <slot />
+    </ContextMenuTrigger>
+    <ContextMenuContent class="w-60 ">
       <component
         :is="contextComponent"
         v-bind="contextProps"
       />
-    </DropdownMenuContent>
-  </DropdownMenu>
+    </ContextMenuContent>
+  </ContextMenu>
 </template>
 
 <script setup lang="ts">
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-} from "@/components/ui/dropdown-menu";
-import Button from "@/components/ui/button/Button.vue";
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent } from "@/components/ui/context-menu";
 import { computed, type Component } from "vue";
 import { useMediaContext } from "@/composables/useMediaContext";
-import { provideMenuComponents, dropdownMenuComponents } from "@/components/media-hero/useMenuComponents";
-import { MediaContext } from "../types";
 import AlbumContext from "../contexts/AlbumContext.vue";
 import ArtistContext from "../contexts/ArtistContext.vue";
-import IconDots from "~icons/tabler/dots";
 import PlaylistContext from "../contexts/PlaylistContext.vue";
+import { MediaContext } from "../types";
+import { contextMenuComponents, provideMenuComponents } from "@/modules/media-hero/composables/useMenuComponents";
 
-provideMenuComponents(dropdownMenuComponents);
+provideMenuComponents(contextMenuComponents);
 
-interface Props {
+const props = withDefaults(defineProps<{
   context?: MediaContext;
   isPlaylistOwner?: boolean;
-}
-
-const props = withDefaults(defineProps<Props>(), {
+}>(), {
   context: "album",
 });
 
@@ -58,7 +39,6 @@ const contexts: Record<MediaContext, Component> = {
 };
 
 const actions = useMediaContext();
-
 const contextComponent = computed(() => contexts[props.context]);
 
 const contextProps = computed(() => {

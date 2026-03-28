@@ -3,10 +3,10 @@
     :to="to"
     class="block min-w-36 w-full"
     :draggable="false"
+    @contextmenu="$emit('contextmenu', $event)"
   >
     <div
       class="flex group cursor-pointer select-none flex-col p-3 gap-2 rounded-lg hover:bg-muted transition-colors w-full"
-      @contextmenu="$emit('contextmenu', $event)"
     >
       <div class="relative">
         <div
@@ -76,7 +76,7 @@ import { usePlaybackState } from "@/modules/player/composables/usePlaybackState"
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { CoverOwnerType } from "@/db/entities";
 import { computed } from "vue";
-import EntityCoverImage from "../ui/EntityCoverImage.vue";
+import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";
 
 const props = withDefaults(defineProps<{
   title: string;

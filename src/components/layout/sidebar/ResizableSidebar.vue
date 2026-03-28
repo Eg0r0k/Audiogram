@@ -1,7 +1,7 @@
 <template>
   <aside
     v-if="sidebar.isOpen"
-    class="sidebar-wrapper border-r border-background"
+    class="sidebar-wrapper border-r dark:border-background border-border "
     :class="{ 'is-resizing': isResizing }"
     :style="{ width: `${sidebar.width}px` }"
   >

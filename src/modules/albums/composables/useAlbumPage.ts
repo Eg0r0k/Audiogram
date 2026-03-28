@@ -9,10 +9,11 @@ import {
   trackRepository,
 } from "@/db/repositories";
 import type { AlbumEntity } from "@/db/entities";
-import type { AlbumData } from "@/components/media-hero/types";
 import { queryKeys } from "@/lib/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import { useObjectUrl } from "@vueuse/core";
+import type { AlbumData } from "@/modules/media-hero/types";
+
 export interface AlbumChanges {
   title?: string;
   description?: string;
@@ -28,7 +29,7 @@ export function useAlbumPage() {
   const albumId = computed(() => AlbumId(route.params.id as string));
 
   const {
-    data: album,
+    data: albumQueryData,
     isLoading: isAlbumLoading,
     isError,
     error,
@@ -42,6 +43,8 @@ export function useAlbumPage() {
       return res.value;
     },
   });
+
+  const album = computed<AlbumEntity | null>(() => albumQueryData.value ?? null);
 
   const {
     data: coverBlob,
@@ -68,12 +71,18 @@ export function useAlbumPage() {
     enabled: computed(() => !!album.value),
   });
 
-  const artistId = computed(() => album.value?.artistId);
+  const artistId = computed(() => album.value?.artistId ?? null);
 
   const { data: artist } = useQuery({
-    queryKey: computed(() => queryKeys.artists.detail(artistId.value!)),
+    queryKey: computed(() =>
+      artistId.value
+        ? queryKeys.artists.detail(artistId.value)
+        : ["artists", "detail", "unknown"],
+    ),
     queryFn: async () => {
-      const res = await artistRepository.findById(artistId.value!);
+      if (!artistId.value) return null;
+
+      const res = await artistRepository.findById(artistId.value);
       if (res.isErr()) throw res.error;
       return res.value ?? null;
     },

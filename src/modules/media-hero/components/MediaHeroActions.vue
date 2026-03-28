@@ -38,8 +38,6 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import Button from "../ui/button/Button.vue";
-import { MediaType } from "./types";
 import MediaDropdown from "./menu/dropdown/MediaDropdown.vue";
 import MediaDisplayDropdown from "./MediaDisplayDropdown.vue";
 import IconPlay from "~icons/tabler/player-play-filled";
@@ -48,6 +46,8 @@ import IconShuffle from "~icons/tabler/arrows-shuffle";
 import type { QueueSource } from "@/modules/queue/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { usePlaybackState } from "@/modules/player/composables/usePlaybackState";
+import { MediaType } from "@/modules/media-hero/types";
+import { Button } from "@/components/ui/button";
 
 const props = defineProps<{
   type: MediaType;
