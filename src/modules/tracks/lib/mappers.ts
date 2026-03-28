@@ -15,9 +15,8 @@ export function mapTrack(
     albumName: album?.title ?? "Unknown Album",
     storagePath: entity.storagePath,
     source: entity.source,
-    cover: album?.coverPath,
     duration: entity.duration,
-    isLiked: entity.isLiked,
+    isLiked: !!entity.likedAt,
   };
 }
 
@@ -26,7 +25,10 @@ export function mapTracks(
   artists: ArtistEntity[],
   albums: AlbumEntity[],
 ): Track[] {
-  const artistMap = new Map(artists.map(a => [a.id, a]));
-  const albumMap = new Map(albums.map(a => [a.id, a]));
-  return entities.map(e => mapTrack(e, artistMap.get(e.artistId), albumMap.get(e.albumId)));
+  const artistMap = new Map(artists.map(artist => [artist.id, artist]));
+  const albumMap = new Map(albums.map(album => [album.id, album]));
+
+  return entities.map(entity =>
+    mapTrack(entity, artistMap.get(entity.artistId), albumMap.get(entity.albumId)),
+  );
 }

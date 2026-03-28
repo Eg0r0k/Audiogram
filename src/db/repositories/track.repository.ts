@@ -93,8 +93,51 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
         .where("id")
         .anyOf(ids)
         .toArray();
-      const map = new Map(tracks.map(t => [t.id, t]));
+
+      const map = new Map(tracks.map(track => [track.id, track]));
       return ok(ids.flatMap(id => map.get(id) ? [map.get(id)!] : []));
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async setLiked(id: TrackId, isLiked: boolean): Promise<Result<void, Error>> {
+    try {
+      await this.table.update(id, {
+        likedAt: isLiked ? Date.now() : undefined,
+      });
+
+      return ok(undefined);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async toggleLiked(id: TrackId, isLiked: boolean): Promise<Result<number | undefined, Error>> {
+    try {
+      const nextLikedAt = isLiked ? undefined : Date.now();
+
+      await this.table.update(id, {
+        likedAt: nextLikedAt,
+      });
+
+      return ok(nextLikedAt);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async findLiked(): Promise<Result<TrackEntity[], Error>> {
+    try {
+      const tracks = await this.table
+        .where("likedAt")
+        .above(0)
+        .reverse()
+        .sortBy("likedAt");
+      return ok(tracks);
     }
     catch (error) {
       return err(error as Error);

@@ -1,6 +1,6 @@
 import { ref, computed } from "vue";
 import { StorageInfo } from "../schema/storage";
-import { clearAllData, clearCovers, collectStorageInfo } from "@/services/storage-info.service";
+import { clearAllData, collectStorageInfo } from "@/services/storage-info.service";
 import { formatBytes } from "@/lib/format/memory";
 
 export function useStorageSettings() {
@@ -66,7 +66,6 @@ export function useStorageSettings() {
   async function handleClearCovers() {
     isClearing.value = true;
     try {
-      await clearCovers();
       await refresh();
     }
     finally {

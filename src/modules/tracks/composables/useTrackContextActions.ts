@@ -1,15 +1,18 @@
 import type { Track } from "@/modules/player/types";
 import type { ContextActions } from "@/modules/tracks/components/menu/type";
-import { playlistRepository } from "@/db/repositories/playlist.repository";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import { queryKeys } from "@/lib/query-keys";
-import { PlaylistId } from "@/types/ids";
+import { PlaylistId, QueueItemId } from "@/types/ids";
 import { useQueryClient } from "@tanstack/vue-query";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import type { Ref } from "vue";
 import { useRouter } from "vue-router";
+import { useToggleTrackLike } from "./useToggleTrackLike";
+import {
+  addTrackToPlaylistAndSync,
+  removeTrackFromPlaylistAndSync,
+} from "@/queries/playlist.queries";
 
 interface RefLike<T> {
   value: T;
@@ -20,6 +23,7 @@ export const useTrackContextActions = (
   options: {
     playlistId?: RefLike<PlaylistId | undefined>;
     queueIndex?: RefLike<number | null>;
+    queueItemId?: RefLike<QueueItemId | null>;
   } = {},
 ): ContextActions => {
   const router = useRouter();
@@ -27,6 +31,7 @@ export const useTrackContextActions = (
   const playerStore = usePlayerStore();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const { toggleTrackLike } = useToggleTrackLike();
 
   const play = () => {
     if (!track.value) return;
@@ -46,44 +51,39 @@ export const useTrackContextActions = (
 
   const toggleLike = async () => {
     if (!track.value) return;
-    // TODO: trackRepository.update(track.value.id, { isLiked: !track.value.isLiked })
-    console.log("Toggle like:", track.value.id);
+    await toggleTrackLike(track.value);
   };
-
   const addToPlaylist = async (playlistId: PlaylistId) => {
     if (!track.value) return;
-    const result = await playlistRepository.addTrack(playlistId, track.value.id);
-    if (result.isErr()) {
-      toast.error(t("playlist.addTrackFailed"));
-      return;
+    try {
+      await addTrackToPlaylistAndSync(queryClient, playlistId, track.value);
     }
-    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.detail(playlistId) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() });
+    catch {
+      toast.error(t("playlist.addTrackFailed"));
+    }
   };
 
   const removeFromQueue = () => {
-    const idx = options.queueIndex?.value;
-    if (idx == null) return;
-    const item = queueStore.queue[idx];
-    if (item) queueStore.removeFromQueue(item.id);
+    const queueItemId = options.queueItemId?.value;
+    if (!queueItemId) return;
+    queueStore.removeFromQueue(queueItemId);
   };
 
   const removeFromPlaylist = async () => {
     if (!track.value || !options.playlistId?.value) return;
-    const result = await playlistRepository.removeTrack(
-      options.playlistId.value,
-      track.value.id,
-    );
-    if (result.isErr()) {
-      toast.error(t("playlist.removeTrackFailed"));
-      return;
+    try {
+      await removeTrackFromPlaylistAndSync(
+        queryClient,
+        options.playlistId.value,
+        track.value.id,
+      );
     }
-    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.detail(options.playlistId.value) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() });
+    catch {
+      toast.error(t("playlist.removeTrackFailed"));
+    }
   };
 
   const removeFromHistory = async () => {
-    // TODO: history service
     console.log("Remove from history:", track.value?.id);
   };
 
@@ -98,7 +98,6 @@ export const useTrackContextActions = (
   };
 
   const download = () => {
-    // TODO: download service
     console.log("Download:", track.value?.id);
   };
 

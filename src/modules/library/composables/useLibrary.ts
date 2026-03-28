@@ -3,63 +3,53 @@ import { useLibraryStore } from "../store/library.store";
 import { storeToRefs } from "pinia";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed } from "vue";
-import { artistRepository } from "@/db/repositories/artist.repository";
-import { albumRepository } from "@/db/repositories/album.repository";
-import { playlistRepository } from "@/db/repositories/playlist.repository";
+import { useI18n } from "vue-i18n";
 import type { LibraryItem } from "../types";
-import { PlaylistId } from "@/types/ids";
-import { queryKeys } from "@/lib/query-keys";
+import { createPlaylistAndSync } from "@/queries/playlist.queries";
+import { invalidateLibrarySummary, libraryQueries } from "@/queries/library.queries";
 
 export const useLibrary = () => {
   const store = useLibraryStore();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { t } = useI18n();
 
   const { sortBy, activeFilter, searchQuery } = storeToRefs(store);
 
-  const { data: artists, isLoading: isLoadingArtists } = useQuery({
-    queryKey: queryKeys.artists.all(),
-    queryFn: async () => {
-      const result = await artistRepository.findAll();
-      if (result.isErr()) throw result.error;
-      return result.value;
-    },
-  });
-
-  const { data: albums, isLoading: isLoadingAlbums } = useQuery({
-    queryKey: queryKeys.albums.all(),
-    queryFn: async () => {
-      const result = await albumRepository.findAll();
-      if (result.isErr()) throw result.error;
-      return result.value;
-    },
-  });
-
-  const { data: playlists, isLoading: isLoadingPlaylists } = useQuery({
-    queryKey: queryKeys.playlists.all(),
-    queryFn: async () => {
-      const result = await playlistRepository.findAll();
-      if (result.isErr()) throw result.error;
-      return result.value;
-    },
-  });
-
-  const isLoading = computed(
-    () => isLoadingArtists.value || isLoadingAlbums.value || isLoadingPlaylists.value,
-  );
+  const { data, isLoading } = useQuery(libraryQueries.summary());
+  const artists = computed(() => data.value?.artists ?? []);
+  const albums = computed(() => data.value?.albums ?? []);
+  const playlists = computed(() => data.value?.playlists ?? []);
+  const likedTracks = computed(() => data.value?.likedTracks ?? []);
 
   const artistMap = computed(() => {
     const map = new Map<string, string>();
-    for (const artist of artists.value ?? []) {
+
+    for (const artist of artists.value) {
       map.set(artist.id, artist.name);
     }
+
     return map;
   });
 
-  const allItems = computed<LibraryItem[]>(() => {
-    const items: LibraryItem[] = [];
+  const likedItem = computed<LibraryItem>(() => ({
+    id: "liked",
+    type: "liked",
+    title: t("common.favorite"),
+    subtitle: t("liked.tracksCount", { count: likedTracks.value?.length ?? 0 }),
+    image: "/img/liked-fallback.jpg",
+    isPinned: true,
+    isSystem: true,
+    addedAt: 0,
+    updatedAt: 0,
+    to: { name: "liked" },
+    rounded: false,
+  }));
 
-    for (const artist of artists.value ?? []) {
+  const allItems = computed<LibraryItem[]>(() => {
+    const items: LibraryItem[] = [likedItem.value];
+
+    for (const artist of artists.value) {
       items.push({
         id: artist.id,
         type: "artist",
@@ -73,8 +63,9 @@ export const useLibrary = () => {
       });
     }
 
-    for (const album of albums.value ?? []) {
+    for (const album of albums.value) {
       const artistName = artistMap.value.get(album.artistId);
+
       items.push({
         id: album.id,
         type: "album",
@@ -89,7 +80,7 @@ export const useLibrary = () => {
       });
     }
 
-    for (const playlist of playlists.value ?? []) {
+    for (const playlist of playlists.value) {
       items.push({
         id: playlist.id,
         type: "playlist",
@@ -106,23 +97,31 @@ export const useLibrary = () => {
     return items;
   });
 
+  const shouldShowSystemItems = computed(() =>
+    activeFilter.value === "all" || activeFilter.value === "album",
+  );
+
   const filteredItems = computed(() => {
-    let items = allItems.value;
+    const systemItems = shouldShowSystemItems.value
+      ? allItems.value.filter(item => item.isSystem)
+      : [];
+
+    let items = allItems.value.filter(item => !item.isSystem);
 
     if (activeFilter.value !== "all") {
-      items = items.filter(i => i.type === activeFilter.value);
+      items = items.filter(item => item.type === activeFilter.value);
     }
 
     const q = searchQuery.value.trim().toLowerCase();
     if (q) {
-      items = items.filter(i =>
-        i.title.toLowerCase().includes(q)
-        || i.subtitle?.toLowerCase().includes(q)
-        || i.artistName?.toLowerCase().includes(q),
+      items = items.filter(item =>
+        item.title.toLowerCase().includes(q)
+        || item.subtitle?.toLowerCase().includes(q)
+        || item.artistName?.toLowerCase().includes(q),
       );
     }
 
-    return items;
+    return [...systemItems, ...items];
   });
 
   const sortedItems = computed(() => {
@@ -134,11 +133,14 @@ export const useLibrary = () => {
     }
 
     items.sort((a, b) => {
+      if (a.isSystem && !b.isSystem) return -1;
+      if (!a.isSystem && b.isSystem) return 1;
+
       const aPinned = a.isPinned ? 1 : 0;
       const bPinned = b.isPinned ? 1 : 0;
       if (aPinned !== bPinned) return bPinned - aPinned;
 
-      if (a.isPinned && b.isPinned) {
+      if (a.isPinned && b.isPinned && !a.isSystem && !b.isSystem) {
         const aOrder = pinnedOrder.get(`${a.type}:${a.id}`) ?? 0;
         const bOrder = pinnedOrder.get(`${b.type}:${b.id}`) ?? 0;
         return aOrder - bOrder;
@@ -161,33 +163,18 @@ export const useLibrary = () => {
     return items;
   });
 
-  const pinnedItems = computed(() => sortedItems.value.filter(i => i.isPinned));
-  const unpinnedItems = computed(() => sortedItems.value.filter(i => !i.isPinned));
+  const pinnedItems = computed(() => sortedItems.value.filter(item => item.isPinned));
+  const unpinnedItems = computed(() => sortedItems.value.filter(item => !item.isPinned));
   const isEmpty = computed(() => allItems.value.length === 0 && !isLoading.value);
   const hasResults = computed(() => sortedItems.value.length > 0);
 
   const createPlaylist = async () => {
-    const id = PlaylistId(crypto.randomUUID());
-    const now = Date.now();
-
-    const result = await playlistRepository.create({
-      id,
-      name: "New playlist",
-      trackIds: [],
-      addedAt: now,
-      updatedAt: now,
-    });
-
-    if (result.isErr()) throw result.error;
-
-    await queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() });
-    router.push({ name: "playlist", params: { id } });
+    const playlist = await createPlaylistAndSync(queryClient);
+    router.push({ name: "playlist", params: { id: playlist.id } });
   };
 
   const invalidateLibrary = async () => {
-    await queryClient.invalidateQueries({ queryKey: queryKeys.artists.all() });
-    await queryClient.invalidateQueries({ queryKey: queryKeys.albums.all() });
-    await queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() });
+    await invalidateLibrarySummary(queryClient);
   };
 
   return {

@@ -31,6 +31,7 @@ import DefaultContext from "../contexts/DefaultContext.vue";
 import QueueContext from "../contexts/QueueContext.vue";
 import PlaylistContext from "../contexts/PlaylistContext.vue";
 import { useTrackContextActions } from "@/modules/tracks/composables/useTrackContextActions";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
 
 provideTrackMenuComponents(contextMenuTrackComponents);
 
@@ -46,7 +47,8 @@ const props = withDefaults(defineProps<Props>(), {
   context: "default",
 });
 
-const { activeTrack, activeIndex, isContextMenuOpen } = useTrackMenu();
+const { activeTrack, activeIndex, activeQueueItemId, isContextMenuOpen } = useTrackMenu();
+const queueStore = useQueueStore();
 
 const contexts: Record<TrackContext, Component> = {
   "default": DefaultContext,
@@ -61,13 +63,11 @@ const contexts: Record<TrackContext, Component> = {
 
 const contextComponent = computed(() => contexts[props.context]);
 
-const actions = useTrackContextActions(
-  activeTrack,
-  {
-    playlistId: toRef(props, "playlistId"),
-    queueIndex: activeIndex,
-  },
-);
+const actions = useTrackContextActions(activeTrack, {
+  playlistId: toRef(props, "playlistId"),
+  queueIndex: activeIndex,
+  queueItemId: activeQueueItemId,
+});
 
 const contextProps = computed(() => {
   if (!activeTrack.value) return {};
@@ -84,6 +84,14 @@ const contextProps = computed(() => {
         playlistId: props.playlistId,
         isOwner: props.isPlaylistOwner,
       };
+
+    case "queue":
+      return {
+        ...base,
+        queueIndex: activeIndex.value ?? -1,
+        queueLength: queueStore.size,
+      };
+
     default:
       return base;
   }

@@ -92,14 +92,15 @@
       variant="ghost"
       size="icon-sm"
       :class="[
-        'rounded-full transition-opacity',
-        isLiked ? 'opacity-100 text-primary' : 'opacity-0 sm:group-hover:opacity-100'
+        'rounded-full transition-colors transition-opacity',
+        isLiked
+          ? 'opacity-100 text-primary hover:text-primary'
+          : 'opacity-0 text-muted-foreground sm:group-hover:opacity-100 hover:text-foreground'
       ]"
       @click.stop="toggle"
     >
       <IconLike :filled="isLiked" />
     </Button>
-
     <div class="w-7 flex justify-end items-center relative">
       <span :class="styles.duration">
         {{ formatDuration(track.duration) }}
@@ -119,7 +120,7 @@
 <script setup lang="ts">
 import { cva } from "class-variance-authority";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
-import { computed, ref, useTemplateRef } from "vue";
+import { computed, useTemplateRef } from "vue";
 import { useElementHover } from "@vueuse/core";
 import IconDots from "~icons/tabler/dots";
 import IconGripVertical from "~icons/tabler/grip-vertical";
@@ -133,10 +134,14 @@ import type { Track } from "@/modules/player/types";
 import { Button } from "@/components/ui/button";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useRouter } from "vue-router";
+import type { QueueItemId } from "@/types/ids";
+import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 
 interface Props {
   track: Track;
   index?: number;
+  menuIndex?: number;
+  queueItemId?: QueueItemId | null;
   compact?: boolean;
   draggable?: boolean;
   highlighted?: boolean;
@@ -144,11 +149,10 @@ interface Props {
   beingDragged?: boolean;
 }
 
-const toggle = () => {};
-const isLiked = ref(false);
-
 const props = withDefaults(defineProps<Props>(), {
   index: 0,
+  menuIndex: undefined,
+  queueItemId: null,
   compact: false,
   draggable: false,
   highlighted: false,
@@ -162,14 +166,17 @@ const emit = defineEmits<{
 }>();
 
 const playerStore = usePlayerStore();
+const route = useRouter();
+const { toggleTrackLike } = useToggleTrackLike();
 
 const rowRef = useTemplateRef("rowRef");
 const isRowHovered = useElementHover(() => rowRef.value);
 const isCurrentTrack = computed(() => playerStore.currentTrack?.id === props.track.id);
 const isPlaying = computed(() => playerStore.isPlaying);
 const showOverlay = computed(() => isCurrentTrack.value || isRowHovered.value);
+const isLiked = computed(() => props.track.isLiked);
 
-const coverUrl = computed(() => props.track.cover ?? "/img/fallback.svg");
+const coverUrl = computed(() => "/img/fallback.svg");
 
 const artists = computed(() =>
   props.track.artist
@@ -194,11 +201,18 @@ const styles = {
   title: "font-medium truncate text-base group-data-[compact=true]:text-sm hover:underline",
   artist: "flex items-center text-muted-foreground truncate text-sm group-data-[compact=true]:text-xs",
   duration: "text-muted-foreground font-medium text-sm group-data-[compact=true]:text-xs hidden sm:block sm:group-hover:hidden",
-  dots: "absolute  rounded-full transition-opacity opacity-0 sm:group-hover:opacity-100",
+  dots: "absolute rounded-full transition-opacity opacity-0 sm:group-hover:opacity-100",
 };
 
-const { openMenu, openDropdown, activeTrack, isDropdownOpen, isContextMenuOpen } = useTrackMenu();
-const route = useRouter();
+const {
+  openMenu,
+  openDropdown,
+  activeTrack,
+  isDropdownOpen,
+  isContextMenuOpen,
+} = useTrackMenu();
+
+const resolvedMenuIndex = computed(() => props.menuIndex ?? props.index);
 
 const isMenuSelected = computed(() => {
   return (isDropdownOpen.value || isContextMenuOpen.value)
@@ -208,11 +222,8 @@ const isMenuSelected = computed(() => {
 const isActivePlayback = computed(() => props.highlighted || isCurrentTrack.value);
 
 const rowStateClass = computed(() => {
-  if (isActivePlayback.value)
-    return "bg-primary/10 ";
-  if (isMenuSelected.value)
-    return "bg-accent/80  ";
-
+  if (isActivePlayback.value) return "bg-primary/10";
+  if (isMenuSelected.value) return "bg-accent/80";
   return "";
 });
 
@@ -229,11 +240,19 @@ const handleArtistClick = () => {
   route.push({ name: "artist", params: { id: props.track.artistId } });
 };
 
+const toggle = async () => {
+  await toggleTrackLike(props.track);
+};
+
 const onContextMenu = () => {
-  openMenu(props.track, props.index);
+  openMenu(props.track, resolvedMenuIndex.value, {
+    queueItemId: props.queueItemId,
+  });
 };
 
 const onDotsClick = (event: MouseEvent) => {
-  openDropdown(props.track, props.index, event);
+  openDropdown(props.track, resolvedMenuIndex.value, event, {
+    queueItemId: props.queueItemId,
+  });
 };
 </script>

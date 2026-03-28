@@ -1,157 +1,209 @@
+<script setup lang="ts">
+import { ref, computed } from "vue";
+import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+
+/* ── Config ──────────────────────────────────────────────────────── */
+// Пустая строка = same origin (работает с Vite proxy)
+// Или, например, "http://localhost:3000"
+const API = import.meta.env.VITE_API_URL ?? "";
+
+/* ── Types ───────────────────────────────────────────────────────── */
+interface UploadedTrack {
+  id: string;
+  segments: number;
+  stream_url: string; // /api/v1/test/hls/<id>/master.m3u8
+  filename: string;
+}
+
+/* ── State ───────────────────────────────────────────────────────── */
+const inputRef = ref<HTMLInputElement | null>(null);
+const fileName = ref("");
+const uploading = ref(false);
+const errMsg = ref("");
+
+const tracks = ref<UploadedTrack[]>([]);
+const active = ref<UploadedTrack | null>(null);
+
+const pState = ref("idle");
+
+const playing = computed(
+  () => pState.value === "playing" || pState.value === "buffering",
+);
+
+/* ── Upload ──────────────────────────────────────────────────────── */
+function onFileSelect() {
+  fileName.value = inputRef.value?.files?.[0]?.name ?? "";
+}
+
+async function upload() {
+  const file = inputRef.value?.files?.[0];
+  if (!file) {
+    errMsg.value = "Сначала выберите файл";
+    return;
+  }
+
+  uploading.value = true;
+  errMsg.value = "";
+
+  const fd = new FormData();
+  fd.append("file", file);
+
+  try {
+    const r = await fetch(`${API}/api/v1/test/upload`, {
+      method: "POST",
+      body: fd,
+    });
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}));
+      throw new Error(body.error ?? `HTTP ${r.status}`);
+    }
+    const data = await r.json();
+    tracks.value.unshift({ ...data, filename: file.name });
+    fileName.value = "";
+    if (inputRef.value) inputRef.value.value = "";
+  }
+  catch (e: any) {
+    errMsg.value = e.message;
+  }
+  finally {
+    uploading.value = false;
+  }
+}
+
+</script>
+
 <template>
   <Scrollable
     direction="vertical"
     class="flex-1"
   >
-    <div class="flex flex-wrap gap-2">
-      <Button
-        as-child
-        variant="ghost-primary"
+    <div class="px-6 py-8 max-w-3xl mx-auto space-y-8">
+      <div
+        v-if="errMsg"
+        class="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive flex items-center justify-between"
       >
-        <Link to="/profile">
-          Profile
-        </Link>
-      </Button>
+        <span>{{ errMsg }}</span>
+        <button
+          class="text-xs underline ml-4 shrink-0"
+          @click="errMsg = ''"
+        >
+          закрыть
+        </button>
+      </div>
 
-      <Button
-        as-child
-        variant="ghost-primary"
+      <!-- Загрузка файла -->
+      <section class="space-y-3">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+          Загрузка
+        </h2>
+        <div class="flex items-center gap-3">
+          <label
+            class="flex-1 flex items-center justify-center rounded-lg border-2 border-dashed
+                   border-muted-foreground/25 hover:border-primary/50 px-4 py-5
+                   cursor-pointer transition-colors text-sm text-muted-foreground"
+          >
+            {{ fileName || "Выберите аудиофайл (.mp3, .flac, .wav, .ogg …)" }}
+            <input
+              ref="inputRef"
+              type="file"
+              class="sr-only"
+              accept=".mp3,.flac,.wav,.ogg,.m4a,.aac,.opus"
+              @change="onFileSelect"
+            >
+          </label>
+          <button
+            :disabled="uploading || !fileName"
+            class="shrink-0 rounded-lg bg-primary text-primary-foreground px-5 py-2.5
+                   text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            @click="upload"
+          >
+            {{ uploading ? "Обработка…" : "Загрузить" }}
+          </button>
+        </div>
+      </section>
+
+      <Separator v-if="tracks.length > 0" />
+
+      <section
+        v-if="tracks.length > 0"
+        class="space-y-3"
       >
-        <Link to="/library">
-          Lib
-        </Link>
-      </Button>
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+          Загруженные треки
+        </h2>
+        <div class="space-y-1">
+          <div
+            v-for="(t, i) in tracks"
+            :key="t.id"
+            class="flex items-center gap-3 rounded-lg px-3 py-2.5 cursor-pointer transition-colors"
+            :class="active?.id === t.id ? 'bg-primary/10' : 'hover:bg-muted/50'"
+            @click="playTrack(t)"
+          >
+            <span class="w-5 text-center text-sm font-mono text-muted-foreground shrink-0">
+              {{ i + 1 }}
+            </span>
 
-      <!-- <div class="w-full text-xs font-mono bg-muted p-3 rounded-md space-y-1">
-        <div class="flex justify-between">
-          <span class="text-muted-foreground">Status:</span>
-          <Badge :variant="statusVariant">
-            {{ playerStore.status }}A
-          </Badge>
+            <span class="size-8 rounded bg-muted flex items-center justify-center shrink-0">
+              <svg
+                v-if="active?.id === t.id && playing"
+                xmlns="http://www.w3.org/2000/svg"
+                class="size-4"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <rect
+                  x="6"
+                  y="4"
+                  width="4"
+                  height="16"
+                  rx="1"
+                />
+                <rect
+                  x="14"
+                  y="4"
+                  width="4"
+                  height="16"
+                  rx="1"
+                />
+              </svg>
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg"
+                class="size-4 ml-0.5"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </span>
+
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate">
+                {{ t.filename }}
+              </p>
+              <p class="text-xs text-muted-foreground font-mono truncate">
+                {{ t.id }}
+              </p>
+            </div>
+
+            <Badge
+              variant="secondary"
+              class="shrink-0 tabular-nums"
+            >
+              {{ t.segments }} seg
+            </Badge>
+          </div>
         </div>
-        <div class="flex justify-between">
-          <span class="text-muted-foreground">Current Track:</span>
-          <span class="truncate max-w-[200px]">
-            {{ playerStore.currentTrack?.title ?? "—" }}
-          </span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-muted-foreground">Duration:</span>
-          <span>{{ formatDuration(playerStore.duration) }}</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-muted-foreground">Current Time:</span>
-          <span>{{ formatDuration(playerStore.currentTime) }}</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-muted-foreground">Progress:</span>
-          <span>{{ playerStore.progress.toFixed(1) }}%</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-muted-foreground">Live Stream:</span>
-          <span>{{ playerStore.isLiveStream ? "Yes" : "No" }}</span>
-        </div>
-      </div> -->
+      </section>
+
+      <div
+        v-if="!tracks.length && !active"
+        class="text-center py-12 text-muted-foreground text-sm"
+      >
+        Загрузите аудиофайл, чтобы начать
+      </div>
     </div>
   </Scrollable>
 </template>
-
-<script setup lang="ts">
-import { ref, computed, reactive } from "vue";
-import { usePlayerStore } from "@/modules/player/store/player.store";
-
-// Components
-import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
-import Link from "@/components/ui/link/Link.vue";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-
-import { formatDuration } from "@/lib/format/time";
-import { LocalTrack } from "@/modules/player/types";
-import AlbumContext from "@/components/media-hero/menu/contexts/AlbumContext.vue";
-
-const playerStore = usePlayerStore();
-
-const activeTab = ref("library");
-const streamUrl = ref("");
-const directUrl = ref("");
-
-// Track delete dialog states
-const deleteDialogOpen = reactive<Record<string, boolean>>({});
-
-const demoStreams = [
-  {
-    name: "Mux HLS",
-    url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-  },
-  {
-    name: "Apple HLS Basic",
-    url: "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8",
-  },
-];
-
-const demoAudioUrls = [
-  {
-    name: "OGG Sample",
-    url: "https://upload.wikimedia.org/wikipedia/commons/c/c8/Example.ogg",
-  },
-  {
-    name: "MP3 T-Rex",
-    url: "https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3",
-  },
-];
-
-const statusVariant = computed(() => {
-  switch (playerStore.status) {
-    case "playing":
-      return "default";
-    case "paused":
-      return "secondary";
-    case "loading":
-      return "outline";
-    case "error":
-      return "destructive";
-    default:
-      return "secondary";
-  }
-});
-
-const isCurrentTrack = (track: LocalTrack): boolean => {
-  return playerStore.currentTrack?.id === track.id;
-};
-
-const loadUrl = () => {
-  if (streamUrl.value) {
-    playerStore.playUrl(streamUrl.value);
-  }
-};
-
-const loadDemo = (url: string) => {
-  streamUrl.value = url;
-  playerStore.playUrl(url);
-};
-
-const loadDirectUrl = () => {
-  if (directUrl.value) {
-    playerStore.playUrl(directUrl.value);
-  }
-};
-
-const loadDirectDemo = (url: string) => {
-  directUrl.value = url;
-  playerStore.playUrl(url);
-};
-</script>

@@ -63,7 +63,7 @@ export interface TrackEntity {
   format: AudioFormat;
   trackNo?: number;
   diskNo?: number;
-  isLiked: boolean;
+  likedAt?: number;
   playCount: number;
   lastPlayedAt?: number;
   searchKey: string;

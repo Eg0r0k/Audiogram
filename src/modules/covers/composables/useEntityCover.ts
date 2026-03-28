@@ -1,9 +1,9 @@
 import { computed, type MaybeRefOrGetter, toValue } from "vue";
 import { useQuery } from "@tanstack/vue-query";
-import { coverRepository } from "@/db/repositories";
 import type { CoverOwnerType } from "@/db/entities";
 import { useObjectUrl } from "@vueuse/core";
 import { queryKeys } from "@/lib/query-keys";
+import { getCoverBlob } from "@/queries/cover.queries";
 
 export function useEntityCover(
   ownerType: MaybeRefOrGetter<CoverOwnerType | null | undefined>,
@@ -14,25 +14,21 @@ export function useEntityCover(
       const type = toValue(ownerType);
       const id = toValue(ownerId);
 
-      if (!type || !id) return ["covers", "idle"] as const;
-      return queryKeys.covers.detail(type, id);
+      return type && id
+        ? queryKeys.covers.detail(type, id)
+        : ["covers", "idle", "idle"] as const;
     }),
     queryFn: async () => {
       const type = toValue(ownerType);
       const id = toValue(ownerId);
 
-      if (!type || !id) return null;
+      if (!type || !id) {
+        return null;
+      }
 
-      const result = await coverRepository.findByOwner(type, id);
-      if (result.isErr()) throw result.error;
-
-      return result.value?.blob ?? null;
+      return getCoverBlob(type, id);
     },
-    enabled: computed(() => {
-      const type = toValue(ownerType);
-      const id = toValue(ownerId);
-      return !!type && !!id;
-    }),
+    enabled: computed(() => !!toValue(ownerType) && !!toValue(ownerId)),
   });
 
   const url = useObjectUrl(computed(() => query.data.value));

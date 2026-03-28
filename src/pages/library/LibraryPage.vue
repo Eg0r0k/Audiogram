@@ -1,11 +1,11 @@
 <template>
   <Scrollable
     ref="scrollableRef"
-    class="flex-1"
+    class="flex-1  bg-background!"
     @scroll="onScroll"
   >
     <div
-      class="sticky top-0 z-10 bg-background transition-shadow duration-200"
+      class="sticky top-0 z-10 transition-shadow duration-200"
       :class="isScrolled ? 'shadow-xl' : ''"
     >
       <LibraryHeader

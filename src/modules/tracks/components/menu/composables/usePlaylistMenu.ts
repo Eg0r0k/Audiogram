@@ -1,24 +1,18 @@
 import { computed } from "vue";
-import { useRouter } from "vue-router";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
-import { playlistRepository } from "@/db/repositories/playlist.repository";
-import { queryKeys } from "@/lib/query-keys";
-import { PlaylistId } from "@/types/ids";
+import {
+  createPlaylistAndSync,
+  playlistQueries,
+} from "@/queries/playlist.queries";
 
 export function usePlaylistMenu() {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { t } = useI18n();
 
   const { data: playlistsData, isLoading } = useQuery({
-    queryKey: queryKeys.playlists.all(),
-    queryFn: async () => {
-      const result = await playlistRepository.findAll();
-      if (result.isErr()) throw result.error;
-      return result.value;
-    },
+    ...playlistQueries.all(),
     staleTime: Infinity,
   });
 
@@ -27,24 +21,12 @@ export function usePlaylistMenu() {
   );
 
   async function handleCreatePlaylist() {
-    const id = PlaylistId(crypto.randomUUID());
-    const now = Date.now();
-
-    const result = await playlistRepository.create({
-      id,
-      name: "New playlist",
-      trackIds: [],
-      addedAt: now,
-      updatedAt: now,
-    });
-
-    if (result.isErr()) {
-      toast.error(t("playlist.createFailed"));
-      return;
+    try {
+      await createPlaylistAndSync(queryClient);
     }
-
-    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() });
-    router.push({ name: "playlist", params: { id } });
+    catch {
+      toast.error(t("playlist.createFailed"));
+    }
   }
 
   return {

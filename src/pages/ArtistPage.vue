@@ -97,7 +97,6 @@ import { useQueueStore } from "@/modules/queue/store/queue.store";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
-import DeleteArtistDialog from "@/modules/artists/components/dialogs/DeleteArtistDialog.vue";
 import IconLoader2 from "~icons/tabler/loader-2";
 import { useArtistPage } from "@/modules/artists/composables/useArtistPage";
 import type { ArtistEntity } from "@/db/entities";

@@ -13,11 +13,10 @@ export interface Track {
   albumName: string;
   storagePath: string;
   source: TrackSource;
-  // ! Mb change this to BLOB
-  cover?: string;
   duration: number;
   isLiked: boolean;
 }
+
 export interface LocalTrack {
   id: string;
   title: string;

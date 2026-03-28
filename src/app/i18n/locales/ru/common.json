@@ -62,6 +62,9 @@
     "maximize": "Развернуть",
     "close": "Закрыть"
   },
+
+  "favorite": "Избранное",
+
   "editHint": "Двойное нажатие для изменения",
   "editLabel": "Изменить значение",
   "trackCount": "{count} трек | {count} трека | {count} треков",

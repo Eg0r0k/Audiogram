@@ -60,6 +60,8 @@
   "connected": "Connected",
   "disconnected": "Disconnected",
 
+  "favorite": "Favorite",
+
   "window": {
     "minimize": "Minimize",
     "restore": "Restore",

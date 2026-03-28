@@ -1,7 +1,7 @@
 <template>
   <div
     ref="rootRef"
-    class="flex flex-col h-full"
+    class="flex flex-col h-full "
   >
     <QueueHeader
       :size="queueStore.size"
@@ -19,14 +19,18 @@
           :estimate-size="ITEM_HEIGHT"
           :item-height="ITEM_HEIGHT"
           :overscan="4"
+          :padding-bottom="8"
+          :padding-top="8"
           :get-item-key="getItemKey"
           class="flex-1"
         >
           <template #default="{ item, index }">
-            <div class="relative">
+            <div class="relative mx-2">
               <TrackRow
                 :track="item.track as Track"
                 :index="index + 1"
+                :menu-index="index"
+                :queue-item-id="item.id"
                 :draggable="true"
                 :highlighted="index === queueStore.currentIndex"
                 :dimmed="index < queueStore.currentIndex"

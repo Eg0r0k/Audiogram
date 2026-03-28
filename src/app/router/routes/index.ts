@@ -7,6 +7,7 @@ import { settingsRoutes } from "./settings";
 import { albumRoutes } from "./album";
 import { artistRoutes } from "./artist";
 import { playlistRoutes } from "./playlist";
+import { favoriteRoutes } from "./favorite";
 
 export const routes: RouteRecordRaw[] = [
   ...homeRoutes,
@@ -17,6 +18,7 @@ export const routes: RouteRecordRaw[] = [
   ...albumRoutes,
   ...artistRoutes,
   ...playlistRoutes,
+  ...favoriteRoutes,
 ];
 
 export {
@@ -28,5 +30,5 @@ export {
   playlistRoutes,
   artistRoutes,
   albumRoutes,
-
+  favoriteRoutes,
 };
