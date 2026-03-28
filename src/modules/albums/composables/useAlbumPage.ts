@@ -1,16 +1,18 @@
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { AlbumId } from "@/types/ids";
-import { albumRepository, artistRepository, trackRepository } from "@/db/repositories";
-import { storageService } from "@/db/storage";
+import {
+  albumRepository,
+  artistRepository,
+  coverRepository,
+  trackRepository,
+} from "@/db/repositories";
 import type { AlbumEntity } from "@/db/entities";
 import type { AlbumData } from "@/components/media-hero/types";
-import { generateCoverFileName } from "@/lib/uniqeName";
-import { getCoverUrl, invalidateCover } from "@/lib/storage";
 import { queryKeys } from "@/lib/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
-
+import { useObjectUrl } from "@vueuse/core";
 export interface AlbumChanges {
   title?: string;
   description?: string;
@@ -26,7 +28,7 @@ export function useAlbumPage() {
   const albumId = computed(() => AlbumId(route.params.id as string));
 
   const {
-    data: albumDetail,
+    data: album,
     isLoading: isAlbumLoading,
     isError,
     error,
@@ -37,10 +39,24 @@ export function useAlbumPage() {
       const res = await albumRepository.findById(albumId.value);
       if (res.isErr()) throw res.error;
       if (!res.value) throw new Error("Album not found");
-      const coverUrl = await getCoverUrl(res.value.coverPath);
-      return { album: res.value, coverUrl };
+      return res.value;
     },
   });
+
+  const {
+    data: coverBlob,
+    isLoading: isCoverLoading,
+  } = useQuery({
+    queryKey: computed(() => queryKeys.albums.cover(albumId.value)),
+    queryFn: async () => {
+      const res = await coverRepository.getAlbumCover(albumId.value);
+      if (res.isErr()) throw res.error;
+      return res.value?.blob ?? null;
+    },
+    enabled: computed(() => !!album.value),
+  });
+
+  const coverUrl = useObjectUrl(computed(() => coverBlob.value));
 
   const { data: rawTracks, isLoading: isTracksLoading } = useQuery({
     queryKey: computed(() => queryKeys.albums.tracks(albumId.value)),
@@ -49,10 +65,10 @@ export function useAlbumPage() {
       if (res.isErr()) throw res.error;
       return res.value;
     },
-    enabled: computed(() => !!albumDetail.value),
+    enabled: computed(() => !!album.value),
   });
 
-  const artistId = computed(() => albumDetail.value?.album.artistId);
+  const artistId = computed(() => album.value?.artistId);
 
   const { data: artist } = useQuery({
     queryKey: computed(() => queryKeys.artists.detail(artistId.value!)),
@@ -64,9 +80,9 @@ export function useAlbumPage() {
     enabled: computed(() => !!artistId.value),
   });
 
-  const album = computed(() => albumDetail.value?.album ?? null);
-  const coverUrl = computed(() => albumDetail.value?.coverUrl);
-  const isLoading = computed(() => isAlbumLoading.value || isTracksLoading.value);
+  const isLoading = computed(() =>
+    isAlbumLoading.value || isTracksLoading.value || isCoverLoading.value,
+  );
 
   const tracks = computed(() => {
     if (!rawTracks.value || !artist.value || !album.value) return [];
@@ -75,6 +91,7 @@ export function useAlbumPage() {
 
   const albumData = computed<AlbumData | null>(() => {
     if (!album.value || !artist.value) return null;
+
     return {
       type: "album",
       id: album.value.id,
@@ -91,16 +108,20 @@ export function useAlbumPage() {
     mutationFn: async () => {
       const current = album.value;
       if (!current) return;
-      if (current.coverPath) {
-        invalidateCover(current.coverPath);
-        await storageService.deleteFile(current.coverPath);
-      }
-      await trackRepository.deleteByAlbumId(current.id);
-      await albumRepository.delete(current.id);
+
+      const deleteCoverResult = await coverRepository.deleteAlbumCover(current.id);
+      if (deleteCoverResult.isErr()) throw deleteCoverResult.error;
+
+      const deleteTracksResult = await trackRepository.deleteByAlbumId(current.id);
+      if (deleteTracksResult.isErr()) throw deleteTracksResult.error;
+
+      const deleteAlbumResult = await albumRepository.delete(current.id);
+      if (deleteAlbumResult.isErr()) throw deleteAlbumResult.error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.albums.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.artists.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.albums.cover(albumId.value) });
       router.push("/library");
     },
   });
@@ -117,29 +138,26 @@ export function useAlbumPage() {
       }
 
       if (changes.coverBlob) {
-        if (current.coverPath) {
-          invalidateCover(current.coverPath);
-          await storageService.deleteFile(current.coverPath);
-        }
-        const coverPath = generateCoverFileName(current.id, changes.coverBlob.type);
-        const saveResult = await storageService.saveFile(coverPath, changes.coverBlob);
-        if (saveResult.isErr()) throw new Error(`Failed to save cover: ${saveResult.error.message}`);
-        updateData.coverPath = saveResult.value;
+        const coverResult = await coverRepository.upsertAlbumCover(
+          current.id,
+          changes.coverBlob,
+        );
+        if (coverResult.isErr()) throw coverResult.error;
       }
-      else if (changes.removeCover && current.coverPath) {
-        invalidateCover(current.coverPath);
-        await storageService.deleteFile(current.coverPath);
-        updateData.coverPath = undefined;
+      else if (changes.removeCover) {
+        const deleteCoverResult = await coverRepository.deleteAlbumCover(current.id);
+        if (deleteCoverResult.isErr()) throw deleteCoverResult.error;
       }
 
       if (Object.keys(updateData).length > 0) {
         const result = await albumRepository.update(current.id, updateData);
-        if (result.isErr()) throw new Error(`Failed to update album: ${result.error.message}`);
+        if (result.isErr()) throw result.error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.albums.detail(albumId.value) });
       queryClient.invalidateQueries({ queryKey: queryKeys.albums.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.albums.cover(albumId.value) });
     },
   });
 

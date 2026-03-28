@@ -32,7 +32,7 @@ const props = defineProps<{
 
 <style scoped>
 .audiogram-input-group {
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 

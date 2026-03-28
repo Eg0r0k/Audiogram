@@ -11,10 +11,16 @@ export const queryKeys = {
     all: () => ["albums"] as const,
     detail: (id: AlbumId) => ["albums", id] as const,
     tracks: (id: AlbumId) => ["albums", id, "tracks"] as const,
+    cover: (id: AlbumId) => ["covers", "album", id] as const,
   },
   playlists: {
     all: () => ["playlists"] as const,
     detail: (id: PlaylistId) => ["playlists", id] as const,
     tracks: (id: PlaylistId) => ["playlists", id, "tracks"] as const,
+    cover: (id: PlaylistId) => ["covers", "playlist", id] as const,
+  },
+  covers: {
+    detail: (ownerType: "album" | "playlist", ownerId: string) =>
+      ["covers", ownerType, ownerId] as const,
   },
 } as const;

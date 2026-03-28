@@ -222,7 +222,7 @@ function cleanupRipple(el: RippleHTMLElement): void {
   delete el._ripple;
 }
 
-export const vRipple: Directive<RippleHTMLElement, boolean | RippleOptions> = {
+const vRipple: Directive<RippleHTMLElement, boolean | RippleOptions> = {
   mounted(el, binding) {
     setupRipple(el, binding);
   },

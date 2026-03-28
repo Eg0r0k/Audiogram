@@ -69,7 +69,7 @@ export async function collectStorageInfo(): Promise<StorageInfo> {
     artistsCount,
   ] = await Promise.all([
     calculateFolderSize("tracks"),
-    calculateFolderSize("covers"),
+    0,
     getDbSize(),
     getQuotaInfo(),
     getStoragePath(),
@@ -91,19 +91,8 @@ export async function collectStorageInfo(): Promise<StorageInfo> {
   };
 }
 
-export async function clearCovers(): Promise<void> {
-  const result = await storageService.listFiles("covers");
-  if (result.isErr()) return;
-
-  for (const filePath of result.value) {
-    await storageService.deleteFile(filePath);
-  }
-
-  await db.albums.toCollection().modify({ coverPath: undefined });
-}
-
 export async function clearAllData(): Promise<void> {
-  const folders = ["tracks", "covers"];
+  const folders = ["tracks"];
   for (const folder of folders) {
     const result = await storageService.listFiles(folder);
     if (result.isOk()) {
@@ -117,4 +106,5 @@ export async function clearAllData(): Promise<void> {
   await db.albums.clear();
   await db.artists.clear();
   await db.tags.clear();
+  await db.playlists.clear();
 }

@@ -8,7 +8,6 @@
         <NuxtImage
           class="w-full h-full object-cover object-center absolute left-0 top-0"
           draggable="false"
-          :src="coverUrl"
           fallback-src="/img/fallback.svg"
           :alt="currentTrack?.title ?? ''"
         />
@@ -71,13 +70,10 @@ import IconDots from "~icons/tabler/dots";
 import IconLike from "~icons/tabler/heart";
 import FullscreenTrigger from "@/components/layout/fullscreen/FullscreenTrigger.vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import { useCoverUrl } from "../composables/useCoverUrl";
 
 const playerStore = usePlayerStore();
 
 const currentTrack = computed(() => playerStore.currentTrack);
-
-const coverUrl = useCoverUrl(() => currentTrack.value?.cover);
 
 const liked = ref(false);
 const toggle = () => {

@@ -162,7 +162,6 @@ import type { PlaylistEntity } from "@/db/entities";
 import { requestFiles } from "@/lib/files/requestFiles";
 import { IMAGE_MIME_TYPES } from "@/types/media";
 import { isValidImageFile } from "@/lib/environment/mimeSupport";
-import { storageService } from "@/db/storage";
 import EditAvatarDialog from "@/components/dialogs/EditAvatarDialog.vue";
 import type { PlaylistChanges } from "../../composables/usePlaylistPage";
 
@@ -198,6 +197,7 @@ interface FileSelectionError {
 const props = defineProps<{
   open: boolean;
   playlist: PlaylistEntity | null;
+  currentCoverUrl?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -246,16 +246,16 @@ const hasChanges = computed((): boolean => {
 });
 
 watch(
-  () => [props.open, props.playlist] as const,
-  async ([isOpen, playlist]) => {
+  () => [props.open, props.playlist, props.currentCoverUrl] as const,
+  ([isOpen, playlist]) => {
     if (isOpen && playlist) {
-      await initializeForm(playlist);
+      initializeForm(playlist);
     }
   },
   { immediate: true },
 );
 
-async function initializeForm(playlist: PlaylistEntity): Promise<void> {
+function initializeForm(playlist: PlaylistEntity): void {
   resetFormState();
 
   setValues({
@@ -263,13 +263,7 @@ async function initializeForm(playlist: PlaylistEntity): Promise<void> {
     description: playlist.description ?? "",
   });
 
-  if (playlist.coverPath) {
-    const urlResult = await storageService.getAudioUrl(playlist.coverPath);
-    originalCoverUrl.value = urlResult.isOk() ? urlResult.value : null;
-  }
-  else {
-    originalCoverUrl.value = null;
-  }
+  originalCoverUrl.value = props.currentCoverUrl ?? null;
 }
 
 async function handleSelectCover(): Promise<void> {
@@ -403,7 +397,7 @@ function buildChanges(values: PlaylistFormValues): PlaylistChanges {
   if (coverBlob.value) {
     changes.coverBlob = coverBlob.value;
   }
-  else if (isCoverRemoved.value && props.playlist.coverPath) {
+  else if (isCoverRemoved.value && originalCoverUrl.value) {
     changes.removeCover = true;
   }
 

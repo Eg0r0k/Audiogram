@@ -1,15 +1,12 @@
 <script setup lang="ts">
-import { AnimatePresence, Motion } from "motion-v";
 import { ref, computed, watch, onUnmounted } from "vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import RangeSelector from "@/modules/player/components/RangeSelector.vue";
 import SidebarMusic from "@/modules/player/components/SidebarMusic.vue";
 import PlayBarControls from "@/modules/player/components/PlayBarControls.vue";
 import SidebarControls from "@/modules/player/components/SidebarControls.vue";
-import PlayerBarNotification from "@/modules/player/components/PlayerBarNotification.vue";
 import FooterMobile from "./FooterMobile.vue";
 
-const isOpen = ref(false);
 const playerStore = usePlayerStore();
 
 const isScrubbing = ref(false);
@@ -183,19 +180,6 @@ const onScrubEnd = () => {
 
         <SidebarControls />
       </div>
-
-      <AnimatePresence>
-        <Motion
-          v-if="isOpen"
-          :initial="{ opacity: 0, y: 20, height: 0 }"
-          :animate="{ opacity: 1, y: 0, height: 'auto' }"
-          :exit="{ opacity: 0, y: 20, height: 0 }"
-          :transition="{ duration: 0.2, ease: 'easeInOut' }"
-          class="overflow-hidden"
-        >
-          <PlayerBarNotification />
-        </Motion>
-      </AnimatePresence>
     </aside>
     <FooterMobile class="hidden" />
   </footer>

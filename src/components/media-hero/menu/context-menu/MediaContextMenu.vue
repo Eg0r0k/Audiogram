@@ -3,7 +3,7 @@
     <ContextMenuTrigger as-child>
       <slot />
     </ContextMenuTrigger>
-    <ContextMenuContent class="w-60">
+    <ContextMenuContent class="w-60 ">
       <component
         :is="contextComponent"
         v-bind="contextProps"

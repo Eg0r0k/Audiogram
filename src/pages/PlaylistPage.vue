@@ -69,6 +69,7 @@
     <EditPlaylistDialog
       v-model:open="showEditDialog"
       :playlist="playlist"
+      :current-cover-url="coverUrl"
       @save="handleSave"
     />
   </Scrollable>
@@ -101,6 +102,7 @@ const {
   playlistData,
   isLoading,
   isError,
+  coverUrl,
   error,
   deletePlaylist,
   updatePlaylist,

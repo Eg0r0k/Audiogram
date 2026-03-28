@@ -1,7 +1,7 @@
 <template>
   <aside
     v-if="sidebar.isOpen"
-    class="sidebar-wrapper border-r"
+    class="sidebar-wrapper border-r border-background"
     :class="{ 'is-resizing': isResizing }"
     :style="{ width: `${sidebar.width}px` }"
   >
@@ -147,7 +147,7 @@ onUnmounted(() => {
   background: transparent;
   transition: background-color 0.2s;
   touch-action: none;
-  z-index: 10;
+  z-index: 20;
   border: none;
   padding: 0;
 }

@@ -104,7 +104,6 @@ import { useArtistPage } from "@/modules/artists/composables/useArtistPage";
 import type { ArtistEntity } from "@/db/entities";
 import MediaCard from "@/components/media-hero/MediaCard.vue";
 import { AlbumId } from "@/types/ids";
-import TrackMenuOverlay from "@/modules/tracks/components/TrackMenuOverlay.vue";
 
 const { t } = useI18n();
 const { isCompact } = useLibraryView();

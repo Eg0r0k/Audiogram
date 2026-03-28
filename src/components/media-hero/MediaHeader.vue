@@ -1,18 +1,14 @@
 <template>
   <header
     class="fixed w-full top-0 z-20 transition-all duration-200 ease-standard"
-    :class="[
-      isScrolled
-        ? 'bg-background '
-        : 'bg-transparent'
-    ]"
+    :class="isScrolled ? 'backdrop-blur-md' : 'bg-transparent'"
+    :style="headerStyle"
   >
     <div class="flex items-center gap-7 px-7 py-4">
       <Button
         variant="ghost"
         size="icon-lg"
-        class="rounded-full shrink-0"
-        :class="!isScrolled ? 'text-white bg-white/5' : ''"
+        class="rounded-full shrink-0 text-white"
         @click="$router.back()"
       >
         <IconArrowLeft class="size-5" />
@@ -30,7 +26,7 @@
         >
           <h1
             v-if="isScrolled"
-            class="font-semibold text-base truncate"
+            class=" font-extrabold text-2xl truncate text-white"
           >
             {{ title }}
           </h1>
@@ -66,8 +62,9 @@ import { Button } from "@/components/ui/button";
 import IconArrowLeft from "~icons/tabler/arrow-left";
 import IconPlay from "~icons/tabler/player-play-filled";
 
-defineProps<{
+const props = defineProps<{
   title: string;
+  color?: string | null;
 }>();
 
 defineEmits<{
@@ -83,5 +80,15 @@ const scrollable = inject<ScrollableContext | null>("scrollable", null);
 const isScrolled = computed(() => {
   if (!scrollable) return false;
   return scrollable.scrollPosition.value > 60;
+});
+
+const headerStyle = computed(() => {
+  if (!isScrolled.value) {
+    return { background: "transparent" };
+  }
+
+  return {
+    background: props.color ?? "var(--color-background)",
+  };
 });
 </script>

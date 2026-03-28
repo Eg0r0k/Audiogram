@@ -4,6 +4,7 @@
     v-ripple
     role="button"
     tabindex="0"
+    data-track-row
     :data-compact="compact"
     :class="[
       styles.root,
@@ -132,7 +133,6 @@ import type { Track } from "@/modules/player/types";
 import { Button } from "@/components/ui/button";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useRouter } from "vue-router";
-import { useCoverUrl } from "@/modules/player/composables/useCoverUrl";
 
 interface Props {
   track: Track;
@@ -169,7 +169,7 @@ const isCurrentTrack = computed(() => playerStore.currentTrack?.id === props.tra
 const isPlaying = computed(() => playerStore.isPlaying);
 const showOverlay = computed(() => isCurrentTrack.value || isRowHovered.value);
 
-const coverUrl = useCoverUrl(() => props.track.cover);
+const coverUrl = computed(() => props.track.cover ?? "/img/fallback.svg");
 
 const artists = computed(() =>
   props.track.artist

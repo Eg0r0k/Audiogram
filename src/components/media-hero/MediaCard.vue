@@ -1,4 +1,3 @@
-<!-- eslint-disable vuejs-accessibility/no-static-element-interactions -->
 <template>
   <Link
     :to="to"
@@ -14,12 +13,12 @@
           class="aspect-square overflow-hidden bg-muted shadow-sm group-hover:shadow-md transition-shadow"
           :class="rounded ? 'rounded-full' : 'rounded-md'"
         >
-          <NuxtImage
-            :src="resolvedCoverUrl"
+          <EntityCoverImage
+            :owner-type="coverOwnerType"
+            :owner-id="coverOwnerId"
             :alt="title"
             :placeholder="true"
-            fallback-src="/img/fallback.svg"
-            class="size-full object-cover"
+            :image-class="'size-full object-cover'"
           />
         </div>
 
@@ -69,25 +68,28 @@
 <script lang="ts" setup>
 import { Button } from "@/components/ui/button";
 import { Link } from "@/components/ui/link";
-import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import IconPlay from "~icons/tabler/player-play-filled";
 import IconPause from "~icons/tabler/player-pause-filled";
 import type { RouteLocationRaw } from "vue-router";
 import type { QueueSource } from "@/modules/queue/types";
-import { useCoverUrl } from "@/modules/player/composables/useCoverUrl";
 import { usePlaybackState } from "@/modules/player/composables/usePlaybackState";
 import { usePlayerStore } from "@/modules/player/store/player.store";
+import { CoverOwnerType } from "@/db/entities";
+import { computed } from "vue";
+import EntityCoverImage from "../ui/EntityCoverImage.vue";
 
 const props = withDefaults(defineProps<{
   title: string;
   subtitle?: string;
-  coverPath?: string | null;
+  coverOwnerType?: CoverOwnerType | null;
+  coverOwnerId?: string | null;
   to: RouteLocationRaw;
   rounded?: boolean;
   source?: QueueSource;
 }>(), {
   subtitle: undefined,
-  coverPath: null,
+  coverOwnerType: null,
+  coverOwnerId: null,
   rounded: false,
   source: undefined,
 });
@@ -111,5 +113,6 @@ function handlePlay() {
   }
 }
 
-const resolvedCoverUrl = useCoverUrl(() => props.coverPath ?? undefined);
+const coverOwnerType = computed(() => props.coverOwnerType);
+const coverOwnerId = computed(() => props.coverOwnerId);
 </script>

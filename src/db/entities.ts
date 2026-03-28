@@ -1,8 +1,9 @@
 import { AlbumId, ArtistId, PlaylistId, TagId, TrackId } from "@/types/ids";
+
 export enum TrackSource {
-  LOCAL_INTERNAL = "local_internal", // (OPFS / AppData)
-  LOCAL_EXTERNAL = "local_external", // (Tauri only)
-  REMOTE_HLS = "remote_hls", // Stream
+  LOCAL_INTERNAL = "local_internal",
+  LOCAL_EXTERNAL = "local_external",
+  REMOTE_HLS = "remote_hls",
 }
 
 export enum TrackState {
@@ -36,21 +37,17 @@ export interface AlbumEntity {
   title: string;
   artistId: ArtistId;
   year?: number;
-  coverPath?: string;
   addedAt: number;
   updatedAt: number;
-
 }
 
 export interface PlaylistEntity {
   id: PlaylistId;
   name: string;
   description?: string;
-  coverPath?: string;
   trackIds: TrackId[];
   addedAt: number;
   updatedAt: number;
-
 }
 
 export interface TrackEntity {
@@ -84,4 +81,16 @@ export interface ListenEventEntity {
   trackDuration: number;
   completed: boolean;
   skipped: boolean;
+}
+
+export type CoverOwnerType = "album" | "playlist";
+
+export interface CoverEntity {
+  id: string;
+  ownerType: CoverOwnerType;
+  ownerId: string;
+  blob: Blob;
+  mimeType: string;
+  addedAt: number;
+  updatedAt: number;
 }

@@ -12,6 +12,7 @@
 
       <MediaHeader
         :title="data.title"
+        :color="colorReady ? color.hsl : null"
         @play="$emit('play')"
       />
 

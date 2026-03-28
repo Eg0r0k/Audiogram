@@ -197,6 +197,11 @@ export default function useScrollable(
     }
   }
 
+  const setScrollLocked = (locked: boolean) => {
+    if (!containerRef.value) return;
+    containerRef.value.style.overflow = locked ? "hidden" : "";
+  };
+
   function handleThumbMouseDown(e: MouseEvent) {
     if (!USE_OWN_SCROLL || !containerRef.value) return;
 
@@ -383,6 +388,7 @@ export default function useScrollable(
     handleThumbMouseDown,
     scrollTo,
     scrollToEnd,
+    setScrollLocked,
     scrollToStart,
     setScrollPositionSilently,
     updateThumb,

@@ -6,7 +6,7 @@ import { computed } from "vue";
 import { artistRepository } from "@/db/repositories/artist.repository";
 import { albumRepository } from "@/db/repositories/album.repository";
 import { playlistRepository } from "@/db/repositories/playlist.repository";
-import { LibraryItem } from "../types";
+import type { LibraryItem } from "../types";
 import { PlaylistId } from "@/types/ids";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -50,8 +50,8 @@ export const useLibrary = () => {
 
   const artistMap = computed(() => {
     const map = new Map<string, string>();
-    for (const a of artists.value ?? []) {
-      map.set(a.id, a.name);
+    for (const artist of artists.value ?? []) {
+      map.set(artist.id, artist.name);
     }
     return map;
   });
@@ -80,7 +80,6 @@ export const useLibrary = () => {
         type: "album",
         title: album.title,
         subtitle: artistName,
-        coverPath: album.coverPath,
         isPinned: store.isPinned("album", album.id),
         addedAt: album.addedAt,
         updatedAt: album.updatedAt,
@@ -96,7 +95,6 @@ export const useLibrary = () => {
         type: "playlist",
         title: playlist.name,
         subtitle: `${playlist.trackIds.length} tracks`,
-        coverPath: playlist.coverPath,
         isPinned: store.isPinned("playlist", playlist.id),
         addedAt: playlist.addedAt,
         updatedAt: playlist.updatedAt,
@@ -131,8 +129,8 @@ export const useLibrary = () => {
     const items = [...filteredItems.value];
 
     const pinnedOrder = new Map<string, number>();
-    for (const p of store.pinnedItems) {
-      pinnedOrder.set(`${p.type}:${p.id}`, p.pinnedAt);
+    for (const pinned of store.pinnedItems) {
+      pinnedOrder.set(`${pinned.type}:${pinned.id}`, pinned.pinnedAt);
     }
 
     items.sort((a, b) => {
@@ -147,11 +145,16 @@ export const useLibrary = () => {
       }
 
       switch (sortBy.value) {
-        case "recent": return b.addedAt - a.addedAt;
-        case "updated": return (b.updatedAt ?? b.addedAt) - (a.updatedAt ?? a.addedAt);
-        case "alphabetical": return a.title.localeCompare(b.title);
-        case "author": return (a.artistName ?? a.title).localeCompare(b.artistName ?? b.title);
-        default: return 0;
+        case "recent":
+          return b.addedAt - a.addedAt;
+        case "updated":
+          return (b.updatedAt ?? b.addedAt) - (a.updatedAt ?? a.addedAt);
+        case "alphabetical":
+          return a.title.localeCompare(b.title);
+        case "author":
+          return (a.artistName ?? a.title).localeCompare(b.artistName ?? b.title);
+        default:
+          return 0;
       }
     });
 
@@ -175,14 +178,16 @@ export const useLibrary = () => {
       updatedAt: now,
     });
 
-    if (result.isOk()) {
-      await queryClient.invalidateQueries({ queryKey: ["library", "playlists"] });
-      router.push({ name: "playlist", params: { id } });
-    }
+    if (result.isErr()) throw result.error;
+
+    await queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() });
+    router.push({ name: "playlist", params: { id } });
   };
 
   const invalidateLibrary = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["library"] });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.artists.all() });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.albums.all() });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() });
   };
 
   return {

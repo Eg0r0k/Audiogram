@@ -11,7 +11,7 @@ export const useLibraryStore = defineStore("library", () => {
   const pinnedSet = computed(() => {
     const set = new Set<string>();
     for (const item of pinnedItems.value) {
-      set.add(`${item.type}-${item.id}`);
+      set.add(`${item.type}:${item.id}`);
     }
     return set;
   });
@@ -74,6 +74,6 @@ export const useLibraryStore = defineStore("library", () => {
 }, {
   persist: {
     key: "auriogram-library",
-    pick: ["pinnedItems", "sortBy", "activeFilter,"],
+    pick: ["pinnedItems", "sortBy", "activeFilter"],
   },
 });

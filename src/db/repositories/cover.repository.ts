@@ -1,0 +1,122 @@
+import { db } from "@/db";
+import type { CoverEntity, CoverOwnerType } from "@/db/entities";
+import type { AlbumId, PlaylistId } from "@/types/ids";
+import { err, ok, type Result } from "neverthrow";
+
+class CoverRepository {
+  async findByOwner(
+    ownerType: CoverOwnerType,
+    ownerId: string,
+  ): Promise<Result<CoverEntity | undefined, Error>> {
+    try {
+      const cover = await db.covers
+        .where("[ownerType+ownerId]")
+        .equals([ownerType, ownerId])
+        .first();
+
+      return ok(cover);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async getAlbumCover(
+    albumId: AlbumId,
+  ): Promise<Result<CoverEntity | undefined, Error>> {
+    return this.findByOwner("album", albumId);
+  }
+
+  async getPlaylistCover(
+    playlistId: PlaylistId,
+  ): Promise<Result<CoverEntity | undefined, Error>> {
+    return this.findByOwner("playlist", playlistId);
+  }
+
+  async upsertOwnerCover(
+    ownerType: CoverOwnerType,
+    ownerId: string,
+    blob: Blob,
+  ): Promise<Result<string, Error>> {
+    try {
+      const now = Date.now();
+
+      const existing = await db.covers
+        .where("[ownerType+ownerId]")
+        .equals([ownerType, ownerId])
+        .first();
+
+      if (existing) {
+        await db.covers.update(existing.id, {
+          blob,
+          mimeType: blob.type || "image/jpeg",
+          updatedAt: now,
+        });
+
+        return ok(existing.id);
+      }
+
+      const id = crypto.randomUUID();
+
+      await db.covers.add({
+        id,
+        ownerType,
+        ownerId,
+        blob,
+        mimeType: blob.type || "image/jpeg",
+        addedAt: now,
+        updatedAt: now,
+      });
+
+      return ok(id);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async upsertAlbumCover(
+    albumId: AlbumId,
+    blob: Blob,
+  ): Promise<Result<string, Error>> {
+    return this.upsertOwnerCover("album", albumId, blob);
+  }
+
+  async upsertPlaylistCover(
+    playlistId: PlaylistId,
+    blob: Blob,
+  ): Promise<Result<string, Error>> {
+    return this.upsertOwnerCover("playlist", playlistId, blob);
+  }
+
+  async deleteByOwner(
+    ownerType: CoverOwnerType,
+    ownerId: string,
+  ): Promise<Result<void, Error>> {
+    try {
+      const existing = await db.covers
+        .where("[ownerType+ownerId]")
+        .equals([ownerType, ownerId])
+        .first();
+
+      if (existing) {
+        await db.covers.delete(existing.id);
+      }
+
+      return ok(undefined);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async deleteAlbumCover(albumId: AlbumId): Promise<Result<void, Error>> {
+    return this.deleteByOwner("album", albumId);
+  }
+
+  async deletePlaylistCover(playlistId: PlaylistId): Promise<Result<void, Error>> {
+    return this.deleteByOwner("playlist", playlistId);
+  }
+}
+
+export const coverRepository = new CoverRepository();

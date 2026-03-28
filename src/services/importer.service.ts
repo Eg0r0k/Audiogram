@@ -123,7 +123,6 @@ interface TrackToSave {
   fingerprint: string;
   source: TrackSource;
   meta: NormalizedMeta;
-  coverPath?: string;
 }
 
 interface PendingWorkerRequest {
@@ -190,7 +189,7 @@ export class MusicLibraryEngine {
     }
 
     this.profiler.start("0_warmup");
-    await storageService.warmup(["tracks", "covers"]);
+    await storageService.warmup(["tracks"]);
     this.profiler.end("0_warmup");
 
     const items: ImportItem[] = await Promise.all(
@@ -327,15 +326,8 @@ export class MusicLibraryEngine {
       for (let i = 0; i < allParsed.length; i += DB_BATCH_SIZE) {
         const batch = allParsed.slice(i, i + DB_BATCH_SIZE);
 
-        const withCovers = await Promise.all(
-          batch.map(async item => ({
-            ...item,
-            coverPath: await this.saveCoverIfNeeded(item.meta),
-          })),
-        );
-
         try {
-          const saved = await this.saveBatchToDatabase(withCovers);
+          const saved = await this.saveBatchToDatabase(batch);
           result.added += saved.length;
         }
         catch (e) {
@@ -385,11 +377,7 @@ export class MusicLibraryEngine {
     try {
       this.clearSessionCache();
       await this.batchPreResolveEntities([trackToSave.meta]);
-      const withCover = {
-        ...trackToSave,
-        coverPath: await this.saveCoverIfNeeded(trackToSave.meta),
-      };
-      await this.saveBatchToDatabase([withCover]);
+      await this.saveBatchToDatabase([trackToSave]);
       return true;
     }
     catch {
@@ -520,18 +508,9 @@ export class MusicLibraryEngine {
     for (let i = 0; i < readyToSave.length; i += DB_BATCH_SIZE) {
       const batch = readyToSave.slice(i, i + DB_BATCH_SIZE);
 
-      this.profiler.start("5_coverSaving");
-      const withCovers = await Promise.all(
-        batch.map(async item => ({
-          ...item,
-          coverPath: await this.saveCoverIfNeeded(item.meta),
-        })),
-      );
-      this.profiler.end("5_coverSaving");
-
-      this.profiler.start("6_database");
-      const dbResult = await this.saveBatchToDatabaseSafe(withCovers);
-      this.profiler.end("6_database");
+      this.profiler.start("5_database");
+      const dbResult = await this.saveBatchToDatabaseSafe(batch);
+      this.profiler.end("5_database");
 
       dbResult.match(
         (results) => {
@@ -820,22 +799,6 @@ export class MusicLibraryEngine {
     }
   }
 
-  private async saveCoverIfNeeded(
-    meta: NormalizedMeta,
-  ): Promise<string | undefined> {
-    const artistId = this.sessionCache.artists.get(meta.artist);
-    if (!artistId) return undefined;
-
-    const albumData = this.sessionCache.albums.get(
-      `${artistId}_${meta.album}`,
-    );
-    if (!albumData?.isNew || !meta.pictureBlob) return undefined;
-
-    const coverPath = `covers/art_${albumData.id}`;
-    const result = await storageService.saveFile(coverPath, meta.pictureBlob);
-    return result.isOk() ? coverPath : undefined;
-  }
-
   // ═══════════════════════════════════════════════════════
   // DATABASE
   // ═══════════════════════════════════════════════════════
@@ -861,6 +824,7 @@ export class MusicLibraryEngine {
       db.artists,
       db.albums,
       db.tracks,
+      db.covers,
       async () => {
         const results: ImportSuccess[] = [];
 
@@ -868,6 +832,7 @@ export class MusicLibraryEngine {
           ArtistId,
           { id: ArtistId; name: string }
         >();
+
         const albumsToAdd = new Map<
           AlbumId,
           {
@@ -875,7 +840,19 @@ export class MusicLibraryEngine {
             title: string;
             artistId: ArtistId;
             year?: number;
-            coverPath?: string;
+          }
+        >();
+
+        const coversToAdd = new Map<
+          string,
+          {
+            id: string;
+            ownerType: "album";
+            ownerId: string;
+            blob: Blob;
+            mimeType: string;
+            addedAt: number;
+            updatedAt: number;
           }
         >();
 
@@ -885,7 +862,6 @@ export class MusicLibraryEngine {
             `${artistId}_${item.meta.album}`,
           )!;
 
-          // Collect artists to add
           if (!artistsToAdd.has(artistId)) {
             const exists = await db.artists.get(artistId);
             if (!exists) {
@@ -896,7 +872,6 @@ export class MusicLibraryEngine {
             }
           }
 
-          // Collect albums to add
           if (albumData.isNew && !albumsToAdd.has(albumData.id)) {
             const exists = await db.albums.get(albumData.id);
             if (!exists) {
@@ -905,12 +880,33 @@ export class MusicLibraryEngine {
                 title: item.meta.album,
                 artistId,
                 year: item.meta.year,
-                coverPath: item.coverPath,
               });
             }
           }
 
-          // Add track
+          if (albumData.isNew && item.meta.pictureBlob) {
+            const coverKey = `album_${albumData.id}`;
+
+            if (!coversToAdd.has(coverKey)) {
+              const existingCover = await db.covers
+                .where("[ownerType+ownerId]")
+                .equals(["album", albumData.id])
+                .first();
+
+              if (!existingCover) {
+                coversToAdd.set(coverKey, {
+                  id: crypto.randomUUID(),
+                  ownerType: "album",
+                  ownerId: albumData.id,
+                  blob: item.meta.pictureBlob,
+                  mimeType: item.meta.pictureBlob.type || "image/jpeg",
+                  addedAt: now,
+                  updatedAt: now,
+                });
+              }
+            }
+          }
+
           await db.tracks.add({
             id: item.trackId,
             title: item.meta.title,
@@ -940,7 +936,6 @@ export class MusicLibraryEngine {
           });
         }
 
-        // Bulk-insert new artists & albums
         if (artistsToAdd.size > 0) {
           await db.artists.bulkAdd(
             [...artistsToAdd.values()].map(a => ({
@@ -950,6 +945,7 @@ export class MusicLibraryEngine {
             })),
           );
         }
+
         if (albumsToAdd.size > 0) {
           await db.albums.bulkAdd(
             [...albumsToAdd.values()].map(a => ({
@@ -958,6 +954,10 @@ export class MusicLibraryEngine {
               updatedAt: now,
             })),
           );
+        }
+
+        if (coversToAdd.size > 0) {
+          await db.covers.bulkAdd([...coversToAdd.values()]);
         }
 
         return results;

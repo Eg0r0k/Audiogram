@@ -45,5 +45,5 @@ const props = defineProps<{
 }>();
 
 const { Separator } = useTrackMenuComponents();
-const { playlists, isLoading, handleCreatePlaylist } = usePlaylistMenu(() => props.track.id);
+const { playlists, isLoading, handleCreatePlaylist } = usePlaylistMenu();
 </script>

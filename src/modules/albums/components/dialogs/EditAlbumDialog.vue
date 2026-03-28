@@ -161,7 +161,6 @@ import type { AlbumEntity } from "@/db/entities";
 import { requestFiles } from "@/lib/files/requestFiles";
 import { IMAGE_MIME_TYPES } from "@/types/media";
 import { isValidImageFile } from "@/lib/environment/mimeSupport";
-import { storageService } from "@/db/storage";
 import EditAvatarDialog from "@/components/dialogs/EditAvatarDialog.vue";
 
 import IconPhoto from "~icons/tabler/photo";
@@ -198,6 +197,7 @@ interface FileSelectionError {
 const props = defineProps<{
   open: boolean;
   album: AlbumEntity | null;
+  currentCoverUrl?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -246,16 +246,15 @@ const hasChanges = computed((): boolean => {
 });
 
 watch(
-  () => [props.open, props.album] as const,
-  async ([isOpen, album]) => {
+  () => [props.open, props.album, props.currentCoverUrl] as const,
+  ([isOpen, album]) => {
     if (isOpen && album) {
-      await initializeForm(album);
+      initializeForm(album);
     }
   },
   { immediate: true },
 );
-
-async function initializeForm(album: AlbumEntity): Promise<void> {
+function initializeForm(album: AlbumEntity): void {
   resetFormState();
 
   setValues({
@@ -263,18 +262,7 @@ async function initializeForm(album: AlbumEntity): Promise<void> {
     description: "",
   });
 
-  if (album.coverPath) {
-    const urlResult = await storageService.getAudioUrl(album.coverPath);
-    if (urlResult.isOk()) {
-      originalCoverUrl.value = urlResult.value;
-    }
-    else {
-      originalCoverUrl.value = null;
-    }
-  }
-  else {
-    originalCoverUrl.value = null;
-  }
+  originalCoverUrl.value = props.currentCoverUrl ?? null;
 }
 
 async function handleSelectCover(): Promise<void> {
@@ -412,7 +400,7 @@ function buildChanges(values: AlbumFormValues): AlbumChanges {
   if (coverBlob.value) {
     changes.coverBlob = coverBlob.value;
   }
-  else if (isCoverRemoved.value && props.album.coverPath) {
+  else if (isCoverRemoved.value && originalCoverUrl.value) {
     changes.removeCover = true;
   }
 

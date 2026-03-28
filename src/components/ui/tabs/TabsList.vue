@@ -42,6 +42,27 @@ const updateIndicator = () => {
       left: `${activeTab.offsetLeft + offset}px`,
       opacity: 1,
     };
+    scrollActiveTabIntoView(activeTab);
+  }
+};
+
+const scrollActiveTabIntoView = (activeTab: HTMLElement) => {
+  const scrollContainer = containerRef.value?.closest<HTMLElement>(".scrollable-x");
+  if (!scrollContainer) return;
+
+  const containerRect = scrollContainer.getBoundingClientRect();
+  const tabRect = activeTab.getBoundingClientRect();
+
+  const tabLeft = tabRect.left - containerRect.left + scrollContainer.scrollLeft;
+  const tabRight = tabLeft + activeTab.offsetWidth;
+
+  const padding = 70;
+
+  if (tabLeft - padding < scrollContainer.scrollLeft) {
+    scrollContainer.scrollTo({ left: Math.max(0, tabLeft - padding), behavior: "smooth" });
+  }
+  else if (tabRight + padding > scrollContainer.scrollLeft + scrollContainer.clientWidth) {
+    scrollContainer.scrollTo({ left: tabRight + padding - scrollContainer.clientWidth, behavior: "smooth" });
   }
 };
 

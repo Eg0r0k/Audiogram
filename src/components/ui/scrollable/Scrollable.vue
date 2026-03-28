@@ -122,7 +122,7 @@ defineExpose({
 
 <style>
 :root {
-  --z-thumb: 100;
+  --z-thumb: 20;
 }
 
 html.is-firefox .scrollable-y {

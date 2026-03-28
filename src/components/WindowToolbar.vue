@@ -3,7 +3,7 @@
     v-if="IS_TAURI"
     data-tauri-drag-region
     role="toolbar"
-    class="titlebar border-b"
+    class="titlebar border-b border-background"
   >
     <div class="titlebar-text">
       <Button

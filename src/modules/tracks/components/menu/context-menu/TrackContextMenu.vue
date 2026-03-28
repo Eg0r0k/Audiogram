@@ -1,12 +1,16 @@
 <template>
   <ContextMenu v-model:open="isContextMenuOpen">
-    <ContextMenuTrigger as-child>
-      <slot />
-    </ContextMenuTrigger>
+    <div
+      ref="guardRef"
+      class="contents"
+    >
+      <ContextMenuTrigger as-child>
+        <slot />
+      </ContextMenuTrigger>
+    </div>
 
     <ContextMenuContent class="w-65">
       <component
-
         :is="contextComponent"
         v-if="activeTrack"
         v-bind="contextProps"
@@ -16,7 +20,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type Component, toRef } from "vue";
+import { computed, type Component, toRef, useTemplateRef } from "vue";
+import { useEventListener } from "@vueuse/core";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent } from "@/components/ui/context-menu";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import type { AlbumId, PlaylistId } from "@/types/ids";
@@ -58,7 +63,6 @@ const contextComponent = computed(() => contexts[props.context]);
 
 const actions = useTrackContextActions(
   activeTrack,
-  // toRef(props, "context"),
   {
     playlistId: toRef(props, "playlistId"),
     queueIndex: activeIndex,
@@ -85,4 +89,13 @@ const contextProps = computed(() => {
   }
 });
 
+const guardRef = useTemplateRef<HTMLElement>("guardRef");
+
+useEventListener(guardRef, "contextmenu", (e: MouseEvent) => {
+  const target = e.target as HTMLElement;
+  if (!target.closest("[data-track-row]")) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, { capture: true });
 </script>

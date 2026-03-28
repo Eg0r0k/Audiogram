@@ -23,7 +23,7 @@
     >
       <div
         :style="{
-          height: `${virtualizer.getTotalSize()}px`,
+          height: `${totalSize}px`,
           width: '100%',
           position: 'relative',
         }"
@@ -38,7 +38,7 @@
             top: 0,
             left: 0,
             width: '100%',
-            transform: `translateY(${virtualRow.start}px)`,
+            transform: `translateY(${virtualRow.start + props.paddingTop}px)`,
           }"
         >
           <slot
@@ -81,6 +81,8 @@ interface Props {
   bordered?: boolean;
   hideThumb?: boolean;
   loadMoreOffset?: number;
+  paddingTop?: number;
+  paddingBottom?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -92,6 +94,8 @@ const props = withDefaults(defineProps<Props>(), {
   bordered: false,
   hideThumb: false,
   loadMoreOffset: 300,
+  paddingTop: 0,
+  paddingBottom: 0,
 });
 
 const emit = defineEmits<{
@@ -100,6 +104,10 @@ const emit = defineEmits<{
   scrolledBottom: [];
   loadMore: [];
 }>();
+
+const totalSize = computed(() =>
+  virtualizer.value.getTotalSize() + props.paddingTop + props.paddingBottom,
+);
 
 const containerRef = useTemplateRef("containerRef");
 
@@ -205,7 +213,7 @@ defineExpose({
 </script>
 <style>
 :root {
-  --z-thumb: 100;
+  --z-thumb: 20 ;
 }
 
 html.is-firefox .scrollable-y {

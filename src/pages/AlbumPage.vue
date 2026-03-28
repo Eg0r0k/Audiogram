@@ -67,6 +67,7 @@
     <EditAlbumDialog
       v-model:open="showEditDialog"
       :album="album"
+      :current-cover-url="coverUrl"
       @save="handleSave"
     />
   </Scrollable>
@@ -105,6 +106,7 @@ const {
   album,
   tracks,
   albumData,
+  coverUrl,
   isLoading,
   isError,
   error,

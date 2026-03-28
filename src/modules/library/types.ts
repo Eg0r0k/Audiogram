@@ -1,4 +1,4 @@
-import { RouteLocationRaw } from "vue-router";
+import type { RouteLocationRaw } from "vue-router";
 
 export const LIBRARY_FILTERS = ["all", "playlist", "artist", "album"] as const;
 export type LibraryFilter = (typeof LIBRARY_FILTERS)[number];
@@ -11,8 +11,6 @@ export interface LibraryItem {
   type: "artist" | "album" | "playlist";
   title: string;
   subtitle?: string;
-  coverPath?: string;
-  coverUrl?: string;
   isPinned: boolean;
   addedAt: number;
   updatedAt?: number;
