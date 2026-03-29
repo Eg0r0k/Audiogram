@@ -47,7 +47,6 @@ jobs:
         include:
           - platform: windows-latest
           - platform: ubuntu-22.04
-
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -92,17 +91,17 @@ jobs:
           VITE_UPDATE_CHANNEL: ${{ needs.meta.outputs.channel }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'AudioGram ${{ github.ref_name }}'
+          releaseName: AudioGram ${{ github.ref_name }}
           releaseDraft: false
           prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
           tauriScript: pnpm tauri
 
   publish-manifest:
     needs: [meta, build]
+    if: needs.meta.outputs.channel == 'stable'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: needs.meta.outputs.channel == 'stable'
 
     steps:
       - uses: actions/checkout@v4
@@ -113,16 +112,17 @@ jobs:
       - name: Get version from tag
         id: version
         shell: bash
-        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-        - name: Generate latest.json
+      - name: Generate latest.json
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CHANNEL: ${{ needs.meta.outputs.channel }}
           VERSION: ${{ steps.version.outputs.value }}
           REPO: Eg0r0k/AudioGram
           TAG: ${{ github.ref_name }}
-        shell: bash
         run: |
           set -euo pipefail
 
@@ -132,9 +132,7 @@ jobs:
           RELEASE=""
 
           for i in {1..24}; do
-            if RELEASE=$(gh release view "$TAG" \
-              --repo "$REPO" \
-              --json assets,body,publishedAt,isDraft 2>/dev/null); then
+            if RELEASE=$(gh release view "$TAG" --repo "$REPO" --json assets,body,publishedAt,isDraft 2>/dev/null); then
               echo "Release found on attempt $i"
               break
             fi
@@ -162,8 +160,7 @@ jobs:
             exit 1
           fi
 
-          echo "Reading release assets..."
-
+          echo "Release assets:"
           echo "$RELEASE" | jq -r '.assets[]?.name'
 
           WIN_URL=$(echo "$RELEASE" | jq -r '.assets[]? | select(.name | test("x64-setup\\.exe$")) | .url // empty' | head -n1)
@@ -205,7 +202,7 @@ jobs:
               pub_date: $pub_date,
               platforms: {
                 "windows-x86_64": { url: $win_url, signature: $win_sig },
-                "linux-x86_64":   { url: $linux_url, signature: $linux_sig }
+                "linux-x86_64": { url: $linux_url, signature: $linux_sig }
               }
             }' > "docs/manifests/${CHANNEL}/latest.json"
 
