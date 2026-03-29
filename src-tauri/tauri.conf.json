@@ -29,7 +29,19 @@
       "csp": null
     }
   },
+  "plugins":{
+    "updater": {
+    "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIxNjgwQUI5QjM2MjQ4NDQKUldSRVNHS3p1UXBvc1hCR3E1dys2eHF0dHVtNElVdEZaT2JUWmhVZjg3OE0yVC9tbUZpSXUwaU0K",
+    "endpoints": [
+      "https://eg0r0k.github.io/AudioGram/manifests/{{channel}}/latest.json"
+    ],
+    "windows": {
+      "installMode": "passive"
+    }
+  }
+  },
   "bundle": {
+    "createUpdaterArtifacts": true,
     "active": true,
     "targets": "all",
     "icon": [

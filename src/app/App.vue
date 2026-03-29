@@ -20,7 +20,6 @@
 <script setup lang="ts">
 import "vue-sonner/style.css";
 import { Toaster } from "@/components/ui/sonner";
-import { toast } from "vue-sonner";
 import { type Component, computed, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import DefaultLayout from "@/layouts/DefaultLayout.vue";
@@ -36,15 +35,20 @@ import ExternalLinkDialog from "@/components/dialogs/ExternalLinkDialog.vue";
 import { useAccentColor } from "@/modules/settings/composables/useAccentColor";
 import { useAudioSettings } from "@/modules/settings/composables/useAudioSettings";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
-import { IS_TAURI } from "@/lib/environment/userAgent";
 import { useWatchedFolders } from "@/modules/watched-folders/composables/useWatchedFolders";
 import { useGlobalHotKeys } from "@/modules/hotkeys";
-import { useTauriGlobalShortcuts } from "@/modules/hotkeys/composables/useTauriGlobalShortcuts";
 import { useMediaSession } from "@/modules/player/composables/useMediaSession";
+import { useImport } from "@/composables/useImport";
+import { IS_TAURI } from "@/lib/environment/userAgent";
+import { useUpdateStore } from "@/modules/update/store/update.store";
+import { useUpdateScheduler } from "@/modules/update/composables/useUpdateScheduler";
+import { usePwaUpdate } from "@/modules/update/composables/usePwaUpdate";
+import { useChangelogOnStartup } from "@/modules/update/composables/useChangelogOnStartup";
 
 const route = useRoute();
 const { isMobileLayout } = useDeviceLayout();
 const { init } = useWatchedFolders();
+const { importFromPaths } = useImport();
 
 const layouts: Record<string, Component> = {
   default: DefaultLayout,
@@ -66,17 +70,21 @@ const { init: initGeneral } = useGeneralSettings();
 
 onMounted(async () => {
   initGeneral();
-  unlisten = await listenForOpenedFiles((files: OpenedFile[]) => {
-    files.forEach((file) => {
-      toast.success(`▶️ Воспроизводится: ${file.name}`, {
-        description: file.path,
-        duration: 5000,
-      });
-    });
+
+  if (IS_TAURI) {
+    const [{ useTauriGlobalShortcuts }] = await Promise.all([
+      import("@/modules/hotkeys/composables/useTauriGlobalShortcuts"),
+    ]);
+
+    useTauriGlobalShortcuts();
+  }
+
+  unlisten = await listenForOpenedFiles(async (files: OpenedFile[]) => {
+    await importFromPaths(files.map(f => f.path));
   });
+
   init();
 });
-
 onUnmounted(() => {
   unlisten?.();
 });
@@ -87,8 +95,21 @@ useSetupRootClasses();
 usePreventPinchZoom();
 useAudioSettings();
 useGlobalHotKeys();
-useTauriGlobalShortcuts();
 useMediaSession();
+
+// UPDATE
+
+const updateStore = useUpdateStore();
+
+if (IS_TAURI) {
+  useUpdateScheduler();
+}
+else {
+  usePwaUpdate(updateStore.channel);
+}
+
+useChangelogOnStartup();
+
 </script>
 
 <style scoped>
