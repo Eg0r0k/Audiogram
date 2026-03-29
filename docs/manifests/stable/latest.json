@@ -1,0 +1,15 @@
+{
+  "version": "0.1.2",
+  "notes": "",
+  "pub_date": "2026-03-29T17:02:12Z",
+  "platforms": {
+    "windows-x86_64": {
+      "url": "https://github.com/Eg0r0k/AudioGram/releases/download/v0.1.2/audiogram_0.1.2_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRVNHS3p1UXBvc2NWaTB2NUZ2QldZYmhIb2pGVFp2TG1QTTZEOWNKUjV4bnJMMUdNZjl5L2UxL0J5c0tMaG9qenVKbTBnRHVVY0phczhwUm56RGhSaXhkZk9BNDFJZkF3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0ODAzNzMxCWZpbGU6YXVkaW9ncmFtXzAuMS4yX3g2NC1zZXR1cC5leGUKVjhKUTRCZ1R1UitrUDZGS24yUFdLQ2l5cEtpTFc1cEF1d3pLMjNKeVd6T0xTYms3VExSdWJrMDZUb2xBYXlLRzN2SFY2c013VHhtdGFTODJYbm4wQlE9PQo="
+    },
+    "linux-x86_64": {
+      "url": "https://github.com/Eg0r0k/AudioGram/releases/download/v0.1.2/audiogram_0.1.2_amd64.AppImage",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRVNHS3p1UXBvc2NIQ3pjZHJFK1NsNXF5ZHhJRXp6N0xva3ZFTHZPMFA5Y0tpalNjZUNia3VqQjN2Y3hPYlR2WFJjUGdYbVBKVEJrbGpoaGhaYUxkT2hRQUplRG5JNHdZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0ODAzNzM4CWZpbGU6YXVkaW9ncmFtXzAuMS4yX2FtZDY0LkFwcEltYWdlCnRKS1hqV3ljRUpGcG9HeG9vYm4zVWlYMFN1aXpLZlhWWWt0OFVKby83OEdIMHpDU2plK1BUbDYzRVB4aGpNekJ0SjRudWR1L243OVJkamtyRk14TURnPT0K"
+    }
+  }
+}
