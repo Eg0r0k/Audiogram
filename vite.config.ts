@@ -10,6 +10,7 @@ import tailwindcss from "@tailwindcss/vite";
 import vue from "@vitejs/plugin-vue";
 import { visualizer } from "rollup-plugin-visualizer";
 import { defineConfig } from "vitest/config";
+import { VitePWA } from "vite-plugin-pwa";
 import VueDevTools from "vite-plugin-vue-devtools";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -19,6 +20,7 @@ const isAnalyze = process.env.ANALYZE === "true";
 const pkg = JSON.parse(
   readFileSync(path.resolve(__dirname, "package.json"), "utf-8"),
 );
+const isTauri = process.env.TAURI_ENV_PLATFORM !== undefined;
 
 export default defineConfig({
   define: {
@@ -32,15 +34,39 @@ export default defineConfig({
     Icons({
       compiler: "vue3",
     }),
+    VitePWA(
+      {
+        disable: isTauri,
 
-    isAnalyze
-    && visualizer({
-      filename: "dist/stats.html",
-      open: true,
-      gzipSize: true,
-      brotliSize: true,
-      template: "treemap",
-    }),
+        registerType: "prompt",
+
+        injectRegister: null,
+
+        manifest: {
+          name: "Audiogram",
+          short_name: "Audiogram",
+          description: "Local music player",
+          theme_color: "#8774e1",
+          background_color: "#181818",
+
+          display: "standalone",
+
+        },
+        workbox: {
+          globIgnores: ["**/*.{mp3,flac,ogg,wav,m4a,aac}"],
+          navigateFallback: "/index.html",
+          cleanupOutdatedCaches: true,
+        },
+      },
+    ),
+    // isAnalyze
+    // && visualizer({
+    //   filename: "dist/stats.html",
+    //   open: true,
+    //   gzipSize: true,
+    //   brotliSize: true,
+    //   template: "treemap",
+    // }),
   ],
   worker: {
     format: "es",
