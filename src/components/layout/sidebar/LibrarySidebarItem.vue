@@ -3,17 +3,20 @@ import { computed } from "vue";
 import type { LibraryItem } from "@/modules/library/types";
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import IconPinFilled from "~icons/tabler/pin-filled";
+import IconPlayerPlayFilled from "~icons/tabler/player-play-filled";
 import { useLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
 import Link from "@/components/ui/link/Link.vue";
 import type { CoverOwnerType } from "@/db/entities";
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
 
 const props = defineProps<{
   item: LibraryItem;
 }>();
 
 const { openMenu } = useLibraryMenu();
+const queueStore = useQueueStore();
 
 const typeLabel = computed(() => {
   const labels: Record<string, string> = {
@@ -47,20 +50,48 @@ const coverOwnerId = computed(() => {
 });
 
 const hasStaticImage = computed(() => !!props.item.image);
+
+const isCurrentPlaybackSource = computed(() => {
+  const source = queueStore.currentItem?.source;
+  if (!source) return false;
+
+  switch (props.item.type) {
+    case "artist":
+      return source.type === "artist" && source.artistId === props.item.id;
+    case "album":
+      return source.type === "album" && source.albumId === props.item.id;
+    case "playlist":
+      return source.type === "playlist" && source.playlistId === props.item.id;
+    case "liked":
+      return source.type === "liked";
+    default:
+      return false;
+  }
+});
 </script>
 
 <template>
   <Link
+    v-slot="{ isExactActive }"
     :to="item.to"
     class="block mx-2"
     data-library-item
     @contextmenu="openMenu(item)"
   >
-    <Item class="gap-3 px-3 py-2 min-w-0">
+    <Item
+      class="gap-3 px-3 py-2 min-w-0 transition-colors"
+      :class="isExactActive
+        ? 'bg-primary text-primary-foreground hover:bg-primary/95'
+        : 'hover:bg-accent/60'"
+    >
       <ItemMedia
         class="size-[54px] z-1 overflow-hidden"
         :class="item.rounded ? 'rounded-full' : 'rounded-md'"
       >
+        <IconPlayerPlayFilled
+          v-if="isCurrentPlaybackSource"
+          class="size-5 absolute shrink-0 text-white"
+        />
         <NuxtImage
           v-if="hasStaticImage"
           :src="item.image"
@@ -81,11 +112,19 @@ const hasStaticImage = computed(() => !!props.item.image);
       </ItemMedia>
 
       <ItemContent class="min-w-0 overflow-hidden">
-        <ItemTitle class="block min-w-0 w-full! overflow-hidden text-ellipsis whitespace-nowrap">
-          {{ item.title }}
+        <ItemTitle
+          class="block min-w-0 w-full! overflow-hidden text-ellipsis whitespace-nowrap"
+          :class="isExactActive ? 'text-primary-foreground' : ''"
+        >
+          <span class="truncate">
+            {{ item.title }}
+          </span>
         </ItemTitle>
 
-        <ItemDescription class="block min-w-0">
+        <ItemDescription
+          class="block min-w-0"
+          :class="isExactActive ? 'text-primary-foreground' : ''"
+        >
           <span class="flex items-center min-w-0 gap-1">
             <span class="min-w-0 flex-1 truncate">
               {{ subtitle }}
@@ -93,7 +132,8 @@ const hasStaticImage = computed(() => !!props.item.image);
 
             <IconPinFilled
               v-if="item.isPinned"
-              class="size-5 shrink-0 text-primary"
+              class="size-5 shrink-0"
+              :class="isExactActive ? 'text-white' : 'text-primary'"
             />
           </span>
         </ItemDescription>
