@@ -3,8 +3,8 @@ name: Release
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'         # stable: v0.1.0
-      - 'v[0-9]+.[0-9]+.[0-9]+-beta*'   # beta:   v0.1.0-beta.1
+      - 'v*.*.*'
+      - 'v*.*.*-beta*'
 
 concurrency:
   group: release-${{ github.ref }}
@@ -19,23 +19,24 @@ jobs:
     steps:
       - name: Determine channel
         id: channel
+        shell: bash
         run: |
           if [[ "$GITHUB_REF_NAME" == *"-beta"* ]]; then
-            echo "value=beta" >> $GITHUB_OUTPUT
+            echo "value=beta" >> "$GITHUB_OUTPUT"
           else
-            echo "value=stable" >> $GITHUB_OUTPUT
+            echo "value=stable" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Is prerelease
         id: prerelease
+        shell: bash
         run: |
           if [[ "$GITHUB_REF_NAME" == *"-beta"* ]]; then
-            echo "value=true" >> $GITHUB_OUTPUT
+            echo "value=true" >> "$GITHUB_OUTPUT"
           else
-            echo "value=false" >> $GITHUB_OUTPUT
+            echo "value=false" >> "$GITHUB_OUTPUT"
           fi
 
-  # ── Сборка Windows + Linux ────────────────────────────────────────────────
   build:
     needs: meta
     permissions:
@@ -54,6 +55,7 @@ jobs:
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
+        shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -90,7 +92,7 @@ jobs:
           VITE_UPDATE_CHANNEL: ${{ needs.meta.outputs.channel }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Audiogram ${{ github.ref_name }}'
+          releaseName: 'AudioGram ${{ github.ref_name }}'
           releaseDraft: false
           prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
           tauriScript: pnpm tauri
@@ -110,38 +112,86 @@ jobs:
 
       - name: Get version from tag
         id: version
-        run: echo "value=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+        shell: bash
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - name: Generate latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CHANNEL: ${{ needs.meta.outputs.channel }}
           VERSION: ${{ steps.version.outputs.value }}
+          REPO: Eg0r0k/AudioGram
+          TAG: ${{ github.ref_name }}
+        shell: bash
         run: |
-          mkdir -p docs/manifests/${CHANNEL}
+          set -euo pipefail
 
-          echo "Checking if release is published..."
+          mkdir -p "docs/manifests/${CHANNEL}"
 
-          if ! gh release view "${{ github.ref_name }}" --repo "Eg0r0k/AudioGram" --json publishedAt > /dev/null 2>&1; then
-            echo "Release not published yet. Skipping manifest."
-            exit 0
+          echo "Waiting for GitHub release to become available..."
+          RELEASE=""
+
+          for i in {1..24}; do
+            if RELEASE=$(gh release view "$TAG" \
+              --repo "$REPO" \
+              --json assets,body,publishedAt,isDraft 2>/dev/null); then
+              echo "Release found on attempt $i"
+              break
+            fi
+
+            echo "Release not available yet (attempt $i/24). Waiting 10s..."
+            sleep 10
+          done
+
+          if [ -z "$RELEASE" ]; then
+            echo "Release was not found after retries."
+            exit 1
           fi
 
-          RELEASE=$(gh release view "${{ github.ref_name }}" \
-            --json assets,body,publishedAt \
-            --repo "Eg0r0k/AudioGram")
+          IS_DRAFT=$(echo "$RELEASE" | jq -r '.isDraft')
+          PUB_DATE=$(echo "$RELEASE" | jq -r '.publishedAt')
 
-          WIN_URL=$(echo $RELEASE | jq -r '.assets[] | select(.name | test("x64-setup.exe$")) | .browserDownloadUrl')
-          WIN_SIG=$(curl -sL "$(echo $RELEASE | jq -r '.assets[] | select(.name | test("x64-setup.exe.sig$")) | .browserDownloadUrl')")
+          if [ "$IS_DRAFT" = "true" ] || [ "$PUB_DATE" = "null" ]; then
+            echo "Release exists but is draft/unpublished."
+            exit 1
+          fi
 
-          LINUX_URL=$(echo $RELEASE | jq -r '.assets[] | select(.name | test(".AppImage$")) | .browserDownloadUrl')
-          LINUX_SIG=$(curl -sL "$(echo $RELEASE | jq -r '.assets[] | select(.name | test(".AppImage.sig$")) | .browserDownloadUrl')")
+          echo "Waiting for all release assets to appear..."
 
-          PUB_DATE=$(echo $RELEASE | jq -r '.publishedAt')
-          NOTES=$(echo $RELEASE | jq -r '.body')
+          for i in {1..24}; do
+            RELEASE=$(gh release view "$TAG" \
+              --repo "$REPO" \
+              --json assets,body,publishedAt,isDraft)
+
+            WIN_URL=$(echo "$RELEASE" | jq -r '.assets[]? | select(.name | test("x64-setup\\.exe$")) | .browserDownloadUrl' | head -n1)
+            WIN_SIG_URL=$(echo "$RELEASE" | jq -r '.assets[]? | select(.name | test("x64-setup\\.exe\\.sig$")) | .browserDownloadUrl' | head -n1)
+            LINUX_URL=$(echo "$RELEASE" | jq -r '.assets[]? | select(.name | test("\\.AppImage$")) | .browserDownloadUrl' | head -n1)
+            LINUX_SIG_URL=$(echo "$RELEASE" | jq -r '.assets[]? | select(.name | test("\\.AppImage\\.sig$")) | .browserDownloadUrl' | head -n1)
+
+            if [ -n "${WIN_URL}" ] && [ -n "${WIN_SIG_URL}" ] && [ -n "${LINUX_URL}" ] && [ -n "${LINUX_SIG_URL}" ]; then
+              echo "All required assets found on attempt $i"
+              break
+            fi
+
+            echo "Assets not ready yet (attempt $i/24). Waiting 10s..."
+            echo "Current assets:"
+            echo "$RELEASE" | jq -r '.assets[]?.name'
+            sleep 10
+          done
+
+          if [ -z "${WIN_URL:-}" ] || [ -z "${WIN_SIG_URL:-}" ] || [ -z "${LINUX_URL:-}" ] || [ -z "${LINUX_SIG_URL:-}" ]; then
+            echo "Required assets are still missing."
+            echo "$RELEASE" | jq -r '.assets[]?.name'
+            exit 1
+          fi
+
+          WIN_SIG=$(curl -fsSL "$WIN_SIG_URL")
+          LINUX_SIG=$(curl -fsSL "$LINUX_SIG_URL")
+          NOTES=$(echo "$RELEASE" | jq -r '.body // ""')
+          PUB_DATE=$(echo "$RELEASE" | jq -r '.publishedAt')
 
           jq -n \
-            --arg version "v${VERSION}" \
+            --arg version "${VERSION}" \
             --arg notes "$NOTES" \
             --arg pub_date "$PUB_DATE" \
             --arg win_url "$WIN_URL" \
@@ -156,15 +206,24 @@ jobs:
                 "windows-x86_64": { url: $win_url, signature: $win_sig },
                 "linux-x86_64":   { url: $linux_url, signature: $linux_sig }
               }
-            }' > docs/manifests/${CHANNEL}/latest.json
+            }' > "docs/manifests/${CHANNEL}/latest.json"
 
           echo "Generated docs/manifests/${CHANNEL}/latest.json:"
-          cat docs/manifests/${CHANNEL}/latest.json
+          cat "docs/manifests/${CHANNEL}/latest.json"
 
       - name: Commit & push manifest
+        shell: bash
         run: |
+          set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/
-          git diff --staged --quiet || git commit -m "chore: manifest ${{ github.ref_name }} [${{ needs.meta.outputs.channel }}]"
+
+          if git diff --staged --quiet; then
+            echo "No manifest changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore: manifest ${{ github.ref_name }} [${{ needs.meta.outputs.channel }}]"
           git push
