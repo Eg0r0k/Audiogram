@@ -115,7 +115,7 @@ jobs:
         shell: bash
         run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Generate latest.json
+        - name: Generate latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CHANNEL: ${{ needs.meta.outputs.channel }}
@@ -162,45 +162,23 @@ jobs:
             exit 1
           fi
 
-          echo "Waiting for all release assets to appear..."
+          echo "Reading release assets..."
 
-          WIN_URL=""
-          WIN_SIG_URL=""
-          LINUX_URL=""
-          LINUX_SIG_URL=""
+          echo "$RELEASE" | jq -r '.assets[]?.name'
 
-          for i in {1..24}; do
-            RELEASE=$(gh release view "$TAG" \
-              --repo "$REPO" \
-              --json assets,body,publishedAt,isDraft)
+          WIN_URL=$(echo "$RELEASE" | jq -r '.assets[]? | select(.name | test("x64-setup\\.exe$")) | .url // empty' | head -n1)
+          WIN_SIG_URL=$(echo "$RELEASE" | jq -r '.assets[]? | select(.name | test("x64-setup\\.exe\\.sig$")) | .url // empty' | head -n1)
+          LINUX_URL=$(echo "$RELEASE" | jq -r '.assets[]? | select(.name | test("\\.AppImage$")) | .url // empty' | head -n1)
+          LINUX_SIG_URL=$(echo "$RELEASE" | jq -r '.assets[]? | select(.name | test("\\.AppImage\\.sig$")) | .url // empty' | head -n1)
 
-            echo "Current assets on attempt $i:"
-            echo "$RELEASE" | jq -r '.assets[]?.name'
-
-            WIN_URL=$(echo "$RELEASE" | jq -r '.assets[]? | select(.name | test("x64-setup\\.exe$")) | .browserDownloadUrl // empty' | head -n1)
-            WIN_SIG_URL=$(echo "$RELEASE" | jq -r '.assets[]? | select(.name | test("x64-setup\\.exe\\.sig$")) | .browserDownloadUrl // empty' | head -n1)
-            LINUX_URL=$(echo "$RELEASE" | jq -r '.assets[]? | select(.name | test("\\.AppImage$")) | .browserDownloadUrl // empty' | head -n1)
-            LINUX_SIG_URL=$(echo "$RELEASE" | jq -r '.assets[]? | select(.name | test("\\.AppImage\\.sig$")) | .browserDownloadUrl // empty' | head -n1)
-
-            echo "Resolved asset URLs:"
-            echo "WIN_URL=$WIN_URL"
-            echo "WIN_SIG_URL=$WIN_SIG_URL"
-            echo "LINUX_URL=$LINUX_URL"
-            echo "LINUX_SIG_URL=$LINUX_SIG_URL"
-
-            if [ -n "$WIN_URL" ] && [ -n "$WIN_SIG_URL" ] && [ -n "$LINUX_URL" ] && [ -n "$LINUX_SIG_URL" ]; then
-              echo "All required assets found on attempt $i"
-              break
-            fi
-
-            echo "Assets not ready yet (attempt $i/24). Waiting 10s..."
-            sleep 10
-          done
+          echo "Resolved asset URLs:"
+          echo "WIN_URL=$WIN_URL"
+          echo "WIN_SIG_URL=$WIN_SIG_URL"
+          echo "LINUX_URL=$LINUX_URL"
+          echo "LINUX_SIG_URL=$LINUX_SIG_URL"
 
           if [ -z "$WIN_URL" ] || [ -z "$WIN_SIG_URL" ] || [ -z "$LINUX_URL" ] || [ -z "$LINUX_SIG_URL" ]; then
-            echo "Required assets are still missing after retries."
-            echo "Final asset list:"
-            echo "$RELEASE" | jq -r '.assets[]?.name'
+            echo "Required assets are missing."
             exit 1
           fi
 
@@ -208,7 +186,6 @@ jobs:
           WIN_SIG=$(curl -fsSL "$WIN_SIG_URL")
           LINUX_SIG=$(curl -fsSL "$LINUX_SIG_URL")
           NOTES=$(echo "$RELEASE" | jq -r '.body // ""')
-          PUB_DATE=$(echo "$RELEASE" | jq -r '.publishedAt')
 
           echo "Signature lengths:"
           echo "WIN_SIG length: ${#WIN_SIG}"
