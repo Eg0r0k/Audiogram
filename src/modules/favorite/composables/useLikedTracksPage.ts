@@ -26,7 +26,7 @@ export function useLikedTracksPage() {
   const likedData = computed<LikedData>(() => ({
     type: "liked",
     title: t("common.favorite"),
-    image: "/img/liked-fallback.jpg",
+    image: "/img/liked-fallback.svg",
     trackCount: tracks.value.length,
     duration: totalDuration.value,
   }));

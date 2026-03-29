@@ -37,7 +37,7 @@ export const useLibrary = () => {
     type: "liked",
     title: t("common.favorite"),
     subtitle: t("liked.tracksCount", { count: likedTracks.value?.length ?? 0 }),
-    image: "/img/liked-fallback.jpg",
+    image: "/img/liked-fallback.svg",
     isPinned: true,
     isSystem: true,
     addedAt: 0,

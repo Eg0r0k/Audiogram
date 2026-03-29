@@ -3,6 +3,7 @@ import { ref, computed } from "vue";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import Updatedevpanel from "@/app/Updatedevpanel.vue";
 
 /* ── Config ──────────────────────────────────────────────────────── */
 // Пустая строка = same origin (работает с Vite proxy)
@@ -79,6 +80,8 @@ async function upload() {
     direction="vertical"
     class="flex-1"
   >
+    <Updatedevpanel />
+
     <div class="px-6 py-8 max-w-3xl mx-auto space-y-8">
       <div
         v-if="errMsg"

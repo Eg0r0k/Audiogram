@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted } from "vue";
 import {
   Database,
   Disc,
@@ -15,14 +15,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
+import { toast } from "vue-sonner";
 
-import { libraryImporter } from "@/services/importer.service";
 import { db } from "@/db";
 import { storageService } from "@/db/storage";
 import { StorageErrorCode } from "@/db/errors/storage.errors";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import type { ArtistEntity, AlbumEntity, TrackEntity } from "@/db/entities";
 import { formatDuration } from "@/lib/format/time";
+import { musicLibraryEngine } from "@/services/importer.service";
 
 // ═══════════════════════════════════════════════════════
 // TYPES
@@ -61,7 +62,7 @@ const libraryTree = ref<ArtistNode[]>([]);
 const stats = ref<LibraryStats>({ artists: 0, albums: 0, tracks: 0 });
 const importProgress = ref<ImportProgress>({ current: 0, total: 0, percent: 0 });
 
-const isNativeAvailable = libraryImporter.isNativeImportAvailable;
+const isNativeAvailable = musicLibraryEngine.isNativeImportAvailable;
 
 // ═══════════════════════════════════════════════════════
 // IMPORT HANDLERS
@@ -71,7 +72,7 @@ const isNativeAvailable = libraryImporter.isNativeImportAvailable;
  * Нативный импорт через диалог (Tauri) — БЫСТРЫЙ
  */
 async function handleNativeImport(): Promise<void> {
-  const paths = await libraryImporter.pickFiles();
+  const paths = await musicLibraryEngine.pickFiles();
   if (!paths || paths.length === 0) return;
 
   isImporting.value = true;
@@ -80,7 +81,7 @@ async function handleNativeImport(): Promise<void> {
   try {
     console.time("Import Duration (Native)");
 
-    const results = await libraryImporter.importFromPaths(
+    const results = await musicLibraryEngine.importFromPaths( // ⬅️ USE
       paths,
       (current, total) => {
         importProgress.value = {
@@ -94,10 +95,22 @@ async function handleNativeImport(): Promise<void> {
     console.timeEnd("Import Duration (Native)");
     console.log("Import Results:", results);
 
+    if (results.successful.length > 0) {
+      toast.success(
+        `Импорт завершен: ${results.successful.length} треков добавлено, ${results.skipped} пропущено`,
+      );
+    }
+    if (results.failed.length > 0) {
+      toast.error(
+        `Во время импорта произошли ошибки: ${results.failed.length} файлов не удалось обработать`,
+      );
+    }
+
     await refreshView();
   }
   catch (error) {
     console.error("Native import error:", error);
+    toast.error("Произошла критическая ошибка при импорте");
   }
   finally {
     isImporting.value = false;
@@ -119,7 +132,7 @@ async function handleFileSelect(e: Event): Promise<void> {
   try {
     console.time("Import Duration (Web)");
 
-    const results = await libraryImporter.importFiles(
+    const results = await musicLibraryEngine.importFiles( // ⬅️ USE
       files,
       (current, total) => {
         importProgress.value = {
@@ -133,10 +146,22 @@ async function handleFileSelect(e: Event): Promise<void> {
     console.timeEnd("Import Duration (Web)");
     console.log("Import Results:", results);
 
+    if (results.successful.length > 0) {
+      toast.success(
+        `Импорт завершен: ${results.successful.length} треков добавлено, ${results.skipped} пропущено`,
+      );
+    }
+    if (results.failed.length > 0) {
+      toast.error(
+        `Во время импорта произошли ошибки: ${results.failed.length} файлов не удалось обработать`,
+      );
+    }
+
     await refreshView();
   }
   catch (error) {
     console.error("Web import error:", error);
+    toast.error("Произошла критическая ошибка при импорте");
   }
   finally {
     isImporting.value = false;
@@ -198,7 +223,7 @@ async function playTrack(track: TrackEntity): Promise<void> {
       console.error("Play error:", error);
 
       if (error.code === StorageErrorCode.FILE_NOT_FOUND) {
-        console.warn("Track file not found, may have been deleted");
+        toast.warning("Файл трека не найден, возможно он был удален");
       }
     },
   );
@@ -217,7 +242,6 @@ async function nukeDatabase(): Promise<void> {
     });
 
     const filesResult = await storageService.listFiles("tracks");
-
     if (filesResult.isOk()) {
       await Promise.all(
         filesResult.value.map(file => storageService.deleteFile(file)),
@@ -225,13 +249,13 @@ async function nukeDatabase(): Promise<void> {
     }
 
     const coversResult = await storageService.listFiles("covers");
-
     if (coversResult.isOk()) {
       await Promise.all(
         coversResult.value.map(file => storageService.deleteFile(file)),
       );
     }
 
+    toast.success("База данных и хранилище полностью очищены");
     await refreshView();
   }
   finally {
@@ -259,10 +283,6 @@ function isCurrentTrack(track: TrackEntity): boolean {
 // ═══════════════════════════════════════════════════════
 
 onMounted(refreshView);
-
-onUnmounted(() => {
-  // Опционально: очистка при размонтировании
-});
 </script>
 
 <template>
