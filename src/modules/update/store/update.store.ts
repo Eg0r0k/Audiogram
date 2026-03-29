@@ -1,9 +1,9 @@
+import { listen } from "@tauri-apps/api/event";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-import type { DownloadProgress, UpdateChannel, UpdateError, UpdateInfo, UpdateStatus } from "../types";
 import { useChangelogStore } from "./changelog.store";
-import { listen } from "@tauri-apps/api/event";
-import { installUpdate } from "../api/updateApi";
+import type { DownloadProgress, UpdateChannel, UpdateError, UpdateInfo, UpdateStatus } from "../types";
+import { checkUpdate, installUpdate } from "../api/updateApi";
 
 export const useUpdateStore = defineStore("update", () => {
   const status = ref<UpdateStatus>("idle");
@@ -16,7 +16,10 @@ export const useUpdateStore = defineStore("update", () => {
   const isDownloading = computed(() => status.value === "downloading");
   const isInstalling = computed(() => status.value === "installing");
   const isBusy = computed(
-    () => status.value === "checking" || status.value === "downloading" || status.value === "installing",
+    () =>
+      status.value === "checking"
+      || status.value === "downloading"
+      || status.value === "installing",
   );
   const downloadPercent = computed(() => {
     const p = downloadProgress.value;
@@ -30,14 +33,36 @@ export const useUpdateStore = defineStore("update", () => {
 
   const check = async (): Promise<void> => {
     if (isBusy.value) return;
+
     status.value = "checking";
     error.value = null;
     downloadProgress.value = null;
+
+    const result = await checkUpdate(channel.value);
+
+    result.match(
+      (info) => {
+        if (info) {
+          updateInfo.value = info;
+          status.value = "available";
+        }
+        else {
+          updateInfo.value = null;
+          status.value = "up-to-date";
+        }
+      },
+      (e) => {
+        error.value = e;
+        status.value = "error";
+      },
+    );
   };
 
-  const install = async () => {
+  const install = async (): Promise<void> => {
     if (status.value !== "available") return;
+
     const changelogStore = useChangelogStore();
+
     status.value = "downloading";
     downloadProgress.value = { chunkLength: 0, contentLength: null };
 
