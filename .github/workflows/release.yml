@@ -1,0 +1,165 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'         # stable: v0.1.0
+      - 'v[0-9]+.[0-9]+.[0-9]+-beta*'   # beta:   v0.1.0-beta.1
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.channel.outputs.value }}
+      prerelease: ${{ steps.prerelease.outputs.value }}
+    steps:
+      - name: Determine channel
+        id: channel
+        run: |
+          if [[ "$GITHUB_REF_NAME" == *"-beta"* ]]; then
+            echo "value=beta" >> $GITHUB_OUTPUT
+          else
+            echo "value=stable" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Is prerelease
+        id: prerelease
+        run: |
+          if [[ "$GITHUB_REF_NAME" == *"-beta"* ]]; then
+            echo "value=true" >> $GITHUB_OUTPUT
+          else
+            echo "value=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ── Сборка Windows + Linux ────────────────────────────────────────────────
+  build:
+    needs: meta
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+          - platform: ubuntu-22.04
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend deps
+        run: pnpm install
+
+      - name: Build & publish Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          VITE_GITHUB_REPO: Eg0r0k/AudioGram
+          VITE_UPDATE_CHANNEL: ${{ needs.meta.outputs.channel }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Audiogram ${{ github.ref_name }}'
+          releaseDraft: true
+          prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
+          # DONT FORGET DELETE THIS BECOUSE THIS IS TEST RUN BUILD WITHOUT TEST TYPES
+          beforeBuildCommand: pnpm build:free
+          tauriScript: pnpm tauri
+
+  publish-manifest:
+    needs: [meta, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: needs.meta.outputs.channel == 'stable'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Generate latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHANNEL: ${{ needs.meta.outputs.channel }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          mkdir -p docs/manifests/${CHANNEL}
+
+          RELEASE=$(gh release view "${{ github.ref_name }}" \
+            --json assets,body,publishedAt \
+            --repo "Eg0r0k/AudioGram")
+
+          WIN_URL=$(echo $RELEASE | jq -r '.assets[] | select(.name | test("x64-setup.exe$")) | .browserDownloadUrl')
+          WIN_SIG=$(curl -sL "$(echo $RELEASE | jq -r '.assets[] | select(.name | test("x64-setup.exe.sig$")) | .browserDownloadUrl')")
+
+          LINUX_URL=$(echo $RELEASE | jq -r '.assets[] | select(.name | test(".AppImage$")) | .browserDownloadUrl')
+          LINUX_SIG=$(curl -sL "$(echo $RELEASE | jq -r '.assets[] | select(.name | test(".AppImage.sig$")) | .browserDownloadUrl')")
+
+          PUB_DATE=$(echo $RELEASE | jq -r '.publishedAt')
+          NOTES=$(echo $RELEASE | jq -r '.body')
+
+          jq -n \
+            --arg version "v${VERSION}" \
+            --arg notes "$NOTES" \
+            --arg pub_date "$PUB_DATE" \
+            --arg win_url "$WIN_URL" \
+            --arg win_sig "$WIN_SIG" \
+            --arg linux_url "$LINUX_URL" \
+            --arg linux_sig "$LINUX_SIG" \
+            '{
+              version: $version,
+              notes: $notes,
+              pub_date: $pub_date,
+              platforms: {
+                "windows-x86_64": { url: $win_url, signature: $win_sig },
+                "linux-x86_64":   { url: $linux_url, signature: $linux_sig }
+              }
+            }' > docs/manifests/${CHANNEL}/latest.json
+
+          echo "Generated docs/manifests/${CHANNEL}/latest.json:"
+          cat docs/manifests/${CHANNEL}/latest.json
+
+      - name: Commit & push manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git diff --staged --quiet || git commit -m "chore: manifest ${{ github.ref_name }} [${{ needs.meta.outputs.channel }}]"
+          git push
