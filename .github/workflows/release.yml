@@ -93,8 +93,6 @@ jobs:
           releaseName: 'Audiogram ${{ github.ref_name }}'
           releaseDraft: true
           prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
-          # DONT FORGET DELETE THIS BECOUSE THIS IS TEST RUN BUILD WITHOUT TEST TYPES
-          beforeBuildCommand: pnpm build:free
           tauriScript: pnpm tauri
 
   publish-manifest:
@@ -121,6 +119,13 @@ jobs:
           VERSION: ${{ steps.version.outputs.value }}
         run: |
           mkdir -p docs/manifests/${CHANNEL}
+
+          echo "Checking if release is published..."
+
+          if ! gh release view "${{ github.ref_name }}" --repo "Eg0r0k/AudioGram" --json publishedAt > /dev/null 2>&1; then
+            echo "Release not published yet. Skipping manifest."
+            exit 0
+          fi
 
           RELEASE=$(gh release view "${{ github.ref_name }}" \
             --json assets,body,publishedAt \
