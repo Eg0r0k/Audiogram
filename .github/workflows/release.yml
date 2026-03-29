@@ -91,7 +91,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Audiogram ${{ github.ref_name }}'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
           tauriScript: pnpm tauri
 
