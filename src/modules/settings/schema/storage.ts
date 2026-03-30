@@ -1,15 +1,16 @@
-import { z } from "zod";
+import { object, number, string, optional } from "valibot";
+import type { InferOutput } from "valibot";
 
-export const StorageInfoSchema = z.object({
-  tracksSize: z.number().default(0),
-  coversSize: z.number().default(0),
-  dbSize: z.number().default(0),
-  quotaTotal: z.number().default(0),
-  quotaUsed: z.number().default(0),
-  tracksCount: z.number().default(0),
-  albumsCount: z.number().default(0),
-  artistsCount: z.number().default(0),
-  storagePath: z.string().default(""),
+export const StorageInfoSchema = object({
+  tracksSize: optional(number(), 0),
+  coversSize: optional(number(), 0),
+  dbSize: optional(number(), 0),
+  quotaTotal: optional(number(), 0),
+  quotaUsed: optional(number(), 0),
+  tracksCount: optional(number(), 0),
+  albumsCount: optional(number(), 0),
+  artistsCount: optional(number(), 0),
+  storagePath: optional(string(), ""),
 });
 
-export type StorageInfo = z.infer<typeof StorageInfoSchema>;
+export type StorageInfo = InferOutput<typeof StorageInfoSchema>;

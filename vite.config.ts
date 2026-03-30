@@ -12,11 +12,11 @@ import { visualizer } from "rollup-plugin-visualizer";
 import { defineConfig } from "vitest/config";
 import { VitePWA } from "vite-plugin-pwa";
 import VueDevTools from "vite-plugin-vue-devtools";
+import { PluginOption } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const host = process.env.TAURI_DEV_HOST;
-const isAnalyze = process.env.ANALYZE === "true";
-
+const isAnalyze = process.env.VITE_ANALYZE === "true";
 const pkg = JSON.parse(
   readFileSync(path.resolve(__dirname, "package.json"), "utf-8"),
 );
@@ -56,17 +56,32 @@ export default defineConfig({
           globIgnores: ["**/*.{mp3,flac,ogg,wav,m4a,aac}"],
           navigateFallback: "/index.html",
           cleanupOutdatedCaches: true,
+          runtimeCaching: [
+            {
+              urlPattern: /\/img\/.+\.(png|jpe?g|webp|svg|gif)$/i,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "static-images",
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+          ],
         },
       },
     ),
-    // isAnalyze
-    // && visualizer({
-    //   filename: "dist/stats.html",
-    //   open: true,
-    //   gzipSize: true,
-    //   brotliSize: true,
-    //   template: "treemap",
-    // }),
+    isAnalyze && (visualizer({
+      filename: "dist/stats.html",
+      open: true,
+      gzipSize: true,
+      brotliSize: true,
+      template: "treemap",
+    }) as unknown as PluginOption),
   ],
   worker: {
     format: "es",

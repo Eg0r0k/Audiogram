@@ -73,7 +73,6 @@ import { computed, defineAsyncComponent, onUnmounted, ref, shallowRef, watch } f
 import { useI18n } from "vue-i18n";
 import type Cropper from "cropperjs";
 
-import "cropperjs/dist/cropper.css";
 import {
   Dialog,
   DialogContent,
@@ -121,6 +120,7 @@ function isUserCancellation(error: FileSelectionError): boolean {
 
 const VueCropper = defineAsyncComponent({
   loader: async () => {
+    await import("cropperjs/dist/cropper.css");
     return import("vue-cropperjs");
   },
   loadingComponent: {

@@ -141,7 +141,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useForm } from "vee-validate";
-import { z } from "zod";
+import { object, string, optional, pipe, minLength, maxLength } from "valibot";
+import type { InferOutput } from "valibot";
 import { err, ok, Result } from "neverthrow";
 import { useI18n } from "vue-i18n";
 
@@ -167,25 +168,25 @@ import IconPhoto from "~icons/tabler/photo";
 import IconTrash from "~icons/tabler/trash";
 import IconAlertCircle from "~icons/tabler/alert-circle";
 import type { AlbumChanges } from "../../composables/useAlbumPage";
-import { toTypedSchema } from "@vee-validate/zod";
+import { toTypedSchema } from "@vee-validate/valibot";
 
 const { t } = useI18n();
 
 const MAX_TITLE_LENGTH = 50;
 const MAX_DESCRIPTION_LENGTH = 200;
 
-const albumFormSchema = z.object({
-  title: z
-    .string()
-    .min(1, t("dialogs.editAlbum.validation.titleRequired"))
-    .max(MAX_TITLE_LENGTH, t("dialogs.editAlbum.validation.titleMaxLength", { max: MAX_TITLE_LENGTH })),
-  description: z
-    .string()
-    .max(MAX_DESCRIPTION_LENGTH, t("dialogs.editAlbum.validation.descriptionMaxLength", { max: MAX_DESCRIPTION_LENGTH }))
-    .optional(),
+const albumFormSchema = object({
+  title: pipe(
+    string(),
+    minLength(1, t("dialogs.editAlbum.validation.titleRequired")),
+    maxLength(MAX_TITLE_LENGTH, t("dialogs.editAlbum.validation.titleMaxLength", { max: MAX_TITLE_LENGTH })),
+  ),
+  description: optional(pipe(
+    string(),
+    maxLength(MAX_DESCRIPTION_LENGTH, t("dialogs.editAlbum.validation.descriptionMaxLength", { max: MAX_DESCRIPTION_LENGTH })),
+  )),
 });
-
-type AlbumFormValues = z.infer<typeof albumFormSchema>;
+type AlbumFormValues = InferOutput<typeof albumFormSchema>;
 
 type FileSelectionErrorType = "CANCELLED" | "INVALID_FORMAT" | "READ_ERROR";
 

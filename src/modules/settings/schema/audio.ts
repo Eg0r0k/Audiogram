@@ -1,23 +1,20 @@
-import { z } from "zod";
+import { object, boolean, string, number, tuple, pipe, minValue, maxValue, optional, parse } from "valibot";
+import type { InferOutput } from "valibot";
 
 export const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000] as const;
-
 export type EQFrequency = (typeof EQ_FREQUENCIES)[number];
 
-export const EqualizerBandsSchema = z.tuple([
-  z.number().min(-15).max(15),
-  z.number().min(-15).max(15),
-  z.number().min(-15).max(15),
-  z.number().min(-15).max(15),
-  z.number().min(-15).max(15),
-  z.number().min(-15).max(15),
-  z.number().min(-15).max(15),
-  z.number().min(-15).max(15),
-  z.number().min(-15).max(15),
-  z.number().min(-15).max(15),
-]).default([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const bandSchema = pipe(number(), minValue(-15), maxValue(15));
 
-export type EqualizerBands = z.infer<typeof EqualizerBandsSchema>;
+export const EqualizerBandsSchema = optional(
+  tuple([
+    bandSchema, bandSchema, bandSchema, bandSchema, bandSchema,
+    bandSchema, bandSchema, bandSchema, bandSchema, bandSchema,
+  ]),
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+);
+
+export type EqualizerBands = InferOutput<typeof EqualizerBandsSchema>;
 
 export interface EQPreset {
   name: string;
@@ -68,14 +65,14 @@ export const FADE_DURATION_MAX = 10;
 export const FADE_DURATION_STEP = 0.1;
 export const FADE_DURATION_DEFAULT = 1;
 
-export const AudioSettingsSchema = z.object({
-  equalizerEnabled: z.boolean().default(false),
-  equalizerPreset: z.string().default("Flat"),
+export const AudioSettingsSchema = object({
+  equalizerEnabled: optional(boolean(), false),
+  equalizerPreset: optional(string(), "Flat"),
   equalizerBands: EqualizerBandsSchema,
-  fadeEnabled: z.boolean().default(false),
-  fadeInDuration: z.number().min(FADE_DURATION_MIN).max(FADE_DURATION_MAX).default(FADE_DURATION_DEFAULT),
-  fadeOutDuration: z.number().min(FADE_DURATION_MIN).max(FADE_DURATION_MAX).default(FADE_DURATION_DEFAULT),
+  fadeEnabled: optional(boolean(), false),
+  fadeInDuration: optional(pipe(number(), minValue(FADE_DURATION_MIN), maxValue(FADE_DURATION_MAX)), FADE_DURATION_DEFAULT),
+  fadeOutDuration: optional(pipe(number(), minValue(FADE_DURATION_MIN), maxValue(FADE_DURATION_MAX)), FADE_DURATION_DEFAULT),
 });
 
-export type AudioSettings = z.infer<typeof AudioSettingsSchema>;
-export const DEFAULT_AUDIO_SETTINGS = AudioSettingsSchema.parse({});
+export type AudioSettings = InferOutput<typeof AudioSettingsSchema>;
+export const DEFAULT_AUDIO_SETTINGS = parse(AudioSettingsSchema, {});

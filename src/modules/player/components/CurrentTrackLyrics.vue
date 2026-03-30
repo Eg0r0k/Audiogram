@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, watch } from "vue";
+import { ComponentPublicInstance, computed, nextTick, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import type { Track } from "@/modules/player/types";
@@ -68,8 +68,13 @@ watch(
   },
 );
 
-function setLineRef(element: Element | null, index: number) {
-  lineRefs[index] = element instanceof HTMLElement ? element : null;
+function setLineRef(element: Element | ComponentPublicInstance | null, index: number) {
+  if (element instanceof HTMLElement) {
+    lineRefs[index] = element;
+  }
+  else {
+    lineRefs[index] = null;
+  }
 }
 
 function handleLineClick(time: number) {

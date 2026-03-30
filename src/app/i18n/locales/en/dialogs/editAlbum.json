@@ -9,6 +9,9 @@
     "titleMaxLength": "Title must be {max} characters or less",
     "descriptionMaxLength": "Description must be {max} characters or less"
   },
+  "delete": {
+    "title": "Delete Album"
+  },
   "errors": {
     "invalidFormat": "Invalid image format. Please select a valid image file (JPEG, PNG, WebP, etc.)",
     "readError": "Failed to read the file. Please try again.",

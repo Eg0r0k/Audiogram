@@ -1,0 +1,5 @@
+{
+  "title": "Delete Artist",
+  "description": "Are you sure you want to delete \"{name}\"?",
+  "willDelete": "This will delete"
+}

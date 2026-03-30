@@ -1,4 +1,5 @@
-import { z } from "zod";
+import { object, number, optional, parse } from "valibot";
+import type { InferOutput } from "valibot";
 import { DEFAULT_GENERAL_SETTINGS, GeneralSettingsSchema, type GeneralSettings, type SupportedLanguage, SUPPORTED_LANGUAGES } from "./general";
 import { DEFAULT_PLAYBACK_SETTINGS, PlaybackSettingsSchema, type PlaybackSettings } from "./playback";
 import {
@@ -13,16 +14,15 @@ import {
   type EqualizerBands,
 } from "./audio";
 
-export const SettingsSchema = z.object({
-  version: z.number().default(1),
-  general: GeneralSettingsSchema.default(DEFAULT_GENERAL_SETTINGS),
-  playback: PlaybackSettingsSchema.default(DEFAULT_PLAYBACK_SETTINGS),
-  audio: AudioSettingsSchema.default(DEFAULT_AUDIO_SETTINGS),
+export const SettingsSchema = object({
+  version: optional(number(), 1),
+  general: optional(GeneralSettingsSchema, DEFAULT_GENERAL_SETTINGS),
+  playback: optional(PlaybackSettingsSchema, DEFAULT_PLAYBACK_SETTINGS),
+  audio: optional(AudioSettingsSchema, DEFAULT_AUDIO_SETTINGS),
 });
 
-export type Settings = z.infer<typeof SettingsSchema>;
-
-export const DEFAULT_SETTINGS: Settings = SettingsSchema.parse({});
+export type Settings = InferOutput<typeof SettingsSchema>;
+export const DEFAULT_SETTINGS: Settings = parse(SettingsSchema, {});
 
 export {
   GeneralSettingsSchema,

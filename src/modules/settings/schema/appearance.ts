@@ -1,4 +1,5 @@
-import { z } from "zod";
+import { object, picklist, optional } from "valibot";
+import type { InferOutput as InferOut } from "valibot";
 
 export const ACCENT_COLORS = [
   "blue",
@@ -13,9 +14,9 @@ export const ACCENT_COLORS = [
 
 export type AccentColor = (typeof ACCENT_COLORS)[number];
 
-export const AppearanceSettingsSchema = z.object({
-  theme: z.enum(["light", "dark", "system"]).default("system"),
-  accentColor: z.enum(ACCENT_COLORS).default("blue"),
+export const AppearanceSettingsSchema = object({
+  theme: optional(picklist(["light", "dark", "system"] as const), "system"),
+  accentColor: optional(picklist(ACCENT_COLORS), "blue"),
 });
 
-export type AppearanceSettings = z.infer<typeof AppearanceSettingsSchema>;
+export type AppearanceSettings = InferOut<typeof AppearanceSettingsSchema>;

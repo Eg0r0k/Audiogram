@@ -73,6 +73,8 @@
   "editHint": "Double-click to edit",
   "editLabel": "Edit value",
   "trackCount": "{count} track | {count} traks",
+  "albums": "{count} album | {count} albums",
+  "tracks": "{count} track | {count} tracks",
 
   "hoursShort": "{count} hr",
   "minutesShort": "{count} min"
