@@ -10,6 +10,7 @@
       </SlideTransition>
     </RouterView>
   </component>
+  <WhatsNewDialog />
   <ExternalLinkDialog />
   <Toaster
     position="top-center"
@@ -20,7 +21,7 @@
 <script setup lang="ts">
 import "vue-sonner/style.css";
 import { Toaster } from "@/components/ui/sonner";
-import { type Component, computed, onMounted, onUnmounted } from "vue";
+import { type Component as VueComponent, computed, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import DefaultLayout from "@/layouts/DefaultLayout.vue";
 import BlankLayout from "@/layouts/BlankLayout.vue";
@@ -44,24 +45,25 @@ import { useUpdateStore } from "@/modules/update/store/update.store";
 import { useUpdateScheduler } from "@/modules/update/composables/useUpdateScheduler";
 import { usePwaUpdate } from "@/modules/update/composables/usePwaUpdate";
 import { useChangelogOnStartup } from "@/modules/update/composables/useChangelogOnStartup";
+import WhatsNewDialog from "@/modules/update/components/WhatsNewDialog.vue";
 
-const route = useRoute();
+const currentRoute = useRoute();
 const { isMobileLayout } = useDeviceLayout();
 const { init } = useWatchedFolders();
 const { importFromPaths } = useImport();
 
-const layouts: Record<string, Component> = {
+const layouts: Record<string, VueComponent> = {
   default: DefaultLayout,
   blank: BlankLayout,
   mobile: MobileLayout,
 };
 
 const LayoutComponent = computed(() => {
-  if (route.meta.layout === "blank") return BlankLayout;
+  if (currentRoute.meta.layout === "blank") return BlankLayout;
 
   if (isMobileLayout) return MobileLayout;
 
-  const layoutName = route.meta.layout ?? "default";
+  const layoutName = currentRoute.meta.layout ?? "default";
   return layouts[layoutName] ?? DefaultLayout;
 });
 

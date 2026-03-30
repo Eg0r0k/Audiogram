@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/vue-query";
 import { useChangelogStore } from "../store/changelog.store";
 import { onMounted } from "vue";
 import { releaseNotesQueryOptions } from "../api/changelogApi";
+import { normalizeReleaseNotes } from "../lib/releaseNotes";
 
 export const useChangelogOnStartup = () => {
   const changelogStore = useChangelogStore();
@@ -12,22 +13,24 @@ export const useChangelogOnStartup = () => {
     const isNewVersion = changelogStore.checkOnStartup();
     if (!isNewVersion) return;
 
-    if (changelogStore.pendingChangelog) return;
+    if (
+      changelogStore.pendingVersion === __APP_VERSION__
+      && changelogStore.pendingChangelog
+    ) {
+      return;
+    }
 
     const tag = `v${__APP_VERSION__}`;
 
     try {
       const markdown = await queryClient.ensureQueryData(releaseNotesQueryOptions(tag));
-
-      if (markdown) {
-        changelogStore.setPendingChangelog(__APP_VERSION__, markdown);
-      }
-      else {
-        changelogStore.markSeen();
-      }
+      changelogStore.setPendingChangelog(
+        __APP_VERSION__,
+        normalizeReleaseNotes(markdown),
+      );
     }
     catch {
-      changelogStore.markSeen();
+    // noop
     }
   });
 };

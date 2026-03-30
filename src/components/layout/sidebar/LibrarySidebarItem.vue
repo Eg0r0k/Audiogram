@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import type { LibraryItem } from "@/modules/library/types";
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import IconPinFilled from "~icons/tabler/pin-filled";
@@ -15,18 +16,12 @@ const props = defineProps<{
   item: LibraryItem;
 }>();
 
+const { t } = useI18n();
 const { openMenu } = useLibraryMenu();
 const queueStore = useQueueStore();
 
 const typeLabel = computed(() => {
-  const labels: Record<string, string> = {
-    artist: "Artist",
-    album: "Album",
-    playlist: "Playlist",
-    liked: "Liked",
-  };
-
-  return labels[props.item.type] ?? props.item.type;
+  return t(`library.type.${props.item.type}`);
 });
 
 const subtitle = computed(() => {

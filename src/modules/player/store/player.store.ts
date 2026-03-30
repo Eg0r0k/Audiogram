@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { computed, ref, shallowRef, markRaw } from "vue";
+import { computed, ref, shallowRef, markRaw, watch } from "vue";
 import { Player, type PlayerState } from "lyra-audio";
 import Hls from "hls.js";
 import { useAudioSettingsStore } from "@/modules/settings/store/audio";
@@ -8,9 +8,9 @@ import { isLiveStreamTrack } from "../utils";
 import { TrackSource } from "@/db/entities";
 import { IS_TAURI } from "@/lib/environment/userAgent";
 import { storageService } from "@/db/storage";
-import { watch } from "vue";
 import { statsService } from "@/services/stats.service";
 import { TrackId } from "@/types/ids";
+import { findActiveLyricsIndex, parseLrc, type LyricsLine } from "../lib/lrc";
 
 export const usePlayerStore = defineStore("player", () => {
   const player = shallowRef<Player | null>(null);
@@ -25,6 +25,10 @@ export const usePlayerStore = defineStore("player", () => {
   const currentTrack = ref<PlayerTrack | null>(null);
   const graphRevision = ref(0);
   const trackEndedSignal = ref(0);
+  const lyrics = ref<LyricsLine[]>([]);
+  const lyricsStatus = ref<"idle" | "loading" | "ready" | "error">("idle");
+
+  let lyricsRequestId = 0;
 
   let _activeFadeAbort: AbortController | null = null;
 
@@ -46,6 +50,9 @@ export const usePlayerStore = defineStore("player", () => {
   });
 
   const canPlay = computed(() => player.value?.isReady ?? false);
+  const activeLyricsIndex = computed(() =>
+    findActiveLyricsIndex(lyrics.value, currentTime.value),
+  );
 
   const isLiveStream = computed(() => {
     const track = currentTrack.value;
@@ -376,9 +383,42 @@ export const usePlayerStore = defineStore("player", () => {
       track.id as TrackId,
       (track as Track).artistId,
       (track as Track).albumId,
-      (track as Track).duration, // ← из трека, не из duration.value
+      (track as Track).duration,
     );
   });
+
+  watch(currentTrack, async (track) => {
+    const requestId = ++lyricsRequestId;
+
+    lyrics.value = [];
+    lyricsStatus.value = "idle";
+
+    if (!track || !("lyricsPath" in track) || !track.lyricsPath) {
+      return;
+    }
+
+    lyricsStatus.value = "loading";
+
+    const result = await storageService.getFile(track.lyricsPath);
+    if (requestId !== lyricsRequestId) return;
+
+    if (result.isErr()) {
+      lyricsStatus.value = "error";
+      return;
+    }
+
+    try {
+      const text = await result.value.text();
+      if (requestId !== lyricsRequestId) return;
+
+      lyrics.value = parseLrc(text);
+      lyricsStatus.value = "ready";
+    }
+    catch {
+      if (requestId !== lyricsRequestId) return;
+      lyricsStatus.value = "error";
+    }
+  }, { immediate: true });
 
   watch(trackEndedSignal, (val) => {
     if (val === 0) return;
@@ -397,6 +437,9 @@ export const usePlayerStore = defineStore("player", () => {
     repeatMode,
     isShuffled,
     currentTrack,
+    lyrics,
+    lyricsStatus,
+    activeLyricsIndex,
     graphRevision,
     trackEndedSignal,
     progress,

@@ -53,11 +53,27 @@
       </SettingsGroup>
 
       <SettingsGroup class="mt-3">
-        <SettingsItem title="What's new">
+        <SettingsItem
+          title="What's new"
+          @click="handleOpenWhatsNew"
+        >
           <template #action>
-            <IconChevronRight
-              class="size-5 text-muted-foreground"
-            />
+            <div class="flex items-center gap-2">
+              <span
+                v-if="changelog.hasUnseenUpdate"
+                class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary"
+              >
+                New
+              </span>
+              <IconLoader2
+                v-if="isOpening"
+                class="size-4 animate-spin text-muted-foreground"
+              />
+              <IconChevronRight
+                v-else
+                class="size-5 text-muted-foreground"
+              />
+            </div>
           </template>
         </SettingsItem>
 
@@ -118,6 +134,8 @@ import IconTelegram from "~icons/tabler/brand-telegram";
 import IconChevronRight from "~icons/tabler/chevron-right";
 import IconExternalLink from "~icons/tabler/external-link";
 import IconBarBell from "~icons/tabler/barbell-filled";
+import IconLoader2 from "~icons/tabler/loader-2";
+import { toast } from "vue-sonner";
 
 import { Scrollable } from "@/components/ui/scrollable";
 import Button from "@/components/ui/button/Button.vue";
@@ -125,8 +143,26 @@ import Link from "@/components/ui/link/Link.vue";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsItem from "@/modules/settings/components/SettingsItem.vue";
 import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
+import { useReleaseNotesDialog } from "@/modules/update/composables/useReleaseNotesDialog";
+import { useChangelogStore } from "@/modules/update/store/changelog.store";
 
 const dateYear = new Date().getFullYear();
 const appVersion = __APP_VERSION__;
 const buildTime = __BUILD_TIME__;
+const changelog = useChangelogStore();
+const {
+  isOpening,
+  error,
+  clearError,
+  openCurrent,
+} = useReleaseNotesDialog();
+
+const handleOpenWhatsNew = async () => {
+  const isOpened = await openCurrent();
+
+  if (isOpened) return;
+
+  toast.error(error.value ?? "Failed to load release notes");
+  clearError();
+};
 </script>

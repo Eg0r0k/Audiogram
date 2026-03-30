@@ -125,6 +125,96 @@
   }
 }
 
+@layer components {
+  .release-notes-markdown {
+    @apply text-sm leading-6 text-muted-foreground;
+  }
+
+  .release-notes-markdown > :first-child {
+    margin-top: 0;
+  }
+
+  .release-notes-markdown > :last-child {
+    margin-bottom: 0;
+  }
+
+  .release-notes-markdown h1,
+  .release-notes-markdown h2,
+  .release-notes-markdown h3,
+  .release-notes-markdown h4 {
+    @apply text-foreground tracking-tight;
+  }
+
+  .release-notes-markdown h1 {
+    @apply mt-8 text-2xl font-semibold;
+  }
+
+  .release-notes-markdown h2 {
+    @apply mt-7 text-xl font-semibold;
+  }
+
+  .release-notes-markdown h3 {
+    @apply mt-6 text-lg font-semibold;
+  }
+
+  .release-notes-markdown h4 {
+    @apply mt-5 text-base font-semibold;
+  }
+
+  .release-notes-markdown p,
+  .release-notes-markdown ul,
+  .release-notes-markdown ol,
+  .release-notes-markdown pre,
+  .release-notes-markdown blockquote {
+    @apply my-4;
+  }
+
+  .release-notes-markdown ul,
+  .release-notes-markdown ol {
+    @apply space-y-2 pl-5 text-foreground/90;
+  }
+
+  .release-notes-markdown ul {
+    list-style: disc;
+  }
+
+  .release-notes-markdown ol {
+    list-style: decimal;
+  }
+
+  .release-notes-markdown li::marker {
+    color: var(--primary);
+  }
+
+  .release-notes-markdown strong {
+    @apply font-semibold text-foreground;
+  }
+
+  .release-notes-markdown a {
+    @apply text-primary underline decoration-primary/40 underline-offset-4 transition-colors;
+  }
+
+  .release-notes-markdown code {
+    @apply rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.8125rem] text-foreground;
+  }
+
+  .release-notes-markdown pre {
+    @apply overflow-x-auto rounded-sm border-l-4 bg-muted/60 p-4;
+  }
+
+  .release-notes-markdown pre code {
+    @apply bg-transparent p-0 text-sm;
+  }
+
+  .release-notes-markdown hr {
+    @apply my-6 border-0 border-t;
+  }
+
+  .release-notes-markdown blockquote {
+    @apply rounded-r-lg border-l-3 border-primary/30 bg-muted/60 px-4 py-3 text-foreground/80;
+  }
+}
+
 @utility press-scale {
   transition: transform .1s var(--ease-standard);
   transform: scale(1);
@@ -185,8 +275,6 @@ video {
   --z-toolbar: 9998;
   --z-dropoverlay: 9999;
   --z-fullscreen: 10000;
-  --background-noise: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIiB4PSIwIiB5PSIwIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxwYXRoIGQ9Ik0wIDBoMzAwdjMwMEgweiIgZmlsdGVyPSJ1cmwoI2EpIiBvcGFjaXR5PSIuMDUiLz48L3N2Zz4=);
-
 }
 
 /* Cropper style */

@@ -115,6 +115,19 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     }
   }
 
+  async setLyricsPath(id: TrackId, lyricsPath: string): Promise<Result<void, Error>> {
+    try {
+      await this.table.update(id, {
+        lyricsPath,
+      });
+
+      return ok(undefined);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
   async toggleLiked(id: TrackId, isLiked: boolean): Promise<Result<number | undefined, Error>> {
     try {
       const nextLikedAt = isLiked ? undefined : Date.now();

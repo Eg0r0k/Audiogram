@@ -69,6 +69,7 @@ export interface TrackEntity {
   searchKey: string;
   addedAt: number;
   fingerprint?: string;
+  lyricsPath?: string;
 }
 
 export interface ListenEventEntity {

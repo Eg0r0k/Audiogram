@@ -17,6 +17,7 @@ export function mapTrack(
     source: entity.source,
     duration: entity.duration,
     isLiked: !!entity.likedAt,
+    lyricsPath: entity.lyricsPath,
   };
 }
 

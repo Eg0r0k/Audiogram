@@ -920,7 +920,6 @@ export class MusicLibraryEngine {
             format: item.meta.format,
             trackNo: item.meta.trackNo,
             diskNo: item.meta.diskNo,
-            isLiked: false,
             playCount: 0,
             searchKey: item.meta.searchKey,
             addedAt: now,

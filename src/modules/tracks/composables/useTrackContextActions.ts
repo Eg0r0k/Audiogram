@@ -8,6 +8,7 @@ import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import type { Ref } from "vue";
 import { useRouter } from "vue-router";
+import { useAttachTrackLyrics } from "./useAttachTrackLyrics";
 import { useToggleTrackLike } from "./useToggleTrackLike";
 import {
   addTrackToPlaylistAndSync,
@@ -31,6 +32,7 @@ export const useTrackContextActions = (
   const playerStore = usePlayerStore();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const { attachTrackLyrics } = useAttachTrackLyrics();
   const { toggleTrackLike } = useToggleTrackLike();
 
   const play = () => {
@@ -53,6 +55,12 @@ export const useTrackContextActions = (
     if (!track.value) return;
     await toggleTrackLike(track.value);
   };
+
+  const attachLyricsToTrack = async () => {
+    if (!track.value) return;
+    await attachTrackLyrics(track.value);
+  };
+
   const addToPlaylist = async (playlistId: PlaylistId) => {
     if (!track.value) return;
     try {
@@ -106,6 +114,7 @@ export const useTrackContextActions = (
     playNext,
     addToQueue,
     toggleLike,
+    attachLyrics: attachLyricsToTrack,
     addToPlaylist,
     removeFromQueue,
     removeFromPlaylist,

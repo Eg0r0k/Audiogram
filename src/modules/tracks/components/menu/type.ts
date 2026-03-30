@@ -7,6 +7,7 @@ export interface ContextActions {
   playNext: () => void;
   addToQueue: () => void;
   toggleLike: () => void;
+  attachLyrics: () => void;
   addToPlaylist: (playlistId: PlaylistId) => void;
   removeFromQueue?: () => void;
   removeFromPlaylist?: () => void;

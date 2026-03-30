@@ -12,5 +12,22 @@
   "empty": "Your library is empty",
   "emptyDescription": "Add music or create playlists to get started",
   "pinned": "Pinned",
-  "searchPlaceholder": "Search in library"
+  "searchPlaceholder": "Search in library",
+  "type": {
+    "artist": "Artist",
+    "album": "Album",
+    "playlist": "Playlist",
+    "liked": "Liked Songs"
+  },
+  "contextMenu": {
+    "pinAlbum": "Pin album",
+    "pinPlaylist": "Pin playlist",
+    "pinItem": "Pin item",
+    "unpinAlbum": "Unpin album",
+    "unpinPlaylist": "Unpin playlist",
+    "unpinItem": "Unpin item",
+    "deleteAlbum": "Delete album",
+    "deletePlaylist": "Delete playlist",
+    "deleteItem": "Delete item"
+  }
 }

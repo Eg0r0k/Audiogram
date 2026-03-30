@@ -36,6 +36,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { ContextMenuItem } from "@/components/ui/context-menu";
 import type { LibraryItem } from "@/modules/library/types";
 import IconList from "~icons/tabler/list";
@@ -52,38 +53,40 @@ const props = defineProps<{
   deleteItem?: () => void;
 }>();
 
+const { t } = useI18n();
+
 const canTogglePin = computed(() => props.item.type !== "liked" && !!props.togglePin);
 
 const pinOnLabel = computed(() => {
   switch (props.item.type) {
     case "album":
-      return "Pin album";
+      return t("library.contextMenu.pinAlbum");
     case "playlist":
-      return "Pin playlist";
+      return t("library.contextMenu.pinPlaylist");
     default:
-      return "Pin item";
+      return t("library.contextMenu.pinItem");
   }
 });
 
 const pinOffLabel = computed(() => {
   switch (props.item.type) {
     case "album":
-      return "Unpin album";
+      return t("library.contextMenu.unpinAlbum");
     case "playlist":
-      return "Unpin playlist";
+      return t("library.contextMenu.unpinPlaylist");
     default:
-      return "Unpin item";
+      return t("library.contextMenu.unpinItem");
   }
 });
 
 const deleteLabel = computed(() => {
   switch (props.item.type) {
     case "album":
-      return "Delete album";
+      return t("library.contextMenu.deleteAlbum");
     case "playlist":
-      return "Delete playlist";
+      return t("library.contextMenu.deletePlaylist");
     default:
-      return "Delete item";
+      return t("library.contextMenu.deleteItem");
   }
 });
 </script>

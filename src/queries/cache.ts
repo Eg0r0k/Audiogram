@@ -387,3 +387,87 @@ export function syncTrackLikeCaches(
     }),
   );
 }
+
+export function syncTrackMetadataCaches(
+  queryClient: QueryClient,
+  nextTrackEntity: TrackEntity,
+  nextTrack: Track,
+) {
+  queryClient.setQueryData(queryKeys.tracks.detail(nextTrackEntity.id), nextTrackEntity);
+
+  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.tracks.all(), tracks =>
+    tracks.map(track =>
+      track.id === nextTrackEntity.id ? nextTrackEntity : track,
+    ),
+  );
+  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.tracks.liked(), tracks =>
+    tracks.map(track =>
+      track.id === nextTrackEntity.id ? nextTrackEntity : track,
+    ),
+  );
+  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.albums.tracks(nextTrackEntity.albumId), tracks =>
+    tracks.map(track =>
+      track.id === nextTrackEntity.id ? nextTrackEntity : track,
+    ),
+  );
+  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.artists.tracks(nextTrackEntity.artistId), tracks =>
+    tracks.map(track =>
+      track.id === nextTrackEntity.id ? nextTrackEntity : track,
+    ),
+  );
+
+  setQueryDataIfPresent<LibrarySummaryData>(
+    queryClient,
+    queryKeys.library.summary(),
+    data => ({
+      ...data,
+      likedTracks: data.likedTracks.map(track =>
+        track.id === nextTrackEntity.id ? nextTrackEntity : track,
+      ),
+    }),
+  );
+  setQueryDataIfPresent<LikedTracksPageData>(
+    queryClient,
+    queryKeys.tracks.likedPage(),
+    data => ({
+      ...data,
+      tracks: data.tracks.map(track =>
+        track.id === nextTrack.id ? nextTrack : track,
+      ),
+    }),
+  );
+
+  setQueriesDataIfPresent<PlaylistPageData>(
+    queryClient,
+    {
+      predicate: query =>
+        query.queryKey[0] === "playlists" && query.queryKey[2] === "page",
+    },
+    data => ({
+      ...data,
+      tracks: data.tracks.map(track =>
+        track.id === nextTrack.id ? nextTrack : track,
+      ),
+    }),
+  );
+  setQueryDataIfPresent<ArtistPageData>(
+    queryClient,
+    queryKeys.artists.page(nextTrack.artistId),
+    data => ({
+      ...data,
+      tracks: data.tracks.map(track =>
+        track.id === nextTrack.id ? nextTrack : track,
+      ),
+    }),
+  );
+  setQueryDataIfPresent<AlbumPageData>(
+    queryClient,
+    queryKeys.albums.page(nextTrack.albumId),
+    data => ({
+      ...data,
+      tracks: data.tracks.map(track =>
+        track.id === nextTrack.id ? nextTrack : track,
+      ),
+    }),
+  );
+}

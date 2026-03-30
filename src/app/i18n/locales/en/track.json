@@ -7,6 +7,8 @@
     "play": "Play",
     "playNext": "Play next",
     "addToQueue": "Add to queue",
+    "addLyrics": "Add lyrics",
+    "replaceLyrics": "Replace lyrics",
     "addToPlaylist": "Add to playlist",
     "searchPlaylist": "Search playlist...",
     "createPlaylist": "Create playlist",

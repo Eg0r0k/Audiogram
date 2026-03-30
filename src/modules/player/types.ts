@@ -15,6 +15,7 @@ export interface Track {
   source: TrackSource;
   duration: number;
   isLiked: boolean;
+  lyricsPath?: string;
 }
 
 export interface LocalTrack {

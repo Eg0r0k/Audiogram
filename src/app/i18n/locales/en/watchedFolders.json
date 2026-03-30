@@ -1,0 +1,17 @@
+{
+  "title": "Watched Folders",
+  "autoScan": "Auto scan",
+  "autoScanDesc": "Automatically scan for new music when the app starts",
+  "addFolder": "Add folder",
+  "scanAll": "Scan all",
+  "removeDialogTitle": "Remove folder?",
+  "removeDialogDescription": "Are you sure you want to remove \"{name}\" from watched folders? This won't delete any files.",
+  "scanning": "Scanning...",
+  "tracks": "tracks",
+  "scan": "Scan",
+  "remove": "Remove",
+  "justNow": "Just now",
+  "minutesAgo": "{n} min ago",
+  "hoursAgo": "{n} hr ago",
+  "daysAgo": "{n} days ago"
+}

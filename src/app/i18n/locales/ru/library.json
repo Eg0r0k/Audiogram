@@ -12,5 +12,22 @@
   "empty": "Ваша медиатека пуста",
   "emptyDescription": "Добавьте музыку или создайте плейлисты, чтобы начать",
   "pinned": "Закреплено",
-  "searchPlaceholder": "Поиск в медиатеке"
+  "searchPlaceholder": "Поиск в медиатеке",
+  "type": {
+    "artist": "Исполнитель",
+    "album": "Альбом",
+    "playlist": "Плейлист",
+    "liked": "Любимые треки"
+  },
+  "contextMenu": {
+    "pinAlbum": "Закрепить альбом",
+    "pinPlaylist": "Закрепить плейлист",
+    "pinItem": "Закрепить",
+    "unpinAlbum": "Открепить альбом",
+    "unpinPlaylist": "Открепить плейлист",
+    "unpinItem": "Открепить",
+    "deleteAlbum": "Удалить альбом",
+    "deletePlaylist": "Удалить плейлист",
+    "deleteItem": "Удалить"
+  }
 }

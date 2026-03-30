@@ -9,7 +9,7 @@ import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { Track } from "@/modules/player/types";
 import type { TrackId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
-import { syncTrackLikeCaches } from "./cache";
+import { syncTrackLikeCaches, syncTrackMetadataCaches } from "./cache";
 import { unique, unwrapResult } from "./shared";
 import type { LikedTracksPageData } from "./types";
 
@@ -80,6 +80,33 @@ export async function toggleTrackLikeAndSync(
   };
 
   syncTrackLikeCaches(queryClient, nextTrackEntity, nextTrack);
+
+  return nextTrack;
+}
+
+export async function attachTrackLyricsAndSync(
+  queryClient: QueryClient,
+  track: Track,
+  lyricsPath: string,
+) {
+  const currentTrack = await unwrapResult(trackRepository.findById(track.id as TrackId));
+
+  if (!currentTrack) {
+    throw new Error("Track not found");
+  }
+
+  await unwrapResult(trackRepository.setLyricsPath(track.id, lyricsPath));
+
+  const nextTrackEntity: TrackEntity = {
+    ...currentTrack,
+    lyricsPath,
+  };
+  const nextTrack: Track = {
+    ...track,
+    lyricsPath,
+  };
+
+  syncTrackMetadataCaches(queryClient, nextTrackEntity, nextTrack);
 
   return nextTrack;
 }

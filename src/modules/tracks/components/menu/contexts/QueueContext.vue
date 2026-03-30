@@ -23,6 +23,11 @@
     @toggle="actions.toggleLike"
   />
 
+  <LyricsItem
+    :has-lyrics="!!track.lyricsPath"
+    @attach="actions.attachLyrics"
+  />
+
   <AddToPlaylistSub
     :playlists="playlists"
     :is-loading="isLoading"
@@ -45,13 +50,14 @@ import PlayItems from "../items/PlayItems.vue";
 import LikeItem from "../items/LikeItem.vue";
 import AddToPlaylistSub from "../items/AddToPlaylistSub.vue";
 import NavigationItems from "../items/NavigationItems.vue";
+import LyricsItem from "../items/LyricsItem.vue";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
 import { usePlaylistMenu } from "../composables/usePlaylistMenu";
 import type { ContextActions } from "../type";
 import type { Track } from "@/modules/player/types";
 import IconTrash from "~icons/tabler/trash";
 
-const props = defineProps<{
+defineProps<{
   track: Track;
   actions: ContextActions;
   queueIndex: number;

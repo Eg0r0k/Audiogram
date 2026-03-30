@@ -61,6 +61,8 @@
   "disconnected": "Disconnected",
 
   "favorite": "Favorite",
+  "addToQueue": "Add to queue",
+  "select": "Select",
 
   "window": {
     "minimize": "Minimize",

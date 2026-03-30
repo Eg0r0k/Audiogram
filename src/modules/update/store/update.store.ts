@@ -1,9 +1,11 @@
-import { listen } from "@tauri-apps/api/event";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { useChangelogStore } from "./changelog.store";
 import type { DownloadProgress, UpdateChannel, UpdateError, UpdateInfo, UpdateStatus } from "../types";
 import { checkUpdate, installUpdate } from "../api/updateApi";
+import { fetchReleaseNotes } from "../api/changelogApi";
+import { normalizeReleaseNotes } from "../lib/releaseNotes";
+import { IS_TAURI } from "@/lib/environment/userAgent";
 
 export const useUpdateStore = defineStore("update", () => {
   const status = ref<UpdateStatus>("idle");
@@ -29,6 +31,30 @@ export const useUpdateStore = defineStore("update", () => {
 
   const setChannel = (c: UpdateChannel) => {
     channel.value = c;
+  };
+
+  const stageChangelogForInstall = async () => {
+    const version = updateInfo.value?.version;
+    if (!version) return;
+
+    const changelogStore = useChangelogStore();
+    const inlineNotes = updateInfo.value?.body?.trim();
+
+    if (inlineNotes) {
+      changelogStore.stageChangelog(version, normalizeReleaseNotes(inlineNotes));
+      return;
+    }
+
+    const result = await fetchReleaseNotes(`v${version}`);
+
+    result.match(
+      (markdown) => {
+        changelogStore.stageChangelog(version, normalizeReleaseNotes(markdown));
+      },
+      () => {
+        changelogStore.clearStagedChangelog(version);
+      },
+    );
   };
 
   const check = async (): Promise<void> => {
@@ -61,7 +87,20 @@ export const useUpdateStore = defineStore("update", () => {
   const install = async (): Promise<void> => {
     if (status.value !== "available") return;
 
+    if (!IS_TAURI) {
+      error.value = {
+        kind: "INSTALL_FAILED",
+        message: "Native install is not available in PWA mode",
+      };
+      status.value = "error";
+      return;
+    }
+
+    const { listen } = await import("@tauri-apps/api/event");
     const changelogStore = useChangelogStore();
+    const versionToInstall = updateInfo.value?.version ?? null;
+
+    await stageChangelogForInstall();
 
     status.value = "downloading";
     downloadProgress.value = { chunkLength: 0, contentLength: null };
@@ -88,22 +127,17 @@ export const useUpdateStore = defineStore("update", () => {
     unlistenInstallStarted();
 
     result.match(
-      () => {
-        if (updateInfo.value) {
-          changelogStore.setPendingChangelog(
-            updateInfo.value.version,
-            updateInfo.value.body ?? "",
-          );
-        }
-      },
+      () => {},
       (e) => {
+        if (versionToInstall) {
+          changelogStore.clearStagedChangelog(versionToInstall);
+        }
         error.value = e;
         status.value = "error";
         downloadProgress.value = null;
       },
     );
   };
-
   const dismiss = (): void => {
     if (
       status.value === "available"

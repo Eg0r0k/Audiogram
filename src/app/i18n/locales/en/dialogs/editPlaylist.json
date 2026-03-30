@@ -1,0 +1,17 @@
+{
+  "title": "Edit Playlist",
+  "playlistName": "Playlist Name",
+  "namePlaceholder": "Enter playlist name",
+  "description": "Description",
+  "descriptionPlaceholder": "Enter playlist description",
+  "validation": {
+    "nameRequired": "Name is required",
+    "nameMaxLength": "Name must be {max} characters or less",
+    "descriptionMaxLength": "Description must be {max} characters or less"
+  },
+  "errors": {
+    "invalidFormat": "Invalid image format. Please select a valid image file (JPEG, PNG, WebP, etc.)",
+    "readError": "Failed to read the file. Please try again.",
+    "unknown": "An unexpected error occurred. Please try again."
+  }
+}

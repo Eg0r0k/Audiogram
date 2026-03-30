@@ -6,8 +6,8 @@
 //   2. We fetch latest tag from GitHub (via TanStack Query cache)
 //      and push status: 'available' into the update store
 //   3. User clicks "Установить" → applyPwaUpdate()
-//      → saves changelog to store → SW skipWaiting → page reloads
-//   4. On reload, useChangelogOnStartup() finds the saved changelog
+//      → stages changelog for the target version → SW skipWaiting → page reloads
+//   4. On reload, useChangelogOnStartup() promotes the staged changelog
 //      → WhatsNewModal opens
 
 import { watch } from "vue";
@@ -15,8 +15,9 @@ import { useRegisterSW } from "virtual:pwa-register/vue";
 import { useQueryClient } from "@tanstack/vue-query";
 import { useUpdateStore } from "../store/update.store";
 import { useChangelogStore } from "../store/changelog.store";
-import { UpdateChannel } from "../types";
+import type { UpdateChannel } from "../types";
 import { fetchReleaseNotes, latestTagQueryOptions } from "../api/changelogApi";
+import { normalizeReleaseNotes } from "../lib/releaseNotes";
 
 export const usePwaUpdate = (channel: UpdateChannel = "stable") => {
   const updateStore = useUpdateStore();
@@ -56,7 +57,7 @@ export const usePwaUpdate = (channel: UpdateChannel = "stable") => {
 
   /**
    * Called when user confirms the update (UpdateToast "Установить" button).
-   * Saves changelog before reloading so WhatsNewModal is ready on next launch.
+   * Stages changelog before reloading so WhatsNewModal is ready on next launch.
    */
   async function applyPwaUpdate() {
     updateStore.$patch({ status: "downloading" });
@@ -70,7 +71,7 @@ export const usePwaUpdate = (channel: UpdateChannel = "stable") => {
       const result = await fetchReleaseNotes(tag);
       result.match(
         (markdown) => {
-          if (markdown) changelogStore.setPendingChangelog(version, markdown);
+          changelogStore.stageChangelog(version, normalizeReleaseNotes(markdown));
         },
         () => {
           // Changelog fetch failed — proceed with update anyway, skip modal
