@@ -19,6 +19,8 @@ import { useMediaContext } from "@/composables/useMediaContext";
 import AlbumContext from "../contexts/AlbumContext.vue";
 import ArtistContext from "../contexts/ArtistContext.vue";
 import PlaylistContext from "../contexts/PlaylistContext.vue";
+import LikedContext from "../contexts/LikedContext.vue";
+
 import { MediaContext } from "../types";
 import { contextMenuComponents, provideMenuComponents } from "@/modules/media-hero/composables/useMenuComponents";
 
@@ -34,7 +36,7 @@ const props = withDefaults(defineProps<{
 const contexts: Record<MediaContext, Component> = {
   "album": AlbumContext,
   "artist-page": ArtistContext,
-  "liked": AlbumContext,
+  "liked": LikedContext,
   "playlist": PlaylistContext,
 };
 

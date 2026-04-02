@@ -7,7 +7,7 @@
             class="rounded-full"
             size="icon"
             variant="ghost"
-            :class="{ 'text-primary': playerStore.isShuffled }"
+            :class="{ 'text-primary': queueStore.isShuffled }"
             @click="queueStore.toggleShuffle()"
           >
             <IconShuffle class="size-4.5" />

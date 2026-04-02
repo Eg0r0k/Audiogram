@@ -20,7 +20,6 @@ export const usePlayerStore = defineStore("player", () => {
   const volume = ref(1);
   const isMuted = ref(false);
   const repeatMode = ref<RepeatMode>("off");
-  const isShuffled = ref(false);
   const status = ref<PlayerState>("idle");
   const currentTrack = ref<PlayerTrack | null>(null);
   const graphRevision = ref(0);
@@ -76,7 +75,18 @@ export const usePlayerStore = defineStore("player", () => {
       await oldPlayer.dispose();
     }
 
-    const newPlayer = new Player({ mode: "auto", Hls });
+    const audioSettings = useAudioSettingsStore();
+
+    const newPlayer = new Player({
+      mode: "auto",
+      Hls,
+      loudnessNormalization: {
+        enabled: audioSettings.isNormalizationEnabled,
+        targetLufs: audioSettings.normalizationTargetLufs,
+        preventClipping: audioSettings.normalizationPreventClipping,
+      },
+    });
+
     newPlayer.setVolume(volume.value);
     newPlayer.setMuted(isMuted.value);
 
@@ -120,12 +130,29 @@ export const usePlayerStore = defineStore("player", () => {
       isMuted.value = muted;
     });
 
+    newPlayer.on("normalizationchange", (payload) => {
+      if (player.value !== newPlayer) return;
+      console.log("[Player] normalizationchange", payload);
+    });
+
     newPlayer.on("error", (err) => {
       if (player.value !== newPlayer) return;
       console.error("[Player] error:", err);
     });
 
     return newPlayer;
+  };
+  // ! DELETE LATER
+  const applyTrackLoudnessMetadata = (p: Player, track: PlayerTrack) => {
+    if (typeof track.integratedLufs === "number") {
+      p.setLoudnessMetadata({
+        integratedLufs: track.integratedLufs,
+        truePeakDbtp: track.truePeakDbtp,
+      });
+      return;
+    }
+
+    p.clearLoudnessMetadata();
   };
 
   const resolveTrackUrl = async (track: PlayerTrack): Promise<string | null> => {
@@ -288,10 +315,10 @@ export const usePlayerStore = defineStore("player", () => {
     try {
       if ("file" in track && track.file) {
         await p.load(track.file);
+        applyTrackLoudnessMetadata(p, track);
         await play();
         return;
       }
-
       let url: string | null = null;
 
       if ("url" in track && track.url) {
@@ -324,6 +351,7 @@ export const usePlayerStore = defineStore("player", () => {
       }
 
       await loadUrl(p, url);
+      applyTrackLoudnessMetadata(p, track);
       await play();
     }
     catch (err) {
@@ -435,7 +463,6 @@ export const usePlayerStore = defineStore("player", () => {
     isPlaying,
     isLoading,
     repeatMode,
-    isShuffled,
     currentTrack,
     lyrics,
     lyricsStatus,
@@ -467,7 +494,6 @@ export const usePlayerStore = defineStore("player", () => {
       "volume",
       "isMuted",
       "repeatMode",
-      "isShuffled",
       "currentTrack",
       "currentTime",
       "duration",

@@ -10,9 +10,7 @@ export function useToggleTrackLike() {
 
   const mutation = useMutation({
     mutationFn: async (track: Track) => {
-      const nextTrack = await toggleTrackLikeAndSync(queryClient, track);
-      track.isLiked = nextTrack.isLiked;
-      return nextTrack;
+      return await toggleTrackLikeAndSync(queryClient, track);
     },
     onError: () => {
       toast.error(t("track.likeToggleFailed"));

@@ -103,7 +103,7 @@
       <Button
         size="icon-lg"
         variant="ghost"
-        :class="{ 'text-primary': playerStore.isShuffled }"
+        :class="{ 'text-primary': queueStore.isShuffled }"
         @click="queueStore.toggleShuffle()"
       >
         <IconShuffle class=" size-7" />

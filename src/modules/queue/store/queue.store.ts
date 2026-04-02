@@ -61,6 +61,30 @@ export const useQueueStore = defineStore("queue", () => {
     };
   }
 
+  function patchQueueItem(
+    list: QueueItem[],
+    nextTrack: PlayerTrack,
+  ): QueueItem[] {
+    const index = list.findIndex(item => item.track.id === nextTrack.id);
+    if (index === -1) return list;
+
+    const current = list[index];
+    const nextList = list.slice();
+    nextList[index] = {
+      ...current,
+      track: {
+        ...current.track,
+        ...nextTrack,
+      },
+    };
+
+    return nextList;
+  }
+
+  function syncTrackMetadata(nextTrack: PlayerTrack): void {
+    queue.value = patchQueueItem(queue.value, nextTrack);
+    originalQueue.value = patchQueueItem(originalQueue.value, nextTrack);
+  }
   async function playAtIndex(index: number): Promise<boolean> {
     if (index < 0 || index >= queue.value.length) return false;
 
@@ -344,7 +368,18 @@ export const useQueueStore = defineStore("queue", () => {
     moveTrack,
     shuffle,
     unshuffle,
+    syncTrackMetadata,
     toggleShuffle,
     clear,
   };
+}, {
+  persist: {
+    key: "lyra-queue",
+    pick: [
+      "queue",
+      "originalQueue",
+      "currentIndex",
+      "isShuffled",
+    ],
+  },
 });
