@@ -1,4 +1,4 @@
-import { parseBuffer, type IOptions } from "music-metadata";
+import { IAudioMetadata, parseBuffer, type IOptions } from "music-metadata";
 import type { BaseMetadata, ParseRequest, ParseResponse } from "./types";
 
 const OPTIONS: IOptions = {
@@ -8,6 +8,38 @@ const OPTIONS: IOptions = {
   includeChapters: false,
   mkvUseIndex: true,
 };
+
+function asFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function ratioToDbtp(ratio: number | undefined): number | undefined {
+  if (ratio === undefined || ratio <= 0) return undefined;
+  return 20 * Math.log10(ratio);
+}
+
+function extractLoudness(metadata: IAudioMetadata): Pick<
+  BaseMetadata,
+  "integratedLufs" | "truePeakDbtp" | "replayGainDb" | "replayPeak"
+> {
+  const replayGainDb
+    = asFiniteNumber(metadata.common.replaygain_track_gain?.dB)
+      ?? asFiniteNumber(metadata.format.trackGain);
+
+  const replayPeak
+    = asFiniteNumber(metadata.common.replaygain_track_peak?.ratio)
+      ?? asFiniteNumber(metadata.common.replaygain_track_peak_ratio)
+      ?? asFiniteNumber(metadata.format.trackPeakLevel);
+
+  const truePeakDbtp = ratioToDbtp(replayPeak);
+
+  return {
+    integratedLufs: undefined,
+    truePeakDbtp,
+    replayGainDb,
+    replayPeak,
+  };
+}
 
 self.onmessage = async (e: MessageEvent<ParseRequest>) => {
   const { fileId, fileData, fileName } = e.data;
@@ -22,6 +54,7 @@ self.onmessage = async (e: MessageEvent<ParseRequest>) => {
     }
 
     const titleFromFile = fileName.replace(/\.[^/.]+$/, "");
+    const loudness = extractLoudness(metadata);
 
     const meta: BaseMetadata = {
       title: metadata.common.title || titleFromFile,
@@ -39,6 +72,11 @@ self.onmessage = async (e: MessageEvent<ParseRequest>) => {
         channels: metadata.format.numberOfChannels,
       },
       pictureBlob,
+
+      integratedLufs: loudness.integratedLufs,
+      truePeakDbtp: loudness.truePeakDbtp,
+      replayGainDb: loudness.replayGainDb,
+      replayPeak: loudness.replayPeak,
     };
 
     const response: ParseResponse = { success: true, fileId, meta };

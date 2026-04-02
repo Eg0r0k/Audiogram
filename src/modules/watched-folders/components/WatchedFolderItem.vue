@@ -54,7 +54,7 @@
       <DropdownMenuContent
         align="end"
         :side-offset="10"
-        class="bg-background/50"
+        class="bg-popover/50 backdrop-blur-[50px]"
       >
         <DropdownMenuItem
           :disabled="folder.status === 'scanning'"

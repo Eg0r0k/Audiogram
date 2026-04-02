@@ -11,7 +11,7 @@
         v-if="data.ownerName"
         class="opacity-60"
       >·</span>
-      <span>{{ t('media.trackCount', data.trackCount) }}</span>
+      <span>{{ t('common.trackCount', data.trackCount) }}</span>
       <template v-if="data.duration">
         <span class="opacity-60">·</span>
         <span>{{ data.duration }}</span>
@@ -32,7 +32,7 @@
       <span class="opacity-60">·</span>
       <span>{{ data.releaseYear }}</span>
       <span class="opacity-60">·</span>
-      <span>{{ t('media.trackCount', data.trackCount) }}</span>
+      <span>{{ t('common.trackCount', data.trackCount) }}</span>
       <template v-if="data.duration">
         <span class="opacity-60">·</span>
         <span>{{ data.duration }}</span>
@@ -40,7 +40,7 @@
     </template>
 
     <template v-else-if="isLiked(data)">
-      <span>{{ t('media.trackCount', data.trackCount) }}</span>
+      <span>{{ t('common.trackCount', data.trackCount) }}</span>
       <template v-if="data.duration">
         <span class="opacity-60">·</span>
         <span>{{ data.duration }}</span>

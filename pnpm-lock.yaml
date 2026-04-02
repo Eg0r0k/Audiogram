@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@noble/hashes':
+        specifier: ^2.0.1
+        version: 2.0.1
       '@tailwindcss/vite':
         specifier: ^4.1.17
         version: 4.1.17(vite@6.4.1(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(stylus@0.57.0)(terser@5.46.1)(yaml@2.8.3))
@@ -63,8 +66,8 @@ importers:
         specifier: ^0.555.0
         version: 0.555.0(vue@3.5.25(typescript@5.6.3))
       lyra-audio:
-        specifier: ^0.1.13
-        version: 0.1.13(hls.js@1.6.15)
+        specifier: ^0.1.17
+        version: 0.1.17(hls.js@1.6.15)
       marked:
         specifier: ^17.0.5
         version: 17.0.5
@@ -1246,6 +1249,10 @@ packages:
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
+
+  '@noble/hashes@2.0.1':
+    resolution: {integrity: sha512-XlOlEbQcE9fmuXxrVTXCTlG2nlRXa9Rj3rr5Ue/+tX+nmkgbX720YHh0VR3hBF9xDvwnb8D2shVGOwNx+ulArw==}
+    engines: {node: '>= 20.19.0'}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -3731,8 +3738,8 @@ packages:
     peerDependencies:
       vue: '>=3.0.1'
 
-  lyra-audio@0.1.13:
-    resolution: {integrity: sha512-VRX5Z66mzpPztrE2nT9t6/Qj9I6KjrBKHiW7kJ46eFOptjRIGlZTazAbXf/MmO/7sPG7cnVZDZYjvvfAHoYb+w==}
+  lyra-audio@0.1.17:
+    resolution: {integrity: sha512-OSSwYH8Fsim+8o9Q6TWHU/wGRaWV7XkuR0FqJwO5oqEQBoe+7Rq0ChPLOvAOP40Z+hWiqS1j8b6qWFC2+nV9YA==}
     peerDependencies:
       hls.js: ^1.4.0
     peerDependenciesMeta:
@@ -6526,6 +6533,8 @@ snapshots:
 
   '@noble/hashes@1.8.0': {}
 
+  '@noble/hashes@2.0.1': {}
+
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -9165,7 +9174,7 @@ snapshots:
     dependencies:
       vue: 3.5.25(typescript@5.6.3)
 
-  lyra-audio@0.1.13(hls.js@1.6.15):
+  lyra-audio@0.1.17(hls.js@1.6.15):
     optionalDependencies:
       hls.js: 1.6.15
 

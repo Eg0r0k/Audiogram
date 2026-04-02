@@ -141,8 +141,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useForm } from "vee-validate";
-import { toTypedSchema } from "@vee-validate/zod";
-import { z } from "zod";
+
 import { err, ok, Result } from "neverthrow";
 import { useI18n } from "vue-i18n";
 
@@ -168,24 +167,26 @@ import type { PlaylistChanges } from "../../composables/usePlaylistPage";
 import IconPhoto from "~icons/tabler/photo";
 import IconTrash from "~icons/tabler/trash";
 import IconAlertCircle from "~icons/tabler/alert-circle";
+import { InferOutput, maxLength, minLength, object, optional, pipe, string } from "valibot";
+import { toTypedSchema } from "@vee-validate/valibot";
 
 const { t } = useI18n();
 
-const MAX_NAME_LENGTH = 100;
+const MAX_NAME_LENGTH = 50;
 const MAX_DESCRIPTION_LENGTH = 300;
 
-const playlistFormSchema = z.object({
-  name: z
-    .string()
-    .min(1, t("dialogs.editPlaylist.validation.nameRequired"))
-    .max(MAX_NAME_LENGTH, t("dialogs.editPlaylist.validation.nameMaxLength", { max: MAX_NAME_LENGTH })),
-  description: z
-    .string()
-    .max(MAX_DESCRIPTION_LENGTH, t("dialogs.editPlaylist.validation.descriptionMaxLength", { max: MAX_DESCRIPTION_LENGTH }))
-    .optional(),
+const playlistFormSchema = object({
+  name: pipe(
+    string(),
+    minLength(1, t("dialogs.editPlaylist.validation.nameRequired")),
+    maxLength(MAX_NAME_LENGTH, t("dialogs.editPlaylist.validation.nameMaxLength", { max: MAX_NAME_LENGTH })),
+  ),
+  description: optional(pipe(
+    string(),
+    maxLength(MAX_DESCRIPTION_LENGTH, t("dialogs.editPlaylist.validation.descriptionMaxLength", { max: MAX_DESCRIPTION_LENGTH })),
+  )),
 });
-
-type PlaylistFormValues = z.infer<typeof playlistFormSchema>;
+type PlaylistFormValues = InferOutput<typeof playlistFormSchema>;
 
 type FileSelectionErrorType = "CANCELLED" | "INVALID_FORMAT" | "READ_ERROR";
 

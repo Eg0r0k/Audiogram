@@ -13,6 +13,13 @@
         "madeWith": "Сделано с",
         "allRightsReserved": "Все права защищены"
     },
+    "audio": {
+        "outputDevice": "Устройство вывода звука",
+        "selectDevice": "Выбрать устройство",
+        "defaultDevice": "Устройство по умолчанию",
+        "noDevices": "Аудиоустройства недоступны",
+        "requestPermission": "Показать все устройства"
+    },
     "storage": {
         "usage": "Использование хранилища",
         "used": "занято",

@@ -1,7 +1,21 @@
-import { object, boolean, string, number, tuple, pipe, minValue, maxValue, optional, parse } from "valibot";
+import {
+  object,
+  boolean,
+  string,
+  number,
+  tuple,
+  pipe,
+  minValue,
+  maxValue,
+  optional,
+  parse,
+} from "valibot";
 import type { InferOutput } from "valibot";
 
-export const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000] as const;
+export const EQ_FREQUENCIES = [
+  32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000,
+] as const;
+
 export type EQFrequency = (typeof EQ_FREQUENCIES)[number];
 
 const bandSchema = pipe(number(), minValue(-15), maxValue(15));
@@ -65,13 +79,38 @@ export const FADE_DURATION_MAX = 10;
 export const FADE_DURATION_STEP = 0.1;
 export const FADE_DURATION_DEFAULT = 1;
 
+export const NORMALIZATION_TARGET_LUFS_MIN = -24;
+export const NORMALIZATION_TARGET_LUFS_MAX = -6;
+export const NORMALIZATION_TARGET_LUFS_STEP = 1;
+export const NORMALIZATION_TARGET_LUFS_DEFAULT = -16;
+
 export const AudioSettingsSchema = object({
   equalizerEnabled: optional(boolean(), false),
   equalizerPreset: optional(string(), "Flat"),
   equalizerBands: EqualizerBandsSchema,
+
   fadeEnabled: optional(boolean(), false),
-  fadeInDuration: optional(pipe(number(), minValue(FADE_DURATION_MIN), maxValue(FADE_DURATION_MAX)), FADE_DURATION_DEFAULT),
-  fadeOutDuration: optional(pipe(number(), minValue(FADE_DURATION_MIN), maxValue(FADE_DURATION_MAX)), FADE_DURATION_DEFAULT),
+  fadeInDuration: optional(
+    pipe(number(), minValue(FADE_DURATION_MIN), maxValue(FADE_DURATION_MAX)),
+    FADE_DURATION_DEFAULT,
+  ),
+  fadeOutDuration: optional(
+    pipe(number(), minValue(FADE_DURATION_MIN), maxValue(FADE_DURATION_MAX)),
+    FADE_DURATION_DEFAULT,
+  ),
+
+  normalizationEnabled: optional(boolean(), false),
+  normalizationTargetLufs: optional(
+    pipe(
+      number(),
+      minValue(NORMALIZATION_TARGET_LUFS_MIN),
+      maxValue(NORMALIZATION_TARGET_LUFS_MAX),
+    ),
+    NORMALIZATION_TARGET_LUFS_DEFAULT,
+  ),
+  normalizationPreventClipping: optional(boolean(), true),
+
+  audioOutputDevice: optional(string(), ""),
 });
 
 export type AudioSettings = InferOutput<typeof AudioSettingsSchema>;

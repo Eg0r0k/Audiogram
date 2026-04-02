@@ -23,4 +23,14 @@ export interface BaseMetadata {
   format: AudioFormat;
 
   pictureBlob?: Blob;
+
+  /**
+   * EBU R128 / LUFS-style metadata if present in tags
+   */
+  integratedLufs?: number;
+  truePeakDbtp?: number;
+
+  replayGainDb?: number;
+  replayPeak?: number;
+
 }

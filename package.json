@@ -19,6 +19,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@noble/hashes": "^2.0.1",
     "@tailwindcss/vite": "^4.1.17",
     "@tanstack/vue-query": "^5.92.5",
     "@tanstack/vue-virtual": "^3.13.13",
@@ -37,7 +38,7 @@
     "flubber": "^0.4.2",
     "hls.js": "^1.6.15",
     "lucide-vue-next": "^0.555.0",
-    "lyra-audio": "^0.1.13",
+    "lyra-audio": "^0.1.17",
     "marked": "^17.0.5",
     "minisearch": "^7.2.0",
     "motion-v": "^1.7.4",

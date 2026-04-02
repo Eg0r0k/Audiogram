@@ -46,19 +46,19 @@
                 <IconLibrary class="size-5.5" />
                 Library
               </DropdownMenuItem>
+              <DropdownMenuItem @click="goSettings">
+                <IconSettings class="size-5.5" />
+                Settings
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
               <DropdownMenuItem @click="handleThemeToggle">
                 <component
                   :is="themeIcon"
                   class="size-5.5"
                 />
                 Change Theme
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem @click="goSettings">
-                <IconSettings class="size-5.5" />
-                Settings
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>

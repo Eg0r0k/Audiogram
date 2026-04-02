@@ -40,7 +40,6 @@ const coverOwnerId = computed(() => {
   if (props.item.type === "album" || props.item.type === "playlist") {
     return props.item.id;
   }
-
   return null;
 });
 

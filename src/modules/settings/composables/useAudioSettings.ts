@@ -17,6 +17,9 @@ export function useAudioSettings() {
     isFadeEnabled,
     fadeInDuration,
     fadeOutDuration,
+    isNormalizationEnabled,
+    normalizationTargetLufs,
+    normalizationPreventClipping,
   } = storeToRefs(store);
 
   if (!watcherRegistered) {
@@ -29,11 +32,19 @@ export function useAudioSettings() {
         if (graph) {
           store.pushToGraph();
         }
+
+        if (playerStore.player) {
+          store.pushNormalizationToPlayer();
+        }
       },
     );
 
     if (playerStore.getAudioGraph()) {
       store.pushToGraph();
+    }
+
+    if (playerStore.player) {
+      store.pushNormalizationToPlayer();
     }
   }
 
@@ -45,6 +56,9 @@ export function useAudioSettings() {
     isFadeEnabled,
     fadeInDuration,
     fadeOutDuration,
+    isNormalizationEnabled,
+    normalizationTargetLufs,
+    normalizationPreventClipping,
 
     presetCategories: store.presetCategories,
     getPresetsByCategory: store.getPresetsByCategory,
@@ -53,8 +67,13 @@ export function useAudioSettings() {
     applyPreset: store.applyPreset,
     resetEqualizer: store.resetEqualizer,
     setEqEnabled: store.setEqEnabled,
+
     setFadeEnabled: store.setFadeEnabled,
     setFadeInDuration: store.setFadeInDuration,
     setFadeOutDuration: store.setFadeOutDuration,
+
+    setNormalizationEnabled: store.setNormalizationEnabled,
+    setNormalizationTargetLufs: store.setNormalizationTargetLufs,
+    setNormalizationPreventClipping: store.setNormalizationPreventClipping,
   };
 }

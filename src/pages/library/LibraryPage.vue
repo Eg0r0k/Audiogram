@@ -26,8 +26,6 @@
       :pinned="pinnedItems"
       :unpinned="unpinnedItems"
       :is-loading="isLoading"
-      @play="handlePlay"
-      @contextmenu="handleContextMenu"
     />
   </Scrollable>
 </template>
@@ -72,11 +70,5 @@ function handleFilter(filter: LibraryFilter) {
 
 const scrollableRef = ref<InstanceType<typeof Scrollable> | null>(null);
 useScrollRestoration(scrollableRef);
-function handlePlay(_item: LibraryItem) {
-  // TODO: implement play for each entity type
-}
 
-function handleContextMenu(_event: MouseEvent, _item: LibraryItem) {
-  // TODO: implement context menu with pin/unpin
-}
 </script>

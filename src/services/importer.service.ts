@@ -924,6 +924,10 @@ export class MusicLibraryEngine {
             searchKey: item.meta.searchKey,
             addedAt: now,
             fingerprint: item.fingerprint,
+            integratedLufs: item.meta.integratedLufs,
+            truePeakDbtp: item.meta.truePeakDbtp,
+            replayGainDb: item.meta.replayGainDb,
+            replayPeak: item.meta.replayPeak,
           });
 
           results.push({

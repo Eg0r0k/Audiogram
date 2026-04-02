@@ -69,9 +69,9 @@
 
   "editHint": "Двойное нажатие для изменения",
   "editLabel": "Изменить значение",
-  "trackCount": "{count} трек | {count} трека | {count} треков",
-  "albums": "{count} альбом | {count} альбома | {count} альбомов",
-  "tracks": "{count} трек | {count} трека | {count} треков",
+  "trackCount": "0 треков | {count} трек | {count} трека | {count} треков",
+  "tracks": "0 треков | {count} трек | {count} трека | {count} треков",
+  "albums": "0 альбомов | {count} альбом | {count} альбома | {count} альбомов",
 
   "hoursShort": "{count} ч",
   "minutesShort": "{count} мин"

@@ -1,7 +1,7 @@
 <template>
   <header
     class="fixed w-full top-0 z-20 transition-all duration-200 ease-standard"
-    :class="isScrolled ? 'backdrop-blur-md' : 'bg-transparent'"
+    :class="isScrolled ? '' : 'bg-transparent'"
     :style="headerStyle"
   >
     <div class="flex items-center gap-7 px-7 py-4">

@@ -8,6 +8,9 @@ import {
   FADE_DURATION_MIN,
   FADE_DURATION_MAX,
   FADE_DURATION_DEFAULT,
+  NORMALIZATION_TARGET_LUFS_MIN,
+  NORMALIZATION_TARGET_LUFS_MAX,
+  NORMALIZATION_TARGET_LUFS_DEFAULT,
   getPresetsByCategory,
   type EQPresetKey,
 } from "../schema/audio";
@@ -25,6 +28,10 @@ export const useAudioSettingsStore = defineStore("audio-settings", () => {
   const isFadeEnabled = ref(false);
   const fadeInDuration = ref(FADE_DURATION_DEFAULT);
   const fadeOutDuration = ref(FADE_DURATION_DEFAULT);
+
+  const isNormalizationEnabled = ref(false);
+  const normalizationTargetLufs = ref(NORMALIZATION_TARGET_LUFS_DEFAULT);
+  const normalizationPreventClipping = ref(true);
 
   const bands = computed<EQBand[]>(() =>
     EQ_FREQUENCIES.map((f, i) => ({
@@ -49,6 +56,19 @@ export const useAudioSettingsStore = defineStore("audio-settings", () => {
     });
   }
 
+  function pushNormalizationToPlayer() {
+    const playerStore = usePlayerStore();
+    const player = playerStore.player;
+
+    if (!player) return;
+
+    player.setNormalizationOptions({
+      enabled: isNormalizationEnabled.value,
+      targetLufs: normalizationTargetLufs.value,
+      preventClipping: normalizationPreventClipping.value,
+    });
+  }
+
   function setBandGain(index: number, gain: number) {
     if (index >= 0 && index < bandGains.value.length) {
       bandGains.value[index] = gain;
@@ -66,6 +86,7 @@ export const useAudioSettingsStore = defineStore("audio-settings", () => {
     preset.gains.forEach((gain, i) => {
       bandGains.value[i] = gain;
     });
+
     pushToGraph();
   }
 
@@ -97,6 +118,24 @@ export const useAudioSettingsStore = defineStore("audio-settings", () => {
     );
   }
 
+  function setNormalizationEnabled(enabled: boolean) {
+    isNormalizationEnabled.value = enabled;
+    pushNormalizationToPlayer();
+  }
+
+  function setNormalizationTargetLufs(value: number) {
+    normalizationTargetLufs.value = Math.max(
+      NORMALIZATION_TARGET_LUFS_MIN,
+      Math.min(NORMALIZATION_TARGET_LUFS_MAX, value),
+    );
+    pushNormalizationToPlayer();
+  }
+
+  function setNormalizationPreventClipping(enabled: boolean) {
+    normalizationPreventClipping.value = enabled;
+    pushNormalizationToPlayer();
+  }
+
   return {
     isEqEnabled,
     currentPreset,
@@ -105,6 +144,10 @@ export const useAudioSettingsStore = defineStore("audio-settings", () => {
     isFadeEnabled,
     fadeInDuration,
     fadeOutDuration,
+
+    isNormalizationEnabled,
+    normalizationTargetLufs,
+    normalizationPreventClipping,
 
     bands,
 
@@ -116,9 +159,15 @@ export const useAudioSettingsStore = defineStore("audio-settings", () => {
     resetEqualizer,
     setEqEnabled,
     pushToGraph,
+
     setFadeEnabled,
     setFadeInDuration,
     setFadeOutDuration,
+
+    pushNormalizationToPlayer,
+    setNormalizationEnabled,
+    setNormalizationTargetLufs,
+    setNormalizationPreventClipping,
   };
 }, {
   persist: {
@@ -130,6 +179,9 @@ export const useAudioSettingsStore = defineStore("audio-settings", () => {
       "isFadeEnabled",
       "fadeInDuration",
       "fadeOutDuration",
+      "isNormalizationEnabled",
+      "normalizationTargetLufs",
+      "normalizationPreventClipping",
     ],
   },
 });

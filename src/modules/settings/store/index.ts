@@ -1,6 +1,14 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-import { AudioSettings, DEFAULT_SETTINGS, GeneralSettings, PlaybackSettings, Settings, SettingsSchema } from "../schema";
+import {
+  AudioSettings,
+  DEFAULT_SETTINGS,
+  GeneralSettings,
+  PlaybackSettings,
+  Settings,
+  SettingsSchema,
+} from "../schema";
+import { safeParse } from "valibot";
 import { err, ok, Result } from "neverthrow";
 
 export interface SettingsError {
@@ -53,19 +61,20 @@ export const useSettingsStore = defineStore("settings", () => {
       });
     }
 
-    const result = SettingsSchema.safeParse(parsed);
+    const result = safeParse(SettingsSchema, parsed);
 
     if (!result.success) {
       return err({
         code: "VALIDATION_ERROR",
         message: "Settings validation failed",
-        cause: result.error,
+        cause: result.issues,
       });
     }
 
-    settings.value = result.data;
-    return ok(result.data);
+    settings.value = result.output;
+    return ok(result.output);
   };
+
   function exportToJSON(): string {
     return JSON.stringify(settings.value, null, 2);
   }
@@ -97,10 +106,12 @@ export const useSettingsStore = defineStore("settings", () => {
       deserialize: (value: string) => {
         try {
           const parsed = JSON.parse(value);
-          const result = SettingsSchema.safeParse(parsed.settings);
+          const result = safeParse(SettingsSchema, parsed.settings);
+
           if (result.success) {
-            return { settings: result.data };
+            return { settings: result.output };
           }
+
           console.warn("[Settings] Invalid stored data, merging with defaults");
           return { settings: { ...DEFAULT_SETTINGS, ...parsed.settings } };
         }

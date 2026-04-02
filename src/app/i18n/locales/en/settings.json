@@ -13,6 +13,13 @@
         "madeWith": "Made with",
         "allRightsReserved": "All rights reserved"
     },
+    "audio": {
+      "outputDevice": "Audio output device",
+      "selectDevice": "Select device",
+      "defaultDevice": "Default device",
+      "noDevices": "No audio devices available",
+      "requestPermission": "Show all devices"
+    },
     "storage": {
       "usage": "Storage usage",
       "used": "used",

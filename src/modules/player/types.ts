@@ -3,8 +3,14 @@ import { AlbumId, ArtistId, TrackId } from "@/types/ids";
 
 export const REPEAT_MODES = ["off", "all", "one"] as const;
 export type RepeatMode = typeof REPEAT_MODES[number];
+export interface TrackLoudnessMetadata {
+  integratedLufs?: number;
+  truePeakDbtp?: number;
+  replayGainDb?: number;
+  replayPeak?: number;
+}
 
-export interface Track {
+export interface Track extends TrackLoudnessMetadata {
   id: TrackId;
   title: string;
   artist: string;
@@ -18,7 +24,7 @@ export interface Track {
   lyricsPath?: string;
 }
 
-export interface LocalTrack {
+export interface LocalTrack extends TrackLoudnessMetadata {
   id: string;
   title: string;
   artist: string;

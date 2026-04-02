@@ -162,6 +162,58 @@
           </div>
         </div>
       </SettingsGroup>
+      <SettingsGroup class="mt-2">
+        <Item @click="setNormalizationEnabled(!isNormalizationEnabled)">
+          <ItemContent>
+            <ItemTitle>Volume normalization</ItemTitle>
+          </ItemContent>
+          <ItemActions>
+            <Switch
+              :model-value="isNormalizationEnabled"
+              @click.stop
+              @update:model-value="setNormalizationEnabled"
+            />
+          </ItemActions>
+        </Item>
+
+        <div
+          class=" space-y-5 transition-opacity duration-300"
+          :class="{ 'opacity-40 pointer-events-none': !isNormalizationEnabled }"
+        >
+          <div class="px-4 py-4 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-foreground font-medium">Target loudness</span>
+              <span class="font-medium text-muted-foreground">
+                {{ normalizationTargetLufs }} LUFS
+              </span>
+            </div>
+            <Slider
+              :model-value="[normalizationTargetLufs]"
+              :min="-24"
+              :max="-6"
+              :step="1"
+              @update:model-value="(val) => setNormalizationTargetLufs(val![0])"
+            />
+          </div>
+
+          <Item @click="setNormalizationPreventClipping(!normalizationPreventClipping)">
+            <ItemContent>
+              <ItemTitle>Prevent clipping</ItemTitle>
+            </ItemContent>
+            <ItemActions>
+              <Switch
+                :model-value="normalizationPreventClipping"
+                @click.stop
+                @update:model-value="setNormalizationPreventClipping"
+              />
+            </ItemActions>
+          </Item>
+
+          <p class="text-xs text-muted-foreground px-1">
+            Works when track loudness metadata is available.
+          </p>
+        </div>
+      </SettingsGroup>
     </div>
   </Scrollable>
 </template>
@@ -214,6 +266,12 @@ const {
   setFadeEnabled,
   setFadeInDuration,
   setFadeOutDuration,
+  isNormalizationEnabled,
+  normalizationTargetLufs,
+  normalizationPreventClipping,
+  setNormalizationEnabled,
+  setNormalizationTargetLufs,
+  setNormalizationPreventClipping,
 } = useAudioSettings();
 
 </script>

@@ -70,6 +70,11 @@ export interface TrackEntity {
   addedAt: number;
   fingerprint?: string;
   lyricsPath?: string;
+
+  integratedLufs?: number;
+  truePeakDbtp?: number;
+  replayGainDb?: number;
+  replayPeak?: number;
 }
 
 export interface ListenEventEntity {
