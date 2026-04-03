@@ -3,7 +3,7 @@
     <ContextMenuTrigger as-child>
       <slot />
     </ContextMenuTrigger>
-    <ContextMenuContent class="w-60 ">
+    <ContextMenuContent class="w-60 bg-popover/50 backdrop-blur-[50px] ">
       <component
         :is="contextComponent"
         v-bind="contextProps"
