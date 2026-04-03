@@ -6,7 +6,7 @@ import {
   playlistRepository,
   trackRepository,
 } from "@/db/repositories";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/queries/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { Track } from "@/modules/player/types";
 import type { PlaylistId } from "@/types/ids";

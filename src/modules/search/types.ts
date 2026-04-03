@@ -8,7 +8,6 @@ export interface SearchDocument {
   title: string;
   artist?: string;
   album?: string;
-  coverPath?: string;
   entityId: string;
 }
 
@@ -18,7 +17,6 @@ export interface SearchResultItem {
   title: string;
   artist?: string;
   album?: string;
-  coverPath?: string;
   entityId: string;
   score: number;
 }
@@ -40,11 +38,12 @@ export type WorkerResponse
     | { action: "error"; message: string; id?: number };
 
 export function createEmptyGroups(): Record<SearchEntityType, SearchResultItem[]> {
-  const groups = {} as Record<SearchEntityType, SearchResultItem[]>;
-  for (const type of SEARCH_ENTITY_TYPES) {
-    groups[type] = [];
-  }
-  return groups;
+  return {
+    track: [],
+    artist: [],
+    album: [],
+    playlist: [],
+  };
 }
 
 export function createEmptyResults(): GroupedResults {

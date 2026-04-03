@@ -4,7 +4,7 @@ import {
   artistRepository,
   trackRepository,
 } from "@/db/repositories";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/queries/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { Track } from "@/modules/player/types";
 import type { TrackId } from "@/types/ids";
@@ -74,10 +74,7 @@ export async function toggleTrackLikeAndSync(
     ...currentTrack,
     likedAt,
   };
-  const nextTrack: Track = {
-    ...track,
-    isLiked: nextValue,
-  };
+  const nextTrack: Track = { ...track, isLiked: nextValue };
 
   syncTrackLikeCaches(queryClient, nextTrackEntity, nextTrack);
 

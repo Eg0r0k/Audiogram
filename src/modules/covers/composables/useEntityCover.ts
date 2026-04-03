@@ -2,7 +2,7 @@ import { computed, type MaybeRefOrGetter, toValue } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import type { CoverOwnerType } from "@/db/entities";
 import { useObjectUrl } from "@vueuse/core";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/queries/query-keys";
 import { getCoverBlob } from "@/queries/cover.queries";
 
 export function useEntityCover(

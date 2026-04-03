@@ -4,7 +4,7 @@ import {
   playlistRepository,
   trackRepository,
 } from "@/db/repositories";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/queries/query-keys";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import { unwrapResult } from "./shared";
 import type { LibrarySummaryData } from "./types";
@@ -36,8 +36,6 @@ export const libraryQueries = {
 export async function invalidateLibrarySummary(queryClient: QueryClient) {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.artists.all() }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.albums.all() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.tracks.liked() }),
   ]);

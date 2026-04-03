@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import type { LibraryItem } from "@/modules/library/types";
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import IconPinFilled from "~icons/tabler/pin-filled";
-import IconPlayerPlayFilled from "~icons/tabler/player-play-filled";
+import IconVolume from "~icons/tabler/volume";
 import { useLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
 import Link from "@/components/ui/link/Link.vue";
 import type { CoverOwnerType } from "@/db/entities";
@@ -82,10 +82,6 @@ const isCurrentPlaybackSource = computed(() => {
         class="size-[54px] z-1 overflow-hidden"
         :class="item.rounded ? 'rounded-full' : 'rounded-md'"
       >
-        <IconPlayerPlayFilled
-          v-if="isCurrentPlaybackSource"
-          class="size-5 absolute shrink-0 text-white"
-        />
         <NuxtImage
           v-if="hasStaticImage"
           :src="item.image"
@@ -110,8 +106,16 @@ const isCurrentPlaybackSource = computed(() => {
           class="block min-w-0 w-full! overflow-hidden text-ellipsis whitespace-nowrap"
           :class="isExactActive ? 'text-primary-foreground' : ''"
         >
-          <span class="truncate">
-            {{ item.title }}
+          <span class="flex items-center min-w-0 gap-1">
+            <span class="truncate">
+              {{ item.title }}
+            </span>
+
+            <IconVolume
+              v-if="isCurrentPlaybackSource"
+              class="size-5 shrink-0"
+              :class="isExactActive ? 'text-white' : 'text-primary'"
+            />
           </span>
         </ItemTitle>
 

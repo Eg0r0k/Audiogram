@@ -5,7 +5,7 @@ import {
   coverRepository,
   trackRepository,
 } from "@/db/repositories";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/queries/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { AlbumId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
@@ -110,12 +110,9 @@ export async function updateAlbumAndSync(
 
   if (didUpdateAlbum) {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.albums.page(currentAlbum.id) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.artists.page(currentAlbum.artistId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.tracks.likedPage() }),
       queryClient.invalidateQueries({
-        predicate: query =>
-          query.queryKey[0] === "playlists" && query.queryKey[2] === "page",
+        predicate: q => q.queryKey[0] === "playlists" && q.queryKey[2] === "page",
       }),
     ]);
   }

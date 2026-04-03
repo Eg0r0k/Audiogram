@@ -1,160 +1,158 @@
 import { computed, readonly, ref, shallowRef, watch } from "vue";
 import { useDebounceFn } from "@vueuse/core";
-import type {
-  GroupedResults,
-  SearchDocument,
-  SearchFilter,
-  SearchResultItem,
-  WorkerRequest,
-  WorkerResponse,
+import SearchWorkerCtor from "../search.worker?worker";
+import {
+  SEARCH_ENTITY_TYPES,
+  createEmptyResults,
+  type GroupedResults,
+  type SearchDocument,
+  type SearchFilter,
+  type SearchResultItem,
+  type WorkerResponse,
+  type WorkerRequest,
 } from "../types";
-import { SEARCH_ENTITY_TYPES, createEmptyResults } from "../types";
-import { buildSearchDocuments } from "../buildDocuments";
-import SearchWorker from "../search.worker?worker";
+import { buildAllSearchDocuments } from "../buildDocuments";
 
 const DEBOUNCE_MS = 150;
 const TOP_RESULTS_COUNT = 6;
 
-// ── Worker singleton ──────────────────────────────────────────────────────────
+type PendingSearch = {
+  resolve: (results: SearchResultItem[]) => void;
+  reject: (err: Error) => void;
+};
 
-let worker: Worker | null = null;
-let requestId = 0;
-let buildPromise: Promise<void> | null = null;
+class SearchWorkerClient {
+  private readonly worker: Worker;
+  private readonly pending = new Map<number, PendingSearch>();
+  private idCounter = 0;
 
-type SearchCallback = (results: SearchResultItem[]) => void;
-const callbacks = new Map<number, SearchCallback>();
-
-const isReady = ref(false);
-const indexCount = ref(0);
-
-function ensureWorker(): Worker {
-  if (worker) return worker;
-
-  worker = new SearchWorker();
-
-  worker.addEventListener("message", (e: MessageEvent<WorkerResponse>) => {
-    const msg = e.data;
-
-    switch (msg.action) {
-      case "ready":
-        isReady.value = true;
-        indexCount.value = msg.count;
-        break;
-
-      case "results": {
-        const cb = callbacks.get(msg.id);
-        if (cb) {
-          cb(msg.results);
-          callbacks.delete(msg.id);
-        }
-        break;
-      }
-
-      case "error": {
-        // FIX: resolve with [] so callers never leak on worker errors
-        if (msg.id != null) {
-          const cb = callbacks.get(msg.id);
-          cb?.([]);
-          callbacks.delete(msg.id);
-        }
-        console.error("[SearchWorker]", msg.message);
-        break;
-      }
-    }
-  });
-
-  return worker;
-}
-
-function post(msg: WorkerRequest) {
-  ensureWorker().postMessage(msg);
-}
-
-function searchAsync(
-  query: string,
-  filter: SearchFilter,
-  limit?: number,
-): Promise<SearchResultItem[]> {
-  return new Promise((resolve) => {
-    const id = requestId++;
-    callbacks.set(id, resolve);
-    post({ action: "search", query, id, limit, filter });
-  });
-}
-
-function groupResults(raw: SearchResultItem[]): GroupedResults {
-  const result = createEmptyResults();
-
-  for (const item of raw) {
-    result.groups[item.type]?.push(item);
+  constructor() {
+    this.worker = new SearchWorkerCtor();
+    this.worker.addEventListener("message", this.handleMessage);
   }
 
-  result.topResults = [...raw]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, TOP_RESULTS_COUNT);
+  private handleMessage = (e: MessageEvent<WorkerResponse>): void => {
+    const msg = e.data;
 
-  return result;
+    if (msg.action === "results") {
+      const p = this.pending.get(msg.id);
+      p?.resolve(msg.results);
+      this.pending.delete(msg.id);
+    }
+    else if (msg.action === "error" && msg.id != null) {
+      const p = this.pending.get(msg.id);
+      p?.reject(new Error(msg.message));
+      this.pending.delete(msg.id);
+    }
+  };
+
+  build(documents: SearchDocument[]): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const handler = (e: MessageEvent<WorkerResponse>) => {
+        const msg = e.data;
+        if (msg.action === "ready") {
+          this.worker.removeEventListener("message", handler);
+          resolve();
+        }
+        else if (msg.action === "error" && msg.id == null) {
+          this.worker.removeEventListener("message", handler);
+          reject(new Error(msg.message));
+        }
+      };
+
+      this.worker.addEventListener("message", handler);
+      this.post({ action: "build", documents });
+    });
+  }
+
+  search(query: string, filter: SearchFilter, limit?: number): Promise<SearchResultItem[]> {
+    const id = ++this.idCounter;
+
+    return new Promise((resolve, reject) => {
+      this.pending.set(id, { resolve, reject });
+      this.post({ action: "search", query, id, filter, limit });
+    });
+  }
+
+  add(documents: SearchDocument[]): void {
+    this.post({ action: "add", documents });
+  }
+
+  remove(ids: string[]): void {
+    this.post({ action: "remove", ids });
+  }
+
+  terminate(): void {
+    this.worker.removeEventListener("message", this.handleMessage);
+    this.worker.terminate();
+  }
+
+  private post(msg: WorkerRequest): void {
+    this.worker.postMessage(msg);
+  }
 }
 
-function ensureIndex(): Promise<void> {
-  if (buildPromise) return buildPromise;
+let client: SearchWorkerClient | null = null;
+let initPromise: Promise<void> | null = null;
 
-  buildPromise = buildSearchDocuments()
-    .then((docs) => {
-      post({ action: "build", documents: docs });
-    })
+function getClient(): SearchWorkerClient {
+  if (!client) {
+    client = new SearchWorkerClient();
+  }
+  return client;
+}
+
+export function initSearchIndex(): Promise<void> {
+  if (initPromise) return initPromise;
+
+  initPromise = buildAllSearchDocuments()
+    .then(docs => getClient().build(docs))
     .catch((err) => {
-      buildPromise = null;
-      console.error("[Search] Failed to build index:", err);
+      initPromise = null;
+      return Promise.reject(err);
     });
 
-  return buildPromise!;
+  return initPromise;
 }
-
-// ── Module-level shared state ─────────────────────────────────────────────────
 
 const query = ref("");
 const activeFilter = ref<SearchFilter>("all");
 const results = shallowRef<GroupedResults>(createEmptyResults());
 const isSearching = ref(false);
-
-// Panel open state — shared between SidebarHeader and SearchPanel
 const isSearchOpen = ref(false);
 
 let latestSearchId = 0;
 
+function groupResults(raw: SearchResultItem[]): GroupedResults {
+  const grouped = createEmptyResults();
+
+  for (const item of raw) {
+    grouped.groups[item.type]?.push(item);
+  }
+
+  grouped.topResults = raw.slice(0, TOP_RESULTS_COUNT);
+
+  return grouped;
+}
+
 const debouncedSearch = useDebounceFn(async (q: string, filter: SearchFilter) => {
-  if (!isReady.value) {
-    await ensureIndex();
+  try {
+    await initSearchIndex();
 
-    if (!isReady.value) {
-      await new Promise<void>((resolve) => {
-        const unwatch = watch(isReady, (ready) => {
-          if (ready) {
-            unwatch();
-            resolve();
-          }
-        });
-        setTimeout(() => {
-          unwatch();
-          resolve();
-        }, 5000);
-      });
-    }
+    const thisId = ++latestSearchId;
+    const raw = await getClient().search(q, filter, 50);
+
+    if (thisId !== latestSearchId) return;
+
+    results.value = groupResults(raw);
   }
-
-  if (!isReady.value) {
+  catch (err) {
+    console.error("[Search]", err);
+    results.value = createEmptyResults();
+  }
+  finally {
     isSearching.value = false;
-    return;
   }
-
-  const thisId = ++latestSearchId;
-  const raw = await searchAsync(q, filter);
-
-  if (thisId !== latestSearchId) return;
-
-  results.value = groupResults(raw);
-  isSearching.value = false;
 }, DEBOUNCE_MS);
 
 watch([query, activeFilter], ([q, filter]) => {
@@ -163,6 +161,7 @@ watch([query, activeFilter], ([q, filter]) => {
   if (!trimmed) {
     results.value = createEmptyResults();
     isSearching.value = false;
+    latestSearchId++;
     return;
   }
 
@@ -170,67 +169,43 @@ watch([query, activeFilter], ([q, filter]) => {
   debouncedSearch(trimmed, filter);
 });
 
-const hasQuery = computed(() => query.value.trim().length > 0);
-
 const availableFilters: { label: string; value: SearchFilter }[] = [
   { label: "all", value: "all" },
   ...SEARCH_ENTITY_TYPES.map(type => ({ label: type, value: type as SearchFilter })),
 ];
 
-// ── Public composable ─────────────────────────────────────────────────────────
-
 export function useSearch() {
-  if (typeof window !== "undefined") {
-    ensureIndex();
-  }
-
-  function openSearch() {
-    isSearchOpen.value = true;
-  }
-
-  function closeSearch() {
-    isSearchOpen.value = false;
-  }
-
-  function setFilter(filter: SearchFilter) {
-    activeFilter.value = filter;
-  }
-
-  function addDocuments(docs: SearchDocument[]) {
-    post({ action: "add", documents: docs });
-  }
-
-  function removeDocuments(ids: string[]) {
-    post({ action: "remove", ids });
-  }
-
-  async function rebuildIndex() {
-    isReady.value = false;
-    buildPromise = null;
-    await ensureIndex();
-  }
-
-  function clear() {
-    query.value = "";
-    activeFilter.value = "all";
-  }
-
   return {
     query,
     activeFilter,
     availableFilters,
     results,
-    isSearching,
+    isSearching: readonly(isSearching),
     isSearchOpen: readonly(isSearchOpen),
-    isReady: readonly(isReady),
-    hasQuery,
-    indexCount: readonly(indexCount),
-    openSearch,
-    closeSearch,
-    setFilter,
-    clear,
-    addDocuments,
-    removeDocuments,
-    rebuildIndex,
+    hasQuery: computed(() => query.value.trim().length > 0),
+
+    openSearch() { isSearchOpen.value = true; },
+    closeSearch() { isSearchOpen.value = false; },
+
+    setFilter(filter: SearchFilter) { activeFilter.value = filter; },
+
+    clear() {
+      query.value = "";
+      activeFilter.value = "all";
+    },
+
+    addDocuments(docs: SearchDocument[]) {
+      getClient().add(docs);
+    },
+    removeDocuments(ids: string[]) {
+      getClient().remove(ids);
+    },
+
+    async rebuildIndex() {
+      client?.terminate();
+      client = null;
+      initPromise = null;
+      await initSearchIndex();
+    },
   };
 }

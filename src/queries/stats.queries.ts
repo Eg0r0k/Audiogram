@@ -3,7 +3,7 @@ import {
   artistRepository,
   trackRepository,
 } from "@/db/repositories";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/queries/query-keys";
 import type { TrackId, ArtistId } from "@/types/ids";
 import { queryOptions } from "@tanstack/vue-query";
 import { unwrapResult } from "./shared";

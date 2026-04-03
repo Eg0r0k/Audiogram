@@ -5,7 +5,7 @@ import type {
   PlaylistEntity,
   TrackEntity,
 } from "@/db/entities";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/queries/query-keys";
 import type { Track } from "@/modules/player/types";
 import type { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 import type { QueryClient } from "@tanstack/vue-query";

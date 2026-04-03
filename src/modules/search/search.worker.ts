@@ -12,31 +12,32 @@ function post(msg: WorkerResponse) {
   self.postMessage(msg);
 }
 
-const unicodeTokenizer = (text: string): string[] => {
-  return text
+const unicodeTokenizer = (text: string): string[] =>
+  text
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
     .filter(t => t.length > 0);
-};
 
 const termProcessor = (term: string): string | null => {
   const lower = term.toLowerCase();
   return lower.length >= 1 ? lower : null;
 };
 
+const DEFAULT_SEARCH_OPTIONS: SearchOptions = {
+  prefix: true,
+  fuzzy: 0.2,
+  boost: { title: 3, artist: 2, album: 1 },
+  tokenize: unicodeTokenizer,
+  processTerm: termProcessor,
+};
+
 function createIndex(): MiniSearch<SearchDocument> {
   return new MiniSearch<SearchDocument>({
     fields: ["title", "artist", "album"],
-    storeFields: ["type", "title", "artist", "album", "coverPath", "entityId"],
+    storeFields: ["type", "title", "artist", "album", "entityId"],
     tokenize: unicodeTokenizer,
     processTerm: termProcessor,
-    searchOptions: {
-      prefix: true,
-      fuzzy: 0.2,
-      boost: { title: 3, artist: 2, album: 1 },
-      tokenize: unicodeTokenizer,
-      processTerm: termProcessor,
-    },
+    searchOptions: DEFAULT_SEARCH_OPTIONS,
   });
 }
 
@@ -47,14 +48,9 @@ function mapHit(hit: SearchResult): SearchResultItem {
     title: hit.title as string,
     artist: hit.artist as string | undefined,
     album: hit.album as string | undefined,
-    coverPath: hit.coverPath as string | undefined,
     entityId: hit.entityId as string,
     score: hit.score,
   };
-}
-
-function getRequestId(msg: WorkerRequest): number | undefined {
-  return "id" in msg ? msg.id : undefined;
 }
 
 self.onmessage = (e: MessageEvent<WorkerRequest>) => {
@@ -75,17 +71,15 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
           return;
         }
 
-        const options: SearchOptions = {};
+        const options: SearchOptions = { ...DEFAULT_SEARCH_OPTIONS };
 
-        const filterValue = msg.filter;
-        if (filterValue && filterValue !== "all") {
-          options.filter = (result: SearchResult) =>
-            String(result.type) === filterValue;
+        if (msg.filter && msg.filter !== "all") {
+          const filterType = msg.filter;
+          options.filter = (result: SearchResult) => result.type === filterType;
         }
 
         const raw = index.search(msg.query, options);
-        const limited = raw.slice(0, msg.limit ?? 50);
-        const results: SearchResultItem[] = limited.map(mapHit);
+        const results = raw.slice(0, msg.limit ?? 50).map(mapHit);
 
         post({ action: "results", results, id: msg.id });
         break;
@@ -93,10 +87,9 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
 
       case "add": {
         if (!index) return;
+
         for (const doc of msg.documents) {
-          if (index.has(doc.id)) {
-            index.discard(doc.id);
-          }
+          index.discard(doc.id);
         }
         index.addAll(msg.documents);
         break;
@@ -104,10 +97,9 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
 
       case "remove": {
         if (!index) return;
+
         for (const id of msg.ids) {
-          if (index.has(id)) {
-            index.discard(id);
-          }
+          index.discard(id);
         }
         break;
       }
@@ -116,8 +108,8 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
   catch (err) {
     post({
       action: "error",
-      message: err instanceof Error ? err.message : "Unknown error",
-      id: getRequestId(msg),
+      message: err instanceof Error ? err.message : "Unknown worker error",
+      id: "id" in msg ? (msg as { id: number }).id : undefined,
     });
   }
 };

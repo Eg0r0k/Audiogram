@@ -1,6 +1,6 @@
 import type { CoverOwnerType } from "@/db/entities";
 import { coverRepository } from "@/db/repositories";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/queries/query-keys";
 import { queryOptions } from "@tanstack/vue-query";
 import { unwrapResult } from "./shared";
 
