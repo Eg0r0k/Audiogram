@@ -3,7 +3,10 @@
     :context="contextType"
     :is-playlist-owner="isPlaylist(data) ? data.isOwner : undefined"
   >
-    <div class="relative">
+    <div
+      class="relative"
+      data-media-context
+    >
       <div
         class="absolute inset-0 transition-opacity duration-400 ease-standard pointer-events-none"
         :class="colorReady ? 'opacity-100' : 'opacity-0'"

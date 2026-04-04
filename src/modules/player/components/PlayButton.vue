@@ -5,38 +5,16 @@
     class="size-fit"
   >
     <Button
-      :class="cn('p-0 size-10 min-w-10 rounded-full', props.class)"
+      :class="cn('relative p-0 size-10 min-w-10 rounded-full overflow-hidden', props.class)"
       :disabled="!canInteract"
       @click="toggle"
     >
       <motion.svg
-        v-if="isLoading"
         tabindex="-1"
         width="32"
         height="32"
         viewBox="0 0 24 24"
-        :animate="{ rotate: 360 }"
-        :transition="{
-          duration: 1,
-          repeat: Infinity,
-          ease: 'linear',
-        }"
-      >
-        <path
-          d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.5"
-          stroke-linecap="round"
-        />
-      </motion.svg>
-
-      <motion.svg
-        v-else
-        tabindex="-1"
-        width="32"
-        height="32"
-        viewBox="0 0 24 24"
+        class="relative z-10"
       >
         <motion.path
           tabindex="-1"
@@ -44,6 +22,11 @@
           fill="currentColor"
         />
       </motion.svg>
+
+      <div
+        v-if="isLoading"
+        class="loader-ring pointer-events-none absolute inset-0 m-auto z-0"
+      />
     </Button>
   </Motion>
 </template>
@@ -112,3 +95,53 @@ function toggle() {
   playerStore.togglePlay();
 }
 </script>
+
+<style scoped>
+.loader-ring {
+  width: 40px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid currentColor;
+  animation:
+    l20-1 0.8s infinite linear alternate,
+    l20-2 1.6s infinite linear;
+}
+@keyframes l20-1 {
+  0% {
+    clip-path: polygon(50% 50%, 0 0, 50% 0%, 50% 0%, 50% 0%, 50% 0%, 50% 0%);
+  }
+  12.5% {
+    clip-path: polygon(50% 50%, 0 0, 50% 0%, 100% 0%, 100% 0%, 100% 0%, 100% 0%);
+  }
+  25% {
+    clip-path: polygon(50% 50%, 0 0, 50% 0%, 100% 0%, 100% 100%, 100% 100%, 100% 100%);
+  }
+  50% {
+    clip-path: polygon(50% 50%, 0 0, 50% 0%, 100% 0%, 100% 100%, 50% 100%, 0% 100%);
+  }
+  62.5% {
+    clip-path: polygon(50% 50%, 100% 0, 100% 0%, 100% 0%, 100% 100%, 50% 100%, 0% 100%);
+  }
+  75% {
+    clip-path: polygon(50% 50%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 50% 100%, 0% 100%);
+  }
+  100% {
+    clip-path: polygon(50% 50%, 50% 100%, 50% 100%, 50% 100%, 50% 100%, 50% 100%, 0% 100%);
+  }
+}
+
+@keyframes l20-2 {
+  0% {
+    transform: scaleY(1) rotate(0deg);
+  }
+  49.99% {
+    transform: scaleY(1) rotate(135deg);
+  }
+  50% {
+    transform: scaleY(-1) rotate(0deg);
+  }
+  100% {
+    transform: scaleY(-1) rotate(-135deg);
+  }
+}
+</style>

@@ -21,6 +21,10 @@
       :class="containerClasses"
       @scroll="handleScroll"
     >
+      <div ref="beforeRef">
+        <slot name="before" />
+      </div>
+
       <div
         :style="{
           height: `${totalSize}px`,
@@ -68,7 +72,7 @@
 
 <script setup lang="ts" generic="T">
 import { useVirtualizer } from "@tanstack/vue-virtual";
-import { computed, useTemplateRef, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from "vue";
 import useScrollable from "./useScrollable";
 
 interface Props {
@@ -105,20 +109,28 @@ const emit = defineEmits<{
   loadMore: [];
 }>();
 
+const beforeHeight = ref(0);
+
 const totalSize = computed(() =>
   virtualizer.value.getTotalSize() + props.paddingTop + props.paddingBottom,
 );
 
 const containerRef = useTemplateRef("containerRef");
+const beforeRef = useTemplateRef("beforeRef");
+
+let beforeResizeObserver: ResizeObserver | null = null;
+let lastLoadMoreItemsCount = -1;
+
+function updateBeforeHeight() {
+  beforeHeight.value = beforeRef.value?.offsetHeight ?? 0;
+  virtualizer.value.measure();
+  scrollable.updateThumb();
+}
 
 const scrollable = useScrollable(containerRef, {
   direction: "vertical",
   onScrollOffset: props.loadMoreOffset,
   onScrolledTop: () => emit("scrolledTop"),
-  onScrolledBottom: () => {
-    emit("scrolledBottom");
-    emit("loadMore");
-  },
 });
 
 const virtualizer = useVirtualizer({
@@ -138,16 +150,19 @@ const measureElement = (el: Element | null) => {
 };
 
 const handleScroll = (e: Event) => {
-  const target = e.target as HTMLElement;
-  const currentScrollTop = target.scrollTop;
-
   scrollable.updateThumb();
 
-  const scrollHeight = target.scrollHeight;
-  const clientHeight = target.clientHeight;
-  const distanceToBottom = scrollHeight - currentScrollTop - clientHeight;
+  const target = e.target as HTMLElement;
+  const distanceToBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
 
-  if (distanceToBottom <= props.loadMoreOffset) {
+  if (
+    props.items.length > 0
+    && !props.loading
+    && distanceToBottom <= props.loadMoreOffset
+    && lastLoadMoreItemsCount !== props.items.length
+  ) {
+    lastLoadMoreItemsCount = props.items.length;
+    emit("scrolledBottom");
     emit("loadMore");
   }
 
@@ -182,6 +197,8 @@ const thumbStyle = computed(() => ({
   transform: `translateY(${scrollable.thumbPosition.value}px)`,
 }));
 
+provide("scrollable", scrollable);
+
 interface ScrollToIndexOptions {
   align?: "start" | "center" | "end" | "auto";
   behavior?: "auto" | "smooth";
@@ -196,7 +213,21 @@ const scrollToOffset = (offset: number, options?: { behavior?: "auto" | "smooth"
 };
 
 watch(() => props.items.length, () => {
+  lastLoadMoreItemsCount = -1;
   virtualizer.value.measure();
+});
+
+onMounted(() => {
+  nextTick(() => updateBeforeHeight());
+
+  if (beforeRef.value && typeof ResizeObserver !== "undefined") {
+    beforeResizeObserver = new ResizeObserver(() => updateBeforeHeight());
+    beforeResizeObserver.observe(beforeRef.value);
+  }
+});
+
+onUnmounted(() => {
+  beforeResizeObserver?.disconnect();
 });
 
 defineExpose({

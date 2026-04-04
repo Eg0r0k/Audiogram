@@ -3,7 +3,6 @@ import type { InferOutput as InferOut } from "valibot";
 
 export const ACCENT_COLORS = [
   "blue",
-  "purple",
   "pink",
   "red",
   "orange",

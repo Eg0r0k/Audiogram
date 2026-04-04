@@ -9,6 +9,7 @@
     "addToQueue": "Add to queue",
     "addLyrics": "Add lyrics",
     "replaceLyrics": "Replace lyrics",
+    "download": "Download",
     "addToPlaylist": "Add to playlist",
     "searchPlaylist": "Search playlist...",
     "createPlaylist": "Create playlist",
@@ -18,5 +19,7 @@
     "moveDown": "Move down",
     "removeFromQueue": "Remove from queue",
     "removeFromPlaylist": "Remove from playlist"
-  }
+  },
+  "downloadSuccess": "File downloaded",
+  "downloadFailed": "Failed to download file"
 }

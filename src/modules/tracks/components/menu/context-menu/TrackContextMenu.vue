@@ -1,5 +1,5 @@
 <template>
-  <ContextMenu v-model:open="isContextMenuOpen">
+  <ContextMenu v-model:open="localOpen">
     <div
       ref="guardRef"
       class="contents"
@@ -48,8 +48,23 @@ const props = withDefaults(defineProps<Props>(), {
   context: "default",
 });
 
-const { activeTrack, activeIndex, activeQueueItemId, isContextMenuOpen } = useTrackMenu();
+const {
+  activeTrack,
+  activeIndex,
+  activeQueueItemId,
+  isContextMenuOpen,
+  activeContextMenuTarget,
+} = useTrackMenu();
 const queueStore = useQueueStore();
+
+const localOpen = computed({
+  get: () => isContextMenuOpen.value && activeContextMenuTarget.value === props.context,
+  set: (value: boolean) => {
+    if (value) return;
+    if (activeContextMenuTarget.value !== props.context) return;
+    isContextMenuOpen.value = false;
+  },
+});
 
 const contexts: Record<TrackContext, Component> = {
   "default": DefaultContext,
@@ -102,6 +117,10 @@ const guardRef = useTemplateRef<HTMLElement>("guardRef");
 
 useEventListener(guardRef, "contextmenu", (e: MouseEvent) => {
   const target = e.target as HTMLElement;
+  if (target.closest("[data-media-context]")) {
+    return;
+  }
+
   if (!target.closest("[data-track-row]")) {
     e.preventDefault();
     e.stopPropagation();

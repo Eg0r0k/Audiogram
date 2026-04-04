@@ -28,25 +28,13 @@ export const ACCENT_COLOR_OPTIONS: AccentColorOption[] = [
       "--sidebar-primary": "oklch(0.6267 0.1594 288.96)",
     },
   },
-  {
-    value: "purple",
-    label: "Purple",
-    preview: "#8854d0",
-    light: {
-      "--primary": "oklch(0.5534 0.2085 296.07)",
-      "--sidebar-primary": "oklch(0.5534 0.2085 296.07)",
-    },
-    dark: {
-      "--primary": "oklch(0.6506 0.1955 293.54)",
-      "--sidebar-primary": "oklch(0.6506 0.1955 293.54)",
-    },
-  },
+
   {
     value: "pink",
     label: "Pink",
     preview: "#e84393",
     light: {
-      "--primary": "oklch(0.5927 0.2135 350.11)",
+      "--primary": "oklch(0.7163 0.1909 2.48)",
       "--sidebar-primary": "oklch(0.5927 0.2135 350.11)",
     },
     dark: {

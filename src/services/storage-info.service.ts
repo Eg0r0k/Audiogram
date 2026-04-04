@@ -10,16 +10,27 @@ async function calculateFolderSize(folder: string): Promise<number> {
   if (result.isErr()) return 0;
 
   const files = result.value;
-  let totalSize = 0;
+  if (files.length === 0) return 0;
 
-  for (const filePath of files) {
-    const fileResult = await storageService.getFile(filePath);
-    if (fileResult.isOk()) {
-      totalSize += fileResult.value.size;
-    }
-  }
+  const sizes = await Promise.all(
+    files.map(async (filePath) => {
+      const fileResult = await storageService.getFile(filePath);
+      return fileResult.isOk() ? fileResult.value.size : 0;
+    }),
+  );
 
-  return totalSize;
+  return sizes.reduce((sum, size) => sum + size, 0);
+}
+
+async function calculateFolderSizeParallel(folders: string[]): Promise<Map<string, number>> {
+  const results = await Promise.all(
+    folders.map(async (folder) => {
+      const size = await calculateFolderSize(folder);
+      return [folder, size] as const;
+    }),
+  );
+
+  return new Map(results);
 }
 
 async function getQuotaInfo(): Promise<{ total: number; used: number }> {
@@ -42,6 +53,16 @@ async function getStoragePath(): Promise<string> {
 }
 
 async function getDbSize(): Promise<number> {
+  if (!IS_TAURI && navigator.storage?.estimate) {
+    try {
+      const estimate = await navigator.storage.estimate();
+      return estimate.usage ?? 0;
+    }
+    catch {
+      return 0;
+    }
+  }
+
   if (!IS_TAURI) {
     try {
       const tracks = await db.tracks.count();
@@ -54,33 +75,23 @@ async function getDbSize(): Promise<number> {
       return 0;
     }
   }
+
   return 0;
 }
 
 export async function collectStorageInfo(): Promise<StorageInfo> {
-  const [
-    tracksSize,
-    coversSize,
-    dbSize,
-    quota,
-    storagePath,
-    tracksCount,
-    albumsCount,
-    artistsCount,
-  ] = await Promise.all([
-    calculateFolderSize("tracks"),
-    0,
+  const [folderSizes, dbSize, quota, storagePath, [tracksCount, albumsCount, artistsCount]] = await Promise.all([
+    calculateFolderSizeParallel(["tracks", "lyrics"]),
     getDbSize(),
     getQuotaInfo(),
     getStoragePath(),
-    db.tracks.count(),
-    db.albums.count(),
-    db.artists.count(),
+    Promise.all([db.tracks.count(), db.albums.count(), db.artists.count()]),
   ]);
 
   return {
-    tracksSize,
-    coversSize,
+    tracksSize: folderSizes.get("tracks") ?? 0,
+    coversSize: 0,
+    lyricsSize: folderSizes.get("lyrics") ?? 0,
     dbSize,
     quotaTotal: quota.total,
     quotaUsed: quota.used,
@@ -92,19 +103,21 @@ export async function collectStorageInfo(): Promise<StorageInfo> {
 }
 
 export async function clearAllData(): Promise<void> {
-  const folders = ["tracks"];
-  for (const folder of folders) {
-    const result = await storageService.listFiles(folder);
-    if (result.isOk()) {
-      for (const filePath of result.value) {
-        await storageService.deleteFile(filePath);
+  const folders = ["tracks", "lyrics"];
+  await Promise.all(
+    folders.map(async (folder) => {
+      const result = await storageService.listFiles(folder);
+      if (result.isOk()) {
+        await Promise.all(result.value.map(file => storageService.deleteFile(file)));
       }
-    }
-  }
+    }),
+  );
 
-  await db.tracks.clear();
-  await db.albums.clear();
-  await db.artists.clear();
-  await db.tags.clear();
-  await db.playlists.clear();
+  await Promise.all([
+    db.tracks.clear(),
+    db.albums.clear(),
+    db.artists.clear(),
+    db.tags.clear(),
+    db.playlists.clear(),
+  ]);
 }

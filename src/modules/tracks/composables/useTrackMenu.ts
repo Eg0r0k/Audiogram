@@ -1,4 +1,5 @@
 import type { Track } from "@/modules/player/types";
+import type { TrackContext } from "@/modules/tracks/components/menu/type";
 import type { QueueItemId } from "@/types/ids";
 import { ref, watch } from "vue";
 
@@ -8,11 +9,34 @@ const activeQueueItemId = ref<QueueItemId | null>(null);
 
 const isDropdownOpen = ref(false);
 const isContextMenuOpen = ref(false);
+const activeDropdownTarget = ref<TrackContext>("default");
+const activeContextMenuTarget = ref<TrackContext>("default");
 
 const dropdownAnchor = ref({ x: 0, y: 0, width: 0, height: 0 });
 
 let lastCloseTime = 0;
 let lastClosedTrackId: string | null = null;
+let resetTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearActiveState() {
+  activeTrack.value = null;
+  activeIndex.value = null;
+  activeQueueItemId.value = null;
+}
+
+function cancelPendingReset() {
+  if (!resetTimer) return;
+  clearTimeout(resetTimer);
+  resetTimer = null;
+}
+
+function scheduleReset() {
+  cancelPendingReset();
+  resetTimer = setTimeout(() => {
+    if (isDropdownOpen.value || isContextMenuOpen.value) return;
+    clearActiveState();
+  }, 120);
+}
 
 watch(isDropdownOpen, (isOpen, wasOpen) => {
   if (wasOpen && !isOpen) {
@@ -20,9 +44,7 @@ watch(isDropdownOpen, (isOpen, wasOpen) => {
     lastClosedTrackId = activeTrack.value?.id ?? null;
 
     if (!isContextMenuOpen.value) {
-      activeTrack.value = null;
-      activeIndex.value = null;
-      activeQueueItemId.value = null;
+      scheduleReset();
     }
   }
 });
@@ -30,15 +52,14 @@ watch(isDropdownOpen, (isOpen, wasOpen) => {
 watch(isContextMenuOpen, (isOpen, wasOpen) => {
   if (wasOpen && !isOpen) {
     if (!isDropdownOpen.value) {
-      activeTrack.value = null;
-      activeIndex.value = null;
-      activeQueueItemId.value = null;
+      scheduleReset();
     }
   }
 });
 
 interface OpenTrackMenuOptions {
   queueItemId?: QueueItemId | null;
+  target?: TrackContext;
 }
 
 export function useTrackMenu() {
@@ -47,9 +68,12 @@ export function useTrackMenu() {
     index: number,
     options?: OpenTrackMenuOptions,
   ) => {
+    cancelPendingReset();
     activeTrack.value = track;
     activeIndex.value = index;
     activeQueueItemId.value = options?.queueItemId ?? null;
+    activeContextMenuTarget.value = options?.target ?? "default";
+    isDropdownOpen.value = false;
     isContextMenuOpen.value = true;
   };
 
@@ -68,12 +92,15 @@ export function useTrackMenu() {
       return;
     }
 
+    cancelPendingReset();
+
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
 
     activeTrack.value = track;
     activeIndex.value = index;
     activeQueueItemId.value = options?.queueItemId ?? null;
+    activeDropdownTarget.value = options?.target ?? "default";
 
     dropdownAnchor.value = {
       x: rect.left,
@@ -82,6 +109,7 @@ export function useTrackMenu() {
       height: rect.height,
     };
 
+    isContextMenuOpen.value = false;
     isDropdownOpen.value = true;
   };
 
@@ -95,6 +123,8 @@ export function useTrackMenu() {
     activeQueueItemId,
     isDropdownOpen,
     isContextMenuOpen,
+    activeDropdownTarget,
+    activeContextMenuTarget,
     dropdownAnchor,
     openMenu,
     closeMenu,

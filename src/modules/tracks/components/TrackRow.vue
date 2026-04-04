@@ -99,7 +99,14 @@
       ]"
       @click.stop="toggle"
     >
-      <IconLike :filled="isLiked" />
+      <IconLikedFilled
+        v-if="isLiked"
+        class="size-5"
+      />
+      <IconLike
+        v-else
+        class="size-5"
+      />
     </Button>
     <div class="w-7 flex justify-end items-center relative">
       <span :class="styles.duration">
@@ -125,12 +132,14 @@ import { useElementHover } from "@vueuse/core";
 import IconDots from "~icons/tabler/dots";
 import IconGripVertical from "~icons/tabler/grip-vertical";
 import IconLike from "~icons/tabler/heart";
+import IconLikedFilled from "~icons/tabler/heart-filled";
 import IconPlay from "~icons/tabler/player-play-filled";
 import IconPause from "~icons/tabler/player-pause-filled";
 
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import { formatDuration } from "@/lib/format/time";
 import type { Track } from "@/modules/player/types";
+import type { TrackContext } from "@/modules/tracks/components/menu/type";
 import { Button } from "@/components/ui/button";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useRouter } from "vue-router";
@@ -142,6 +151,7 @@ interface Props {
   index?: number;
   menuIndex?: number;
   queueItemId?: QueueItemId | null;
+  menuTarget?: TrackContext;
   compact?: boolean;
   draggable?: boolean;
   highlighted?: boolean;
@@ -153,6 +163,7 @@ const props = withDefaults(defineProps<Props>(), {
   index: 0,
   menuIndex: undefined,
   queueItemId: null,
+  menuTarget: "default",
   compact: false,
   draggable: false,
   highlighted: false,
@@ -247,12 +258,14 @@ const toggle = async () => {
 const onContextMenu = () => {
   openMenu(props.track, resolvedMenuIndex.value, {
     queueItemId: props.queueItemId,
+    target: props.menuTarget,
   });
 };
 
 const onDotsClick = (event: MouseEvent) => {
   openDropdown(props.track, resolvedMenuIndex.value, event, {
     queueItemId: props.queueItemId,
+    target: props.menuTarget,
   });
 };
 </script>

@@ -8,6 +8,11 @@ import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import type { Ref } from "vue";
 import { useRouter } from "vue-router";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeFile } from "@tauri-apps/plugin-fs";
+import { storageService } from "@/db/storage";
+import { hasNativeSupport } from "@/db/storage/IFileStorage";
+import { IS_TAURI } from "@/lib/environment/userAgent";
 import { useAttachTrackLyrics } from "./useAttachTrackLyrics";
 import { useToggleTrackLike } from "./useToggleTrackLike";
 import {
@@ -105,8 +110,59 @@ export const useTrackContextActions = (
     router.push({ name: "album", params: { id: track.value.albumId } });
   };
 
-  const download = () => {
-    console.log("Download:", track.value?.id);
+  const download = async () => {
+    if (!track.value) return;
+
+    const sourcePath = track.value.storagePath;
+    const fallbackExt = sourcePath.split(".").pop()?.toLowerCase() ?? "mp3";
+    const fileName = sourcePath.split(/[\\/]/).pop() ?? `${track.value.title}.${fallbackExt}`;
+
+    try {
+      const fileBlob = await (async () => {
+        if (track.value && track.value.source.toString() && IS_TAURI && hasNativeSupport(storageService)) {
+          const isAbsolutePath = /^(?:[a-zA-Z]:[\\/]|\/)/.test(sourcePath);
+
+          if (isAbsolutePath) {
+            const readResult = await storageService.readFile(sourcePath);
+            if (readResult.isErr()) throw readResult.error;
+            return new Blob([readResult.value]);
+          }
+        }
+
+        const fileResult = await storageService.getFile(sourcePath);
+        if (fileResult.isErr()) throw fileResult.error;
+        return fileResult.value;
+      })();
+
+      if (IS_TAURI) {
+        const targetPath = await save({
+          defaultPath: fileName,
+          filters: [{
+            name: "Audio",
+            extensions: [fallbackExt],
+          }],
+        });
+
+        if (!targetPath) return;
+
+        await writeFile(targetPath, new Uint8Array(await fileBlob.arrayBuffer()));
+        toast.success(t("track.downloadSuccess"));
+        return;
+      }
+
+      const objectUrl = URL.createObjectURL(fileBlob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      toast.success(t("track.downloadSuccess"));
+    }
+    catch {
+      toast.error(t("track.downloadFailed"));
+    }
   };
 
   return {

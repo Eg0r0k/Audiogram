@@ -3,8 +3,13 @@
     :is="Item"
     @click="emit('toggle')"
   >
+    <IconLikedFilled
+      v-if="isLiked"
+      class="size-5.5"
+    />
     <IconLike
-      class=" size-5.5 "
+      v-else
+      class="size-5.5"
     />
     {{
       !isLiked
@@ -15,6 +20,7 @@
 </template>
 <script setup lang="ts">
 import IconLike from "~icons/tabler/heart";
+import IconLikedFilled from "~icons/tabler/heart-filled";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
 
 defineProps<{

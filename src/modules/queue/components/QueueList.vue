@@ -27,6 +27,7 @@
           <template #default="{ item, index }">
             <div class="relative mx-2">
               <TrackRow
+                menu-target="queue"
                 :track="item.track as Track"
                 :index="index + 1"
                 :menu-index="index"

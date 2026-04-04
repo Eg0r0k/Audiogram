@@ -31,10 +31,7 @@
         {
           "path": "$APPDATA/**"
         },
-        {
-          "path": "$APPDATA/music/**/*"
-        },
-        {
+          {
           "path": "$HOME/**"
         },
         {

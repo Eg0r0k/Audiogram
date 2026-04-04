@@ -38,7 +38,7 @@
             align="start"
           >
             <DropdownMenuGroup>
-              <DropdownMenuItem @click="goSettings">
+              <DropdownMenuItem @click="goFavorite">
                 <IconBookmark class="size-5.5" />
                 Favorite
               </DropdownMenuItem>
@@ -134,6 +134,10 @@ const themeIcon = computed(() => (theme.isDark.value ? IconSun : IconMoon));
 
 function handleThemeToggle(event: MouseEvent) {
   theme.toggleTheme(event);
+}
+
+function goFavorite() {
+  router.push("/liked");
 }
 
 function goSettings() {

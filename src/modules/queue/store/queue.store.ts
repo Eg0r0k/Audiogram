@@ -372,14 +372,4 @@ export const useQueueStore = defineStore("queue", () => {
     toggleShuffle,
     clear,
   };
-}, {
-  persist: {
-    key: "lyra-queue",
-    pick: [
-      "queue",
-      "originalQueue",
-      "currentIndex",
-      "isShuffled",
-    ],
-  },
 });

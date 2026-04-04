@@ -1,7 +1,7 @@
 <template>
-  <div class="flex items-center  border-background border-b justify-between px-4 py-3 ">
+  <div class="flex items-center max-h-[72px] h-full  justify-between p-4 ">
     <div>
-      <h2 class="text-lg font-bold">
+      <h2 class=" text-xl font-medium">
         Очередь
       </h2>
     </div>

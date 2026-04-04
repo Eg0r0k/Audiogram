@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <DropdownMenu v-model:open="isDropdownOpen">
+    <DropdownMenu v-model:open="localOpen">
       <DropdownMenuTrigger as-child>
         <div
           class="pointer-events-none fixed"
@@ -56,7 +56,22 @@ const props = withDefaults(defineProps<Props>(), {
   context: "default",
 });
 
-const { activeTrack, activeIndex, isDropdownOpen, dropdownAnchor } = useTrackMenu();
+const {
+  activeTrack,
+  activeIndex,
+  isDropdownOpen,
+  activeDropdownTarget,
+  dropdownAnchor,
+} = useTrackMenu();
+
+const localOpen = computed({
+  get: () => isDropdownOpen.value && activeDropdownTarget.value === props.context,
+  set: (value: boolean) => {
+    if (value) return;
+    if (activeDropdownTarget.value !== props.context) return;
+    isDropdownOpen.value = false;
+  },
+});
 
 const anchorStyle = computed(() => ({
   left: `${dropdownAnchor.value.x}px`,

@@ -10,6 +10,7 @@ export const queryKeys = {
     albums: (id: ArtistId) => ["artists", id, "albums"] as const,
     tracks: (id: ArtistId) => ["artists", id, "tracks"] as const,
     page: (id: ArtistId) => ["artists", id, "page"] as const,
+    tracksPage: (id: ArtistId) => ["artists", id, "tracks", "page"] as const,
   },
   albums: {
     all: () => ["albums"] as const,
@@ -17,6 +18,7 @@ export const queryKeys = {
     tracks: (id: AlbumId) => ["albums", id, "tracks"] as const,
     cover: (id: AlbumId) => ["covers", "album", id] as const,
     page: (id: AlbumId) => ["albums", id, "page"] as const,
+    tracksPage: (id: AlbumId) => ["albums", id, "tracks", "page"] as const,
   },
   playlists: {
     all: () => ["playlists"] as const,
@@ -24,12 +26,14 @@ export const queryKeys = {
     tracks: (id: PlaylistId) => ["playlists", id, "tracks"] as const,
     cover: (id: PlaylistId) => ["covers", "playlist", id] as const,
     page: (id: PlaylistId) => ["playlists", id, "page"] as const,
+    tracksPage: (id: PlaylistId) => ["playlists", id, "tracks", "page"] as const,
   },
   tracks: {
     all: () => ["tracks"] as const,
     detail: (id: TrackId) => ["tracks", id] as const,
     liked: () => ["tracks", "liked"] as const,
     likedPage: () => ["tracks", "liked", "page"] as const,
+    likedPageInfinite: () => ["tracks", "liked", "page", "infinite"] as const,
   },
   covers: {
     detail: (ownerType: "album" | "playlist", ownerId: string) =>
