@@ -54,6 +54,7 @@ export const usePlayerStore = defineStore("player", () => {
   );
 
   const isLiveStream = computed(() => {
+    if (!currentTrack.value) return false;
     const track = currentTrack.value;
     const url = track && "url" in track ? track.url : undefined;
     return isLiveStreamTrack({ duration: duration.value, url });

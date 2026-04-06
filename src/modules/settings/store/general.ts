@@ -1,12 +1,12 @@
-// src/modules/settings/store/general.ts
 import { computed, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useNavigatorLanguage } from "@vueuse/core";
-import { useSettingsStore } from ".";
+import { useSettingsStore } from "../store";
 import { GeneralSettings, SupportedLanguage, SUPPORTED_LANGUAGES } from "../schema";
 import { IS_TAURI } from "@/lib/environment/userAgent";
 import { TAURI_ONLY_KEYS } from "../schema/general";
 import { DEFAULT_LOCALE, isSupportedLocale, setHtmlLangAttribute } from "@/app/i18n/utils";
+import { autostartService } from "../services/autostart";
 
 export interface LanguageOption {
   code: SupportedLanguage;
@@ -33,7 +33,6 @@ export const useGeneralSettings = () => {
   const settings = computed(() => store.general);
   const language = computed(() => store.general.language);
   const checkUpdatesOnLaunch = computed(() => store.general.checkUpdatesOnLaunch);
-
   const closeToTray = computed(() => store.general.closeToTray);
   const launchAtStartup = computed(() => store.general.launchAtStartup);
   const launchMinimized = computed(() => store.general.launchMinimized);
@@ -77,9 +76,15 @@ export const useGeneralSettings = () => {
     store.updateGeneral({ closeToTray: value });
   };
 
-  const setLaunchAtStartup = (value: boolean) => {
+  const setLaunchAtStartup = async (value: boolean) => {
     if (!IS_TAURI) return;
-    store.updateGeneral({ launchAtStartup: value });
+
+    const result = await (value ? autostartService.enable() : autostartService.disable());
+
+    result.match(
+      () => store.updateGeneral({ launchAtStartup: value }),
+      err => console.error("[autostart]", err.message, err.cause),
+    );
   };
 
   const setLaunchMinimized = (value: boolean) => {
@@ -100,8 +105,19 @@ export const useGeneralSettings = () => {
     }
   };
 
-  const init = () => {
+  const syncAutostart = async () => {
+    if (!IS_TAURI) return;
+
+    const result = await autostartService.isEnabled();
+    result.match(
+      enabled => store.updateGeneral({ launchAtStartup: enabled }),
+      err => console.warn("[autostart] sync failed:", err.message),
+    );
+  };
+
+  const init = async () => {
     applyLanguage(language.value);
+    await syncAutostart();
 
     watch(browserLanguage, () => {
       if (language.value === "system") {

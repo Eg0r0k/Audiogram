@@ -9,6 +9,12 @@
         "notifications": "Уведомления",
         "about": "О программе"
     },
+    "general": {
+        "checkUpdates": "Проверять обновления при запуске",
+        "launchAtStartup": "Запускать при старте системы",
+        "launchMinimized": "Запускать свернутым",
+        "closeToTray": "Сворачивать в трей"
+    },
     "about": {
         "madeWith": "Сделано с",
         "allRightsReserved": "Все права защищены"

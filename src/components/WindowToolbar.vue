@@ -1,6 +1,6 @@
 <template>
   <nav
-    v-if="IS_TAURI"
+    v-if="IS_TAURI && !IS_MOBILE"
     data-tauri-drag-region
     role="toolbar"
     class="titlebar border-b border-background"
@@ -57,7 +57,7 @@ import { Window } from "@tauri-apps/api/window";
 import { computed, onMounted, ref } from "vue";
 import { Button } from "./ui/button";
 import { useRouter } from "vue-router";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { IS_MOBILE, IS_TAURI } from "@/lib/environment/userAgent";
 import IconChevronLeft from "~icons/tabler/chevron-left";
 import IconChevronRight from "~icons/tabler/chevron-right";
 

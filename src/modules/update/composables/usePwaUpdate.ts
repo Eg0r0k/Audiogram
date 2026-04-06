@@ -19,7 +19,7 @@ import type { UpdateChannel } from "../types";
 import { fetchReleaseNotes, latestTagQueryOptions } from "../api/changelogApi";
 import { normalizeReleaseNotes } from "../lib/releaseNotes";
 
-export const usePwaUpdate = (channel: UpdateChannel = "stable") => {
+export const usePwaUpdate = (channel: UpdateChannel = "stable", notifyOnUpdate: boolean = true) => {
   const updateStore = useUpdateStore();
   const changelogStore = useChangelogStore();
   const queryClient = useQueryClient();
@@ -33,7 +33,7 @@ export const usePwaUpdate = (channel: UpdateChannel = "stable") => {
 
   watch(needRefresh, async (isReady) => {
     if (!isReady) return;
-
+    if (!notifyOnUpdate) return;
     // fetchQuery respects the cache: if latestTag was already fetched
     // this session it returns instantly without a network call.
     try {

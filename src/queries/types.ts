@@ -33,3 +33,21 @@ export interface PlaylistPageData {
 export interface LikedTracksPageData {
   tracks: Track[];
 }
+
+export interface PaginatedTracksResult {
+  tracks: Track[];
+  nextOffset: number | null;
+  total: number;
+}
+
+export interface PaginatedAlbumsResult {
+  albums: AlbumEntity[];
+  nextOffset: number | null;
+  total: number;
+}
+
+export interface PaginatedPlaylistTracksResult {
+  tracks: Track[];
+  nextOffset: number | null;
+  total: number;
+}

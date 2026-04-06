@@ -308,3 +308,14 @@ video {
   background-color: var(--background) !important;
   opacity: 0.5 !important;
 }
+
+.full-player-enter-active,
+.full-player-leave-active {
+  transition: transform 300ms var(--ease-standard), opacity 300ms var(--ease-standard);
+}
+
+.full-player-enter-from,
+.full-player-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
+}

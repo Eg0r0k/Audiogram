@@ -13,6 +13,7 @@
     "core:window:allow-unmaximize",
     "core:window:allow-close",
     "core:window:allow-start-dragging",
+    "core:window:allow-hide",
     "fs:default",
     "fs:allow-appdata-read-recursive",
     "fs:allow-appdata-write-recursive",
@@ -22,6 +23,9 @@
     "fs:allow-mkdir",
     "fs:allow-remove",
     "fs:allow-watch",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled",
     {
       "identifier": "fs:scope",
       "allow": [
@@ -52,6 +56,7 @@
     "global-shortcut:allow-register-all",
     "global-shortcut:allow-unregister",
     "global-shortcut:allow-unregister-all",
+    
     "updater:default"
   ]
 }

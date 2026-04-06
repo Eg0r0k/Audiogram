@@ -46,6 +46,7 @@ import { useUpdateScheduler } from "@/modules/update/composables/useUpdateSchedu
 import { usePwaUpdate } from "@/modules/update/composables/usePwaUpdate";
 import { useChangelogOnStartup } from "@/modules/update/composables/useChangelogOnStartup";
 import WhatsNewDialog from "@/modules/update/components/WhatsNewDialog.vue";
+import { useTrayBehavior } from "@/modules/settings/composables/useTrayBehavior";
 
 const currentRoute = useRoute();
 const { isMobileLayout } = useDeviceLayout();
@@ -102,15 +103,22 @@ useMediaSession();
 // UPDATE
 
 const updateStore = useUpdateStore();
+const { checkUpdatesOnLaunch } = useGeneralSettings();
 
 if (IS_TAURI) {
-  useUpdateScheduler();
+  useUpdateScheduler({ checkOnStartup: checkUpdatesOnLaunch.value });
 }
 else {
-  usePwaUpdate(updateStore.channel);
+  usePwaUpdate(updateStore.channel, checkUpdatesOnLaunch.value);
 }
 
 useChangelogOnStartup();
+
+// Tray
+
+if (IS_TAURI) {
+  useTrayBehavior();
+}
 
 </script>
 

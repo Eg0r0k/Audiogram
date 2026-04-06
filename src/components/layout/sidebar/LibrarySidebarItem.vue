@@ -68,7 +68,7 @@ const isCurrentPlaybackSource = computed(() => {
   <Link
     v-slot="{ isExactActive }"
     :to="item.to"
-    class="block mx-2"
+    class="block mx-2 rounded-sm focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none focus-visible:border-ring"
     data-library-item
     @contextmenu="openMenu(item)"
   >

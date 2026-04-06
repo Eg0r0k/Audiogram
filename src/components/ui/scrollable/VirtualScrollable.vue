@@ -55,7 +55,6 @@
 
       <div
         v-if="loading"
-        class="flex justify-center py-4"
       >
         <slot name="loader" />
       </div>
@@ -215,7 +214,22 @@ const scrollToOffset = (offset: number, options?: { behavior?: "auto" | "smooth"
 watch(() => props.items.length, () => {
   lastLoadMoreItemsCount = -1;
   virtualizer.value.measure();
+  scrollable.updateThumb();
 });
+
+watch(
+  () => [props.itemHeight, props.estimateSize, props.paddingTop, props.paddingBottom] as const,
+  () => {
+    virtualizer.value.measure();
+    scrollable.updateThumb();
+  },
+  { flush: "post" },
+);
+
+watch(() => props.items, () => {
+  virtualizer.value.measure();
+  scrollable.updateThumb();
+}, { deep: false });
 
 onMounted(() => {
   nextTick(() => updateBeforeHeight());

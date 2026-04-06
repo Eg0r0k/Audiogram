@@ -9,6 +9,12 @@
         "notifications": "Notifications",
         "about": "About"
     },
+    "general": {
+        "checkUpdates": "Check for updates on launch",
+        "launchAtStartup": "Launch at system startup",
+        "launchMinimized": "Launch minimized",
+        "closeToTray": "Close to system tray"
+    },
     "about": {
         "madeWith": "Made with",
         "allRightsReserved": "All rights reserved"

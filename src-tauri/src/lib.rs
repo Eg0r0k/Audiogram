@@ -10,6 +10,8 @@ fn greet(name: &str) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
+        .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
@@ -29,9 +31,9 @@ pub fn run() {
 
             Ok(())
         })
-       .invoke_handler(tauri::generate_handler![
+        .invoke_handler(tauri::generate_handler![
             greet,
-            updater::check_update, 
+            updater::check_update,
             updater::install_update,
         ])
         .run(tauri::generate_context!())
