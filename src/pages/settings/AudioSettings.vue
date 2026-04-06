@@ -32,7 +32,7 @@
                 @update:model-value="(val) => applyPreset(val as string)"
               >
                 <SelectTrigger class="w-[180px] h-8 font-medium">
-                  <SelectValue placeholder="Select preset..." />
+                  <SelectValue :placeholder="$t('settings.audio.selectPreset')" />
                 </SelectTrigger>
                 <SelectContent class="max-h-[300px]">
                   <SelectGroup
@@ -51,7 +51,7 @@
                   </SelectGroup>
                   <SelectSeparator />
                   <SelectItem value="custom">
-                    Custom
+                    {{ $t("settings.audio.customPreset") }}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -64,7 +64,7 @@
             >
               <TrashIcon class="size-4.5" />
 
-              Reset
+              {{ $t("settings.audio.resetEqualizer") }}
             </Button>
           </div>
 
@@ -131,7 +131,7 @@
         >
           <div class="space-y-2.5">
             <div class="flex items-center justify-between">
-              <span class="text-foreground  font-medium">Fade In</span>
+              <span class="text-foreground  font-medium">{{ $t("settings.audio.fadeIn") }}</span>
               <span class=" font-medium text-muted-foreground">
                 {{ fadeInDuration.toFixed(1) }}s
               </span>
@@ -147,7 +147,7 @@
 
           <div class="space-y-2.5">
             <div class="flex items-center justify-between">
-              <span class="text-foreground  font-medium">Fade Out</span>
+              <span class="text-foreground  font-medium">{{ $t("settings.audio.fadeOut") }}</span>
               <span class=" font-medium text-muted-foreground">
                 {{ fadeOutDuration.toFixed(1) }}s
               </span>
@@ -165,7 +165,10 @@
       <SettingsGroup class="mt-2">
         <Item @click="setNormalizationEnabled(!isNormalizationEnabled)">
           <ItemContent>
-            <ItemTitle>Volume normalization</ItemTitle>
+            <ItemTitle>{{ $t("settings.audio.normalization") }}</ItemTitle>
+            <ItemDescription>
+              {{ $t("settings.audio.normalizationDescription") }}
+            </ItemDescription>
           </ItemContent>
           <ItemActions>
             <Switch
@@ -180,9 +183,9 @@
           class=" space-y-5 transition-opacity duration-300"
           :class="{ 'opacity-40 pointer-events-none': !isNormalizationEnabled }"
         >
-          <div class="px-4 py-4 space-y-2.5">
+          <div class="px-4 py-4 mb-0 space-y-2.5">
             <div class="flex items-center justify-between">
-              <span class="text-foreground font-medium">Target loudness</span>
+              <span class="text-foreground font-medium">{{ $t("settings.audio.targetLoudness") }}</span>
               <span class="font-medium text-muted-foreground">
                 {{ normalizationTargetLufs }} LUFS
               </span>
@@ -198,7 +201,7 @@
 
           <Item @click="setNormalizationPreventClipping(!normalizationPreventClipping)">
             <ItemContent>
-              <ItemTitle>Prevent clipping</ItemTitle>
+              <ItemTitle>{{ $t("settings.audio.preventClipping") }}</ItemTitle>
             </ItemContent>
             <ItemActions>
               <Switch
@@ -208,10 +211,6 @@
               />
             </ItemActions>
           </Item>
-
-          <p class="text-xs text-muted-foreground px-1">
-            Works when track loudness metadata is available.
-          </p>
         </div>
       </SettingsGroup>
     </div>
@@ -249,6 +248,7 @@ import { useAudioSettings } from "@/modules/settings/composables/useAudioSetting
 
 import TrashIcon from "~icons/tabler/trash";
 import { formatFreq } from "@/lib/format";
+import ItemDescription from "@/components/ui/item/ItemDescription.vue";
 
 const {
   isEqEnabled,

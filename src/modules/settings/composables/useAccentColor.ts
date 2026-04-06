@@ -2,8 +2,10 @@ import { ref, watch } from "vue";
 import { getAccentColorOption } from "../accent-colors";
 import { AccentColor } from "../schema/appearance";
 
+const DEFAULT_ACCENT_COLOR: AccentColor = "blue";
+
 const accentColor = ref<AccentColor>(
-  (localStorage.getItem("accent-color") as AccentColor) || "blue",
+  (localStorage.getItem("accent-color") as AccentColor) || DEFAULT_ACCENT_COLOR,
 );
 
 let initialized = false;
@@ -45,8 +47,13 @@ export function useAccentColor() {
     localStorage.setItem("accent-color", color);
   }
 
+  function resetAccentColor() {
+    setAccentColor(DEFAULT_ACCENT_COLOR);
+  }
+
   return {
     accentColor,
     setAccentColor,
+    resetAccentColor,
   };
 }

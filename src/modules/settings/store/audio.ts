@@ -136,6 +136,21 @@ export const useAudioSettingsStore = defineStore("audio-settings", () => {
     pushNormalizationToPlayer();
   }
 
+  function reset() {
+    isEqEnabled.value = true;
+    currentPreset.value = "Flat";
+    bandGains.value = Array.from({ length: 10 }, () => 0);
+    isFadeEnabled.value = false;
+    fadeInDuration.value = FADE_DURATION_DEFAULT;
+    fadeOutDuration.value = FADE_DURATION_DEFAULT;
+    isNormalizationEnabled.value = false;
+    normalizationTargetLufs.value = NORMALIZATION_TARGET_LUFS_DEFAULT;
+    normalizationPreventClipping.value = true;
+
+    pushToGraph();
+    pushNormalizationToPlayer();
+  }
+
   return {
     isEqEnabled,
     currentPreset,
@@ -168,6 +183,7 @@ export const useAudioSettingsStore = defineStore("audio-settings", () => {
     setNormalizationEnabled,
     setNormalizationTargetLufs,
     setNormalizationPreventClipping,
+    reset,
   };
 }, {
   persist: {

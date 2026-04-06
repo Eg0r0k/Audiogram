@@ -4,12 +4,12 @@
     class="flex-1"
   >
     <div class="pb-8">
-      <SettingsHeader title="Notifications" />
+      <SettingsHeader :title="$t('settings.index.notifications')" />
 
       <SettingsGroup>
         <SettingsItem
-          title="Push notifications"
-          subtitle="Receive notifications on device"
+          :title="$t('settings.notifications.pushNotifications')"
+          :subtitle="$t('settings.notifications.pushNotificationsDescription')"
           @click="pushEnabled = !pushEnabled"
         >
           <template #action>
@@ -21,10 +21,10 @@
       <SettingsGroup class="mt-3">
         <div class="px-4 py-3">
           <div class="text-primary font-medium mb-1">
-            Notification types
+            {{ $t("settings.notifications.typesTitle") }}
           </div>
           <div class="text-sm text-muted-foreground">
-            Choose what you want to be notified about
+            {{ $t("settings.notifications.typesDescription") }}
           </div>
         </div>
 
@@ -42,8 +42,8 @@
             />
           </ItemMedia>
           <ItemContent class="ml-4">
-            <ItemTitle>New music</ItemTitle>
-            <ItemSubtitle>From artists you follow</ItemSubtitle>
+            <ItemTitle>{{ $t("settings.notifications.newMusic") }}</ItemTitle>
+            <ItemSubtitle>{{ $t("settings.notifications.newMusicDescription") }}</ItemSubtitle>
           </ItemContent>
         </Item>
 
@@ -61,8 +61,8 @@
             />
           </ItemMedia>
           <ItemContent class="ml-4">
-            <ItemTitle>Playlists updates</ItemTitle>
-            <ItemSubtitle>When playlists you follow are updated</ItemSubtitle>
+            <ItemTitle>{{ $t("settings.notifications.playlistsUpdates") }}</ItemTitle>
+            <ItemSubtitle>{{ $t("settings.notifications.playlistsUpdatesDescription") }}</ItemSubtitle>
           </ItemContent>
         </Item>
 
@@ -80,8 +80,8 @@
             />
           </ItemMedia>
           <ItemContent class="ml-4">
-            <ItemTitle>Artist announcements</ItemTitle>
-            <ItemSubtitle>News from artists you follow</ItemSubtitle>
+            <ItemTitle>{{ $t("settings.notifications.artistAnnouncements") }}</ItemTitle>
+            <ItemSubtitle>{{ $t("settings.notifications.artistAnnouncementsDescription") }}</ItemSubtitle>
           </ItemContent>
         </Item>
 
@@ -99,8 +99,8 @@
             />
           </ItemMedia>
           <ItemContent class="ml-4">
-            <ItemTitle>Concert alerts</ItemTitle>
-            <ItemSubtitle>Events near you</ItemSubtitle>
+            <ItemTitle>{{ $t("settings.notifications.concertAlerts") }}</ItemTitle>
+            <ItemSubtitle>{{ $t("settings.notifications.concertAlertsDescription") }}</ItemSubtitle>
           </ItemContent>
         </Item>
       </SettingsGroup>
@@ -120,8 +120,8 @@
             />
           </ItemMedia>
           <ItemContent class="ml-4">
-            <ItemTitle>Product news</ItemTitle>
-            <ItemSubtitle>New features and tips</ItemSubtitle>
+            <ItemTitle>{{ $t("settings.notifications.productNews") }}</ItemTitle>
+            <ItemSubtitle>{{ $t("settings.notifications.productNewsDescription") }}</ItemSubtitle>
           </ItemContent>
         </Item>
       </SettingsGroup>

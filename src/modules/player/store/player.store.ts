@@ -501,11 +501,6 @@ export const usePlayerStore = defineStore("player", () => {
   watch(trackEndedSignal, (val) => {
     if (val === 0) return;
     statsService.stopListening(currentTime.value, true);
-
-    if (!sleepAfterCurrentTrack.value) return;
-
-    sleepAfterCurrentTrack.value = false;
-    sleepAfterCurrentTrackTriggeredOnEndSignal.value = val;
   }, { flush: "sync" });
 
   watch(sleepTimerEndsAt, (endsAt) => {

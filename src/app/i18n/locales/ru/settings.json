@@ -7,7 +7,11 @@
         "audio": "Звук и воспроизведение",
         "storage": "Хранилище",
         "notifications": "Уведомления",
-        "about": "О программе"
+        "about": "О программе",
+        "resetAll": "Сброс настроек",
+        "resetAllDescription": "Вернуть все настройки приложения к значениям по умолчанию.",
+        "resetAllAction": "Сбросить все настройки",
+        "resetAllDone": "Настройки сброшены"
     },
     "general": {
         "checkUpdates": "Проверять обновления при запуске",
@@ -17,14 +21,56 @@
     },
     "about": {
         "madeWith": "Сделано с",
-        "allRightsReserved": "Все права защищены"
+        "allRightsReserved": "Все права защищены",
+        "whatsNew": "Что нового",
+        "newBadge": "Новое",
+        "shareWithFriends": "Поделиться с друзьями",
+        "termsOfService": "Условия использования",
+        "privacyPolicy": "Политика конфиденциальности",
+        "licenses": "Лицензии",
+        "releaseNotesLoadFailed": "Не удалось загрузить заметки о релизе"
+    },
+    "appearance": {
+        "colorTheme": "Тема оформления",
+        "accentColor": "Акцентный цвет",
+        "themes": {
+            "system": "Системная",
+            "light": "Светлая",
+            "dark": "Тёмная"
+        }
     },
     "audio": {
         "outputDevice": "Устройство вывода звука",
         "selectDevice": "Выбрать устройство",
         "defaultDevice": "Устройство по умолчанию",
         "noDevices": "Аудиоустройства недоступны",
-        "requestPermission": "Показать все устройства"
+        "requestPermission": "Показать все устройства",
+        "selectPreset": "Выбрать пресет...",
+        "customPreset": "Пользовательский",
+        "resetEqualizer": "Сбросить",
+        "fade": "Плавное изменение громкости",
+        "fadeIn": "Появление",
+        "fadeOut": "Затухание",
+        "normalization": "Нормализация громкости",
+        "normalizationDescription": "Работает, когда для трека доступны метаданные громкости.",
+        "targetLoudness": "Целевая громкость",
+        "preventClipping": "Предотвращать клиппинг"
+    },
+    "notifications": {
+        "pushNotifications": "Push-уведомления",
+        "pushNotificationsDescription": "Получать уведомления на устройстве",
+        "typesTitle": "Типы уведомлений",
+        "typesDescription": "Выберите, о чём вы хотите получать уведомления",
+        "newMusic": "Новая музыка",
+        "newMusicDescription": "От исполнителей, на которых вы подписаны",
+        "playlistsUpdates": "Обновления плейлистов",
+        "playlistsUpdatesDescription": "Когда обновляются плейлисты, на которые вы подписаны",
+        "artistAnnouncements": "Новости исполнителей",
+        "artistAnnouncementsDescription": "Новости от исполнителей, на которых вы подписаны",
+        "concertAlerts": "Оповещения о концертах",
+        "concertAlertsDescription": "События рядом с вами",
+        "productNews": "Новости продукта",
+        "productNewsDescription": "Новые функции и советы"
     },
     "storage": {
         "usage": "Использование хранилища",
@@ -36,6 +82,7 @@
         "covers": "Обложки",
         "albumCovers": "Кэш обложек альбомов",
         "database": "База данных",
+        "sizeTitle": "Размер хранилища",
         "albumsCount": "альбомов",
         "artistsCount": "исполнителей",
         "location": "Расположение хранилища",

@@ -4,7 +4,7 @@
     class="flex-1"
   >
     <div class="pb-8">
-      <SettingsHeader title="About" />
+      <SettingsHeader :title="$t('settings.index.about')" />
 
       <SettingsGroup>
         <div class="px-4 py-6 flex flex-col items-center">
@@ -54,7 +54,7 @@
 
       <SettingsGroup class="mt-3">
         <SettingsItem
-          title="What's new"
+          :title="$t('settings.about.whatsNew')"
           @click="handleOpenWhatsNew"
         >
           <template #action>
@@ -63,7 +63,7 @@
                 v-if="changelog.hasUnseenUpdate"
                 class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary"
               >
-                New
+                {{ $t("settings.about.newBadge") }}
               </span>
               <IconLoader2
                 v-if="isOpening"
@@ -77,7 +77,7 @@
           </template>
         </SettingsItem>
 
-        <SettingsItem title="Share with friends">
+        <SettingsItem :title="$t('settings.about.shareWithFriends')">
           <template #action>
             <IconChevronRight
               class="size-5 text-muted-foreground"
@@ -87,7 +87,7 @@
       </SettingsGroup>
 
       <SettingsGroup class="mt-3">
-        <SettingsItem title="Terms of Service">
+        <SettingsItem :title="$t('settings.about.termsOfService')">
           <template #action>
             <IconExternalLink
               class="size-5 text-muted-foreground"
@@ -95,7 +95,7 @@
           </template>
         </SettingsItem>
 
-        <SettingsItem title="Privacy Policy">
+        <SettingsItem :title="$t('settings.about.privacyPolicy')">
           <template #action>
             <IconExternalLink
               class="size-5 text-muted-foreground"
@@ -103,7 +103,7 @@
           </template>
         </SettingsItem>
 
-        <SettingsItem title="Licenses">
+        <SettingsItem :title="$t('settings.about.licenses')">
           <template #action>
             <IconChevronRight
               class="size-5 text-muted-foreground"
@@ -136,6 +136,7 @@ import IconExternalLink from "~icons/tabler/external-link";
 import IconBarBell from "~icons/tabler/barbell-filled";
 import IconLoader2 from "~icons/tabler/loader-2";
 import { toast } from "vue-sonner";
+import { useI18n } from "vue-i18n";
 
 import { Scrollable } from "@/components/ui/scrollable";
 import Button from "@/components/ui/button/Button.vue";
@@ -149,6 +150,7 @@ import { useChangelogStore } from "@/modules/update/store/changelog.store";
 const dateYear = new Date().getFullYear();
 const appVersion = __APP_VERSION__;
 const buildTime = __BUILD_TIME__;
+const { t } = useI18n();
 const changelog = useChangelogStore();
 const {
   isOpening,
@@ -162,7 +164,7 @@ const handleOpenWhatsNew = async () => {
 
   if (isOpened) return;
 
-  toast.error(error.value ?? "Failed to load release notes");
+  toast.error(error.value ?? t("settings.about.releaseNotesLoadFailed"));
   clearError();
 };
 </script>

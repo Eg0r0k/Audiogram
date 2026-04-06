@@ -7,7 +7,11 @@
         "audio": "Audio & Playback",
         "storage": "Store",
         "notifications": "Notifications",
-        "about": "About"
+        "about": "About",
+        "resetAll": "Reset settings",
+        "resetAllDescription": "Restore all app settings to their default values.",
+        "resetAllAction": "Reset all settings",
+        "resetAllDone": "Settings reset"
     },
     "general": {
         "checkUpdates": "Check for updates on launch",
@@ -17,14 +21,56 @@
     },
     "about": {
         "madeWith": "Made with",
-        "allRightsReserved": "All rights reserved"
+        "allRightsReserved": "All rights reserved",
+        "whatsNew": "What's new",
+        "newBadge": "New",
+        "shareWithFriends": "Share with friends",
+        "termsOfService": "Terms of Service",
+        "privacyPolicy": "Privacy Policy",
+        "licenses": "Licenses",
+        "releaseNotesLoadFailed": "Failed to load release notes"
+    },
+    "appearance": {
+      "colorTheme": "Color theme",
+      "accentColor": "Accent color",
+      "themes": {
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
+      }
     },
     "audio": {
       "outputDevice": "Audio output device",
       "selectDevice": "Select device",
       "defaultDevice": "Default device",
       "noDevices": "No audio devices available",
-      "requestPermission": "Show all devices"
+      "requestPermission": "Show all devices",
+      "selectPreset": "Select preset...",
+      "customPreset": "Custom",
+      "resetEqualizer": "Reset",
+      "fade": "Fade",
+      "fadeIn": "Fade in",
+      "fadeOut": "Fade out",
+      "normalization": "Volume normalization",
+      "normalizationDescription": "Works when track loudness metadata is available.",
+      "targetLoudness": "Target loudness",
+      "preventClipping": "Prevent clipping"
+    },
+    "notifications": {
+      "pushNotifications": "Push notifications",
+      "pushNotificationsDescription": "Receive notifications on device",
+      "typesTitle": "Notification types",
+      "typesDescription": "Choose what you want to be notified about",
+      "newMusic": "New music",
+      "newMusicDescription": "From artists you follow",
+      "playlistsUpdates": "Playlist updates",
+      "playlistsUpdatesDescription": "When playlists you follow are updated",
+      "artistAnnouncements": "Artist announcements",
+      "artistAnnouncementsDescription": "News from artists you follow",
+      "concertAlerts": "Concert alerts",
+      "concertAlertsDescription": "Events near you",
+      "productNews": "Product news",
+      "productNewsDescription": "New features and tips"
     },
     "storage": {
       "usage": "Storage usage",
@@ -36,6 +82,7 @@
       "covers": "Cover art",
       "albumCovers": "Album artwork cache",
       "database": "Database",
+      "sizeTitle": "Storage size",
       "albumsCount": "albums",
       "artistsCount": "artists",
       "location": "Storage location",

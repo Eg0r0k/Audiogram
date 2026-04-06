@@ -59,7 +59,7 @@
       <SettingsGroup class="mt-3 mb-3">
         <div class="px-4 py-3">
           <div class="text-primary font-medium mb-1">
-            Storage Size
+            {{ $t("settings.storage.sizeTitle") }}
           </div>
         </div>
         <Item>
@@ -140,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted } from "vue";
 
 import {
   Item,
@@ -157,8 +157,6 @@ import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
 
 import { useStorageSettings } from "@/modules/settings/store/storage";
-import { toast } from "vue-sonner";
-import { useI18n } from "vue-i18n";
 
 import TrashIcon from "~icons/tabler/trash";
 import ImageIcon from "~icons/tabler/photo";
@@ -168,30 +166,14 @@ import { Button } from "@/components/ui/button";
 import { IS_TAURI } from "@/lib/environment/userAgent";
 import WatchedFoldersSection from "@/modules/watched-folders/components/WatchedFoldersSection.vue";
 
-const { t } = useI18n();
-
 const {
   isLoading,
   formatted,
   refresh,
-  clearCovers,
   clearAllData,
 } = useStorageSettings();
-
-const showDeleteDialog = ref(false);
 
 onMounted(() => {
   refresh();
 });
-
-const handleClearCovers = async () => {
-  await clearCovers();
-  toast.success(t("settings.storage.coversCleared"));
-};
-
-const handleDeleteAll = async () => {
-  await clearAllData();
-  showDeleteDialog.value = false;
-  toast.success(t("settings.storage.allDataCleared"));
-};
 </script>

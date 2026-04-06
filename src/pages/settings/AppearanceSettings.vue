@@ -9,7 +9,7 @@
       <SettingsGroup>
         <div class="px-4">
           <div class=" text-primary font-medium mb-1">
-            Color theme
+            {{ $t("settings.appearance.colorTheme") }}
           </div>
         </div>
         <RadioGroup
@@ -28,7 +28,7 @@
             />
             <ItemContent>
               <ItemTitle>
-                {{ option.label }}
+                {{ $t(`settings.appearance.themes.${option.value}`) }}
               </ItemTitle>
             </ItemContent>
           </Item>
@@ -37,6 +37,9 @@
 
       <SettingsGroup>
         <div class="px-4 py-4">
+          <div class="mb-3 text-primary font-medium">
+            {{ $t("settings.appearance.accentColor") }}
+          </div>
           <AccentColorPicker
             :model-value="accentColor"
             :colors="accentColors"

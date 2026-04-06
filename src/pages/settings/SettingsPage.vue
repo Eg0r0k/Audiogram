@@ -50,11 +50,35 @@
           :title="$t('settings.index.about')"
         />
       </SettingsGroup>
+
+      <SettingsGroup class="mt-3">
+        <div class="px-4 py-3">
+          <div class="mb-1 text-primary font-medium">
+            {{ $t("settings.index.resetAll") }}
+          </div>
+          <div class="text-sm text-muted-foreground">
+            {{ $t("settings.index.resetAllDescription") }}
+          </div>
+        </div>
+
+        <Button
+          class="w-full h-14 justify-start  "
+          size="xl"
+          variant="ghost-primary"
+          @click="handleResetAllSettings"
+        >
+          <IconRefresh class="size-5" />
+          {{ $t("settings.index.resetAllAction") }}
+        </Button>
+      </SettingsGroup>
     </div>
   </Scrollable>
 </template>
 
 <script setup lang="ts">
+import { toast } from "vue-sonner";
+import { useI18n } from "vue-i18n";
+import { Button } from "@/components/ui/button";
 import { Scrollable } from "@/components/ui/scrollable";
 import IconSettings from "~icons/tabler/settings";
 import IconPalette from "~icons/tabler/palette";
@@ -63,11 +87,29 @@ import IconHeadphones from "~icons/tabler/headphones";
 import IconDatabase from "~icons/tabler/database";
 import IconBell from "~icons/tabler/bell";
 import IconInfo from "~icons/tabler/info-circle";
+import IconRefresh from "~icons/tabler/refresh";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsLink from "@/modules/settings/components/SettingsLink.vue";
 import { useGeneralSettings } from "@/modules/settings/store/general";
 import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
+import { useSettingsStore } from "@/modules/settings/store";
+import { useAudioSettingsStore } from "@/modules/settings/store/audio";
+import { useTheme } from "@/modules/settings/composables/useTheme";
+import { useAccentColor } from "@/modules/settings/composables/useAccentColor";
 
 const { language } = useGeneralSettings();
+const { t } = useI18n();
+const settingsStore = useSettingsStore();
+const audioSettingsStore = useAudioSettingsStore();
+const { changeTheme } = useTheme();
+const { resetAccentColor } = useAccentColor();
+
+const handleResetAllSettings = () => {
+  settingsStore.reset();
+  audioSettingsStore.reset();
+  changeTheme("system");
+  resetAccentColor();
+  toast.success(t("settings.index.resetAllDone"));
+};
 
 </script>
