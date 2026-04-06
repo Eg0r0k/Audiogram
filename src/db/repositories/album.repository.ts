@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import type { AlbumEntity } from "@/db/entities";
+import type { AlbumEntity, TrackEntity } from "@/db/entities";
 import type { AlbumId, ArtistId } from "@/types/ids";
 import type { UpdateSpec } from "dexie";
 import { Result, ok, err } from "neverthrow";
@@ -42,6 +42,58 @@ class AlbumRepository extends BaseRepository<AlbumEntity, AlbumId> {
       const count = await this.table
         .where("artistId")
         .equals(artistId)
+        .count();
+      return ok(count);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async findByArtistIdPaginated(
+    artistId: ArtistId,
+    offset: number,
+    limit: number,
+  ): Promise<Result<AlbumEntity[], Error>> {
+    try {
+      const albums = await this.table
+        .where("artistId")
+        .equals(artistId)
+        .offset(offset)
+        .limit(limit)
+        .sortBy("year");
+
+      return ok(albums.reverse());
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async findTracksPaginated(
+    albumId: AlbumId,
+    offset: number,
+    limit: number,
+  ): Promise<Result<TrackEntity[], Error>> {
+    try {
+      const tracks = await db.tracks
+        .where("albumId")
+        .equals(albumId)
+        .offset(offset)
+        .limit(limit)
+        .sortBy("trackNo");
+      return ok(tracks);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async countTracksByAlbumId(albumId: AlbumId): Promise<Result<number, Error>> {
+    try {
+      const count = await db.tracks
+        .where("albumId")
+        .equals(albumId)
         .count();
       return ok(count);
     }

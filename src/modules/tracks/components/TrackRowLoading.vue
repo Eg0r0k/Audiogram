@@ -38,8 +38,6 @@ withDefaults(defineProps<Props>(), {
         <Skeleton class="h-3 w-[52%] rounded-md group-data-[compact=true]:h-3 group-data-[compact=true]:w-[22%]" />
       </div>
 
-      <Skeleton class="shrink-0 size-8 rounded-full" />
-
       <div class="w-7 flex justify-end items-center relative">
         <Skeleton class="h-3 w-7 rounded-md hidden sm:block" />
       </div>

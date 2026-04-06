@@ -1,13 +1,15 @@
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
 import { PlaylistId } from "@/types/ids";
 import { formatTotalDuration } from "@/lib/format/time";
 import { useI18n } from "vue-i18n";
 import { usePlaylistCover } from "@/modules/covers/composables/usePlaylistCover";
 import { PlaylistData } from "@/modules/media-hero/types";
+import { queryKeys } from "@/queries/query-keys";
 import {
   deletePlaylistAndSync,
+  getPlaylistTracksPaginated,
   playlistQueries,
   removeTrackFromPlaylistAndSync,
   type PlaylistChanges,
@@ -25,15 +27,35 @@ export function usePlaylistPage() {
   const playlistId = computed(() => PlaylistId(route.params.id as string));
 
   const {
-    data: data,
+    data: playlistData,
     isLoading: isPlaylistLoading,
     isError,
     error,
     refetch,
-  } = useQuery(computed(() => playlistQueries.page(playlistId.value)));
+  } = useQuery(computed(() => playlistQueries.detail(playlistId.value)));
 
-  const playlist = computed(() => data.value?.playlist ?? null);
-  const tracks = computed(() => data.value?.tracks ?? []);
+  const playlist = computed(() => playlistData.value ?? null);
+
+  const {
+    data: infiniteData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: computed(() => queryKeys.playlists.tracksPage(playlistId.value)),
+    queryFn: ({ pageParam = 0 }) => getPlaylistTracksPaginated(playlistId.value, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: lastPage => lastPage.nextOffset,
+    enabled: computed(() => !!playlist.value),
+  });
+
+  const tracks = computed(() =>
+    infiniteData.value?.pages.flatMap(page => page.tracks) ?? [],
+  );
+
+  const trackCount = computed(
+    () => infiniteData.value?.pages[0]?.total ?? playlist.value?.trackIds.length ?? 0,
+  );
 
   const {
     url: coverUrl,
@@ -49,7 +71,7 @@ export function usePlaylistPage() {
     return formatTotalDuration(seconds, t);
   });
 
-  const playlistData = computed<PlaylistData | null>(() => {
+  const playlistDetailData = computed<PlaylistData | null>(() => {
     const current = playlist.value;
     if (!current) return null;
 
@@ -59,7 +81,7 @@ export function usePlaylistPage() {
       title: current.name,
       image: coverUrl.value ?? "",
       isOwner: true,
-      trackCount: tracks.value.length,
+      trackCount: trackCount.value,
       duration: totalDuration.value,
       description: current.description,
     };
@@ -95,7 +117,7 @@ export function usePlaylistPage() {
   return {
     playlist,
     tracks,
-    playlistData,
+    playlistData: playlistDetailData,
     coverUrl,
     totalDuration,
     isLoading,
@@ -105,5 +127,8 @@ export function usePlaylistPage() {
     updatePlaylist,
     removeTrack,
     refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   };
 }

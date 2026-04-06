@@ -1,22 +1,37 @@
 import { computed } from "vue";
-import { useQuery } from "@tanstack/vue-query";
+import { useInfiniteQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { formatTotalDuration } from "@/lib/format/time";
 import type { LikedData } from "@/modules/media-hero/types";
-import { trackQueries } from "@/queries/track.queries";
+import { queryKeys } from "@/queries/query-keys";
+import { getLikedTracksPaginated } from "@/queries/track.queries";
 
 export function useLikedTracksPage() {
   const { t } = useI18n();
 
   const {
-    data: likedTracksData,
+    data: infiniteData,
     isLoading,
     isError,
     error,
     refetch,
-  } = useQuery(trackQueries.likedPage());
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: queryKeys.tracks.likedPageInfinite(),
+    queryFn: ({ pageParam = 0 }) => getLikedTracksPaginated(pageParam),
+    initialPageParam: 0,
+    getNextPageParam: lastPage => lastPage.nextOffset,
+  });
 
-  const tracks = computed(() => likedTracksData.value?.tracks ?? []);
+  const tracks = computed(() =>
+    infiniteData.value?.pages.flatMap(page => page.tracks) ?? [],
+  );
+
+  const totalCount = computed(
+    () => infiniteData.value?.pages[0]?.total ?? 0,
+  );
 
   const totalDuration = computed(() => {
     const seconds = tracks.value.reduce((sum, track) => sum + track.duration, 0);
@@ -27,7 +42,7 @@ export function useLikedTracksPage() {
     type: "liked",
     title: t("common.favorite"),
     image: "/img/liked-fallback.svg",
-    trackCount: tracks.value.length,
+    trackCount: totalCount.value,
     duration: totalDuration.value,
   }));
 
@@ -39,5 +54,8 @@ export function useLikedTracksPage() {
     isError,
     error,
     refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   };
 }

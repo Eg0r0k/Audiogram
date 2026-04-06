@@ -26,10 +26,14 @@ export const usePlayerStore = defineStore("player", () => {
   const trackEndedSignal = ref(0);
   const lyrics = ref<LyricsLine[]>([]);
   const lyricsStatus = ref<"idle" | "loading" | "ready" | "error">("idle");
+  const sleepTimerEndsAt = ref<number | null>(null);
+  const sleepTimerRemainingMs = ref(0);
 
   let lyricsRequestId = 0;
 
   let _activeFadeAbort: AbortController | null = null;
+  let _sleepTimerTimeout: ReturnType<typeof setTimeout> | null = null;
+  let _sleepTimerInterval: ReturnType<typeof setInterval> | null = null;
 
   const cancelActiveFade = () => {
     if (_activeFadeAbort) {
@@ -52,6 +56,7 @@ export const usePlayerStore = defineStore("player", () => {
   const activeLyricsIndex = computed(() =>
     findActiveLyricsIndex(lyrics.value, currentTime.value),
   );
+  const isSleepTimerActive = computed(() => sleepTimerEndsAt.value !== null);
 
   const isLiveStream = computed(() => {
     if (!currentTrack.value) return false;
@@ -66,6 +71,49 @@ export const usePlayerStore = defineStore("player", () => {
     if (duration.value <= 0) return false;
     return true;
   });
+
+  const clearSleepTimerHandles = () => {
+    if (_sleepTimerTimeout !== null) {
+      clearTimeout(_sleepTimerTimeout);
+      _sleepTimerTimeout = null;
+    }
+
+    if (_sleepTimerInterval !== null) {
+      clearInterval(_sleepTimerInterval);
+      _sleepTimerInterval = null;
+    }
+  };
+
+  const updateSleepTimerRemaining = () => {
+    if (sleepTimerEndsAt.value === null) {
+      sleepTimerRemainingMs.value = 0;
+      return;
+    }
+
+    sleepTimerRemainingMs.value = Math.max(0, sleepTimerEndsAt.value - Date.now());
+  };
+
+  const cancelSleepTimer = () => {
+    clearSleepTimerHandles();
+    sleepTimerEndsAt.value = null;
+    sleepTimerRemainingMs.value = 0;
+  };
+
+  const handleSleepTimerExpired = () => {
+    clearSleepTimerHandles();
+    sleepTimerEndsAt.value = null;
+    sleepTimerRemainingMs.value = 0;
+    pause();
+  };
+
+  const setSleepTimer = (durationMs: number) => {
+    if (!Number.isFinite(durationMs) || durationMs <= 0) {
+      cancelSleepTimer();
+      return;
+    }
+
+    sleepTimerEndsAt.value = Date.now() + durationMs;
+  };
 
   const initPlayer = async () => {
     cancelActiveFade();
@@ -396,6 +444,7 @@ export const usePlayerStore = defineStore("player", () => {
 
   const dispose = async () => {
     cancelActiveFade();
+    cancelSleepTimer();
     if (player.value) {
       await player.value.dispose();
       player.value = null;
@@ -452,7 +501,36 @@ export const usePlayerStore = defineStore("player", () => {
   watch(trackEndedSignal, (val) => {
     if (val === 0) return;
     statsService.stopListening(currentTime.value, true);
-  });
+
+    if (!sleepAfterCurrentTrack.value) return;
+
+    sleepAfterCurrentTrack.value = false;
+    sleepAfterCurrentTrackTriggeredOnEndSignal.value = val;
+  }, { flush: "sync" });
+
+  watch(sleepTimerEndsAt, (endsAt) => {
+    clearSleepTimerHandles();
+
+    if (endsAt === null) {
+      sleepTimerRemainingMs.value = 0;
+      return;
+    }
+
+    updateSleepTimerRemaining();
+
+    if (sleepTimerRemainingMs.value <= 0) {
+      handleSleepTimerExpired();
+      return;
+    }
+
+    _sleepTimerInterval = setInterval(() => {
+      updateSleepTimerRemaining();
+    }, 1000);
+
+    _sleepTimerTimeout = setTimeout(() => {
+      handleSleepTimerExpired();
+    }, sleepTimerRemainingMs.value);
+  }, { immediate: true, flush: "sync" });
 
   return {
     player,
@@ -470,6 +548,9 @@ export const usePlayerStore = defineStore("player", () => {
     activeLyricsIndex,
     graphRevision,
     trackEndedSignal,
+    sleepTimerEndsAt,
+    sleepTimerRemainingMs,
+    isSleepTimerActive,
     progress,
     canPlay,
     isLiveStream,
@@ -487,6 +568,8 @@ export const usePlayerStore = defineStore("player", () => {
     getAudioGraph,
     dispose,
     setMuted,
+    setSleepTimer,
+    cancelSleepTimer,
   };
 }, {
   persist: {
@@ -498,6 +581,7 @@ export const usePlayerStore = defineStore("player", () => {
       "currentTrack",
       "currentTime",
       "duration",
+      "sleepTimerEndsAt",
     ],
   },
 });

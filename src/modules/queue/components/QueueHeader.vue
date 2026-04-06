@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center max-h-[72px] h-full  justify-between p-4 ">
+  <div class="flex items-center border-b dark:border-background max-h-[72px] h-full  justify-between p-4 ">
     <div>
       <h2 class=" text-xl font-medium">
         Очередь

@@ -156,6 +156,38 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
       return err(error as Error);
     }
   }
+
+  async findLikedPaginated(
+    offset: number,
+    limit: number,
+  ): Promise<Result<TrackEntity[], Error>> {
+    try {
+      const tracks = await this.table
+        .where("likedAt")
+        .above(0)
+        .reverse()
+        .offset(offset)
+        .limit(limit)
+        .sortBy("likedAt");
+      return ok(tracks);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async countLiked(): Promise<Result<number, Error>> {
+    try {
+      const count = await this.table
+        .where("likedAt")
+        .above(0)
+        .count();
+      return ok(count);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
 }
 
 export const trackRepository = new TrackRepository();

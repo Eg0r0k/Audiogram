@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from "pinia";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { usePlayerStore } from "../store/player.store";
 
 describe("player.store", () => {
@@ -22,6 +22,9 @@ describe("player.store", () => {
       expect(store.trackEndedSignal).toBe(0);
       expect(store.lyrics).toEqual([]);
       expect(store.lyricsStatus).toBe("idle");
+      expect(store.sleepTimerEndsAt).toBe(null);
+      expect(store.sleepTimerRemainingMs).toBe(0);
+      expect(store.isSleepTimerActive).toBe(false);
     });
   });
 
@@ -371,6 +374,87 @@ describe("player.store", () => {
       await store.dispose();
 
       expect(store.player).toBe(null);
+    });
+  });
+
+  describe("sleep timer", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-04-06T12:00:00.000Z"));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("should activate sleep timer and expose remaining time", () => {
+      const store = usePlayerStore();
+
+      store.setSleepTimer(5 * 60 * 1000);
+
+      expect(store.isSleepTimerActive).toBe(true);
+      expect(store.sleepTimerEndsAt).toBe(Date.now() + 5 * 60 * 1000);
+      expect(store.sleepTimerRemainingMs).toBe(5 * 60 * 1000);
+    });
+
+    it("should update remaining time while timer is active", () => {
+      const store = usePlayerStore();
+
+      store.setSleepTimer(5 * 1000);
+      vi.advanceTimersByTime(2000);
+
+      expect(store.sleepTimerRemainingMs).toBe(3000);
+    });
+
+    it("should cancel sleep timer", () => {
+      const store = usePlayerStore();
+
+      store.setSleepTimer(5 * 1000);
+      store.cancelSleepTimer();
+
+      expect(store.isSleepTimerActive).toBe(false);
+      expect(store.sleepTimerEndsAt).toBe(null);
+      expect(store.sleepTimerRemainingMs).toBe(0);
+    });
+
+    it("should cancel sleep timer for invalid duration", () => {
+      const store = usePlayerStore();
+
+      store.setSleepTimer(5 * 1000);
+      store.setSleepTimer(0);
+
+      expect(store.isSleepTimerActive).toBe(false);
+      expect(store.sleepTimerEndsAt).toBe(null);
+      expect(store.sleepTimerRemainingMs).toBe(0);
+    });
+
+    it("should pause playback when sleep timer expires", () => {
+      const store = usePlayerStore();
+      const mockPause = vi.fn();
+
+      store.player = { pause: mockPause } as unknown as NonNullable<typeof store.player>;
+      store.status = "playing";
+
+      store.setSleepTimer(5 * 1000);
+      vi.advanceTimersByTime(5000);
+
+      expect(mockPause).toHaveBeenCalledTimes(1);
+      expect(store.isSleepTimerActive).toBe(false);
+      expect(store.sleepTimerRemainingMs).toBe(0);
+    });
+
+    it("should clear sleep timer on dispose", async () => {
+      const store = usePlayerStore();
+      const mockDispose = vi.fn().mockResolvedValue(undefined);
+
+      store.player = { dispose: mockDispose } as unknown as NonNullable<typeof store.player>;
+      store.setSleepTimer(5 * 1000);
+
+      await store.dispose();
+
+      expect(store.isSleepTimerActive).toBe(false);
+      expect(store.sleepTimerEndsAt).toBe(null);
+      expect(store.sleepTimerRemainingMs).toBe(0);
     });
   });
 

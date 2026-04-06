@@ -16,7 +16,9 @@ import {
   updateCoverCache,
 } from "./cache";
 import { unwrapResult } from "./shared";
-import type { AlbumPageData } from "./types";
+import type { AlbumPageData, PaginatedTracksResult } from "./types";
+
+const PAGE_SIZE = 50;
 
 export interface AlbumChanges {
   title?: string;
@@ -58,6 +60,35 @@ export async function getAlbumPageData(albumId: AlbumId): Promise<AlbumPageData>
   };
 }
 
+export async function getAlbumTracksPaginated(
+  albumId: AlbumId,
+  offset: number,
+  limit = PAGE_SIZE,
+): Promise<PaginatedTracksResult> {
+  const [rawTracks, countResult] = await Promise.all([
+    unwrapResult(albumRepository.findTracksPaginated(albumId, offset, limit)),
+    unwrapResult(albumRepository.countTracksByAlbumId(albumId)),
+  ]);
+
+  const album = await getAlbumByIdOrThrow(albumId);
+  const artist = await unwrapResult(artistRepository.findById(album.artistId));
+
+  if (!artist) {
+    throw new Error("Artist not found");
+  }
+
+  const mappedTracks = mapTracks(rawTracks, [artist], [album]);
+
+  const total = countResult ?? 0;
+  const nextOffset = offset + limit < total ? offset + limit : null;
+
+  return {
+    tracks: mappedTracks,
+    nextOffset,
+    total,
+  };
+}
+
 export const albumQueries = {
   all: () =>
     queryOptions({
@@ -73,6 +104,11 @@ export const albumQueries = {
     queryOptions({
       queryKey: queryKeys.albums.page(albumId),
       queryFn: () => getAlbumPageData(albumId),
+    }),
+  tracksPageInfinite: (albumId: AlbumId, pageParam: number) =>
+    queryOptions({
+      queryKey: [...queryKeys.albums.tracksPage(albumId), pageParam],
+      queryFn: () => getAlbumTracksPaginated(albumId, pageParam),
     }),
 } as const;
 
@@ -122,21 +158,20 @@ export async function updateAlbumAndSync(
 
 export async function deleteAlbumAndSync(
   queryClient: QueryClient,
-  pageData: AlbumPageData | null,
+  albumEntity: AlbumEntity | null,
 ) {
-  if (!pageData) {
+  if (!albumEntity) {
     return;
   }
 
-  const { album, artist } = pageData;
-  const rawTracks = await unwrapResult(trackRepository.findByAlbumId(album.id));
+  const rawTracks = await unwrapResult(trackRepository.findByAlbumId(albumEntity.id));
 
-  await unwrapResult(coverRepository.deleteAlbumCover(album.id));
-  await unwrapResult(trackRepository.deleteByAlbumId(album.id));
-  await unwrapResult(albumRepository.delete(album.id));
+  await unwrapResult(coverRepository.deleteAlbumCover(albumEntity.id));
+  await unwrapResult(trackRepository.deleteByAlbumId(albumEntity.id));
+  await unwrapResult(albumRepository.delete(albumEntity.id));
 
-  removeAlbumCaches(queryClient, album.id, artist.id);
+  removeAlbumCaches(queryClient, albumEntity.id, albumEntity.artistId);
   removeTracksFromCaches(queryClient, rawTracks.map(track => track.id));
 
-  queryClient.removeQueries({ queryKey: queryKeys.albums.cover(album.id), exact: true });
+  queryClient.removeQueries({ queryKey: queryKeys.albums.cover(albumEntity.id), exact: true });
 }

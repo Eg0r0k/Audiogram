@@ -8,13 +8,14 @@ import type {
 import { queryKeys } from "@/queries/query-keys";
 import type { Track } from "@/modules/player/types";
 import type { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
-import type { QueryClient } from "@tanstack/vue-query";
+import type { InfiniteData, QueryClient } from "@tanstack/vue-query";
 import { patchTrackEntityLike, patchTrackLike, removeById, upsertById } from "./shared";
 import type {
   AlbumPageData,
   ArtistPageData,
   LibrarySummaryData,
   LikedTracksPageData,
+  PaginatedTracksResult,
   PlaylistPageData,
 } from "./types";
 
@@ -33,13 +34,28 @@ function setQueriesDataIfPresent<T>(
   filters: Parameters<QueryClient["setQueriesData"]>[0],
   updater: (data: T) => T,
 ) {
-  queryClient.setQueriesData<T | undefined>(filters, old =>
-    old === undefined ? old : updater(old),
-  );
+  queryClient.setQueriesData<T | undefined>(filters, (old) => {
+    if (old === undefined) return old;
+    const result = updater(old);
+    return result;
+  });
 }
 
 function sortLikedTracksDesc(tracks: readonly TrackEntity[]) {
   return [...tracks].sort((left, right) => (right.likedAt ?? 0) - (left.likedAt ?? 0));
+}
+
+function mapInfiniteTrackPages(
+  data: InfiniteData<PaginatedTracksResult>,
+  mapTracks: (tracks: Track[]) => Track[],
+): InfiniteData<PaginatedTracksResult> {
+  return {
+    ...data,
+    pages: data.pages.map(page => ({
+      ...page,
+      tracks: mapTracks(page.tracks),
+    })),
+  };
 }
 
 export function syncArtistCaches(queryClient: QueryClient, artist: ArtistEntity) {
@@ -338,6 +354,23 @@ export function syncTrackLikeCaches(
     },
   );
 
+  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
+    queryClient,
+    {
+      predicate: query =>
+        query.queryKey[0] === "tracks"
+        && query.queryKey[1] === "liked"
+        && query.queryKey[2] === "page"
+        && query.queryKey[3] === "infinite",
+    },
+    (data) => {
+      return mapInfiniteTrackPages(data, (tracks) => {
+        const withoutCurrent = tracks.filter(track => track.id !== nextTrack.id);
+        return nextTrack.isLiked ? [nextTrack, ...withoutCurrent] : withoutCurrent;
+      });
+    },
+  );
+
   setQueryDataIfPresent<LikedTracksPageData>(
     queryClient,
     queryKeys.tracks.likedPage(),
@@ -348,6 +381,57 @@ export function syncTrackLikeCaches(
         ...data,
         tracks: nextTrack.isLiked ? [nextTrack, ...withoutCurrent] : withoutCurrent,
       };
+    },
+  );
+
+  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
+    queryClient,
+    {
+      predicate: query =>
+        query.queryKey[0] === "playlists"
+        && query.queryKey[2] === "tracks"
+        && query.queryKey[3] === "page",
+    },
+    (data) => {
+      return mapInfiniteTrackPages(data, tracks =>
+        tracks.map(track =>
+          track.id === nextTrack.id ? nextTrack : track,
+        ),
+      );
+    },
+  );
+
+  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
+    queryClient,
+    {
+      predicate: query =>
+        query.queryKey[0] === "albums"
+        && query.queryKey[2] === "tracks"
+        && query.queryKey[3] === "page",
+    },
+    (data) => {
+      return mapInfiniteTrackPages(data, tracks =>
+        tracks.map(track =>
+          track.id === nextTrack.id ? nextTrack : track,
+        ),
+      );
+    },
+  );
+
+  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
+    queryClient,
+    {
+      predicate: query =>
+        query.queryKey[0] === "artists"
+        && query.queryKey[2] === "tracks"
+        && query.queryKey[3] === "page",
+    },
+    (data) => {
+      return mapInfiniteTrackPages(data, tracks =>
+        tracks.map(track =>
+          track.id === nextTrack.id ? nextTrack : track,
+        ),
+      );
     },
   );
 
@@ -435,6 +519,67 @@ export function syncTrackMetadataCaches(
         track.id === nextTrack.id ? nextTrack : track,
       ),
     }),
+  );
+
+  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
+    queryClient,
+    {
+      predicate: query =>
+        query.queryKey[0] === "tracks"
+        && query.queryKey[1] === "liked"
+        && query.queryKey[2] === "page"
+        && query.queryKey[3] === "infinite",
+    },
+    data => mapInfiniteTrackPages(data, tracks =>
+      tracks.map(track =>
+        track.id === nextTrack.id ? nextTrack : track,
+      ),
+    ),
+  );
+
+  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
+    queryClient,
+    {
+      predicate: query =>
+        query.queryKey[0] === "playlists"
+        && query.queryKey[2] === "tracks"
+        && query.queryKey[3] === "page",
+    },
+    data => mapInfiniteTrackPages(data, tracks =>
+      tracks.map(track =>
+        track.id === nextTrack.id ? nextTrack : track,
+      ),
+    ),
+  );
+
+  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
+    queryClient,
+    {
+      predicate: query =>
+        query.queryKey[0] === "albums"
+        && query.queryKey[2] === "tracks"
+        && query.queryKey[3] === "page",
+    },
+    data => mapInfiniteTrackPages(data, tracks =>
+      tracks.map(track =>
+        track.id === nextTrack.id ? nextTrack : track,
+      ),
+    ),
+  );
+
+  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
+    queryClient,
+    {
+      predicate: query =>
+        query.queryKey[0] === "artists"
+        && query.queryKey[2] === "tracks"
+        && query.queryKey[3] === "page",
+    },
+    data => mapInfiniteTrackPages(data, tracks =>
+      tracks.map(track =>
+        track.id === nextTrack.id ? nextTrack : track,
+      ),
+    ),
   );
 
   setQueriesDataIfPresent<PlaylistPageData>(

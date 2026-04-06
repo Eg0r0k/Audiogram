@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import type { ArtistEntity } from "@/db/entities";
+import type { ArtistEntity, TrackEntity } from "@/db/entities";
 import type { ArtistId } from "@/types/ids";
 import type { UpdateSpec } from "dexie";
 import { Result, ok, err } from "neverthrow";
@@ -44,6 +44,38 @@ class ArtistRepository extends BaseRepository<ArtistEntity, ArtistId> {
         .limit(limit)
         .toArray();
       return ok(artists);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async findTracksPaginated(
+    artistId: ArtistId,
+    offset: number,
+    limit: number,
+  ): Promise<Result<TrackEntity[], Error>> {
+    try {
+      const tracks = await db.tracks
+        .where("artistId")
+        .equals(artistId)
+        .offset(offset)
+        .limit(limit)
+        .toArray();
+      return ok(tracks);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async countTracksByArtistId(artistId: ArtistId): Promise<Result<number, Error>> {
+    try {
+      const count = await db.tracks
+        .where("artistId")
+        .equals(artistId)
+        .count();
+      return ok(count);
     }
     catch (error) {
       return err(error as Error);

@@ -37,5 +37,9 @@
   "pip": "Картинка в картинке",
   "cover": "Обложка",
   "equalizer": "Эквалайзер",
-  "emptyDescription": "Пока что..."
+  "emptyDescription": "Пока что...",
+  "sleepTimer": "Таймер сна",
+  "cancelSleepTimer": "Выключить таймер",
+  "sleepTimerOff": "Таймер не активен",
+  "sleepTimerScheduledIn": "Остановится через {time}"
 }

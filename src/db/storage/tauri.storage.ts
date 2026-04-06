@@ -53,7 +53,7 @@ export class TauriStorage implements IFileStorageWithNativeSupport {
     return lastSlash > 0 ? path.substring(0, lastSlash) : "";
   }
 
-  async warmup(folders: string[] = ["tracks", "covers"]): Promise<void> {
+  async warmup(folders: string[] = ["tracks", "lyrics"]): Promise<void> {
     await this.getAppDataDir();
     await Promise.all(folders.map(f => this.ensureDir(f)));
   }

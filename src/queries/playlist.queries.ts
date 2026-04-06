@@ -20,7 +20,9 @@ import {
   updateCoverCache,
 } from "./cache";
 import { unique, unwrapResult } from "./shared";
-import type { PlaylistPageData } from "./types";
+import type { PlaylistPageData, PaginatedPlaylistTracksResult } from "./types";
+
+const PAGE_SIZE = 50;
 
 export interface PlaylistChanges {
   name?: string;
@@ -76,6 +78,43 @@ export async function getPlaylistPageData(
   };
 }
 
+export async function getPlaylistTracksPaginated(
+  playlistId: PlaylistId,
+  offset: number,
+  limit = PAGE_SIZE,
+): Promise<PaginatedPlaylistTracksResult> {
+  const { trackIds, total } = await unwrapResult(
+    playlistRepository.findTrackIdsPaginated(playlistId, offset, limit),
+  );
+
+  if (trackIds.length === 0) {
+    return { tracks: [], nextOffset: null, total };
+  }
+
+  const rawTracks = await unwrapResult(trackRepository.findByIds(trackIds));
+  const artistIds = unique(rawTracks.map(track => track.artistId));
+  const albumIds = unique(rawTracks.map(track => track.albumId));
+
+  const [artists, albums] = await Promise.all([
+    unwrapResult(artistRepository.findByIds(artistIds)),
+    unwrapResult(albumRepository.findByIds(albumIds)),
+  ]);
+
+  const trackMap = new Map(rawTracks.map(track => [track.id, track]));
+  const orderedTracks = trackIds.flatMap((trackId) => {
+    const track = trackMap.get(trackId);
+    return track ? [track] : [];
+  });
+
+  const nextOffset = offset + limit < total ? offset + limit : null;
+
+  return {
+    tracks: mapTracks(orderedTracks, artists, albums),
+    nextOffset,
+    total,
+  };
+}
+
 export const playlistQueries = {
   all: () =>
     queryOptions({
@@ -91,6 +130,11 @@ export const playlistQueries = {
     queryOptions({
       queryKey: queryKeys.playlists.page(playlistId),
       queryFn: () => getPlaylistPageData(playlistId),
+    }),
+  tracksPageInfinite: (playlistId: PlaylistId, pageParam: number) =>
+    queryOptions({
+      queryKey: [...queryKeys.playlists.tracksPage(playlistId), pageParam],
+      queryFn: () => getPlaylistTracksPaginated(playlistId, pageParam),
     }),
 } as const;
 

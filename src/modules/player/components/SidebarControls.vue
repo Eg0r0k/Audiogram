@@ -9,6 +9,7 @@
         </span>
       </div>
       <VolumeButton />
+      <SleepTimerButton />
       <!-- <Button
         size="icon-sm"
         variant="ghost"
@@ -27,32 +28,6 @@
         />
       </Button>
 
-      <Popover
-        :modal="false"
-        :open="isQueueOpen"
-      >
-        <PopoverTrigger as-child>
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            @click="isQueueOpen = !isQueueOpen"
-          >
-            <IconPlaylist
-              class="size-4.5"
-            />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-
-          align="center"
-          side="top"
-          :side-offset="32"
-          class="w-80 p-0 h-[82dvh] mr-2"
-        >
-          <QueueList />
-        </PopoverContent>
-      </Popover>
-
       <!-- <PIPTrigger /> -->
     </div>
   </div>
@@ -60,25 +35,18 @@
 
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import IconPlaylist from "~icons/tabler/playlist";
 // import IconDevices2 from "~icons/tabler/devices-2";
 // import IconDeviceSpeaker from "~icons/tabler/device-speaker-filled";
 import IconCategory from "~icons/tabler/category";
 
 // import PIPTrigger from "@/components/pip/PIPTrigger.vue";
 import VolumeButton from "./actions/VolumeButton.vue";
+import SleepTimerButton from "./actions/SleepTimerButton.vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import { computed, ref } from "vue";
-import QueueList from "@/modules/queue/components/QueueList.vue";
+import { computed } from "vue";
 import { formatDuration } from "@/lib/format/time";
 
 const playerStore = usePlayerStore();
-const isQueueOpen = ref(false);
 
 const timeDisplay = computed(() => {
   if (playerStore.isLiveStream) return { current: "🔴", duration: "LIVE" };

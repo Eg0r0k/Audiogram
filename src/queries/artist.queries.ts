@@ -15,8 +15,10 @@ import {
   removeTracksFromCaches,
   syncArtistCaches,
 } from "./cache";
-import { unwrapResult } from "./shared";
-import type { ArtistPageData } from "./types";
+import { unwrapResult, unique } from "./shared";
+import type { ArtistPageData, PaginatedTracksResult, PaginatedAlbumsResult } from "./types";
+
+const PAGE_SIZE = 50;
 
 export async function getArtists() {
   return unwrapResult(artistRepository.findAll());
@@ -46,6 +48,52 @@ export async function getArtistPageData(artistId: ArtistId): Promise<ArtistPageD
   };
 }
 
+export async function getArtistTracksPaginated(
+  artistId: ArtistId,
+  offset: number,
+  limit = PAGE_SIZE,
+): Promise<PaginatedTracksResult> {
+  const [rawTracks, countResult] = await Promise.all([
+    unwrapResult(artistRepository.findTracksPaginated(artistId, offset, limit)),
+    unwrapResult(artistRepository.countTracksByArtistId(artistId)),
+  ]);
+
+  const artist = await getArtistByIdOrThrow(artistId);
+  const albumIds = unique(rawTracks.map(track => track.albumId));
+  const albums = await unwrapResult(albumRepository.findByIds(albumIds));
+
+  const mappedTracks = mapTracks(rawTracks, [artist], albums);
+
+  const total = countResult ?? 0;
+  const nextOffset = offset + limit < total ? offset + limit : null;
+
+  return {
+    tracks: mappedTracks,
+    nextOffset,
+    total,
+  };
+}
+
+export async function getArtistAlbumsPaginated(
+  artistId: ArtistId,
+  offset: number,
+  limit = PAGE_SIZE,
+): Promise<PaginatedAlbumsResult> {
+  const [albums, countResult] = await Promise.all([
+    unwrapResult(albumRepository.findByArtistIdPaginated(artistId, offset, limit)),
+    unwrapResult(albumRepository.countByArtistId(artistId)),
+  ]);
+
+  const total = countResult ?? 0;
+  const nextOffset = offset + limit < total ? offset + limit : null;
+
+  return {
+    albums,
+    nextOffset,
+    total,
+  };
+}
+
 export const artistQueries = {
   all: () =>
     queryOptions({
@@ -61,6 +109,16 @@ export const artistQueries = {
     queryOptions({
       queryKey: queryKeys.artists.page(artistId),
       queryFn: () => getArtistPageData(artistId),
+    }),
+  tracksPageInfinite: (artistId: ArtistId, pageParam: number) =>
+    queryOptions({
+      queryKey: [...queryKeys.artists.tracksPage(artistId), pageParam],
+      queryFn: () => getArtistTracksPaginated(artistId, pageParam),
+    }),
+  albumsPageInfinite: (artistId: ArtistId, pageParam: number) =>
+    queryOptions({
+      queryKey: [...queryKeys.artists.albums(artistId), pageParam],
+      queryFn: () => getArtistAlbumsPaginated(artistId, pageParam),
     }),
 } as const;
 
@@ -96,25 +154,25 @@ export async function updateArtistAndSync(
 
 export async function deleteArtistAndSync(
   queryClient: QueryClient,
-  pageData: ArtistPageData | null,
+  artistEntity: ArtistEntity | null,
 ) {
-  if (!pageData) {
+  if (!artistEntity) {
     return;
   }
 
-  const { artist, albums } = pageData;
-  const rawTracks = await unwrapResult(trackRepository.findByArtistId(artist.id));
+  const albums = await unwrapResult(albumRepository.findByArtistId(artistEntity.id));
+  const rawTracks = await unwrapResult(trackRepository.findByArtistId(artistEntity.id));
 
   for (const album of albums) {
     await unwrapResult(coverRepository.deleteAlbumCover(album.id));
     await unwrapResult(albumRepository.delete(album.id));
-    removeAlbumCaches(queryClient, album.id, artist.id);
+    removeAlbumCaches(queryClient, album.id, artistEntity.id);
     queryClient.removeQueries({ queryKey: queryKeys.albums.cover(album.id), exact: true });
   }
 
-  await unwrapResult(trackRepository.deleteByArtistId(artist.id));
-  await unwrapResult(artistRepository.delete(artist.id));
+  await unwrapResult(trackRepository.deleteByArtistId(artistEntity.id));
+  await unwrapResult(artistRepository.delete(artistEntity.id));
 
-  removeArtistCaches(queryClient, artist.id);
+  removeArtistCaches(queryClient, artistEntity.id);
   removeTracksFromCaches(queryClient, rawTracks.map(track => track.id));
 }

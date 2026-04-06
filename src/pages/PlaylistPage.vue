@@ -1,5 +1,5 @@
 <template>
-  <Scrollable class="flex-1">
+  <div class="flex-1 min-h-0">
     <template v-if="isLoading">
       <div class="flex items-center justify-center h-full">
         <IconLoader2 class="size-8 animate-spin text-muted-foreground" />
@@ -26,30 +26,51 @@
     </template>
 
     <template v-else-if="playlistData">
-      <MediaHero
-        :data="playlistData"
-        @play="handlePlayAll"
-        @edit="showEditDialog = true"
-        @delete="showDeleteDialog = true"
-        @add-to-queue="handleAddToQueue"
-        @share="handleShare"
-      />
-
       <TrackContextMenu
         context="playlist"
         :playlist-id="playlist?.id"
         :is-playlist-owner="true"
       >
-        <div class="px-4 mt-4">
-          <TrackRow
-            v-for="(track, index) in tracks"
-            :key="track.id"
-            :compact="isCompact"
-            :track="track"
-            :index="index + 1"
-            @play="handlePlayTrack(index)"
-          />
-        </div>
+        <VirtualScrollable
+          :items="tracks"
+          :get-item-key="getTrackKey"
+          :item-height="64"
+          :load-more-offset="120"
+          :padding-top="16"
+          :padding-bottom="16"
+          :loading="isFetchingNextPage"
+          class="h-full"
+          @load-more="handleLoadMore"
+        >
+          <template #before>
+            <MediaHero
+              :data="playlistData"
+              @play="handlePlayAll"
+              @edit="showEditDialog = true"
+              @delete="showDeleteDialog = true"
+              @add-to-queue="handleAddToQueue"
+              @share="handleShare"
+            />
+          </template>
+
+          <template #default="{ item, index }">
+            <div class="px-4">
+              <TrackRow
+                :compact="isCompact"
+                menu-target="playlist"
+                :track="item"
+                :index="index + 1"
+                @play="handlePlayTrack(index)"
+              />
+            </div>
+          </template>
+
+          <template #loader>
+            <div class="flex items-center px-4 flex-col w-full">
+              <TrackRowLoading />
+            </div>
+          </template>
+        </VirtualScrollable>
       </TrackContextMenu>
 
       <TrackDropdown
@@ -72,14 +93,14 @@
       :current-cover-url="coverUrl"
       @save="handleSave"
     />
-  </Scrollable>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
-import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
+import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import { Button } from "@/components/ui/button";
 import { useLibraryView } from "@/modules/library/composables/useLibraryView";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
@@ -88,9 +109,11 @@ import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdo
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import IconLoader2 from "~icons/tabler/loader-2";
 import { PlaylistChanges, usePlaylistPage } from "@/modules/playlist/composables/usePlaylistPage";
+import { getPlaylistPageData } from "@/queries/playlist.queries";
 import DeletePlaylistDialog from "@/modules/playlist/components/dialogs/DeletePlaylistDialog.vue";
 import EditPlaylistDialog from "@/modules/playlist/components/dialogs/EditPlaylistDialog.vue";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
+import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 
 const { t } = useI18n();
 const { isCompact } = useLibraryView();
@@ -107,10 +130,22 @@ const {
   deletePlaylist,
   updatePlaylist,
   refetch,
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage,
 } = usePlaylistPage();
 
 const showDeleteDialog = ref(false);
 const showEditDialog = ref(false);
+
+function getTrackKey(index: number) {
+  return tracks.value[index]?.id ?? index;
+}
+
+function handleLoadMore() {
+  if (!hasNextPage.value || isFetchingNextPage.value) return;
+  fetchNextPage();
+}
 
 const errorMessage = computed(() => {
   if (!error.value) return t("errors.unknown");
@@ -119,16 +154,29 @@ const errorMessage = computed(() => {
 });
 
 function handlePlayAll() {
-  if (tracks.value.length === 0 || !playlist.value) return;
-  queueStore.setQueue(tracks.value, 0, {
-    type: "playlist",
-    playlistId: playlist.value.id,
+  if (!playlist.value) return;
+
+  getPlaylistPageData(playlist.value.id).then((data) => {
+    if (data && data.tracks.length > 0) {
+      queueStore.setQueue(data.tracks, 0, {
+        type: "playlist",
+        playlistId: playlist.value!.id,
+      });
+    }
   });
 }
 
-function handlePlayTrack(index: number) {
+async function handlePlayTrack(index: number) {
   if (!playlist.value) return;
-  queueStore.setQueue(tracks.value, index, {
+
+  const selectedTrack = tracks.value[index];
+  if (!selectedTrack) return;
+
+  const data = await getPlaylistPageData(playlist.value.id);
+  const fullIndex = data.tracks.findIndex(track => track.id === selectedTrack.id);
+  if (fullIndex === -1) return;
+
+  queueStore.setQueue(data.tracks, fullIndex, {
     type: "playlist",
     playlistId: playlist.value.id,
   });

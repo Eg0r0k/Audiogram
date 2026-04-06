@@ -1,5 +1,5 @@
 <template>
-  <Scrollable class="flex-1">
+  <div class="flex-1 min-h-0">
     <template v-if="isLoading">
       <div class="flex h-full items-center justify-center">
         <IconLoader2 class="size-8 animate-spin text-muted-foreground" />
@@ -24,42 +24,64 @@
     </template>
 
     <template v-else>
-      <MediaHero
-        :data="likedData"
-        @play="handlePlayAll"
-        @shuffle="handleShuffle"
-        @add-to-queue="handleAddToQueue"
-      />
-
       <TrackContextMenu context="liked">
-        <div
-          class="px-4 mt-4"
+        <VirtualScrollable
+          :items="tracks"
+          :get-item-key="getTrackKey"
+          :item-height="64"
+          :load-more-offset="120"
+          :padding-top="16"
+          :padding-bottom="16"
+          :loading="isFetchingNextPage"
+          class="h-full"
+          @load-more="handleLoadMore"
         >
-          <TrackRow
-            v-for="(track, index) in tracks"
-            :key="track.id"
-            :track="track"
-            :index="index + 1"
-            @play="handlePlayTrack(index)"
-          />
-        </div>
+          <template #before>
+            <MediaHero
+              :data="likedData"
+              @play="handlePlayAll"
+              @shuffle="handleShuffle"
+              @add-to-queue="handleAddToQueue"
+            />
+          </template>
+
+          <template #default="{ item, index }">
+            <div
+              class="px-4"
+            >
+              <TrackRow
+                :compact="isCompact"
+                menu-target="liked"
+                :track="item"
+                :index="index + 1"
+                @play="handlePlayTrack(index)"
+              />
+            </div>
+          </template>
+
+          <template #loader>
+            <IconLoader2 class="size-5 animate-spin text-muted-foreground" />
+          </template>
+        </VirtualScrollable>
       </TrackContextMenu>
 
       <TrackDropdown context="liked" />
     </template>
-  </Scrollable>
+  </div>
 </template>
 
 <script setup lang="ts">
-import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
+import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import { Button } from "@/components/ui/button";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import IconLoader2 from "~icons/tabler/loader-2";
 import { useLikedTracksPage } from "@/modules/favorite/composables/useLikedTracksPage";
+import { getLikedTracksPageData } from "@/queries/track.queries";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
+import { useLibraryView } from "@/modules/library/composables/useLibraryView";
 
 const queueStore = useQueueStore();
 
@@ -69,13 +91,28 @@ const {
   isLoading,
   isError,
   refetch,
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage,
 } = useLikedTracksPage();
 
-function handlePlayAll() {
-  if (tracks.value.length === 0) return;
+const { isCompact } = useLibraryView();
+function getTrackKey(index: number) {
+  return tracks.value[index]?.id ?? index;
+}
 
-  queueStore.setQueue(tracks.value, 0, {
-    type: "liked",
+function handleLoadMore() {
+  if (!hasNextPage.value || isFetchingNextPage.value) return;
+  fetchNextPage();
+}
+
+function handlePlayAll() {
+  getLikedTracksPageData().then((data) => {
+    if (data && data.tracks.length > 0) {
+      queueStore.setQueue(data.tracks, 0, {
+        type: "liked",
+      });
+    }
   });
 }
 
@@ -89,10 +126,15 @@ function handleShuffle() {
   });
 }
 
-function handlePlayTrack(index: number) {
-  if (tracks.value.length === 0) return;
+async function handlePlayTrack(index: number) {
+  const selectedTrack = tracks.value[index];
+  if (!selectedTrack) return;
 
-  queueStore.setQueue(tracks.value, index, {
+  const data = await getLikedTracksPageData();
+  const fullIndex = data.tracks.findIndex(track => track.id === selectedTrack.id);
+  if (fullIndex === -1) return;
+
+  queueStore.setQueue(data.tracks, fullIndex, {
     type: "liked",
   });
 }

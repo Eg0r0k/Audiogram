@@ -46,6 +46,7 @@
         size="icon-sm"
         class="rounded-full mr-1"
         variant="ghost"
+        @click.stop="onDotsClick"
       >
         <IconDots class="size-5" />
       </Button>
@@ -53,30 +54,54 @@
         variant="ghost"
         size="icon-sm"
         class="rounded-full"
-        @click.stop="toggle"
+        @click.stop="toggleLike"
       >
-        <IconLike class="size-5" />
+        <IconLikedFilled
+          v-if="currentTrack.isLiked"
+          class="size-5 text-primary"
+        />
+        <IconLike
+          v-else
+          class="size-5"
+        />
       </Button>
     </div>
+
+    <TrackDropdown />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { Button } from "@/components/ui/button";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
 import IconDots from "~icons/tabler/dots";
 import IconLike from "~icons/tabler/heart";
+import IconLikedFilled from "~icons/tabler/heart-filled";
 import FullscreenTrigger from "@/components/layout/fullscreen/FullscreenTrigger.vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
+import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
+import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
+import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
+import type { Track } from "../types";
 
 const playerStore = usePlayerStore();
+const { toggleTrackLike } = useToggleTrackLike();
+const { openDropdown } = useTrackMenu();
 
-const currentTrack = computed(() => playerStore.currentTrack);
+const currentTrack = computed<Track | null>(() => {
+  const track = playerStore.currentTrack;
+  return track && "artistId" in track ? track : null;
+});
 
-const liked = ref(false);
-const toggle = () => {
-  liked.value = !liked.value;
+const toggleLike = async () => {
+  if (!currentTrack.value) return;
+  await toggleTrackLike(currentTrack.value);
+};
+
+const onDotsClick = (event: MouseEvent) => {
+  if (!currentTrack.value) return;
+  openDropdown(currentTrack.value, 0, event, { target: "default" });
 };
 </script>

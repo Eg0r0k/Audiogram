@@ -100,6 +100,25 @@ class PlaylistRepository extends BaseRepository<PlaylistEntity, PlaylistId> {
       return err(error as Error);
     }
   }
+
+  async findTrackIdsPaginated(
+    playlistId: PlaylistId,
+    offset: number,
+    limit: number,
+  ): Promise<Result<{ trackIds: TrackId[]; total: number }, Error>> {
+    try {
+      const playlist = await this.table.get(playlistId);
+      if (!playlist) {
+        return err(new Error("Playlist not found"));
+      }
+
+      const trackIds = playlist.trackIds.slice(offset, offset + limit);
+      return ok({ trackIds, total: playlist.trackIds.length });
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
 }
 
 export const playlistRepository = new PlaylistRepository();

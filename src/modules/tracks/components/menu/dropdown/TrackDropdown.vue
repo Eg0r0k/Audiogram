@@ -9,7 +9,7 @@
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        class="w-65 "
+        class="w-65"
         side="left"
         align="start"
       >

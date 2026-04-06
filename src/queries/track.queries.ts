@@ -11,7 +11,9 @@ import type { TrackId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import { syncTrackLikeCaches, syncTrackMetadataCaches } from "./cache";
 import { unique, unwrapResult } from "./shared";
-import type { LikedTracksPageData } from "./types";
+import type { LikedTracksPageData, PaginatedTracksResult } from "./types";
+
+const PAGE_SIZE = 50;
 
 async function loadTrackRelations(tracks: TrackEntity[]): Promise<Track[]> {
   if (tracks.length === 0) {
@@ -42,6 +44,26 @@ export async function getLikedTracksPageData(): Promise<LikedTracksPageData> {
   };
 }
 
+export async function getLikedTracksPaginated(
+  offset: number,
+  limit = PAGE_SIZE,
+): Promise<PaginatedTracksResult> {
+  const [tracks, countResult] = await Promise.all([
+    unwrapResult(trackRepository.findLikedPaginated(offset, limit)),
+    unwrapResult(trackRepository.countLiked()),
+  ]);
+
+  const mappedTracks = await loadTrackRelations(tracks);
+  const total = countResult ?? 0;
+  const nextOffset = offset + limit < total ? offset + limit : null;
+
+  return {
+    tracks: mappedTracks,
+    nextOffset,
+    total,
+  };
+}
+
 export const trackQueries = {
   liked: () =>
     queryOptions({
@@ -52,6 +74,11 @@ export const trackQueries = {
     queryOptions({
       queryKey: queryKeys.tracks.likedPage(),
       queryFn: getLikedTracksPageData,
+    }),
+  likedPageInfinite: (pageParam: number) =>
+    queryOptions({
+      queryKey: [...queryKeys.tracks.likedPageInfinite(), pageParam],
+      queryFn: () => getLikedTracksPaginated(pageParam),
     }),
 } as const;
 
