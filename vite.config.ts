@@ -6,6 +6,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import Icons from "unplugin-icons/vite";
+import { FileSystemIconLoader } from "unplugin-icons/loaders";
+
 import tailwindcss from "@tailwindcss/vite";
 import vue from "@vitejs/plugin-vue";
 import { visualizer } from "rollup-plugin-visualizer";
@@ -33,6 +35,13 @@ export default defineConfig({
     tailwindcss(),
     Icons({
       compiler: "vue3",
+      customCollections: {
+        audiogram: FileSystemIconLoader(
+          "./src/assets/icons",
+          svg => svg.replace(/^<svg /, "<svg fill=\"currentColor\" "),
+        ),
+
+      },
     }),
     VitePWA(
       {
