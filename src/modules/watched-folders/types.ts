@@ -8,8 +8,12 @@ export interface WatchedFolder {
   status: WatchedFolderStatus;
   errorMessage?: string;
 }
-
-export type WatchedFolderStatus = "idle" | "scanning" | "watching" | "error";
+export type WatchedFolderStatus
+  = | "idle"
+    | "scanning"
+    | "watching"
+    | "error"
+    | "missing";
 
 export interface ScannedFile {
   absolutePath: string;

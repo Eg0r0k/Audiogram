@@ -12,7 +12,7 @@ import {
   syncTrackMetadataCaches,
   removeTracksFromCaches,
 } from "../cache";
-import { TrackSource } from "@/db/entities";
+import { TrackSource, TrackState } from "@/db/entities";
 import type { TrackEntity, ArtistEntity, AlbumEntity, PlaylistEntity } from "@/db/entities";
 import type { Track } from "@/modules/player/types";
 import type { ArtistId, AlbumId, PlaylistId, TrackId } from "@/types/ids";
@@ -163,7 +163,7 @@ describe("cache utils", () => {
       const trackEntity: TrackEntity = {
         id: "track-1" as TrackId,
         title: "Test Track",
-        artistId: "artist-1" as ArtistId,
+        artistIds: ["artist-1" as ArtistId],
         albumId: "album-1" as AlbumId,
         tagIds: [],
         duration: 180,
@@ -171,7 +171,6 @@ describe("cache utils", () => {
         storagePath: "path",
         state: 0,
         format: {},
-        searchKey: "test",
         playCount: 0,
         likedAt: Date.now(),
         addedAt: Date.now(),
@@ -179,13 +178,15 @@ describe("cache utils", () => {
 
       const track: Track = {
         id: trackEntity.id,
+        kind: "library",
         title: trackEntity.title,
         artist: "Artist",
-        artistId: trackEntity.artistId,
+        artistIds: trackEntity.artistIds,
         albumId: trackEntity.albumId,
         albumName: "Album",
         storagePath: "path",
         source: trackEntity.source,
+        state: TrackState.READY,
         duration: trackEntity.duration,
         isLiked: true,
       };
@@ -206,15 +207,15 @@ describe("cache utils", () => {
       const trackEntity: TrackEntity = {
         id: "track-1" as TrackId,
         title: "Test Track",
-        artistId: "artist-1" as ArtistId,
+        artistIds: ["artist-1" as ArtistId],
         albumId: "album-1" as AlbumId,
         tagIds: [],
         duration: 180,
         source: TrackSource.LOCAL_INTERNAL,
         storagePath: "path",
-        state: 0,
+        state: TrackState.READY,
         format: {},
-        searchKey: "test",
+
         playCount: 0,
         likedAt: Date.now(),
         addedAt: Date.now(),
@@ -222,13 +223,15 @@ describe("cache utils", () => {
 
       const track: Track = {
         id: trackEntity.id,
+        kind: "library",
         title: trackEntity.title,
         artist: "Artist",
-        artistId: trackEntity.artistId,
+        artistIds: trackEntity.artistIds,
         albumId: trackEntity.albumId,
         albumName: "Album",
         storagePath: "path",
         source: trackEntity.source,
+        state: trackEntity.state,
         duration: trackEntity.duration,
         isLiked: true,
       };
@@ -253,15 +256,15 @@ describe("cache utils", () => {
       const trackEntity: TrackEntity = {
         id: "track-1" as TrackId,
         title: "Test Track",
-        artistId: "artist-1" as ArtistId,
+        artistIds: ["artist-1" as ArtistId],
         albumId: "album-1" as AlbumId,
         tagIds: [],
         duration: 180,
         source: TrackSource.LOCAL_INTERNAL,
         storagePath: "path",
-        state: 0,
+        state: TrackState.READY,
         format: {},
-        searchKey: "test",
+
         playCount: 0,
         likedAt: Date.now(),
         addedAt: Date.now(),
@@ -269,13 +272,15 @@ describe("cache utils", () => {
 
       const track: Track = {
         id: trackEntity.id,
+        kind: "library",
         title: trackEntity.title,
         artist: "Artist",
-        artistId: trackEntity.artistId,
+        artistIds: trackEntity.artistIds,
         albumId: trackEntity.albumId,
         albumName: "Album",
         storagePath: "path",
         source: trackEntity.source,
+        state: trackEntity.state,
         duration: trackEntity.duration,
         isLiked: true,
       };
@@ -314,15 +319,15 @@ describe("cache utils", () => {
       const trackEntity: TrackEntity = {
         id: "track-1" as TrackId,
         title: "Test Track",
-        artistId: "artist-1" as ArtistId,
+        artistIds: ["artist-1" as ArtistId],
         albumId: "album-1" as AlbumId,
         tagIds: [],
         duration: 180,
         source: TrackSource.LOCAL_INTERNAL,
         storagePath: "path",
-        state: 0,
+        state: TrackState.READY,
         format: {},
-        searchKey: "test",
+
         playCount: 0,
         likedAt: undefined,
         addedAt: Date.now(),
@@ -330,13 +335,15 @@ describe("cache utils", () => {
 
       const track: Track = {
         id: trackEntity.id,
+        kind: "library",
         title: trackEntity.title,
         artist: "Artist",
-        artistId: trackEntity.artistId,
+        artistIds: trackEntity.artistIds,
         albumId: trackEntity.albumId,
         albumName: "Album",
         storagePath: "path",
         source: trackEntity.source,
+        state: trackEntity.state,
         duration: trackEntity.duration,
         isLiked: false,
       };
@@ -376,15 +383,15 @@ describe("cache utils", () => {
       const trackEntity: TrackEntity = {
         id: "track-1" as TrackId,
         title: "Test Track",
-        artistId: "artist-1" as ArtistId,
+        artistIds: ["artist-1" as ArtistId],
         albumId: "album-1" as AlbumId,
         tagIds: [],
         duration: 180,
         source: TrackSource.LOCAL_INTERNAL,
         storagePath: "path",
-        state: 0,
+        state: TrackState.READY,
         format: {},
-        searchKey: "test",
+
         playCount: 0,
         likedAt: Date.now(),
         addedAt: Date.now(),
@@ -392,13 +399,15 @@ describe("cache utils", () => {
 
       const track: Track = {
         id: trackEntity.id,
+        kind: "library",
         title: trackEntity.title,
         artist: "Artist",
-        artistId: trackEntity.artistId,
+        artistIds: trackEntity.artistIds,
         albumId: trackEntity.albumId,
         albumName: "Album",
         storagePath: "path",
         source: trackEntity.source,
+        state: trackEntity.state,
         duration: trackEntity.duration,
         isLiked: true,
       };
@@ -429,7 +438,7 @@ describe("cache utils", () => {
         }) as { pages: Array<{ tracks: Track[] }> };
       };
 
-      expect(matchUpdater(["artists", track.artistId, "tracks", "page"]).pages[0].tracks[0].isLiked).toBe(true);
+      expect(matchUpdater(["artists", track.artistIds[0], "tracks", "page"]).pages[0].tracks[0].isLiked).toBe(true);
       expect(matchUpdater(["albums", track.albumId, "tracks", "page"]).pages[0].tracks[0].isLiked).toBe(true);
       expect(matchUpdater(["playlists", "playlist-1", "tracks", "page"]).pages[0].tracks[0].isLiked).toBe(true);
     });
@@ -440,15 +449,15 @@ describe("cache utils", () => {
       const trackEntity: TrackEntity = {
         id: "track-1" as TrackId,
         title: "Test Track",
-        artistId: "artist-1" as ArtistId,
+        artistIds: ["artist-1" as ArtistId],
         albumId: "album-1" as AlbumId,
         tagIds: [],
         duration: 180,
         source: TrackSource.LOCAL_INTERNAL,
         storagePath: "path",
-        state: 0,
+        state: TrackState.READY,
         format: {},
-        searchKey: "test",
+
         playCount: 0,
         addedAt: Date.now(),
         lyricsPath: "lyrics/track.lrc",
@@ -456,13 +465,15 @@ describe("cache utils", () => {
 
       const track: Track = {
         id: trackEntity.id,
+        kind: "library",
         title: trackEntity.title,
         artist: "Artist",
-        artistId: trackEntity.artistId,
+        artistIds: trackEntity.artistIds,
         albumId: trackEntity.albumId,
         albumName: "Album",
         storagePath: "path",
         source: trackEntity.source,
+        state: trackEntity.state,
         duration: trackEntity.duration,
         isLiked: false,
         lyricsPath: "lyrics/track.lrc",

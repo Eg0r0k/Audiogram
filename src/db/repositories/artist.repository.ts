@@ -57,8 +57,10 @@ class ArtistRepository extends BaseRepository<ArtistEntity, ArtistId> {
   ): Promise<Result<TrackEntity[], Error>> {
     try {
       const tracks = await db.tracks
-        .where("artistId")
-        .equals(artistId)
+        .filter((track) => {
+          const ids = track.artistIds;
+          return ids && Array.isArray(ids) && ids.includes(artistId);
+        })
         .offset(offset)
         .limit(limit)
         .toArray();
@@ -72,8 +74,10 @@ class ArtistRepository extends BaseRepository<ArtistEntity, ArtistId> {
   async countTracksByArtistId(artistId: ArtistId): Promise<Result<number, Error>> {
     try {
       const count = await db.tracks
-        .where("artistId")
-        .equals(artistId)
+        .filter((track) => {
+          const ids = track.artistIds;
+          return ids && Array.isArray(ids) && ids.includes(artistId);
+        })
         .count();
       return ok(count);
     }

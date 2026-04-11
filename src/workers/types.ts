@@ -13,7 +13,7 @@ export type ParseResponse
 
 export interface BaseMetadata {
   title: string;
-  artist: string;
+  artists: string[];
   album: string;
   year?: number;
   duration: number;

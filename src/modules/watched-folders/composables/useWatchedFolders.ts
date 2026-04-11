@@ -11,6 +11,7 @@ import { useWatchedFoldersStore } from "../store/watched-folders.store";
 import { startWatching, type StopWatchFn } from "../services/folder-watcher";
 import type { WatchedFolder } from "../types";
 import { musicLibraryEngine } from "@/services/importer.service";
+import { normalizePath } from "@/lib/files/filterFiles";
 
 const activeWatchers = new Map<string, StopWatchFn>();
 
@@ -45,6 +46,12 @@ export function useWatchedFolders() {
     await startFolderWatcher(folder);
   }
 
+  async function handleFolderMissing(folderId: string) {
+    stopFolderWatcher(folderId);
+    store.updateFolderStatus(folderId, "missing", {
+      errorMessage: t("watchedFolders.folderMissing"),
+    });
+  }
   async function removeFolder(id: string) {
     const folder = store.getFolder(id);
     if (!folder) return;
@@ -82,7 +89,7 @@ export function useWatchedFolders() {
     try {
       const folderExists = await exists(folder.path);
       if (!folderExists) {
-        store.updateFolderStatus(folder.id, "error", {
+        store.updateFolderStatus(folder.id, "missing", {
           errorMessage: "Folder not found",
         });
         return;
@@ -136,7 +143,7 @@ export function useWatchedFolders() {
               const fileStat = await stat(path);
               const ext = path.split(".").pop()?.toLowerCase() ?? "";
               const name = path.split("/").pop() ?? "";
-              const success = await musicLibraryEngine.importSingleExternalFile({ // ⬅️ USE
+              const success = await musicLibraryEngine.importSingleExternalFile({
                 absolutePath: path,
                 name,
                 ext,
@@ -156,11 +163,10 @@ export function useWatchedFolders() {
         }
 
         if (added > 0 || removed > 0) {
-          toast.info(`Библиотека обновлена: +${added} / -${removed}`);
           invalidateLibrary();
           await recountFolderFiles(folder.id);
         }
-      }, excludedPaths);
+      }, () => handleFolderMissing(folder.id), excludedPaths);
 
       activeWatchers.set(folder.id, stop);
       store.updateFolderStatus(folder.id, "watching");
@@ -239,7 +245,7 @@ export function useWatchedFolders() {
     }
 
     for (const folder of store.folders) {
-      if (folder.status !== "error") {
+      if (folder.status !== "error" && folder.status !== "missing") {
         await startFolderWatcher(folder);
       }
     }
@@ -247,6 +253,53 @@ export function useWatchedFolders() {
 
   function invalidateLibrary() {
     queryClient.invalidateQueries({ queryKey: ["library"] });
+  }
+
+  async function relinkFolder(folderId: string) {
+    const folder = store.getFolder(folderId);
+    if (!folder) return;
+
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: t("watchedFolders.selectNewLocation"),
+    });
+
+    if (!selected || typeof selected !== "string") return;
+
+    const newPath = normalizePath(selected);
+    const oldPath = folder.path;
+
+    store.updateFolderStatus(folderId, "scanning");
+
+    try {
+      const tracks = await db.tracks
+        .where("storagePath")
+        .startsWith(oldPath + "/")
+        .toArray();
+
+      if (tracks.length > 0) {
+        const updated = tracks.map(track => ({
+          ...track,
+          storagePath: newPath + track.storagePath.slice(oldPath.length),
+        }));
+        await db.tracks.bulkPut(updated);
+      }
+
+      store.updateFolderPath(folderId, newPath);
+
+      const updatedFolder = store.getFolder(folderId)!;
+      await scanFolder(updatedFolder);
+      await startFolderWatcher(updatedFolder);
+
+      toast.success(t("watchedFolders.folderRelinked", { name: updatedFolder.name }));
+      invalidateLibrary();
+    }
+    catch (e) {
+      const message = e instanceof Error ? e.message : "Relink failed";
+      store.updateFolderStatus(folderId, "error", { errorMessage: message });
+      toast.error(message);
+    }
   }
 
   onUnmounted(() => {
@@ -261,6 +314,7 @@ export function useWatchedFolders() {
     scanFolder,
     scanAllFolders,
     stopAllWatchers,
+    relinkFolder,
     init,
   };
 }

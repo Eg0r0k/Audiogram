@@ -25,7 +25,7 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   async findByArtistId(artistId: ArtistId): Promise<Result<TrackEntity[], Error>> {
     try {
       const tracks = await this.table
-        .where("artistId")
+        .where("artistIds")
         .equals(artistId)
         .toArray();
       return ok(tracks);
@@ -50,9 +50,15 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
 
   async deleteByArtistId(artistId: ArtistId): Promise<Result<number, Error>> {
     try {
+      const allTracks = await this.table
+        .filter((track) => {
+          const ids = track.artistIds;
+          return ids && Array.isArray(ids) && ids.includes(artistId);
+        })
+        .toArray();
       const count = await this.table
-        .where("artistId")
-        .equals(artistId)
+        .where("id")
+        .anyOf(allTracks.map(t => t.id))
         .delete();
       return ok(count);
     }
@@ -77,8 +83,10 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   async countByArtistId(artistId: ArtistId): Promise<Result<number, Error>> {
     try {
       const count = await this.table
-        .where("artistId")
-        .equals(artistId)
+        .filter((track) => {
+          const ids = track.artistIds;
+          return ids && Array.isArray(ids) && ids.includes(artistId);
+        })
         .count();
       return ok(count);
     }
@@ -157,10 +165,7 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     }
   }
 
-  async findLikedPaginated(
-    offset: number,
-    limit: number,
-  ): Promise<Result<TrackEntity[], Error>> {
+  async findLikedPaginated(offset: number, limit: number): Promise<Result<TrackEntity[], Error>> {
     try {
       const tracks = await this.table
         .where("likedAt")
@@ -168,7 +173,7 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
         .reverse()
         .offset(offset)
         .limit(limit)
-        .sortBy("likedAt");
+        .toArray();
       return ok(tracks);
     }
     catch (error) {

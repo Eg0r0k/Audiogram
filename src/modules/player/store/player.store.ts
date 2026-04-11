@@ -3,9 +3,13 @@ import { computed, ref, shallowRef, markRaw, watch } from "vue";
 import { Player, type PlayerState } from "lyra-audio";
 import Hls from "hls.js";
 import { useAudioSettingsStore } from "@/modules/settings/store/audio";
-import type { PlayerTrack, RepeatMode, Track } from "../types";
-import { isLiveStreamTrack } from "../utils";
-import { TrackSource } from "@/db/entities";
+import {
+  type PlayerTrack,
+  isLibraryTrack,
+  isEphemeralTrack,
+  type RepeatMode,
+} from "../types";
+import { TrackSource, TrackState } from "@/db/entities";
 import { IS_TAURI } from "@/lib/environment/userAgent";
 import { storageService } from "@/db/storage";
 import { statsService } from "@/services/stats.service";
@@ -28,19 +32,15 @@ export const usePlayerStore = defineStore("player", () => {
   const lyricsStatus = ref<"idle" | "loading" | "ready" | "error">("idle");
   const sleepTimerEndsAt = ref<number | null>(null);
   const sleepTimerRemainingMs = ref(0);
+  const sleepAfterCurrentTrack = ref(false);
+  const sleepAfterCurrentTrackTriggeredOnEndSignal = ref(0);
 
   let lyricsRequestId = 0;
-
   let _activeFadeAbort: AbortController | null = null;
   let _sleepTimerTimeout: ReturnType<typeof setTimeout> | null = null;
   let _sleepTimerInterval: ReturnType<typeof setInterval> | null = null;
 
-  const cancelActiveFade = () => {
-    if (_activeFadeAbort) {
-      _activeFadeAbort.abort();
-      _activeFadeAbort = null;
-    }
-  };
+  // ── Computed ────────────────────────────────────────────────────────────────
 
   const isPlaying = computed(
     () => status.value === "playing" || status.value === "buffering",
@@ -53,16 +53,23 @@ export const usePlayerStore = defineStore("player", () => {
   });
 
   const canPlay = computed(() => player.value?.isReady ?? false);
+
   const activeLyricsIndex = computed(() =>
     findActiveLyricsIndex(lyrics.value, currentTime.value),
   );
+
   const isSleepTimerActive = computed(() => sleepTimerEndsAt.value !== null);
 
   const isLiveStream = computed(() => {
-    if (!currentTrack.value) return false;
     const track = currentTrack.value;
-    const url = track && "url" in track ? track.url : undefined;
-    return isLiveStreamTrack({ duration: duration.value, url });
+    if (!track) return false;
+    if (isEphemeralTrack(track) && track.source.type === "url") {
+      return duration.value <= 0;
+    }
+    if (isLibraryTrack(track) && track.source === TrackSource.REMOTE_HLS) {
+      return duration.value <= 0;
+    }
+    return false;
   });
 
   const canSeek = computed(() => {
@@ -72,12 +79,18 @@ export const usePlayerStore = defineStore("player", () => {
     return true;
   });
 
+  const cancelActiveFade = () => {
+    if (_activeFadeAbort) {
+      _activeFadeAbort.abort();
+      _activeFadeAbort = null;
+    }
+  };
+
   const clearSleepTimerHandles = () => {
     if (_sleepTimerTimeout !== null) {
       clearTimeout(_sleepTimerTimeout);
       _sleepTimerTimeout = null;
     }
-
     if (_sleepTimerInterval !== null) {
       clearInterval(_sleepTimerInterval);
       _sleepTimerInterval = null;
@@ -85,12 +98,9 @@ export const usePlayerStore = defineStore("player", () => {
   };
 
   const updateSleepTimerRemaining = () => {
-    if (sleepTimerEndsAt.value === null) {
-      sleepTimerRemainingMs.value = 0;
-      return;
-    }
-
-    sleepTimerRemainingMs.value = Math.max(0, sleepTimerEndsAt.value - Date.now());
+    sleepTimerRemainingMs.value = sleepTimerEndsAt.value === null
+      ? 0
+      : Math.max(0, sleepTimerEndsAt.value - Date.now());
   };
 
   const cancelSleepTimer = () => {
@@ -111,145 +121,140 @@ export const usePlayerStore = defineStore("player", () => {
       cancelSleepTimer();
       return;
     }
-
     sleepTimerEndsAt.value = Date.now() + durationMs;
   };
 
-  const initPlayer = async () => {
-    cancelActiveFade();
+  const initPlayer
+    = async () => {
+      cancelActiveFade();
 
-    if (player.value) {
-      const oldPlayer = player.value;
-      player.value = null;
-      await oldPlayer.dispose();
+      if (player.value) {
+        const oldPlayer = player.value;
+        player.value = null;
+        await oldPlayer.dispose();
+      }
+
+      const audioSettings = useAudioSettingsStore();
+      const newPlayer = new Player({
+        mode: "auto",
+        Hls,
+        loudnessNormalization: {
+          enabled: audioSettings.isNormalizationEnabled,
+          targetLufs: audioSettings.normalizationTargetLufs,
+          preventClipping: audioSettings.normalizationPreventClipping,
+        },
+      });
+
+      newPlayer.setVolume(volume.value);
+      newPlayer.setMuted(isMuted.value);
+      player.value = markRaw(newPlayer);
+
+      newPlayer.on("statechange", ({ to }) => {
+        if (player.value === newPlayer) status.value = to;
+      });
+      newPlayer.on("ended", () => {
+        if (player.value !== newPlayer) return;
+        currentTime.value = 0;
+        trackEndedSignal.value++;
+      });
+      newPlayer.on("timeupdate", ({ currentTime: t }) => {
+        if (player.value === newPlayer) currentTime.value = t;
+      });
+      newPlayer.on("durationchange", (dur) => {
+        if (player.value === newPlayer) duration.value = dur;
+      });
+      newPlayer.on("loadedmetadata", ({ duration: dur }) => {
+        if (player.value === newPlayer) duration.value = dur;
+      });
+      newPlayer.on("canplay", () => {
+        if (player.value !== newPlayer) return;
+        duration.value = player.value.duration;
+        graphRevision.value++;
+      });
+      newPlayer.on("volumechange", ({ volume: vol, muted }) => {
+        if (player.value !== newPlayer) return;
+        volume.value = vol;
+        isMuted.value = muted;
+      });
+      newPlayer.on("error", (err) => {
+        if (player.value === newPlayer) console.error("[Player] error:", err);
+      });
+
+      return newPlayer;
+    };
+
+  // ── URL resolution ──────────────────────────────────────────────────────────
+
+  /**
+   * Resolves the audio URL/source for any PlayerTrack.
+   *
+   * Library tracks:
+   *   LOCAL_INTERNAL → storageService.getAudioUrl (OPFS SW route or Tauri asset)
+   *   LOCAL_EXTERNAL → storageService.getAudioUrl (native FS path, Tauri only)
+   *   REMOTE_HLS     → storagePath IS the stream URL
+   *
+   * Ephemeral tracks:
+   *   file → createObjectURL (web drag-and-drop / file picker)
+   *   path → storageService.getAudioUrl (Tauri "Open with", no import)
+   *   url  → used directly (radio, HLS stream)
+   */
+  const resolveTrackUrl = async (track: PlayerTrack): Promise<string | null> => {
+    if (isEphemeralTrack(track)) {
+      switch (track.source.type) {
+        case "file":
+          return URL.createObjectURL(track.source.file);
+
+        case "path": {
+          if (!IS_TAURI) {
+            console.warn("[Player] path-based ephemeral tracks require Tauri");
+            return null;
+          }
+          const result = await storageService.getAudioUrl(track.source.path);
+          return result.isOk() ? result.value : null;
+        }
+
+        case "url":
+          return track.source.url;
+      }
     }
 
-    const audioSettings = useAudioSettingsStore();
+    if (track.source === TrackSource.REMOTE_HLS) {
+      return track.storagePath || null;
+    }
 
-    const newPlayer = new Player({
-      mode: "auto",
-      Hls,
-      loudnessNormalization: {
-        enabled: audioSettings.isNormalizationEnabled,
-        targetLufs: audioSettings.normalizationTargetLufs,
-        preventClipping: audioSettings.normalizationPreventClipping,
-      },
-    });
+    if (track.source === TrackSource.LOCAL_EXTERNAL && !IS_TAURI) {
+      console.warn("[Player] LOCAL_EXTERNAL tracks require Tauri");
+      return null;
+    }
 
-    newPlayer.setVolume(volume.value);
-    newPlayer.setMuted(isMuted.value);
-
-    player.value = markRaw(newPlayer);
-
-    newPlayer.on("statechange", ({ to }) => {
-      if (player.value !== newPlayer) return;
-      status.value = to;
-    });
-
-    newPlayer.on("ended", () => {
-      if (player.value !== newPlayer) return;
-      currentTime.value = 0;
-      trackEndedSignal.value++;
-    });
-
-    newPlayer.on("timeupdate", ({ currentTime: t }) => {
-      if (player.value !== newPlayer) return;
-      currentTime.value = t;
-    });
-
-    newPlayer.on("durationchange", (dur) => {
-      if (player.value !== newPlayer) return;
-      duration.value = dur;
-    });
-
-    newPlayer.on("loadedmetadata", ({ duration: dur }) => {
-      if (player.value !== newPlayer) return;
-      duration.value = dur;
-    });
-
-    newPlayer.on("canplay", () => {
-      if (player.value !== newPlayer) return;
-      if (player.value) duration.value = player.value.duration;
-      graphRevision.value++;
-    });
-
-    newPlayer.on("volumechange", ({ volume: vol, muted }) => {
-      if (player.value !== newPlayer) return;
-      volume.value = vol;
-      isMuted.value = muted;
-    });
-
-    newPlayer.on("normalizationchange", (payload) => {
-      if (player.value !== newPlayer) return;
-      console.log("[Player] normalizationchange", payload);
-    });
-
-    newPlayer.on("error", (err) => {
-      if (player.value !== newPlayer) return;
-      console.error("[Player] error:", err);
-    });
-
-    return newPlayer;
+    const result = await storageService.getAudioUrl(track.storagePath);
+    return result.isOk() ? result.value : null;
   };
-  // ! DELETE LATER
-  const applyTrackLoudnessMetadata = (p: Player, track: PlayerTrack) => {
-    if (typeof track.integratedLufs === "number") {
+
+  const applyLoudnessMetadata = (p: Player, track: PlayerTrack) => {
+    if (isLibraryTrack(track) && typeof track.integratedLufs === "number") {
       p.setLoudnessMetadata({
         integratedLufs: track.integratedLufs,
         truePeakDbtp: track.truePeakDbtp,
       });
-      return;
     }
-
-    p.clearLoudnessMetadata();
-  };
-
-  const resolveTrackUrl = async (track: PlayerTrack): Promise<string | null> => {
-    if ("url" in track && track.url) {
-      return track.url;
+    else {
+      p.clearLoudnessMetadata();
     }
-
-    if (!("storagePath" in track) || !track.storagePath) {
-      return null;
-    }
-
-    if ("source" in track && track.source === TrackSource.LOCAL_EXTERNAL) {
-      if (!IS_TAURI) return null;
-      const result = await storageService.getAudioUrl(track.storagePath);
-      return result.isOk() ? result.value : null;
-    }
-
-    const result = await storageService.getFile(track.storagePath);
-    if (result.isErr()) return null;
-
-    return URL.createObjectURL(result.value);
   };
 
   const loadUrl = async (p: Player, url: string) => {
-    const normalized = String(url).trim().toLowerCase();
-    const isHlsUrl
-      = normalized.includes(".m3u8")
-        || normalized.includes("application/vnd.apple.mpegurl");
+    const isHls = url.includes(".m3u8")
+      || url.includes("application/vnd.apple.mpegurl");
 
-    console.log("[PlayerStore] loadUrl", {
-      originalUrl: url,
-      normalized,
-      isHlsUrl,
-      playerModeBeforeLoad: p.mode,
-      hasHlsCtor: !!Hls,
-    });
-
-    if (isHlsUrl) {
-      console.log("[PlayerStore] loadUrl -> HLS source");
+    if (isHls) {
       await p.load({ url, type: "hls" });
-      console.log("[PlayerStore] loadUrl <- HLS loaded");
     }
     else {
-      console.log("[PlayerStore] loadUrl -> regular url");
       await p.load(url);
-      console.log("[PlayerStore] loadUrl <- regular url loaded");
     }
   };
+
   const play = async () => {
     if (!player.value) {
       const track = currentTrack.value;
@@ -278,10 +283,7 @@ export const usePlayerStore = defineStore("player", () => {
 
     if (wasCancellingFade && player.value.isPlaying) {
       if (shouldFade) {
-        await player.value.fadeTo(
-          isMuted.value ? 0 : volume.value,
-          audioSettings.fadeInDuration,
-        );
+        await player.value.fadeTo(isMuted.value ? 0 : volume.value, audioSettings.fadeInDuration);
       }
       else {
         player.value.setVolume(volume.value);
@@ -297,6 +299,7 @@ export const usePlayerStore = defineStore("player", () => {
       await player.value.play();
     }
   };
+
   const pause = () => {
     if (!player.value || !isPlaying.value || _activeFadeAbort) return;
 
@@ -324,17 +327,12 @@ export const usePlayerStore = defineStore("player", () => {
       player.value?.setVolume(volume.value);
       return;
     }
-    if (isPlaying.value) {
-      pause();
-    }
-    else {
-      await play();
-    }
+    if (isPlaying.value) pause();
+    else await play();
   };
 
   const stop = () => {
     if (!player.value) return;
-
     cancelActiveFade();
 
     const audioSettings = useAudioSettingsStore();
@@ -356,57 +354,45 @@ export const usePlayerStore = defineStore("player", () => {
     }
   };
 
-  const playPlayerTrack = async (track: PlayerTrack) => {
-    statsService.stopListening(currentTime.value);
+  /**
+   * Main entry point for playing any track.
+   * Throws on failure — queue.store uses this to skip to next.
+   */
+  const playPlayerTrack = async (track: PlayerTrack): Promise<void> => {
+    // Guard: skip broken library tracks before even trying
+    if (isLibraryTrack(track) && track.state === TrackState.BROKEN) {
+      throw new Error(`Track is marked as broken: "${track.title}"`);
+    }
+
+    if (isLibraryTrack(currentTrack.value ?? ({} as PlayerTrack))) {
+      statsService.stopListening(currentTime.value);
+    }
+
     const p = await initPlayer();
     currentTrack.value = track;
 
+    const url = await resolveTrackUrl(track);
+    if (!url) {
+      status.value = "error";
+      player.value = null;
+      throw new Error(`Cannot resolve audio source for: "${track.title}"`);
+    }
+
     try {
-      if ("file" in track && track.file) {
-        await p.load(track.file);
-        applyTrackLoudnessMetadata(p, track);
-        await play();
-        return;
+      if (isEphemeralTrack(track) && track.source.type === "file") {
+        await p.load(track.source.file);
       }
-      let url: string | null = null;
-
-      if ("url" in track && track.url) {
-        url = track.url;
-      }
-      else if ("source" in track && track.source === TrackSource.LOCAL_EXTERNAL) {
-        if (!IS_TAURI) {
-          console.warn("[Player] LOCAL_EXTERNAL not supported in web");
-          status.value = "error";
-          player.value = null;
-          return;
-        }
-
-        const result = await storageService.getAudioUrl(track.storagePath);
-        if (result.isErr()) {
-          throw new Error(`getAudioUrl failed: ${result.error.message}`);
-        }
-        url = result.value;
-      }
-      else if ("storagePath" in track && track.storagePath) {
-        const result = await storageService.getAudioUrl(track.storagePath);
-        if (result.isErr()) {
-          throw new Error(`getAudioUrl failed: ${result.error.message}`);
-        }
-        url = result.value;
+      else {
+        await loadUrl(p, url);
       }
 
-      if (!url) {
-        throw new Error("Cannot resolve track source");
-      }
-
-      await loadUrl(p, url);
-      applyTrackLoudnessMetadata(p, track);
+      applyLoudnessMetadata(p, track);
       await play();
     }
     catch (err) {
-      console.error("[Player] playPlayerTrack failed:", err);
       status.value = "error";
       player.value = null;
+      throw err;
     }
   };
 
@@ -451,32 +437,26 @@ export const usePlayerStore = defineStore("player", () => {
     }
   };
 
-  const getAudioGraph = () => {
-    return player.value?.graph ?? null;
-  };
+  const getAudioGraph = () => player.value?.graph ?? null;
 
   watch(currentTrack, (track) => {
-    if (!track || !("artistId" in track)) return;
+    if (!track || !isLibraryTrack(track)) return;
     statsService.startListening(
       track.id as TrackId,
-      (track as Track).artistId,
-      (track as Track).albumId,
-      (track as Track).duration,
+      track.artistIds[0],
+      track.albumId,
+      track.duration,
     );
   });
 
   watch(currentTrack, async (track) => {
     const requestId = ++lyricsRequestId;
-
     lyrics.value = [];
     lyricsStatus.value = "idle";
 
-    if (!track || !("lyricsPath" in track) || !track.lyricsPath) {
-      return;
-    }
+    if (!track || !isLibraryTrack(track) || !track.lyricsPath) return;
 
     lyricsStatus.value = "loading";
-
     const result = await storageService.getFile(track.lyricsPath);
     if (requestId !== lyricsRequestId) return;
 
@@ -488,7 +468,6 @@ export const usePlayerStore = defineStore("player", () => {
     try {
       const text = await result.value.text();
       if (requestId !== lyricsRequestId) return;
-
       lyrics.value = parseLrc(text);
       lyricsStatus.value = "ready";
     }
@@ -500,31 +479,29 @@ export const usePlayerStore = defineStore("player", () => {
 
   watch(trackEndedSignal, (val) => {
     if (val === 0) return;
-    statsService.stopListening(currentTime.value, true);
+    if (isLibraryTrack(currentTrack.value ?? ({} as PlayerTrack))) {
+      statsService.stopListening(currentTime.value, true);
+    }
+    if (!sleepAfterCurrentTrack.value) return;
+    sleepAfterCurrentTrack.value = false;
+    sleepAfterCurrentTrackTriggeredOnEndSignal.value = val;
   }, { flush: "sync" });
 
   watch(sleepTimerEndsAt, (endsAt) => {
     clearSleepTimerHandles();
-
     if (endsAt === null) {
       sleepTimerRemainingMs.value = 0;
       return;
     }
 
     updateSleepTimerRemaining();
-
     if (sleepTimerRemainingMs.value <= 0) {
       handleSleepTimerExpired();
       return;
     }
 
-    _sleepTimerInterval = setInterval(() => {
-      updateSleepTimerRemaining();
-    }, 1000);
-
-    _sleepTimerTimeout = setTimeout(() => {
-      handleSleepTimerExpired();
-    }, sleepTimerRemainingMs.value);
+    _sleepTimerInterval = setInterval(updateSleepTimerRemaining, 1000);
+    _sleepTimerTimeout = setTimeout(handleSleepTimerExpired, sleepTimerRemainingMs.value);
   }, { immediate: true, flush: "sync" });
 
   return {
@@ -546,6 +523,7 @@ export const usePlayerStore = defineStore("player", () => {
     sleepTimerEndsAt,
     sleepTimerRemainingMs,
     isSleepTimerActive,
+    sleepAfterCurrentTrack,
     progress,
     canPlay,
     isLiveStream,

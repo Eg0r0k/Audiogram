@@ -15,4 +15,5 @@ export interface QueueItem {
   track: PlayerTrack;
   source: QueueSource;
   addedAt: number;
+  cover?: string | null;
 }

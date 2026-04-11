@@ -41,10 +41,13 @@ export async function getArtistPageData(artistId: ArtistId): Promise<ArtistPageD
     unwrapResult(trackRepository.findByArtistId(artistId)),
   ]);
 
+  const allArtistIds = unique(rawTracks.flatMap(t => t.artistIds));
+  const allArtists = await unwrapResult(artistRepository.findByIds(allArtistIds));
+
   return {
     artist,
     albums,
-    tracks: mapTracks(rawTracks, [artist], albums),
+    tracks: mapTracks(rawTracks, allArtists, albums),
   };
 }
 
@@ -58,11 +61,14 @@ export async function getArtistTracksPaginated(
     unwrapResult(artistRepository.countTracksByArtistId(artistId)),
   ]);
 
-  const artist = await getArtistByIdOrThrow(artistId);
+  await getArtistByIdOrThrow(artistId);
   const albumIds = unique(rawTracks.map(track => track.albumId));
   const albums = await unwrapResult(albumRepository.findByIds(albumIds));
 
-  const mappedTracks = mapTracks(rawTracks, [artist], albums);
+  const allArtistIds = unique(rawTracks.flatMap(t => t.artistIds));
+  const allArtists = await unwrapResult(artistRepository.findByIds(allArtistIds));
+
+  const mappedTracks = mapTracks(rawTracks, allArtists, albums);
 
   const total = countResult ?? 0;
   const nextOffset = offset + limit < total ? offset + limit : null;

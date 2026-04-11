@@ -1,8 +1,9 @@
-import { TrackSource } from "@/db/entities";
-import { AlbumId, ArtistId, TrackId } from "@/types/ids";
+import type { TrackSource, TrackState } from "@/db/entities";
+import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 
 export const REPEAT_MODES = ["off", "all", "one"] as const;
 export type RepeatMode = typeof REPEAT_MODES[number];
+
 export interface TrackLoudnessMetadata {
   integratedLufs?: number;
   truePeakDbtp?: number;
@@ -10,29 +11,112 @@ export interface TrackLoudnessMetadata {
   replayPeak?: number;
 }
 
+//
+// Covers all storage sources via TrackSource enum:
+//   LOCAL_INTERNAL → file copied into app storage (OPFS web / internal Tauri)
+//   LOCAL_EXTERNAL → file on user FS, referenced by path (Tauri only)
+//   REMOTE_HLS     → HLS stream URL stored in DB (future: internet radio stations)
+//
 export interface Track extends TrackLoudnessMetadata {
+  kind: "library";
   id: TrackId;
   title: string;
   artist: string;
-  artistId: ArtistId;
+  artistIds: ArtistId[];
   albumId: AlbumId;
   albumName: string;
   storagePath: string;
   source: TrackSource;
+  state: TrackState;
   duration: number;
   isLiked: boolean;
+  trackNo?: number;
+  diskNo?: number;
   lyricsPath?: string;
 }
 
-export interface LocalTrack extends TrackLoudnessMetadata {
+//
+// Discriminated union for the three ways an ephemeral track can provide audio.
+//
+export type EphemeralSource
+  = | { type: "file"; file: File } // Web: drag-and-drop or file picker
+    | { type: "path"; path: string } // Tauri: "Open with" / drag-and-drop native file
+    | { type: "url"; url: string }; // Any: HLS radio, direct stream URL
+
+// ── Ephemeral track (NOT in DB) ───────────────────────────────────────────────
+//
+// Temporary playback without importing into the library.
+// Examples:
+//   - Tauri "Open with" → type: "path"
+//   - Web drag-and-drop before import decision → type: "file"
+//   - Internet radio / ad-hoc HLS stream → type: "url"
+//
+// Never persisted. Not tracked in stats. No likedAt / artistId / albumId.
+//
+export interface EphemeralTrack {
+  kind: "ephemeral";
   id: string;
   title: string;
-  artist: string;
-  cover?: string;
+  artist?: string;
+  albumName?: string;
   duration?: number;
-  file?: File;
-  url?: string;
-  storagePath?: string;
+  cover?: string;
+  source: EphemeralSource;
 }
 
-export type PlayerTrack = Track | LocalTrack;
+export type PlayerTrack = Track | EphemeralTrack;
+
+export function isLibraryTrack(track: PlayerTrack): track is Track {
+  return track.kind === "library";
+}
+
+export function isEphemeralTrack(track: PlayerTrack): track is EphemeralTrack {
+  return track.kind === "ephemeral";
+}
+
+// ── Ephemeral track factories ─────────────────────────────────────────────────
+
+/** Web: file picked or dropped, not yet imported. */
+export function ephemeralFromFile(file: File, cover?: string): EphemeralTrack {
+  return {
+    kind: "ephemeral",
+    id: crypto.randomUUID(),
+    title: file.name.replace(/\.[^.]+$/, ""),
+    cover,
+    source: { type: "file", file },
+  };
+}
+
+/** Tauri: native file path from "Open with" or drag-and-drop. */
+export function ephemeralFromPath(
+  path: string,
+  meta?: Pick<EphemeralTrack, "title" | "artist" | "albumName" | "duration" | "cover">,
+): EphemeralTrack {
+  const filename = path.split(/[\\/]/).pop() ?? path;
+  return {
+    kind: "ephemeral",
+    id: crypto.randomUUID(),
+    title: meta?.title ?? filename.replace(/\.[^.]+$/, ""),
+    artist: meta?.artist,
+    albumName: meta?.albumName,
+    duration: meta?.duration,
+    cover: meta?.cover,
+    source: { type: "path", path },
+  };
+}
+
+/** Any platform: HLS stream, internet radio, direct URL. */
+export function ephemeralFromUrl(
+  url: string,
+  meta: Pick<EphemeralTrack, "title" | "artist" | "albumName" | "cover">,
+): EphemeralTrack {
+  return {
+    kind: "ephemeral",
+    id: crypto.randomUUID(),
+    title: meta.title,
+    artist: meta.artist,
+    albumName: meta.albumName,
+    cover: meta.cover,
+    source: { type: "url", url },
+  };
+}

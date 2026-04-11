@@ -32,6 +32,23 @@ export class AppDatabase extends Dexie {
       covers: "&id, ownerType, ownerId, [ownerType+ownerId], updatedAt",
     });
 
+    this.version(2).stores({
+      tracks: "&id, title, *artistIds, albumId, *tagIds, state, likedAt, addedAt, duration, storagePath, fingerprint",
+      artists: "&id, name, updatedAt",
+      albums: "&id, title, artistId, year, updatedAt, [artistId+year], [title+artistId]",
+      tags: "&id, &name",
+      playlists: "&id, name, updatedAt, addedAt",
+      listenEvents: "&id, trackId, artistId, albumId, startedAt",
+      covers: "&id, ownerType, ownerId, [ownerType+ownerId], updatedAt",
+    }).upgrade((tx) => {
+      return tx.table("tracks").toCollection().modify((track) => {
+        if (track.artistId && !track.artistIds) {
+          track.artistIds = [track.artistId];
+        }
+        delete track.artistId;
+      });
+    });
+
     this.tracks = this.table("tracks");
     this.artists = this.table("artists");
     this.albums = this.table("albums");

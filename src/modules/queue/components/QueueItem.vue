@@ -22,7 +22,7 @@
 
     <div class="size-10 shrink-0 rounded-md overflow-hidden bg-muted flex items-center justify-center">
       <NuxtImage
-        :src="item.track.cover"
+        :src="coverUrl"
         :alt="item.track.title"
         fallback-src="/img/fallback.svg"
         class="size-full object-cover"
@@ -59,6 +59,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
 import type { QueueItem } from "../types";
 import { formatDuration } from "@/lib/format/time";
 import { Button } from "@/components/ui/button";
@@ -84,4 +85,12 @@ const formattedDuration = computed(() => {
   const dur = "duration" in track ? track.duration : undefined;
   return dur ? formatDuration(dur) : "--:--";
 });
+
+const albumId = computed(() => {
+  const track = props.item.track;
+  return "albumId" in track ? track.albumId : null;
+});
+
+const { url: coverBlobUrl } = useEntityCover("album", albumId);
+const coverUrl = computed(() => props.item.cover ?? coverBlobUrl.value ?? "/img/fallback.svg");
 </script>

@@ -26,6 +26,7 @@
       :folder="folder"
       @scan="handleScan"
       @remove="confirmRemove"
+      @relink="relinkFolder"
     />
 
     <Button
@@ -110,6 +111,7 @@ const {
   removeFolder,
   scanFolder,
   scanAllFolders,
+  relinkFolder,
 } = useWatchedFolders();
 
 const isAnyScanning = computed(() =>

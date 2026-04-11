@@ -57,6 +57,8 @@
             <div class="px-4">
               <TrackRow
                 :compact="isCompact"
+                :hide-cover="true"
+                :cover-url="coverUrl ?? undefined"
                 menu-target="album"
                 :track="item"
                 :index="index + 1"

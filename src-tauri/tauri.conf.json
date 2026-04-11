@@ -10,8 +10,15 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "trayIcon":{
+      "iconPath": "icons/32x32.png",
+      "iconAsTemplate": true,
+      "menuOnLeftClick": false
+    },
+    "withGlobalTauri": true,
     "windows": [
       {
+        "label": "main",
         "title": "audiogram",
         "decorations": false,
         "width": 800,

@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, ref, watch } from "vue";
 import { QueueItemId } from "@/types/ids";
-import type { PlayerTrack } from "@/modules/player/types";
+import { isEphemeralTrack, type PlayerTrack } from "@/modules/player/types";
 import type { QueueItem, QueueSource } from "../types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { fisherYatesShuffle } from "@/lib/shuffle";
@@ -52,12 +52,13 @@ export const useQueueStore = defineStore("queue", () => {
     return queue.value.slice(0, currentIndex.value);
   });
 
-  function createItem(track: PlayerTrack, source: QueueSource): QueueItem {
+  function createItem(track: PlayerTrack, source: QueueSource, cover?: string | null): QueueItem {
     return {
       id: QueueItemId(crypto.randomUUID()),
       track,
       source,
       addedAt: Date.now(),
+      cover,
     };
   }
 
@@ -82,6 +83,8 @@ export const useQueueStore = defineStore("queue", () => {
   }
 
   function syncTrackMetadata(nextTrack: PlayerTrack): void {
+    if (isEphemeralTrack(nextTrack)) return;
+
     queue.value = patchQueueItem(queue.value, nextTrack);
     originalQueue.value = patchQueueItem(originalQueue.value, nextTrack);
   }
@@ -101,7 +104,7 @@ export const useQueueStore = defineStore("queue", () => {
     }
   }
 
-  async function skipToNextPlayable(maxAttempts: number = 3): Promise<void> {
+  async function skipToNextPlayable(maxAttempts: number = queue.value.length): Promise<void> {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const nextIdx = currentIndex.value + 1;
 
@@ -138,7 +141,11 @@ export const useQueueStore = defineStore("queue", () => {
     isShuffled.value = false;
 
     const safeIndex = Math.max(0, Math.min(startIndex, items.length - 1));
-    await playAtIndex(safeIndex);
+    currentIndex.value = safeIndex - 1;
+    const success = await playAtIndex(safeIndex);
+    if (!success) {
+      await skipToNextPlayable(items.length - safeIndex);
+    }
   }
 
   function addToQueue(

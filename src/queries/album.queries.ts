@@ -15,7 +15,7 @@ import {
   syncAlbumCaches,
   updateCoverCache,
 } from "./cache";
-import { unwrapResult } from "./shared";
+import { unwrapResult, unique } from "./shared";
 import type { AlbumPageData, PaginatedTracksResult } from "./types";
 
 const PAGE_SIZE = 50;
@@ -71,13 +71,13 @@ export async function getAlbumTracksPaginated(
   ]);
 
   const album = await getAlbumByIdOrThrow(albumId);
-  const artist = await unwrapResult(artistRepository.findById(album.artistId));
 
-  if (!artist) {
-    throw new Error("Artist not found");
-  }
+  const allArtistIds = unique(rawTracks.flatMap(t => t.artistIds));
+  const allArtists = allArtistIds.length > 0
+    ? await unwrapResult(artistRepository.findByIds(allArtistIds))
+    : [];
 
-  const mappedTracks = mapTracks(rawTracks, [artist], [album]);
+  const mappedTracks = mapTracks(rawTracks, allArtists, [album]);
 
   const total = countResult ?? 0;
   const nextOffset = offset + limit < total ? offset + limit : null;

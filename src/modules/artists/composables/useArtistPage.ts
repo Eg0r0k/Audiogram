@@ -1,12 +1,15 @@
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
 import { ArtistId } from "@/types/ids";
 import type { ArtistEntity } from "@/db/entities";
 import { ArtistData } from "@/modules/media-hero/types";
+import { queryKeys } from "@/queries/query-keys";
 import {
   artistQueries,
   deleteArtistAndSync,
+  getArtistAlbumsPaginated,
+  getArtistTracksPaginated,
   updateArtistAndSync,
 } from "@/queries/artist.queries";
 
@@ -18,22 +21,62 @@ export function useArtistPage() {
   const artistId = computed(() => ArtistId(route.params.id as string));
 
   const {
-    data: artistPageData,
+    data: artistData,
     isLoading: isArtistLoading,
     isError,
     error,
     refetch,
-  } = useQuery(computed(() => artistQueries.page(artistId.value)));
+  } = useQuery(computed(() => artistQueries.detail(artistId.value)));
 
-  const artist = computed(() => artistPageData.value?.artist ?? null);
-  const albums = computed(() => artistPageData.value?.albums ?? []);
-  const tracks = computed(() => artistPageData.value?.tracks ?? []);
+  const artist = computed(() => artistData.value ?? null);
+
+  const {
+    data: tracksInfiniteData,
+    fetchNextPage: fetchNextTrackPage,
+    hasNextPage: hasNextTrackPage,
+    isFetchingNextPage: isFetchingNextTrackPage,
+  } = useInfiniteQuery({
+    queryKey: computed(() => queryKeys.artists.tracksPage(artistId.value)),
+    queryFn: ({ pageParam = 0 }) => getArtistTracksPaginated(artistId.value, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: lastPage => lastPage.nextOffset,
+    enabled: computed(() => !!artist.value),
+  });
+
+  const tracks = computed(() =>
+    tracksInfiniteData.value?.pages.flatMap(page => page.tracks) ?? [],
+  );
+
+  const {
+    data: albumsInfiniteData,
+    fetchNextPage: fetchNextAlbumPage,
+    hasNextPage: hasNextAlbumPage,
+    isFetchingNextPage: isFetchingNextAlbumPage,
+  } = useInfiniteQuery({
+    queryKey: computed(() => queryKeys.artists.albums(artistId.value)),
+    queryFn: ({ pageParam = 0 }) => getArtistAlbumsPaginated(artistId.value, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: lastPage => lastPage.nextOffset,
+    enabled: computed(() => !!artist.value),
+  });
+
+  const albums = computed(() =>
+    albumsInfiniteData.value?.pages.flatMap(page => page.albums) ?? [],
+  );
+
+  const trackCount = computed(
+    () => tracksInfiniteData.value?.pages[0]?.total ?? 0,
+  );
+
+  const albumCount = computed(
+    () => albumsInfiniteData.value?.pages[0]?.total ?? 0,
+  );
 
   const isLoading = computed(
     () => isArtistLoading.value,
   );
 
-  const artistData = computed<ArtistData | null>(() => {
+  const artistDataMapped = computed<ArtistData | null>(() => {
     if (!artist.value) return null;
 
     return {
@@ -47,7 +90,7 @@ export function useArtistPage() {
   });
 
   const { mutateAsync: deleteArtist } = useMutation({
-    mutationFn: () => deleteArtistAndSync(queryClient, artistPageData.value ?? null),
+    mutationFn: () => deleteArtistAndSync(queryClient, artistData.value ?? null),
     onSuccess: () => {
       router.push("/library");
     },
@@ -68,12 +111,20 @@ export function useArtistPage() {
     artist,
     albums,
     tracks,
-    artistData,
+    artistData: artistDataMapped,
+    trackCount,
+    albumCount,
     isLoading,
     isError,
     error,
     deleteArtist,
     updateArtist,
     refetch,
+    fetchNextTrackPage,
+    hasNextTrackPage,
+    isFetchingNextTrackPage,
+    fetchNextAlbumPage,
+    hasNextAlbumPage,
+    isFetchingNextAlbumPage,
   };
 }

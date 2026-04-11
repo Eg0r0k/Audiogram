@@ -58,7 +58,7 @@ export async function getPlaylistPageData(
   }
 
   const rawTracks = await unwrapResult(trackRepository.findByIds(playlist.trackIds));
-  const artistIds = unique(rawTracks.map(track => track.artistId));
+  const artistIds = unique(rawTracks.flatMap(track => track.artistIds));
   const albumIds = unique(rawTracks.map(track => track.albumId));
 
   const [artists, albums] = await Promise.all([
@@ -92,7 +92,7 @@ export async function getPlaylistTracksPaginated(
   }
 
   const rawTracks = await unwrapResult(trackRepository.findByIds(trackIds));
-  const artistIds = unique(rawTracks.map(track => track.artistId));
+  const artistIds = unique(rawTracks.flatMap(track => track.artistIds));
   const albumIds = unique(rawTracks.map(track => track.albumId));
 
   const [artists, albums] = await Promise.all([

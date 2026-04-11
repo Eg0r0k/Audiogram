@@ -53,7 +53,7 @@ export interface PlaylistEntity {
 export interface TrackEntity {
   id: TrackId;
   title: string;
-  artistId: ArtistId;
+  artistIds: ArtistId[];
   albumId: AlbumId;
   tagIds: TagId[];
   source: TrackSource;
@@ -66,7 +66,6 @@ export interface TrackEntity {
   likedAt?: number;
   playCount: number;
   lastPlayedAt?: number;
-  searchKey: string;
   addedAt: number;
   fingerprint?: string;
   lyricsPath?: string;

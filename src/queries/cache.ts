@@ -323,7 +323,7 @@ export function syncTrackLikeCaches(
       track.id === nextTrackEntity.id ? patchTrackEntityLike(track, likedAt) : track,
     ),
   );
-  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.artists.tracks(nextTrackEntity.artistId), tracks =>
+  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.artists.tracks(nextTrackEntity.artistIds[0]), tracks =>
     tracks.map(track =>
       track.id === nextTrackEntity.id ? patchTrackEntityLike(track, likedAt) : track,
     ),
@@ -451,7 +451,7 @@ export function syncTrackLikeCaches(
 
   setQueryDataIfPresent<ArtistPageData>(
     queryClient,
-    queryKeys.artists.page(nextTrack.artistId),
+    queryKeys.artists.page(nextTrack.artistIds[0]),
     data => ({
       ...data,
       tracks: data.tracks.map(track =>
@@ -494,7 +494,7 @@ export function syncTrackMetadataCaches(
       track.id === nextTrackEntity.id ? nextTrackEntity : track,
     ),
   );
-  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.artists.tracks(nextTrackEntity.artistId), tracks =>
+  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.artists.tracks(nextTrackEntity.artistIds[0]), tracks =>
     tracks.map(track =>
       track.id === nextTrackEntity.id ? nextTrackEntity : track,
     ),
@@ -597,7 +597,7 @@ export function syncTrackMetadataCaches(
   );
   setQueryDataIfPresent<ArtistPageData>(
     queryClient,
-    queryKeys.artists.page(nextTrack.artistId),
+    queryKeys.artists.page(nextTrack.artistIds[0]),
     data => ({
       ...data,
       tracks: data.tracks.map(track =>

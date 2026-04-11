@@ -37,7 +37,7 @@ import LibraryHeader from "@/modules/library/components/LibraryHeader.vue";
 import LibraryToolbar from "@/modules/library/components/LibraryToolbar.vue";
 import LibraryGrid from "@/modules/library/components/LibraryGrid.vue";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
-import type { LibraryFilter, LibraryItem } from "@/modules/library/types";
+import type { LibraryFilter } from "@/modules/library/types";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 const {
   sortBy,

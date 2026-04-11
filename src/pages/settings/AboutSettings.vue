@@ -8,10 +8,8 @@
 
       <SettingsGroup>
         <div class="px-4 py-6 flex flex-col items-center">
-          <div class="size-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-            <IconMusic
-              class="size-10 text-primary"
-            />
+          <div class="size-20 rounded-2xl bg-primary flex items-center justify-center mb-4">
+            <IconLogo class="size-10 text-white" />
           </div>
           <div class="font-semibold text-lg">
             Audiogram
@@ -135,6 +133,7 @@ import IconChevronRight from "~icons/tabler/chevron-right";
 import IconExternalLink from "~icons/tabler/external-link";
 import IconBarBell from "~icons/tabler/barbell-filled";
 import IconLoader2 from "~icons/tabler/loader-2";
+import IconLogo from "~icons/audiogram/logo";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 

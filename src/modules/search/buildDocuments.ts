@@ -29,11 +29,14 @@ export function buildTrackDoc(
   artistMap: Map<string, ArtistEntity>,
   albumMap: Map<string, AlbumEntity>,
 ): SearchDocument {
+  const firstArtistId = track.artistIds[0];
+  const artistName = firstArtistId ? artistMap.get(firstArtistId)?.name : undefined;
+
   return {
     id: `track:${track.id}`,
     type: "track",
     title: track.title,
-    artist: artistMap.get(track.artistId)?.name,
+    artist: artistName,
     album: albumMap.get(track.albumId)?.title,
     entityId: track.id,
   };
@@ -49,8 +52,9 @@ export function buildPlaylistDoc(playlist: PlaylistEntity): SearchDocument {
 }
 
 export async function buildTrackDocFromDb(track: TrackEntity): Promise<SearchDocument> {
+  const firstArtistId = track.artistIds[0];
   const [artist, album] = await Promise.all([
-    db.artists.get(track.artistId),
+    firstArtistId ? db.artists.get(firstArtistId) : Promise.resolve(undefined),
     db.albums.get(track.albumId),
   ]);
 

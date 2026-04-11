@@ -1,22 +1,17 @@
 import { BaseMetadata } from "@/workers/types";
 
-export interface NormalizedMeta extends BaseMetadata {
-  searchKey: string;
-}
-
 export const normalizeMetadata = (file: File, raw: BaseMetadata) => {
-  const artist = sanitizeString(raw.artist) || extractArtistFromPath(file) || "Unknown Artist";
+  const artists = (raw.artists?.length ?? 0) > 0
+    ? raw.artists
+    : [extractArtistFromPath(file) || "Unknown Artist"];
   const title = sanitizeString(raw.title) || "Unknown Title";
   const album = sanitizeString(raw.album) || "Unknown Album";
-
-  const searchKey = [title, artist, album].filter(Boolean).join(" ").toLowerCase();
 
   return {
     ...raw,
     title,
-    artist,
+    artists,
     album,
-    searchKey,
   };
 };
 const extractArtistFromPath = (file: File): string | null => {

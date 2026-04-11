@@ -41,6 +41,16 @@ export const useWatchedFoldersStore = defineStore("watched-folders", () => {
     return { ok: true };
   }
 
+  function updateFolderPath(id: string, newPath: string) {
+    const folder = folders.value.find(f => f.id === id);
+    if (!folder) return;
+
+    folder.path = newPath;
+    folder.name = newPath.split("/").pop() ?? newPath;
+    folder.status = "idle";
+    folder.errorMessage = undefined;
+  }
+
   function removeFolder(id: string) {
     folders.value = folders.value.filter(f => f.id !== id);
   }
@@ -74,6 +84,7 @@ export const useWatchedFoldersStore = defineStore("watched-folders", () => {
     getFolder,
     getNestedFolderPaths,
     normalizePath,
+    updateFolderPath,
   };
 }, {
   persist: {

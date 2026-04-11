@@ -20,7 +20,7 @@ async function loadTrackRelations(tracks: TrackEntity[]): Promise<Track[]> {
     return [];
   }
 
-  const artistIds = unique(tracks.map(track => track.artistId));
+  const artistIds = unique(tracks.flatMap(track => track.artistIds));
   const albumIds = unique(tracks.map(track => track.albumId));
 
   const [artists, albums] = await Promise.all([

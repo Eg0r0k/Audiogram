@@ -1,7 +1,7 @@
 <template>
   <component :is="Sub">
     <component :is="SubTrigger">
-      <IconPlaylistAdd class="mr-3 size-5.5" />
+      <IconPlaylistAdd class=" size-5.5" />
       {{ $t('track.contextMenu.addToPlaylist') }}
     </component>
 

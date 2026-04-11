@@ -32,7 +32,10 @@
       {{ index }}
     </span>
 
-    <div class="relative shrink-0  size-10 group-data-[compact=true]:hidden z-10">
+    <div
+      v-if="!hideCover"
+      class="relative shrink-0  size-10 group-data-[compact=true]:hidden z-10"
+    >
       <NuxtImage
         :src="coverUrl"
         :alt="track.title"
@@ -78,8 +81,8 @@
             role="link"
             tabindex="0"
             class="hover:text-foreground underline-offset-2 transition-colors duration-200 cursor-pointer truncate"
-            @click.stop="handleArtistClick"
-            @keypress.enter.stop="handleArtistClick"
+            @click.stop="handleArtistClick(i)"
+            @keypress.enter.stop="handleArtistClick(i)"
           >
             {{ artist }}
           </span>
@@ -145,6 +148,7 @@ import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useRouter } from "vue-router";
 import type { QueueItemId } from "@/types/ids";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
+import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
 
 interface Props {
   track: Track;
@@ -157,6 +161,8 @@ interface Props {
   highlighted?: boolean;
   dimmed?: boolean;
   beingDragged?: boolean;
+  hideCover?: boolean;
+  coverUrl?: string | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -169,6 +175,8 @@ const props = withDefaults(defineProps<Props>(), {
   highlighted: false,
   dimmed: false,
   beingDragged: false,
+  hideCover: false,
+  coverUrl: undefined,
 });
 
 const emit = defineEmits<{
@@ -187,14 +195,22 @@ const isPlaying = computed(() => playerStore.isPlaying);
 const showOverlay = computed(() => isCurrentTrack.value || isRowHovered.value);
 const isLiked = computed(() => props.track.isLiked);
 
-const coverUrl = computed(() => "/img/fallback.svg");
+const { url: coverBlobUrl } = useEntityCover("album", () => props.track.albumId);
+const computedCoverUrl = computed(() => coverBlobUrl.value ?? "/img/fallback.svg");
+const coverUrl = computed(() => props.coverUrl ?? computedCoverUrl.value);
 
-const artists = computed(() =>
-  props.track.artist
-    .split(/,\s*/)
-    .map(a => a.trim())
-    .filter(Boolean),
-);
+const artists = computed(() => {
+  const artistStr = props.track.artist;
+  if (!artistStr) return [];
+  return artistStr.split(/,\s*/).map(a => a.trim()).filter(Boolean);
+});
+
+const handleArtistClick = (index: number) => {
+  const artistId = props.track.artistIds?.[index] ?? props.track.artistIds?.[0];
+  if (artistId) {
+    route.push({ name: "artist", params: { id: artistId } });
+  }
+};
 
 const styles = {
   root: cva([
@@ -245,10 +261,6 @@ const handleClick = () => {
   else {
     emit("play", props.track);
   }
-};
-
-const handleArtistClick = () => {
-  route.push({ name: "artist", params: { id: props.track.artistId } });
 };
 
 const toggle = async () => {

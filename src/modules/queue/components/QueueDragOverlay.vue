@@ -14,7 +14,7 @@
 
         <div class="size-10 shrink-0 rounded-md overflow-hidden bg-muted flex items-center justify-center">
           <NuxtImage
-            :src="draggedItem.track.cover"
+            :src="coverUrl"
             alt=""
             fallback-src="/img/fallback.svg"
             class="size-full object-cover"
@@ -35,15 +35,25 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
+import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
 import type { QueueItem } from "../types";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import IconGripVertical from "~icons/tabler/grip-vertical";
 
-defineProps<{
+const props = defineProps<{
   isDragging: boolean;
   draggedItem: QueueItem | null;
   ghostY: number;
   containerLeft: number;
   containerWidth: number;
 }>();
+
+const albumId = computed(() => {
+  const track = props.draggedItem?.track;
+  return track && "albumId" in track ? track.albumId : null;
+});
+
+const { url: coverBlobUrl } = useEntityCover("album", albumId);
+const coverUrl = computed(() => props.draggedItem?.cover ?? coverBlobUrl.value ?? "/img/fallback.svg");
 </script>

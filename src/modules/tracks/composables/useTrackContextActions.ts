@@ -2,7 +2,7 @@ import type { Track } from "@/modules/player/types";
 import type { ContextActions } from "@/modules/tracks/components/menu/type";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import { PlaylistId, QueueItemId } from "@/types/ids";
+import { ArtistId, PlaylistId, QueueItemId } from "@/types/ids";
 import { useQueryClient } from "@tanstack/vue-query";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
@@ -100,9 +100,8 @@ export const useTrackContextActions = (
     console.log("Remove from history:", track.value?.id);
   };
 
-  const goToArtist = () => {
-    if (!track.value) return;
-    router.push({ name: "artist", params: { id: track.value.artistId } });
+  const goToArtist = (artistId: ArtistId) => {
+    router.push({ name: "artist", params: { id: artistId } });
   };
 
   const goToAlbum = () => {

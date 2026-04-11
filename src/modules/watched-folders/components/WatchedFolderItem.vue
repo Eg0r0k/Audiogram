@@ -17,6 +17,11 @@
           v-else-if="folder.status === 'error'"
           class="size-6"
         />
+        <IconFolderSearch
+          v-else-if="folder.status === 'missing'"
+          class="size-6"
+        />
+
         <IconFolder
           v-else
           class="size-6"
@@ -64,6 +69,13 @@
           {{ $t('watchedFolders.scan') }}
         </DropdownMenuItem>
         <DropdownMenuItem
+          v-if="folder.status === 'missing'"
+          @click="$emit('relink', folder.id)"
+        >
+          <IconFolderSearch class="size-5" />
+          {{ $t('watchedFolders.relink') }}
+        </DropdownMenuItem>
+        <DropdownMenuItem
           variant="destructive"
           @click="$emit('remove', folder.id)"
         >
@@ -94,6 +106,7 @@ import IconEye from "~icons/tabler/eye";
 import IconAlertTriangle from "~icons/tabler/alert-triangle";
 import IconDots from "~icons/tabler/dots";
 import IconTrash from "~icons/tabler/trash";
+import IconFolderSearch from "~icons/tabler/folder-search";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -104,6 +117,7 @@ const props = defineProps<{
 defineEmits<{
   scan: [folder: WatchedFolder];
   remove: [id: string];
+  relink: [id: string];
 }>();
 
 const { t } = useI18n();

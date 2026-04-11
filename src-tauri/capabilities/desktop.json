@@ -1,16 +1,31 @@
 {
-  "identifier": "desktop-capability",
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop",
+  "description": "Desktop-only capabilities",
   "platforms": [
+    "linux",
     "macOS",
-    "windows",
-    "linux"
+    "windows"
   ],
   "windows": [
     "main"
   ],
   "permissions": [
-    "global-shortcut:default",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "core:window:allow-hide",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled",
+    "global-shortcut:allow-is-registered",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-register-all",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-unregister-all",
     "updater:default",
-    "autostart:default"
+    "process:default"
   ]
 }

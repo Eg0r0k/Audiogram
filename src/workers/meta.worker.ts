@@ -56,9 +56,15 @@ self.onmessage = async (e: MessageEvent<ParseRequest>) => {
     const titleFromFile = fileName.replace(/\.[^/.]+$/, "");
     const loudness = extractLoudness(metadata);
 
+    const artists = Array.isArray(metadata.common.artist)
+      ? metadata.common.artist
+      : metadata.common.artist
+        ? metadata.common.artist.split(/[;,]\s*/)
+        : ["Unknown Artist"];
+
     const meta: BaseMetadata = {
       title: metadata.common.title || titleFromFile,
-      artist: metadata.common.artist || "Unknown Artist",
+      artists: artists.map(a => a.trim()).filter(Boolean),
       album: metadata.common.album || "Unknown Album",
       year: metadata.common.year,
       duration: metadata.format.duration || 0,

@@ -79,6 +79,9 @@
       >
         <slot />
       </main>
+      <aside class="right-column bg-card border-l dark:border-background">
+        <QueueList />
+      </aside>
     </div>
 
     <FooterMediaPlayer class="footer" />
@@ -101,8 +104,6 @@ import DropOverlay from "@/components/DropOverlay.vue";
 import { useImport } from "@/composables/useImport";
 import ImportProgressSheet from "@/components/ImportProgressSheet.vue";
 import SearchPanel from "@/modules/search/components/SearchPanel.vue";
-import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
-import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import { computed } from "vue";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
@@ -116,6 +117,7 @@ import { LIBRARY_FILTERS, LibraryFilter, LibraryItem } from "@/modules/library/t
 import { useI18n } from "vue-i18n";
 import { Scrollable } from "@/components/ui/scrollable";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import QueueList from "@/modules/queue/components/QueueList.vue";
 
 const {
   pinnedItems,
@@ -226,6 +228,12 @@ const { top, right, bottom, left } = useScreenSafeArea();
   overflow-y: auto;
   overflow-x: hidden;
   min-width: 0;
+}
+.right-column {
+  width: 320px;
+  min-width: 320px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .footer {

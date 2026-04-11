@@ -2,16 +2,25 @@ import { watch as fsWatch } from "@tauri-apps/plugin-fs";
 import { useDebounceFn } from "@vueuse/core";
 import { isValidImportItem } from "@/lib/environment/mimeSupport";
 import { normalizePath } from "@/lib/files/filterFiles";
+import { exists } from "@tauri-apps/plugin-fs";
 
 export type FileChangeHandler = (paths: string[]) => void;
+export type FolderMissingHandler = () => void;
 export type StopWatchFn = () => void;
 
 export async function startWatching(
   folderPath: string,
   onChange: FileChangeHandler,
+  onFolderMissing: FolderMissingHandler,
   excludedPaths?: string[],
 ): Promise<StopWatchFn> {
-  const debouncedHandler = useDebounceFn((changedPaths: string[]) => {
+  const debouncedHandler = useDebounceFn(async (changedPaths: string[]) => {
+    const folderExists = await exists(folderPath);
+    if (!folderExists) {
+      onFolderMissing();
+      return;
+    }
+
     const audioPaths = changedPaths
       .map(normalizePath)
       .filter((p) => {
@@ -29,17 +38,25 @@ export async function startWatching(
     }
   }, 1500);
 
-  const unwatch = await fsWatch(
-    folderPath,
-    (event) => {
-      if (event.paths.length > 0) {
-        debouncedHandler(event.paths);
-      }
-    },
-    { recursive: true, delayMs: 1000 },
-  );
+  let unwatch: (() => void) | null = null;
+
+  try {
+    unwatch = await fsWatch(
+      folderPath,
+      (event) => {
+        if (event.paths.length > 0) {
+          debouncedHandler(event.paths);
+        }
+      },
+      { recursive: true, delayMs: 1000 },
+    );
+  }
+  catch {
+    onFolderMissing();
+    return () => {};
+  }
 
   return () => {
-    unwatch();
+    unwatch?.();
   };
 }
