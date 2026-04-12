@@ -21,7 +21,15 @@ pub fn run() {
 
     #[cfg(desktop)]
     let builder = builder
-        .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            let files: Vec<String> = args.into_iter().skip(1).collect();
+
+            if !files.is_empty() {
+                println!("Second instance files: {:?}", files);
+
+                let _ = app.emit("files-opened", files);
+            }
+        }))
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build());

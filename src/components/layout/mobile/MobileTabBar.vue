@@ -1,6 +1,6 @@
 <template>
   <nav
-    class="flex select-none items-stretch shrink-0 h-14 px-2 py-1  bg-card [&>*]:[tap-highlight:transparent]"
+    class="flex select-none items-stretch shrink-0 h-14 px-2 py-1 bg-card [&>*]:[tap-highlight:transparent]"
     role="tablist"
   >
     <RouterLink
@@ -26,6 +26,30 @@
         <span class="text-[10px] font-medium leading-none">{{ $t(tab.labelKey) }}</span>
       </Button>
     </RouterLink>
+
+    <DropdownMenu>
+      <DropdownMenuTrigger as-child>
+        <Button
+          class="flex flex-1 press-scale flex-col gap-0.5 items-center justify-center h-full text-muted-foreground"
+          variant="ghost"
+          :aria-label="$t('nav.add')"
+        >
+          <IconPlus class="size-6" />
+          <span class="text-[10px] font-medium leading-none">{{ $t('nav.add') }}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        :side-offset="12"
+      >
+        <DropdownMenuItem @click="createPlaylist">
+          <IconPlaylistAdd class="size-6" />
+          <span class=" text-lg">
+            {{ $t('track.contextMenu.createPlaylist') }}
+          </span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   </nav>
 </template>
 
@@ -38,7 +62,21 @@ import IconSearch from "~icons/tabler/search";
 import IconLibrary from "~icons/tabler/books";
 import IconSettings from "~icons/tabler/settings";
 import IconSettingsFilled from "~icons/tabler/settings-filled";
+import IconPlus from "~icons/tabler/plus";
+import IconPlaylistAdd from "~icons/tabler/playlist-add";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useLibrary } from "@/modules/library/composables/useLibrary";
+
+const {
+
+  createPlaylist,
+} = useLibrary();
 
 interface TabItem {
   name: string;
@@ -78,4 +116,5 @@ const tabs: TabItem[] = [
     activeIcon: IconSettingsFilled,
   },
 ];
+
 </script>

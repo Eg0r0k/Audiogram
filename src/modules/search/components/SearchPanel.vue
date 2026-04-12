@@ -38,9 +38,19 @@
         <!-- Loading -->
         <div
           v-if="isSearching"
-          class="flex items-center justify-center py-16"
+          class="flex-1 gap-2 flex flex-col p-2"
         >
-          <IconLoader2 class="size-5 animate-spin text-muted-foreground" />
+          <div
+            v-for="i in 3"
+            :key="i"
+            class="flex items-center gap-3 px-2"
+          >
+            <Skeleton class="size-[54px] rounded-full shrink-0" />
+            <div class="flex flex-col gap-2 w-full">
+              <Skeleton class="h-3 w-[40%]" />
+              <Skeleton class="h-3 w-[65%]" />
+            </div>
+          </div>
         </div>
 
         <!-- Empty state -->
@@ -184,6 +194,7 @@ import IconSearch from "~icons/tabler/search";
 import IconSearchOff from "~icons/tabler/search-off";
 import { Scrollable } from "@/components/ui/scrollable";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Skeleton from "@/components/ui/skeleton/Skeleton.vue";
 
 const router = useRouter();
 const { t } = useI18n();

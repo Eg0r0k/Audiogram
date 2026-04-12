@@ -8,7 +8,6 @@
       class="relative rounded-lg overflow-hidden transition-colors duration-300 w-full"
       :style="containerStyle"
     >
-      <!-- Контент: высота 56px, паддинги 8px -->
       <div class="flex items-center gap-2.5 px-2 h-14">
         <div class="size-10 shrink-0 rounded-md overflow-hidden flex items-center justify-center bg-black/20">
           <NuxtImage
@@ -87,25 +86,39 @@
 <script setup lang="ts">
 import { computed, ref, watch, onUnmounted } from "vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
+import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
 import { useImageColor } from "@/composables/useImageColor";
 import { Button } from "@/components/ui/button";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
+import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
 import IconPlay from "~icons/tabler/player-play-filled";
 import IconPause from "~icons/tabler/player-pause-filled";
 import IconSkipForward from "~icons/tabler/player-track-next-filled";
-import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
-import { useQueueStore } from "@/modules/queue/store/queue.store";
 
 defineEmits<{ click: [] }>();
 
 const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
+
 const currentTrack = computed(() => playerStore.currentTrack);
 const artistName = computed(() => currentTrack.value?.artist);
+
+const libraryTrack = computed(() => {
+  const track = currentTrack.value;
+  return track?.kind === "library" ? track : null;
+});
+
+const { url: coverBlobUrl } = useEntityCover(
+  "album",
+  () => libraryTrack.value?.albumId ?? null,
+);
+
 const coverUrl = computed(() => {
   const track = currentTrack.value;
   if (!track) return undefined;
-  return "cover" in track ? track.cover : undefined;
+  if (track.kind === "ephemeral") return track.cover;
+  return coverBlobUrl.value ?? undefined;
 });
 
 const { color, extractColor } = useImageColor();

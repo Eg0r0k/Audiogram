@@ -8,6 +8,7 @@ export type QueueSource
     | { type: "search" }
     | { type: "manual" }
     | { type: "liked" }
+    | { type: "external" }
     | { type: "unknown" };
 
 export interface QueueItem {

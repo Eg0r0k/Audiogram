@@ -24,7 +24,6 @@ const props = withDefaults(defineProps<{
 }>(), {
   ownerType: null,
   ownerId: null,
-  fallbackSrc: "/img/fallback.svg",
   imageClass: "",
   placeholder: false,
 });
@@ -34,5 +33,11 @@ const { url } = useEntityCover(
   computed(() => props.ownerId),
 );
 
-const src = computed(() => url.value ?? props.fallbackSrc);
+const resolvedFallbackSrc = computed(() => {
+  if (props.fallbackSrc) return props.fallbackSrc;
+  if (props.ownerType === "artist") return "/img/artist-fallback.svg";
+  return "/img/fallback.svg";
+});
+
+const src = computed(() => url.value ?? resolvedFallbackSrc.value);
 </script>

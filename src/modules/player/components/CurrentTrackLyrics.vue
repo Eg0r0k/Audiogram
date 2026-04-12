@@ -40,7 +40,7 @@ const lineRefs: Array<HTMLElement | null> = [];
 
 const track = computed<Track | null>(() => {
   const currentTrack = playerStore.currentTrack;
-  return currentTrack && "artistId" in currentTrack ? currentTrack : null;
+  return currentTrack?.kind === "library" ? currentTrack : null;
 });
 
 const placeholderText = computed(() => {

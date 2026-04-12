@@ -1,4 +1,4 @@
-import { PlaylistId } from "@/types/ids";
+import { ArtistId, PlaylistId } from "@/types/ids";
 
 export type TrackContext = "default" | "queue" | "playlist" | "album" | "search" | "history" | "liked" | "artist-page";
 
@@ -12,7 +12,7 @@ export interface ContextActions {
   removeFromQueue?: () => void;
   removeFromPlaylist?: () => void;
   removeFromHistory?: () => void;
-  goToArtist: () => void;
+  goToArtist: (artistId: ArtistId) => void;
   goToAlbum: () => void;
   download: () => void;
 }

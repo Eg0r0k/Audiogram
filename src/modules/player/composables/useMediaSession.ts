@@ -1,7 +1,7 @@
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { usePlayerStore } from "../store/player.store";
-import { onMounted, onUnmounted, ref } from "vue";
-import { watch } from "vue";
+import { onMounted, onUnmounted, ref, computed, watch } from "vue";
+import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
 
 const POSITION_UPDATE_INTERVAL = 1000;
 
@@ -17,6 +17,11 @@ export const useMediaSession = () => {
 
   const forceNextUpdate = ref(false);
 
+  const currentTrack = computed(() => player.currentTrack);
+  const albumId = computed(() => currentTrack.value?.kind === "library" ? currentTrack.value.albumId : null);
+
+  const { url: coverBlobUrl } = useEntityCover("album", albumId);
+
   const updateMetadata = () => {
     const track = player.currentTrack;
 
@@ -25,9 +30,15 @@ export const useMediaSession = () => {
       return;
     }
 
+    const artwork = coverBlobUrl.value
+      ? [{ src: coverBlobUrl.value, sizes: "512x512", type: "image/jpeg" }]
+      : [];
+
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title || "Unknown Title",
       artist: track.artist || "Unknown Artist",
+      album: track.albumName || "",
+      artwork,
     });
   };
 

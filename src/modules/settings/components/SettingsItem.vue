@@ -20,6 +20,9 @@
 
     <ItemContent :class="icon && 'ml-3'">
       <ItemTitle>{{ title }}</ItemTitle>
+      <ItemSubtitle v-if="subtitle">
+        {{ subtitle }}
+      </ItemSubtitle>
     </ItemContent>
 
     <ItemActions>
@@ -35,6 +38,7 @@ import {
   ItemActions,
   ItemContent,
   ItemMedia,
+  ItemSubtitle,
   ItemTitle,
 } from "@/components/ui/item";
 
@@ -42,6 +46,7 @@ interface Props {
   icon?: string;
   iconClass?: string;
   title: string;
+  subtitle?: string;
 }
 
 defineProps<Props>();

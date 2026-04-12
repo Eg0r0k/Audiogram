@@ -24,7 +24,6 @@
       </div>
 
       <div class="grid grid-cols-2 gap-1">
-
         <Button
           v-for="preset in presets"
           :key="preset.minutes"
@@ -70,10 +69,10 @@ import { formatDuration } from "@/lib/format/time";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 
 const presets = [
-  { minutes: 15 },
+  { minutes: 5 },
+  { minutes: 10 },
   { minutes: 30 },
   { minutes: 45 },
-  { minutes: 60 },
 ];
 
 const { t } = useI18n();

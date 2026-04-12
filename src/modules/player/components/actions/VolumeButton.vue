@@ -101,11 +101,16 @@ const MIN_TOP_SPACE = 120;
 
 const lastVolume = ref(playerStore.volume > 0 ? playerStore.volume : 0.5);
 
+const linearToSlider = (volume: number): number =>
+  Math.round(Math.sqrt(volume) * 100);
+
+const sliderToLinear = (slider: number): number =>
+  (slider / 100) ** 2;
+
 const volumePercent = computed(() => {
   if (playerStore.isMuted) return 0;
-  return Math.round(playerStore.volume * 100);
+  return linearToSlider(playerStore.volume);
 });
-
 const volumeIcon = computed(() => {
   if (playerStore.isMuted || playerStore.volume === 0) return IconVolumeOff;
   if (playerStore.volume < 0.3) return IconVolume2;
@@ -188,39 +193,25 @@ const onSliderInteractionEnd = () => {
 
 const onVolumeChange = (value: number[] | undefined) => {
   if (!value || value.length === 0) return;
-
-  const newVolume = value[0] / 100;
-
-  if (newVolume > 0) {
-    lastVolume.value = newVolume;
-  }
-
+  const newVolume = sliderToLinear(value[0]);
+  if (newVolume > 0) lastVolume.value = newVolume;
   playerStore.setVolume(newVolume);
-
-  if (playerStore.isMuted && newVolume > 0) {
-    playerStore.setMuted(false);
-  }
+  if (playerStore.isMuted && newVolume > 0) playerStore.setMuted(false);
 };
 
 const handleScroll = (e: WheelEvent) => {
   e.preventDefault();
-  const step = 0.05;
-  const current = playerStore.isMuted ? 0 : playerStore.volume;
-  const newVolume = e.deltaY > 0
-    ? Math.max(0, current - step)
-    : Math.min(1, current + step);
+  const step = 5;
+  const currentSlider = playerStore.isMuted ? 0 : linearToSlider(playerStore.volume);
+  const newSlider = e.deltaY > 0
+    ? Math.max(0, currentSlider - step)
+    : Math.min(100, currentSlider + step);
+  const newVolume = sliderToLinear(newSlider);
 
-  if (newVolume > 0 && playerStore.isMuted) {
-    playerStore.setMuted(false);
-  }
-
+  if (newVolume > 0 && playerStore.isMuted) playerStore.setMuted(false);
   playerStore.setVolume(newVolume);
-
-  if (newVolume > 0) {
-    lastVolume.value = newVolume;
-  }
+  if (newVolume > 0) lastVolume.value = newVolume;
 };
-
 const toggleMute = () => {
   if (playerStore.isMuted || playerStore.volume === 0) {
     playerStore.setMuted(false);

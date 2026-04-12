@@ -33,16 +33,20 @@ const subtitle = computed(() => {
 const coverOwnerType = computed<CoverOwnerType | null>(() => {
   if (props.item.type === "album") return "album";
   if (props.item.type === "playlist") return "playlist";
+  if (props.item.type === "artist") return "artist";
   return null;
 });
 
 const coverOwnerId = computed(() => {
-  if (props.item.type === "album" || props.item.type === "playlist") {
+  if (
+    props.item.type === "album"
+    || props.item.type === "playlist"
+    || props.item.type === "artist"
+  ) {
     return props.item.id;
   }
   return null;
 });
-
 const hasStaticImage = computed(() => !!props.item.image);
 
 const isCurrentPlaybackSource = computed(() => {

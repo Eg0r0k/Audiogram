@@ -88,7 +88,7 @@ export interface ListenEventEntity {
   skipped: boolean;
 }
 
-export type CoverOwnerType = "album" | "playlist";
+export type CoverOwnerType = "album" | "playlist" | "artist";
 
 export interface CoverEntity {
   id: string;

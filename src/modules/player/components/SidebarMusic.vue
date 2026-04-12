@@ -6,6 +6,7 @@
     >
       <div class="relative shrink-0 group size-14 rounded overflow-hidden">
         <NuxtImage
+          :src="coverUrl"
           class="w-full h-full object-cover object-center absolute left-0 top-0"
           draggable="false"
           fallback-src="/img/fallback.svg"
@@ -37,7 +38,21 @@
           gradient-length="20px"
         >
           <span class="text-muted-foreground group-hover:text-foreground text-xs transition-colors duration-200">
-            {{ currentTrack?.artist }}
+            <template
+              v-for="(artist, i) in artistsList"
+              :key="i"
+            >
+              <span
+                role="link"
+                tabindex="0"
+                class="cursor-pointer hover:underline"
+                @click.stop="goToArtist(i)"
+                @keypress.enter.stop="goToArtist(i)"
+              >
+                {{ artist }}
+              </span>
+              <span v-if="i < artistsList.length - 1">, </span>
+            </template>
           </span>
         </MarqueeBlock>
       </div>
@@ -73,6 +88,8 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { useRouter } from "vue-router";
+import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
 import { Button } from "@/components/ui/button";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
@@ -89,11 +106,28 @@ import type { Track } from "../types";
 const playerStore = usePlayerStore();
 const { toggleTrackLike } = useToggleTrackLike();
 const { openDropdown } = useTrackMenu();
+const route = useRouter();
 
 const currentTrack = computed<Track | null>(() => {
   const track = playerStore.currentTrack;
-  return track && "artistId" in track ? track : null;
+  return track && "artistIds" in track ? track : null;
 });
+
+const { url: coverBlobUrl } = useEntityCover("album", () => currentTrack.value?.albumId ?? null);
+const coverUrl = computed(() => coverBlobUrl.value ?? "/img/fallback.svg");
+
+const artistsList = computed(() => {
+  const artistStr = currentTrack.value?.artist;
+  if (!artistStr) return [];
+  return artistStr.split(/,\s*/).map(a => a.trim()).filter(Boolean);
+});
+
+const goToArtist = (index: number) => {
+  const artistId = currentTrack.value?.artistIds?.[index];
+  if (artistId) {
+    route.push({ name: "artist", params: { id: artistId } });
+  }
+};
 
 const toggleLike = async () => {
   if (!currentTrack.value) return;

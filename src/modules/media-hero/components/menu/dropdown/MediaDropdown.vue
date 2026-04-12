@@ -38,6 +38,7 @@ import ArtistContext from "../contexts/ArtistContext.vue";
 import IconDots from "~icons/tabler/dots";
 import PlaylistContext from "../contexts/PlaylistContext.vue";
 import { dropdownMenuComponents, provideMenuComponents } from "@/modules/media-hero/composables/useMenuComponents";
+import LikedContext from "../contexts/LikedContext.vue";
 
 provideMenuComponents(dropdownMenuComponents);
 
@@ -53,7 +54,7 @@ const props = withDefaults(defineProps<Props>(), {
 const contexts: Record<MediaContext, Component> = {
   "album": AlbumContext,
   "artist-page": ArtistContext,
-  "liked": AlbumContext,
+  "liked": LikedContext,
   "playlist": PlaylistContext,
 };
 

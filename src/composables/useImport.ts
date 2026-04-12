@@ -1,7 +1,7 @@
 import { ref, computed } from "vue";
 import { useQueryClient } from "@tanstack/vue-query";
 import { musicLibraryEngine } from "@/services/importer.service";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/queries/query-keys";
 import { filterFilesByExtension } from "@/lib/files/filterFiles";
 import { IS_TAURI } from "@/lib/environment/userAgent";
 import type { ImportBatchResult } from "@/services/importer.service";
@@ -21,10 +21,12 @@ export interface ImportState {
   total: number;
   current: number;
   files: ImportFileItem[];
+  visibleFileCount: number;
   result: ImportBatchResult | null;
 }
 
 const ACCEPTED_EXTENSIONS = [".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aac", ".opus"];
+const MAX_VISIBLE_IMPORT_FILES = 500;
 
 const state = ref<ImportState>({
   isOpen: false,
@@ -33,6 +35,7 @@ const state = ref<ImportState>({
   total: 0,
   current: 0,
   files: [],
+  visibleFileCount: 0,
   result: null,
 });
 
@@ -46,10 +49,11 @@ export function useImport() {
   const result = computed(() => state.value.result);
   const total = computed(() => state.value.total);
   const current = computed(() => state.value.current);
+  const visibleFileCount = computed(() => state.value.visibleFileCount);
 
-  const successCount = computed(() => state.value.files.filter(f => f.status === "ok").length);
-  const errorCount = computed(() => state.value.files.filter(f => f.status === "error").length);
-  const skippedCount = computed(() => state.value.files.filter(f => f.status === "skipped").length);
+  const successCount = computed(() => state.value.result?.successful.length ?? 0);
+  const errorCount = computed(() => state.value.result?.failed.length ?? 0);
+  const skippedCount = computed(() => state.value.result?.skipped ?? 0);
 
   function openSheet() {
     state.value.isOpen = true;
@@ -68,6 +72,7 @@ export function useImport() {
       total: 0,
       current: 0,
       files: [],
+      visibleFileCount: 0,
       result: null,
     };
   }
@@ -106,23 +111,28 @@ export function useImport() {
   }
 
   function _startImport(fileNames: string[]) {
+    const visibleFiles = fileNames.slice(0, MAX_VISIBLE_IMPORT_FILES);
+
     state.value = {
       isOpen: true,
       isRunning: true,
       progress: 0,
       total: fileNames.length,
       current: 0,
-      files: fileNames.map(name => ({ name, status: "pending" })),
+      files: visibleFiles.map(name => ({ name, status: "pending" })),
+      visibleFileCount: visibleFiles.length,
       result: null,
     };
   }
 
   function _onProgress(current: number, total: number) {
+    const previousCurrent = state.value.current;
+
     state.value.current = current;
     state.value.total = total;
     state.value.progress = total > 0 ? Math.round((current / total) * 100) : 0;
 
-    for (let i = 0; i < current && i < state.value.files.length; i++) {
+    for (let i = previousCurrent; i < current && i < state.value.files.length; i++) {
       if (state.value.files[i].status === "pending") {
         state.value.files[i].status = "ok";
       }
@@ -162,6 +172,7 @@ export function useImport() {
     result,
     total,
     current,
+    visibleFileCount,
     successCount,
     errorCount,
     skippedCount,

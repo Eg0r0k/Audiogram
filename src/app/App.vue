@@ -39,7 +39,6 @@ import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { useWatchedFolders } from "@/modules/watched-folders/composables/useWatchedFolders";
 import { useGlobalHotKeys } from "@/modules/hotkeys";
 import { useMediaSession } from "@/modules/player/composables/useMediaSession";
-import { useImport } from "@/composables/useImport";
 import { IS_TAURI } from "@/lib/environment/userAgent";
 import { useUpdateStore } from "@/modules/update/store/update.store";
 import { useUpdateScheduler } from "@/modules/update/composables/useUpdateScheduler";
@@ -47,11 +46,13 @@ import { usePwaUpdate } from "@/modules/update/composables/usePwaUpdate";
 import { useChangelogOnStartup } from "@/modules/update/composables/useChangelogOnStartup";
 import WhatsNewDialog from "@/modules/update/components/WhatsNewDialog.vue";
 import { useTrayBehavior } from "@/modules/settings/composables/useTrayBehavior";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
+import { ephemeralFromPath } from "@/modules/player/types";
 
 const currentRoute = useRoute();
 const { isMobileLayout } = useDeviceLayout();
 const { init } = useWatchedFolders();
-const { importFromPaths } = useImport();
+const queueStore = useQueueStore();
 
 const layouts: Record<string, VueComponent> = {
   default: DefaultLayout,
@@ -83,7 +84,22 @@ onMounted(async () => {
   }
 
   unlisten = await listenForOpenedFiles(async (files: OpenedFile[]) => {
-    await importFromPaths(files.map(f => f.path));
+    if (files.length === 0) return;
+
+    if (files.length === 1) {
+      const track = ephemeralFromPath(files[0].path, {
+        title: files[0].name.replace(/\.[^.]+$/, ""),
+      });
+      await queueStore.setQueue([track], 0, { type: "external" });
+    }
+    else {
+      const tracks = files.map(f =>
+        ephemeralFromPath(f.path, {
+          title: f.name.replace(/\.[^.]+$/, ""),
+        }),
+      );
+      await queueStore.setQueue(tracks, 0, { type: "external" });
+    }
   });
 
   init();

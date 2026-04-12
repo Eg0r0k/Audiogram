@@ -1,47 +1,25 @@
 import { IS_TAURI } from "../environment/userAgent";
-import { getMimeType, isAudioTypeSupported } from "../environment/mimeSupport";
+import { isValidImportItem } from "../environment/mimeSupport";
 
 export interface OpenedFile {
   path: string;
   name: string;
-  data: Uint8Array;
 }
 
 export async function listenForOpenedFiles(
   callback: (files: OpenedFile[]) => void,
 ): Promise<() => void> {
-  if (!IS_TAURI) {
-    return () => {};
-  }
+  if (!IS_TAURI) return () => {};
 
-  const [{ listen }, { readFile }] = await Promise.all([
-    import("@tauri-apps/api/event"),
-    import("@tauri-apps/plugin-fs"),
-  ]);
+  const { listen } = await import("@tauri-apps/api/event");
 
-  const unlisten = await listen<string[]>("files-opened", async (event) => {
-    const filePaths = event.payload;
-    const files: OpenedFile[] = [];
-
-    for (const filePath of filePaths) {
-      try {
-        const name = filePath.split(/[/\\]/).pop() || filePath;
-        const mimeType = getMimeType(name);
-
-        if (!isAudioTypeSupported(mimeType)) {
-          console.warn(
-            `[fileOpener] Skipped unsupported audio type: ${mimeType} (${name})`,
-          );
-          continue;
-        }
-
-        const data = await readFile(filePath);
-        files.push({ path: filePath, name, data });
-      }
-      catch (error) {
-        console.error(`[fileOpener] Failed to read file: ${filePath}`, error);
-      }
-    }
+  const unlisten = await listen<string[]>("files-opened", (event) => {
+    const files = event.payload
+      .filter(path => isValidImportItem(path.split(/[/\\]/).pop() ?? ""))
+      .map(path => ({
+        path,
+        name: path.split(/[/\\]/).pop() ?? path,
+      }));
 
     if (files.length > 0) {
       callback(files);

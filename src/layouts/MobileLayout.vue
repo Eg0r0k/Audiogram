@@ -17,23 +17,37 @@
 
     <MiniPlayer
       v-if="playerStore.currentTrack"
-      @click="openFullPlayer"
+      @click="isFullPlayerOpen = true"
     />
 
     <MobileTabBar v-if="!route.meta.hideTabBar" />
 
-    <Drawer
-      v-model:open="isFullPlayerOpen"
-      direction="bottom"
-      :should-scale-background="false"
-    >
-      <DrawerContent class="min-h-[98dvh] ">
-        <MobileFullPlayer
-          class="flex-1 min-h-0"
-          @close="isFullPlayerOpen = false"
-        />
-      </DrawerContent>
-    </Drawer>
+    <Transition name="full-player">
+      <div
+        v-if="isFullPlayerOpen"
+        class="fixed inset-0 bg-background"
+      >
+        <div class="flex flex-col h-full">
+          <div class="flex items-center justify-between p-4">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              @click="isFullPlayerOpen = false"
+            >
+              <IconChevronDown class="size-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled
+            >
+              <IconQueue class="size-5" />
+            </Button>
+          </div>
+          <MobileFullPlayer class="flex-1 min-h-0" />
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -47,20 +61,13 @@ import DropOverlay from "@/components/DropOverlay.vue";
 import MobileTabBar from "@/components/layout/mobile/MobileTabBar.vue";
 import MiniPlayer from "@/components/layout/mobile/MiniPlayer.vue";
 import MobileFullPlayer from "@/components/layout/mobile/MobileFullPlayer.vue";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
+import IconChevronDown from "~icons/tabler/chevron-down";
+import IconQueue from "~icons/tabler/list";
 
 const route = useRoute();
 const playerStore = usePlayerStore();
 const isFullPlayerOpen = ref(false);
-
-const openFullPlayer = () => {
-  isFullPlayerOpen.value = true;
-};
 
 const { isDragging } = useFileDrop({
   acceptedExtensions: [".mp3", ".flac", ".wav", ".ogg"],

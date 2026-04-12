@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted } from "vue";
+import { watch, onUnmounted } from "vue";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useGeneralSettings } from "../store/general";
 
@@ -7,14 +7,22 @@ export const useTrayBehavior = () => {
   const appWindow = getCurrentWindow();
   let unlisten: (() => void) | null = null;
 
-  onMounted(async () => {
-    unlisten = await appWindow.onCloseRequested(async (event) => {
-      if (closeToTray.value) {
-        event.preventDefault();
-        await appWindow.hide();
-      }
-    });
-  });
+  const registerListener = async () => {
+    unlisten?.();
+    unlisten = null;
 
-  onUnmounted(() => unlisten?.());
+    if (!closeToTray.value) return;
+
+    unlisten = await appWindow.onCloseRequested(async (event) => {
+      event.preventDefault();
+      await appWindow.hide();
+    });
+  };
+
+  watch(closeToTray, registerListener, { immediate: true });
+
+  onUnmounted(() => {
+    unlisten?.();
+    unlisten = null;
+  });
 };

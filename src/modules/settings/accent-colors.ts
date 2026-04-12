@@ -86,12 +86,12 @@ export const ACCENT_COLOR_OPTIONS: AccentColorOption[] = [
     label: "Green",
     preview: "#27ae60",
     light: {
-      "--primary": "oklch(0.5864 0.1582 152.53)",
+      "--primary": "oklch(0.7697 0.2124 148.67)",
       "--sidebar-primary": "oklch(0.5864 0.1582 152.53)",
     },
     dark: {
-      "--primary": "oklch(0.6627 0.1556 155.78)",
-      "--sidebar-primary": "oklch(0.6627 0.1556 155.78)",
+      "--primary": "oklch(0.6794 0.185 148.67)",
+      "--sidebar-primary": "oklch(0.6794 0.185 148.67)",
     },
   },
   {
