@@ -34,12 +34,14 @@
     @go-to-artist="actions.goToArtist"
     @go-to-album="actions.goToAlbum"
   />
+  <DetailsItem @show="actions.showDetails" />
 </template>
 
 <script setup lang="ts">
 import PlayItems from "../items/PlayItems.vue";
 import NavigationItems from "../items/NavigationItems.vue";
 import AddToPlaylistSub from "../items/AddToPlaylistSub.vue";
+import DetailsItem from "../items/DetailsItem.vue";
 import LikeItem from "../items/LikeItem.vue";
 import LyricsItem from "../items/LyricsItem.vue";
 import DownloadItem from "../items/DownloadItem.vue";

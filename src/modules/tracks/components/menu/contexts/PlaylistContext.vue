@@ -12,6 +12,8 @@
     @toggle="actions.toggleLike"
   />
 
+  <DetailsItem @show="actions.showDetails" />
+
   <DownloadItem @download="actions.download" />
 
   <LyricsItem
@@ -52,6 +54,7 @@
 import PlayItems from "../items/PlayItems.vue";
 import LikeItem from "../items/LikeItem.vue";
 import AddToPlaylistSub from "../items/AddToPlaylistSub.vue";
+import DetailsItem from "../items/DetailsItem.vue";
 import NavigationItems from "../items/NavigationItems.vue";
 import LyricsItem from "../items/LyricsItem.vue";
 import DownloadItem from "../items/DownloadItem.vue";

@@ -1,6 +1,9 @@
 <template>
   <Teleport to="body">
-    <DropdownMenu v-model:open="localOpen">
+    <DropdownMenu
+      v-model:open="localOpen"
+      :modal="false"
+    >
       <DropdownMenuTrigger as-child>
         <div
           class="pointer-events-none fixed"
@@ -81,14 +84,14 @@ const anchorStyle = computed(() => ({
 }));
 
 const contexts: Record<TrackContext, Component> = {
-  "default": DefaultContext,
-  "search": DefaultContext,
-  "liked": LikedContext,
-  "artist-page": DefaultContext,
-  "queue": QueueContext,
-  "playlist": PlaylistContext,
-  "album": DefaultContext,
-  "history": DefaultContext,
+  default: DefaultContext,
+  search: DefaultContext,
+  liked: LikedContext,
+  artist: DefaultContext,
+  queue: QueueContext,
+  playlist: PlaylistContext,
+  album: DefaultContext,
+  history: DefaultContext,
 };
 
 const contextComponent = computed(() => contexts[props.context]);

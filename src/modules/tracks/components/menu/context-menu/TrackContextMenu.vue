@@ -67,14 +67,14 @@ const localOpen = computed({
 });
 
 const contexts: Record<TrackContext, Component> = {
-  "default": DefaultContext,
-  "search": DefaultContext,
-  "liked": LikedContext,
-  "artist-page": DefaultContext,
-  "queue": QueueContext,
-  "playlist": PlaylistContext,
-  "album": DefaultContext,
-  "history": DefaultContext,
+  default: DefaultContext,
+  search: DefaultContext,
+  liked: LikedContext,
+  artist: DefaultContext,
+  queue: QueueContext,
+  playlist: PlaylistContext,
+  album: DefaultContext,
+  history: DefaultContext,
 };
 
 const contextComponent = computed(() => contexts[props.context]);

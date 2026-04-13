@@ -111,25 +111,27 @@ export default function useScrollable(
 
     if (isDragging.value) return;
 
-    const container = containerRef.value;
+    requestAnimationFrame(() => {
+      const container = containerRef.value;
+      if (!container) return;
 
-    const scrollSizeVal = container[props.value.scrollSize];
-    const clientSizeVal = container[props.value.clientSize];
+      const scrollSizeVal = container[props.value.scrollSize];
+      const clientSizeVal = container[props.value.clientSize];
 
-    if (clientSizeVal >= scrollSizeVal) {
-      thumbSize.value = 0;
-      return;
-    }
+      if (clientSizeVal >= scrollSizeVal) {
+        thumbSize.value = 0;
+        return;
+      }
 
-    thumbSize.value = Math.max(20, clientSizeVal ** 2 / scrollSizeVal);
+      const newThumbSize = Math.max(20, clientSizeVal ** 2 / scrollSizeVal);
 
-    const maxScroll = scrollSizeVal - clientSizeVal;
-    const maxThumbPos = clientSizeVal - thumbSize.value;
+      const maxScroll = scrollSizeVal - clientSizeVal;
+      const maxThumbPos = clientSizeVal - newThumbSize;
 
-    thumbPosition.value
-      = maxScroll > 0 ? (position / maxScroll) * maxThumbPos : 0;
+      thumbSize.value = newThumbSize;
+      thumbPosition.value = maxScroll > 0 ? (position / maxScroll) * maxThumbPos : 0;
+    });
   }
-
   function checkForTriggers() {
     if (!onScrolledTop && !onScrolledBottom) return;
     if (isHeavyAnimationInProgress.value || !scrollSize.value) return;
