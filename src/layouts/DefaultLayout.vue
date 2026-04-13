@@ -12,6 +12,7 @@
     <WindowToolbar class="toolbar" />
     <DropOverlay :show="isDragging" />
     <ImportProgressSheet />
+    <TrackDetailsDialog />
     <div class="content-area">
       <ResizableSidebar>
         <div class="relative flex-1 pt-4 h-full flex flex-col min-h-0 overflow-hidden">
@@ -75,7 +76,8 @@
       </ResizableSidebar>
 
       <main
-        class="main  "
+        id="main"
+        class="main"
       >
         <slot />
       </main>
@@ -104,15 +106,13 @@ import DropOverlay from "@/components/DropOverlay.vue";
 import { useImport } from "@/composables/useImport";
 import ImportProgressSheet from "@/components/ImportProgressSheet.vue";
 import SearchPanel from "@/modules/search/components/SearchPanel.vue";
+import TrackDetailsDialog from "@/modules/tracks/components/TrackDetailsDialog.vue";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import { computed } from "vue";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
 import LibrarySidebarItem from "@/components/layout/sidebar/LibrarySidebarItem.vue";
 import Skeleton from "@/components/ui/skeleton/Skeleton.vue";
 import LibraryContextMenu from "@/modules/library/components/LibraryContextMenu.vue";
-import { albumRepository, artistRepository } from "@/db/repositories";
-import { playlistRepository } from "@/db/repositories/playlist.repository";
-import { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 import { LIBRARY_FILTERS, LibraryFilter, LibraryItem } from "@/modules/library/types";
 import { useI18n } from "vue-i18n";
 import { Scrollable } from "@/components/ui/scrollable";
@@ -125,22 +125,11 @@ const {
   isLoading,
   activeFilter,
   setFilter,
-  invalidateLibrary,
+  deleteItem,
 } = useLibrary();
 
 const handleDeleteItem = async (item: LibraryItem) => {
-  switch (item.type) {
-    case "artist":
-      await artistRepository.delete(item.id as ArtistId);
-      break;
-    case "album":
-      await albumRepository.delete(item.id as AlbumId);
-      break;
-    case "playlist":
-      await playlistRepository.delete(item.id as PlaylistId);
-      break;
-  }
-  await invalidateLibrary();
+  await deleteItem(item);
 };
 
 const { t } = useI18n();
@@ -232,7 +221,7 @@ const { top, right, bottom, left } = useScreenSafeArea();
 .right-column {
   width: 320px;
   min-width: 320px;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
 }
 

@@ -6,9 +6,17 @@ import type {
 } from "@/db/entities";
 import type { Track } from "@/modules/player/types";
 
+export interface AlbumWithTrackCount extends AlbumEntity {
+  trackCount: number;
+}
+
+export interface ArtistWithTrackCount extends ArtistEntity {
+  trackCount: number;
+}
+
 export interface LibrarySummaryData {
-  artists: ArtistEntity[];
-  albums: AlbumEntity[];
+  artists: ArtistWithTrackCount[];
+  albums: AlbumWithTrackCount[];
   playlists: PlaylistEntity[];
   likedTracks: TrackEntity[];
 }
@@ -38,6 +46,7 @@ export interface PaginatedTracksResult {
   tracks: Track[];
   nextOffset: number | null;
   total: number;
+  totalDuration: number;
 }
 
 export interface PaginatedAlbumsResult {
@@ -50,4 +59,5 @@ export interface PaginatedPlaylistTracksResult {
   tracks: Track[];
   nextOffset: number | null;
   total: number;
+  totalDuration: number;
 }

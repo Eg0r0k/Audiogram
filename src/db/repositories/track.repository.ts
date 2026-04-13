@@ -50,15 +50,9 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
 
   async deleteByArtistId(artistId: ArtistId): Promise<Result<number, Error>> {
     try {
-      const allTracks = await this.table
-        .filter((track) => {
-          const ids = track.artistIds;
-          return ids && Array.isArray(ids) && ids.includes(artistId);
-        })
-        .toArray();
       const count = await this.table
-        .where("id")
-        .anyOf(allTracks.map(t => t.id))
+        .where("artistIds")
+        .equals(artistId)
         .delete();
       return ok(count);
     }
@@ -83,12 +77,56 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   async countByArtistId(artistId: ArtistId): Promise<Result<number, Error>> {
     try {
       const count = await this.table
-        .filter((track) => {
-          const ids = track.artistIds;
-          return ids && Array.isArray(ids) && ids.includes(artistId);
-        })
+        .where("artistIds")
+        .equals(artistId)
         .count();
+
       return ok(count);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async sumDurationByAlbumId(albumId: AlbumId): Promise<Result<number, Error>> {
+    try {
+      const tracks = await this.table
+        .where("albumId")
+        .equals(albumId)
+        .toArray();
+      const total = tracks.reduce((sum, track) => sum + (track.duration ?? 0), 0);
+      return ok(total);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async sumDurationByArtistId(artistId: ArtistId): Promise<Result<number, Error>> {
+    try {
+      const tracks = await this.table
+        .where("artistIds")
+        .equals(artistId)
+        .toArray();
+      const total = tracks.reduce((sum, track) => sum + (track.duration ?? 0), 0);
+      return ok(total);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async sumDurationByTrackIds(trackIds: TrackId[]): Promise<Result<number, Error>> {
+    try {
+      if (trackIds.length === 0) {
+        return ok(0);
+      }
+      const tracks = await this.table
+        .where("id")
+        .anyOf(trackIds)
+        .toArray();
+      const total = tracks.reduce((sum, track) => sum + (track.duration ?? 0), 0);
+      return ok(total);
     }
     catch (error) {
       return err(error as Error);
@@ -154,10 +192,9 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   async findLiked(): Promise<Result<TrackEntity[], Error>> {
     try {
       const tracks = await this.table
-        .where("likedAt")
-        .above(0)
+        .where("likedAt").above(0)
         .reverse()
-        .sortBy("likedAt");
+        .toArray();
       return ok(tracks);
     }
     catch (error) {

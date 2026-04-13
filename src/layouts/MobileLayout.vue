@@ -25,7 +25,7 @@
     <Transition name="full-player">
       <div
         v-if="isFullPlayerOpen"
-        class="fixed inset-0 bg-background"
+        class="fixed inset-0 bg-background z-40"
       >
         <div class="flex flex-col h-full">
           <div class="flex items-center justify-between p-4">

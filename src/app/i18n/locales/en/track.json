@@ -18,8 +18,54 @@
     "noPlaylistsYet": "You don't have any playlists yet",
     "moveUp": "Move up",
     "moveDown": "Move down",
+    "details": "Details",
     "removeFromQueue": "Remove from queue",
     "removeFromPlaylist": "Remove from playlist"
+  },
+  "details": {
+    "title": "Track details",
+    "sections": {
+      "playback": "Playback",
+      "storage": "Storage",
+      "metadata": "Metadata",
+      "loudness": "Loudness"
+    },
+    "fields": {
+      "title": "Title",
+      "artist": "Artist",
+      "album": "Album",
+      "duration": "Duration",
+      "source": "Source",
+      "state": "State",
+      "liked": "Liked",
+      "artistIds": "Artist IDs",
+      "albumId": "Album ID",
+      "trackId": "Track ID",
+      "storagePath": "Storage path",
+      "lyricsPath": "Lyrics path",
+      "fingerprint": "Fingerprint",
+      "trackNo": "Track number",
+      "diskNo": "Disc number",
+      "playCount": "Play count",
+      "addedAt": "Added at",
+      "lastPlayedAt": "Last played at",
+      "codec": "Codec",
+      "bitrate": "Bitrate",
+      "sampleRate": "Sample rate",
+      "channels": "Channels",
+      "lossless": "Lossless",
+      "integratedLufs": "Integrated LUFS",
+      "truePeakDbtp": "True Peak dBTP",
+      "replayGainDb": "ReplayGain dB",
+      "replayPeak": "Replay Peak"
+    },
+    "values": {
+      "localInternal": "Local internal file",
+      "localExternal": "Local external file",
+      "remoteHls": "Remote HLS stream",
+      "ready": "Ready",
+      "broken": "Broken"
+    }
   },
   "downloadSuccess": "File downloaded",
   "downloadFailed": "Failed to download file"

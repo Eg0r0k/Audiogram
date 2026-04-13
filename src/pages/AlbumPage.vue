@@ -47,7 +47,7 @@
               @play="handlePlayAll"
               @shuffle="handleShuffle"
               @edit="showEditDialog = true"
-              @delete="showDeleteDialog = true"
+              @delete="openDeleteDialog"
               @add-to-queue="handleAddToQueue"
               @share="handleShare"
             />
@@ -81,13 +81,6 @@
       />
     </template>
 
-    <DeleteAlbumDialog
-      v-model:open="showDeleteDialog"
-      :album="album"
-      :track-count="tracks.length"
-      @confirm="handleDelete"
-    />
-
     <EditAlbumDialog
       v-model:open="showEditDialog"
       :album="album"
@@ -111,10 +104,10 @@ import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import IconLoader2 from "~icons/tabler/loader-2";
 import { useAlbumPage } from "@/modules/albums/composables/useAlbumPage";
 import { getAlbumPageData } from "@/queries/album.queries";
-import DeleteAlbumDialog from "@/modules/albums/components/dialogs/DeleteAlbumDialog.vue";
 import EditAlbumDialog from "@/modules/albums/components/dialogs/EditAlbumDialog.vue";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
+import { useDeleteConfirmDialog } from "@/composables/useDeleteConfirmDialog";
 
 interface AlbumChanges {
   title?: string;
@@ -126,6 +119,7 @@ interface AlbumChanges {
 const { t } = useI18n();
 const { isCompact } = useLibraryView();
 const queueStore = useQueueStore();
+const { openDeleteDialog: openGlobalDeleteDialog } = useDeleteConfirmDialog();
 
 const {
   album,
@@ -143,7 +137,6 @@ const {
   isFetchingNextPage,
 } = useAlbumPage();
 
-const showDeleteDialog = ref(false);
 const showEditDialog = ref(false);
 
 function getTrackKey(index: number) {
@@ -199,10 +192,19 @@ function handleShare() {
   toast.info(t("common.comingSoon"));
 }
 
+function openDeleteDialog() {
+  if (!album.value) return;
+  openGlobalDeleteDialog({
+    type: "album",
+    id: album.value.id,
+    name: album.value.title,
+    trackCount: tracks.value.length,
+  }, handleDelete);
+}
+
 async function handleDelete() {
   try {
     await deleteAlbum();
-    showDeleteDialog.value = false;
     toast.success(t("album.deleted"));
   }
   catch {

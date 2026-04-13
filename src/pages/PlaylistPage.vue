@@ -47,10 +47,51 @@
               :data="playlistData"
               @play="handlePlayAll"
               @edit="showEditDialog = true"
-              @delete="showDeleteDialog = true"
+              @delete="openDeleteDialog"
               @add-to-queue="handleAddToQueue"
               @share="handleShare"
             />
+            <div
+              v-if="isSelectionMode"
+              class="flex items-center gap-2 px-4 pb-2"
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                @click="selectAllTracks"
+              >
+                {{ $t("common.selectAll") }}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                @click="deselectAll"
+              >
+                {{ $t("common.deselectAll") }}
+              </Button>
+              <span class="text-sm text-muted-foreground">
+                {{ selectedCount }} {{ $t("common.selected") }}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                @click="exitSelectionMode"
+              >
+                {{ $t("common.cancel") }}
+              </Button>
+            </div>
+            <div
+              v-else
+              class="flex items-center gap-2 px-4 pb-2"
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                @click="enterSelectionMode"
+              >
+                {{ $t("common.select") }}
+              </Button>
+            </div>
           </template>
 
           <template #default="{ item, index }">
@@ -60,7 +101,10 @@
                 menu-target="playlist"
                 :track="item"
                 :index="index + 1"
+                :selectable="isSelectionMode"
+                :is-selected="isSelected(item.id)"
                 @play="handlePlayTrack(index)"
+                @toggle-select="toggleSelect"
               />
             </div>
           </template>
@@ -79,13 +123,6 @@
         :is-playlist-owner="true"
       />
     </template>
-
-    <DeletePlaylistDialog
-      v-model:open="showDeleteDialog"
-      :playlist="playlist"
-      :track-count="tracks.length"
-      @confirm="handleDelete"
-    />
 
     <EditPlaylistDialog
       v-model:open="showEditDialog"
@@ -110,14 +147,26 @@ import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import IconLoader2 from "~icons/tabler/loader-2";
 import { PlaylistChanges, usePlaylistPage } from "@/modules/playlist/composables/usePlaylistPage";
 import { getPlaylistPageData } from "@/queries/playlist.queries";
-import DeletePlaylistDialog from "@/modules/playlist/components/dialogs/DeletePlaylistDialog.vue";
 import EditPlaylistDialog from "@/modules/playlist/components/dialogs/EditPlaylistDialog.vue";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
+import { useDeleteConfirmDialog } from "@/composables/useDeleteConfirmDialog";
+import { useTrackSelection } from "@/composables/useTrackSelection";
 
 const { t } = useI18n();
 const { isCompact } = useLibraryView();
 const queueStore = useQueueStore();
+const { openDeleteDialog: openGlobalDeleteDialog } = useDeleteConfirmDialog();
+const {
+  isSelectionMode,
+  enterSelectionMode,
+  exitSelectionMode,
+  isSelected,
+  toggleSelect,
+  selectAll,
+  deselectAll,
+  selectedCount,
+} = useTrackSelection();
 
 const {
   playlist,
@@ -135,7 +184,6 @@ const {
   isFetchingNextPage,
 } = usePlaylistPage();
 
-const showDeleteDialog = ref(false);
 const showEditDialog = ref(false);
 
 function getTrackKey(index: number) {
@@ -191,10 +239,19 @@ function handleShare() {
   toast.info(t("common.comingSoon"));
 }
 
+function openDeleteDialog() {
+  if (!playlist.value) return;
+  openGlobalDeleteDialog({
+    type: "playlist",
+    id: playlist.value.id,
+    name: playlist.value.name,
+    trackCount: tracks.value.length,
+  }, handleDelete);
+}
+
 async function handleDelete() {
   try {
     await deletePlaylist();
-    showDeleteDialog.value = false;
   }
   catch {
     toast.error(t("playlist.deleteFailed"));
@@ -210,5 +267,10 @@ async function handleSave(changes: PlaylistChanges) {
     const message = e instanceof Error ? e.message : t("playlist.updateFailed");
     toast.error(message);
   }
+}
+
+function selectAllTracks() {
+  const ids = tracks.value.map(t => t.id);
+  selectAll(ids);
 }
 </script>

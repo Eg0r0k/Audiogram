@@ -57,6 +57,11 @@ export function usePlaylistPage() {
     () => infiniteData.value?.pages[0]?.total ?? playlist.value?.trackIds.length ?? 0,
   );
 
+  const totalDuration = computed(() => {
+    const seconds = infiniteData.value?.pages[0]?.totalDuration ?? 0;
+    return formatTotalDuration(seconds, t);
+  });
+
   const {
     url: coverUrl,
     isLoading: isCoverLoading,
@@ -65,11 +70,6 @@ export function usePlaylistPage() {
   const isLoading = computed(() =>
     isPlaylistLoading.value || isCoverLoading.value,
   );
-
-  const totalDuration = computed(() => {
-    const seconds = tracks.value.reduce((sum, t) => sum + t.duration, 0);
-    return formatTotalDuration(seconds, t);
-  });
 
   const playlistDetailData = computed<PlaylistData | null>(() => {
     const current = playlist.value;

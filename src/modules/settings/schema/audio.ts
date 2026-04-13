@@ -77,7 +77,7 @@ export const getPresetsByCategory = (category: EQPresetCategory): EQPreset[] => 
 export const FADE_DURATION_MIN = 0;
 export const FADE_DURATION_MAX = 10;
 export const FADE_DURATION_STEP = 0.1;
-export const FADE_DURATION_DEFAULT = 1;
+export const FADE_DURATION_DEFAULT = 0.5;
 
 export const NORMALIZATION_TARGET_LUFS_MIN = -24;
 export const NORMALIZATION_TARGET_LUFS_MAX = -6;

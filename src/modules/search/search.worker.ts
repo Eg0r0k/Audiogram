@@ -34,7 +34,7 @@ const DEFAULT_SEARCH_OPTIONS: SearchOptions = {
 function createIndex(): MiniSearch<SearchDocument> {
   return new MiniSearch<SearchDocument>({
     fields: ["title", "artist", "album"],
-    storeFields: ["type", "title", "artist", "album", "entityId"],
+    storeFields: ["type", "title", "artist", "album", "entityId", "coverPath", "track"],
     tokenize: unicodeTokenizer,
     processTerm: termProcessor,
     searchOptions: DEFAULT_SEARCH_OPTIONS,
@@ -49,7 +49,9 @@ function mapHit(hit: SearchResult): SearchResultItem {
     artist: hit.artist as string | undefined,
     album: hit.album as string | undefined,
     entityId: hit.entityId as string,
+    coverPath: hit.coverPath as string | undefined,
     score: hit.score,
+    track: hit.track as SearchResultItem["track"],
   };
 }
 

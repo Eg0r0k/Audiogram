@@ -65,9 +65,10 @@ export async function getAlbumTracksPaginated(
   offset: number,
   limit = PAGE_SIZE,
 ): Promise<PaginatedTracksResult> {
-  const [rawTracks, countResult] = await Promise.all([
+  const [rawTracks, countResult, durationResult] = await Promise.all([
     unwrapResult(albumRepository.findTracksPaginated(albumId, offset, limit)),
     unwrapResult(albumRepository.countTracksByAlbumId(albumId)),
+    unwrapResult(trackRepository.sumDurationByAlbumId(albumId)),
   ]);
 
   const album = await getAlbumByIdOrThrow(albumId);
@@ -86,6 +87,7 @@ export async function getAlbumTracksPaginated(
     tracks: mappedTracks,
     nextOffset,
     total,
+    totalDuration: durationResult ?? 0,
   };
 }
 

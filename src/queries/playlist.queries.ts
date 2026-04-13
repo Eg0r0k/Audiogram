@@ -88,12 +88,15 @@ export async function getPlaylistTracksPaginated(
   );
 
   if (trackIds.length === 0) {
-    return { tracks: [], nextOffset: null, total };
+    return { tracks: [], nextOffset: null, total, totalDuration: 0 };
   }
 
   const rawTracks = await unwrapResult(trackRepository.findByIds(trackIds));
-  const artistIds = unique(rawTracks.flatMap(track => track.artistIds));
-  const albumIds = unique(rawTracks.map(track => track.albumId));
+  const [durationResult, artistIds, albumIds] = await Promise.all([
+    unwrapResult(trackRepository.sumDurationByTrackIds(trackIds)),
+    Promise.resolve(unique(rawTracks.flatMap(track => track.artistIds))),
+    Promise.resolve(unique(rawTracks.map(track => track.albumId))),
+  ]);
 
   const [artists, albums] = await Promise.all([
     unwrapResult(artistRepository.findByIds(artistIds)),
@@ -112,6 +115,7 @@ export async function getPlaylistTracksPaginated(
     tracks: mapTracks(orderedTracks, artists, albums),
     nextOffset,
     total,
+    totalDuration: durationResult ?? 0,
   };
 }
 

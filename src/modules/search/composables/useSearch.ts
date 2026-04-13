@@ -15,6 +15,8 @@ import { buildAllSearchDocuments } from "../buildDocuments";
 
 const DEBOUNCE_MS = 150;
 const TOP_RESULTS_COUNT = 6;
+const MAX_HISTORY_ITEMS = 6;
+const SEARCH_HISTORY_KEY = "audiogram-search-history";
 
 type PendingSearch = {
   resolve: (results: SearchResultItem[]) => void;
@@ -95,6 +97,25 @@ class SearchWorkerClient {
 let client: SearchWorkerClient | null = null;
 let initPromise: Promise<void> | null = null;
 
+function loadSearchHistory(): string[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(SEARCH_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  }
+  catch {
+    return [];
+  }
+}
+
+function persistSearchHistory(items: string[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(items));
+}
+
 function getClient(): SearchWorkerClient {
   if (!client) {
     client = new SearchWorkerClient();
@@ -120,6 +141,7 @@ const activeFilter = ref<SearchFilter>("all");
 const results = shallowRef<GroupedResults>(createEmptyResults());
 const isSearching = ref(false);
 const isSearchOpen = ref(false);
+const recentQueries = ref<string[]>(loadSearchHistory());
 
 let latestSearchId = 0;
 
@@ -175,10 +197,34 @@ const availableFilters: { label: string; value: SearchFilter }[] = [
 ];
 
 export function useSearch() {
+  const saveQueryToHistory = (rawQuery?: string) => {
+    const trimmed = (rawQuery ?? query.value).trim();
+    if (!trimmed) return;
+
+    recentQueries.value = [trimmed, ...recentQueries.value.filter(item => item !== trimmed)]
+      .slice(0, MAX_HISTORY_ITEMS);
+    persistSearchHistory(recentQueries.value);
+  };
+
+  const removeHistoryItem = (value: string) => {
+    recentQueries.value = recentQueries.value.filter(item => item !== value);
+    persistSearchHistory(recentQueries.value);
+  };
+
+  const clearHistory = () => {
+    recentQueries.value = [];
+    persistSearchHistory([]);
+  };
+
+  const applyHistoryItem = (value: string) => {
+    query.value = value;
+  };
+
   return {
     query,
     activeFilter,
     availableFilters,
+    recentQueries: readonly(recentQueries),
     results,
     isSearching: readonly(isSearching),
     isSearchOpen: readonly(isSearchOpen),
@@ -188,6 +234,10 @@ export function useSearch() {
     closeSearch() { isSearchOpen.value = false; },
 
     setFilter(filter: SearchFilter) { activeFilter.value = filter; },
+    saveQueryToHistory,
+    removeHistoryItem,
+    clearHistory,
+    applyHistoryItem,
 
     clear() {
       query.value = "";

@@ -5,14 +5,27 @@ import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import type { LibraryItem } from "../types";
-import { createPlaylistAndSync } from "@/queries/playlist.queries";
-import { invalidateLibrarySummary, libraryQueries } from "@/queries/library.queries";
+import { clearAllData } from "@/services/storage-info.service";
+import { deleteAlbumAndSync } from "@/queries/album.queries";
+import { deleteArtistAndSync } from "@/queries/artist.queries";
+import {
+  clearLibraryData,
+  invalidateLibraryData,
+  libraryQueries,
+} from "@/queries/library.queries";
+import {
+  createPlaylistAndSync,
+  deletePlaylistAndSync,
+} from "@/queries/playlist.queries";
+import { useDeleteConfirmDialog } from "@/composables/useDeleteConfirmDialog";
+import type { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 
 export const useLibrary = () => {
   const store = useLibraryStore();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const { openDeleteDialog } = useDeleteConfirmDialog();
 
   const { sortBy, activeFilter, searchQuery } = storeToRefs(store);
 
@@ -60,6 +73,7 @@ export const useLibrary = () => {
         artistName: artist.name,
         to: { name: "artist", params: { id: artist.id } },
         rounded: true,
+        trackCount: artist.trackCount,
       });
     }
 
@@ -77,6 +91,7 @@ export const useLibrary = () => {
         artistName,
         to: { name: "album", params: { id: album.id } },
         rounded: false,
+        trackCount: album.trackCount,
       });
     }
 
@@ -91,6 +106,7 @@ export const useLibrary = () => {
         updatedAt: playlist.updatedAt,
         to: { name: "playlist", params: { id: playlist.id } },
         rounded: false,
+        trackCount: playlist.trackIds.length,
       });
     }
 
@@ -174,7 +190,50 @@ export const useLibrary = () => {
   };
 
   const invalidateLibrary = async () => {
-    await invalidateLibrarySummary(queryClient);
+    await invalidateLibraryData(queryClient);
+  };
+
+  const deleteItem = async (item: LibraryItem) => {
+    if (item.type === "liked") return;
+
+    const deleteHandler = async () => {
+      switch (item.type) {
+        case "artist":
+          await deleteArtistAndSync(queryClient, artists.value.find(artist => artist.id === item.id) ?? null);
+          store.unpin("artist", item.id);
+          if (router.currentRoute.value.name === "artist" && router.currentRoute.value.params.id === item.id) {
+            router.push("/library");
+          }
+          break;
+        case "album":
+          await deleteAlbumAndSync(queryClient, albums.value.find(album => album.id === item.id) ?? null);
+          store.unpin("album", item.id);
+          if (router.currentRoute.value.name === "album" && router.currentRoute.value.params.id === item.id) {
+            router.push("/library");
+          }
+          break;
+        case "playlist":
+          await deletePlaylistAndSync(queryClient, playlists.value.find(playlist => playlist.id === item.id) ?? null);
+          store.unpin("playlist", item.id);
+          if (router.currentRoute.value.name === "playlist" && router.currentRoute.value.params.id === item.id) {
+            router.push("/library");
+          }
+          break;
+      }
+    };
+
+    openDeleteDialog({
+      type: item.type as "artist" | "album" | "playlist",
+      id: item.id as AlbumId | ArtistId | PlaylistId,
+      name: item.title,
+      trackCount: item.trackCount ?? 0,
+    }, deleteHandler);
+  };
+
+  const clearLibrary = async () => {
+    await clearAllData();
+    store.clearPins();
+    await clearLibraryData(queryClient);
   };
 
   return {
@@ -195,5 +254,7 @@ export const useLibrary = () => {
     isPinned: store.isPinned,
     createPlaylist,
     invalidateLibrary,
+    deleteItem,
+    clearLibrary,
   };
 };

@@ -14,6 +14,7 @@ import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
 import { IS_TAURI } from "@/lib/environment/userAgent";
 import { useAttachTrackLyrics } from "./useAttachTrackLyrics";
+import { useTrackDetailsDialog } from "./useTrackDetailsDialog";
 import { useToggleTrackLike } from "./useToggleTrackLike";
 import {
   addTrackToPlaylistAndSync,
@@ -38,6 +39,7 @@ export const useTrackContextActions = (
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const { attachTrackLyrics } = useAttachTrackLyrics();
+  const { openTrackDetails } = useTrackDetailsDialog();
   const { toggleTrackLike } = useToggleTrackLike();
 
   const play = () => {
@@ -59,6 +61,11 @@ export const useTrackContextActions = (
   const toggleLike = async () => {
     if (!track.value) return;
     await toggleTrackLike(track.value);
+  };
+
+  const showDetails = () => {
+    if (!track.value) return;
+    openTrackDetails(track.value);
   };
 
   const attachLyricsToTrack = async () => {
@@ -168,6 +175,7 @@ export const useTrackContextActions = (
     play,
     playNext,
     addToQueue,
+    showDetails,
     toggleLike,
     attachLyrics: attachLyricsToTrack,
     addToPlaylist,

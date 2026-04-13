@@ -1,21 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TrackSource } from "@/db/entities";
+import { TrackSource, TrackState } from "@/db/entities";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import type { Track } from "@/modules/player/types";
 import { useQueueStore } from "../store/queue.store";
 
 function createTrack(id: string, title: string = "Test Track"): Track {
   return {
+    kind: "library",
     id: id as Track["id"],
     title,
     artist: "Artist",
-    artistId: "artist-1" as Track["artistId"],
+    artistIds: ["artist-1" as Track["artistIds"][number]],
     albumId: "album-1" as Track["albumId"],
     albumName: "Album",
     storagePath: `tracks/${id}.mp3`,
     source: TrackSource.LOCAL_INTERNAL,
+    state: TrackState.READY,
     duration: 120,
     isLiked: false,
   };
@@ -181,6 +183,20 @@ describe("queue.store", () => {
 
       expect(store.isEmpty).toBe(true);
       expect(store.currentIndex).toBe(-1);
+    });
+
+    it("should clear current selection when no playable tracks remain", async () => {
+      const store = useQueueStore();
+      const playerStore = usePlayerStore();
+      vi.spyOn(playerStore, "playPlayerTrack").mockRejectedValue(new Error("missing file"));
+      const stopSpy = vi.spyOn(playerStore, "stop").mockReturnValue(undefined);
+      const clearCurrentTrackSpy = vi.spyOn(playerStore, "clearCurrentTrack").mockReturnValue(undefined);
+
+      await store.setQueue([createTrack("1")], 0);
+
+      expect(store.currentIndex).toBe(-1);
+      expect(stopSpy).toHaveBeenCalled();
+      expect(clearCurrentTrackSpy).toHaveBeenCalled();
     });
   });
 
@@ -541,6 +557,26 @@ describe("queue.store", () => {
       await store.next();
 
       expect(playSpy).not.toHaveBeenCalled();
+    });
+
+    it("should clear current selection when last track cannot play", async () => {
+      const store = useQueueStore();
+      const playerStore = usePlayerStore();
+      vi.spyOn(playerStore, "playPlayerTrack").mockRejectedValue(new Error("missing file"));
+      const stopSpy = vi.spyOn(playerStore, "stop").mockReturnValue(undefined);
+      const clearCurrentTrackSpy = vi.spyOn(playerStore, "clearCurrentTrack").mockReturnValue(undefined);
+
+      store.queue = [
+        { id: "item-1" as any, track: createTrack("1"), source: { type: "manual" }, addedAt: Date.now() },
+      ];
+      store.currentIndex = 0;
+      playerStore.repeatMode = "off";
+
+      await store.next();
+
+      expect(store.currentIndex).toBe(-1);
+      expect(stopSpy).toHaveBeenCalled();
+      expect(clearCurrentTrackSpy).toHaveBeenCalled();
     });
   });
 

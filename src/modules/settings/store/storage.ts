@@ -1,12 +1,16 @@
 import { ref, computed } from "vue";
 import { StorageInfo } from "../schema/storage";
-import { clearAllData, collectStorageInfo } from "@/services/storage-info.service";
+import { collectStorageInfo } from "@/services/storage-info.service";
 import { formatBytes } from "@/lib/format/memory";
+import { useLibrary } from "@/modules/library/composables/useLibrary";
 
 export function useStorageSettings() {
   const info = ref<StorageInfo | null>(null);
   const isLoading = ref(false);
   const isClearing = ref(false);
+  const {
+    clearLibrary,
+  } = useLibrary();
 
   const totalUsedByApp = computed(() => {
     if (!info.value) return 0;
@@ -76,7 +80,7 @@ export function useStorageSettings() {
   async function handleClearAll() {
     isClearing.value = true;
     try {
-      await clearAllData();
+      await clearLibrary();
       await refresh();
     }
     finally {

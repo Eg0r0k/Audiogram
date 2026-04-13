@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col items-center justify-center py-7 h-full text-center">
+  <div class="flex flex-col items-center justify-center  h-full text-center">
     <div class="size-16 flex items-center justify-center ">
       <IconPlaylist class="size-8 text-primary" />
     </div>

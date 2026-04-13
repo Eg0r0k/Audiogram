@@ -12,6 +12,7 @@ import { startWatching, type StopWatchFn } from "../services/folder-watcher";
 import type { WatchedFolder } from "../types";
 import { musicLibraryEngine } from "@/services/importer.service";
 import { normalizePath } from "@/lib/files/filterFiles";
+import { invalidateLibraryData } from "@/queries/library.queries";
 
 const activeWatchers = new Map<string, StopWatchFn>();
 
@@ -252,7 +253,7 @@ export function useWatchedFolders() {
   }
 
   function invalidateLibrary() {
-    queryClient.invalidateQueries({ queryKey: ["library"] });
+    void invalidateLibraryData(queryClient);
   }
 
   async function relinkFolder(folderId: string) {

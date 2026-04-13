@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col max-w-lg w-full mx-auto min-h-0 p-8">
+  <div class="flex flex-col max-w-lg w-full mx-auto min-h-0 p-8 ">
     <div class="flex justify-center items-start">
       <div
         class="aspect-square max-w-100 max-h-[calc(100dvh-22.5rem)] w-[min(100%,calc(100dvh-22.5rem))] rounded-xl bg-muted flex items-center justify-center overflow-hidden"

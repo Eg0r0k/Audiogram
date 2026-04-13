@@ -10,6 +10,7 @@ import {
   type RepeatMode,
 } from "../types";
 import { TrackSource, TrackState } from "@/db/entities";
+import { StorageError } from "@/db/errors/storage.errors";
 import { IS_TAURI } from "@/lib/environment/userAgent";
 import { storageService } from "@/db/storage";
 import { statsService } from "@/services/stats.service";
@@ -107,6 +108,14 @@ export const usePlayerStore = defineStore("player", () => {
     clearSleepTimerHandles();
     sleepTimerEndsAt.value = null;
     sleepTimerRemainingMs.value = 0;
+  };
+
+  const clearCurrentTrack = () => {
+    currentTrack.value = null;
+    currentTime.value = 0;
+    duration.value = 0;
+    lyrics.value = [];
+    lyricsStatus.value = "idle";
   };
 
   const handleSleepTimerExpired = () => {
@@ -210,7 +219,8 @@ export const usePlayerStore = defineStore("player", () => {
             return null;
           }
           const result = await storageService.getAudioUrl(track.source.path);
-          return result.isOk() ? result.value : null;
+          if (result.isErr()) throw result.error;
+          return result.value;
         }
 
         case "url":
@@ -228,7 +238,8 @@ export const usePlayerStore = defineStore("player", () => {
     }
 
     const result = await storageService.getAudioUrl(track.storagePath);
-    return result.isOk() ? result.value : null;
+    if (result.isErr()) throw result.error;
+    return result.value;
   };
 
   const applyLoudnessMetadata = (p: Player, track: PlayerTrack) => {
@@ -262,7 +273,7 @@ export const usePlayerStore = defineStore("player", () => {
 
       const url = await resolveTrackUrl(track);
       if (!url) {
-        currentTrack.value = null;
+        clearCurrentTrack();
         status.value = "idle";
         return;
       }
@@ -301,12 +312,16 @@ export const usePlayerStore = defineStore("player", () => {
   };
 
   const pause = () => {
-    if (!player.value || !isPlaying.value || _activeFadeAbort) return;
+    if (!player.value || !isPlaying.value) return;
+
+    if (_activeFadeAbort) return;
 
     const audioSettings = useAudioSettingsStore();
     const shouldFade = audioSettings.isFadeEnabled && audioSettings.fadeOutDuration > 0;
 
     if (shouldFade) {
+      status.value = "paused";
+
       const ac = new AbortController();
       _activeFadeAbort = ac;
       player.value.fadeOut(audioSettings.fadeOutDuration).then(() => {
@@ -319,14 +334,18 @@ export const usePlayerStore = defineStore("player", () => {
       player.value.pause();
     }
   };
-
   const togglePlay = async () => {
     if (_activeFadeAbort) {
       cancelActiveFade();
       player.value?.cancelFade();
       player.value?.setVolume(volume.value);
+
+      if (status.value === "paused" && player.value) {
+        status.value = "playing";
+      }
       return;
     }
+
     if (isPlaying.value) pause();
     else await play();
   };
@@ -375,6 +394,7 @@ export const usePlayerStore = defineStore("player", () => {
     if (!url) {
       status.value = "error";
       player.value = null;
+      clearCurrentTrack();
       throw new Error(`Cannot resolve audio source for: "${track.title}"`);
     }
 
@@ -392,6 +412,9 @@ export const usePlayerStore = defineStore("player", () => {
     catch (err) {
       status.value = "error";
       player.value = null;
+      if (err instanceof StorageError) {
+        clearCurrentTrack();
+      }
       throw err;
     }
   };
@@ -543,6 +566,7 @@ export const usePlayerStore = defineStore("player", () => {
     setMuted,
     setSleepTimer,
     cancelSleepTimer,
+    clearCurrentTrack,
   };
 }, {
   persist: {

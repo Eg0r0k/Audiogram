@@ -35,6 +35,10 @@ export async function getLikedTracks() {
   return unwrapResult(trackRepository.findLiked());
 }
 
+export async function getTrackEntityById(trackId: TrackId) {
+  return unwrapResult(trackRepository.findById(trackId));
+}
+
 export async function getLikedTracksPageData(): Promise<LikedTracksPageData> {
   const tracks = await getLikedTracks();
   const mappedTracks = await loadTrackRelations(tracks);
@@ -48,19 +52,22 @@ export async function getLikedTracksPaginated(
   offset: number,
   limit = PAGE_SIZE,
 ): Promise<PaginatedTracksResult> {
-  const [tracks, countResult] = await Promise.all([
+  const [tracks, countResult, durationResult] = await Promise.all([
     unwrapResult(trackRepository.findLikedPaginated(offset, limit)),
     unwrapResult(trackRepository.countLiked()),
+    unwrapResult(trackRepository.findLiked()),
   ]);
 
   const mappedTracks = await loadTrackRelations(tracks);
   const total = countResult ?? 0;
   const nextOffset = offset + limit < total ? offset + limit : null;
+  const totalDuration = (durationResult ?? []).reduce((sum, t) => sum + (t.duration ?? 0), 0);
 
   return {
     tracks: mappedTracks,
     nextOffset,
     total,
+    totalDuration,
   };
 }
 

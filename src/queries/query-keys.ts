@@ -36,7 +36,7 @@ export const queryKeys = {
     likedPageInfinite: () => ["tracks", "liked", "page", "infinite"] as const,
   },
   covers: {
-    detail: (ownerType: "album" | "playlist", ownerId: string) =>
+    detail: (ownerType: "album" | "playlist" | "artist", ownerId: string) =>
       ["covers", ownerType, ownerId] as const,
   },
   stats: {

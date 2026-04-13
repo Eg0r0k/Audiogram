@@ -1,7 +1,7 @@
 import { ref, computed } from "vue";
 import { useQueryClient } from "@tanstack/vue-query";
 import { musicLibraryEngine } from "@/services/importer.service";
-import { queryKeys } from "@/queries/query-keys";
+import { invalidateLibraryData } from "@/queries/library.queries";
 import { filterFilesByExtension } from "@/lib/files/filterFiles";
 import { IS_TAURI } from "@/lib/environment/userAgent";
 import type { ImportBatchResult } from "@/services/importer.service";
@@ -153,12 +153,7 @@ export function useImport() {
     state.value.progress = 100;
 
     if (result.successful.length > 0) {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }),
-        queryClient.invalidateQueries({ queryKey: ["artists"] }),
-        queryClient.invalidateQueries({ queryKey: ["albums"] }),
-        queryClient.invalidateQueries({ queryKey: ["covers", "album"] }),
-      ]);
+      await invalidateLibraryData(queryClient);
     }
 
     state.value.isRunning = false;

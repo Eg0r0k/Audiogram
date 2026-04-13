@@ -5,6 +5,8 @@ import { AlbumId } from "@/types/ids";
 import { useObjectUrl } from "@vueuse/core";
 import type { AlbumData } from "@/modules/media-hero/types";
 import { queryKeys } from "@/queries/query-keys";
+import { formatTotalDuration } from "@/lib/format/time";
+import { useI18n } from "vue-i18n";
 import {
   albumQueries,
   deleteAlbumAndSync,
@@ -13,6 +15,7 @@ import {
   updateAlbumAndSync,
 } from "@/queries/album.queries";
 import { coverQueries } from "@/queries/cover.queries";
+import { getArtistByIdOrThrow } from "@/queries/artist.queries";
 
 export type { AlbumChanges } from "@/queries/album.queries";
 
@@ -20,6 +23,7 @@ export function useAlbumPage() {
   const route = useRoute();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { t } = useI18n();
 
   const albumId = computed(() => AlbumId(route.params.id as string));
 
@@ -54,7 +58,22 @@ export function useAlbumPage() {
     () => infiniteData.value?.pages[0]?.total ?? 0,
   );
 
-  const artist = computed(() => (album.value ? { id: album.value.artistId, name: "" } : null));
+  const totalDuration = computed(() => {
+    const seconds = infiniteData.value?.pages[0]?.totalDuration ?? 0;
+    return formatTotalDuration(seconds, t);
+  });
+
+  const artistId = computed(() => album.value?.artistId);
+
+  const {
+    data: artistData,
+  } = useQuery({
+    queryKey: computed(() => artistId.value ? queryKeys.artists.detail(artistId.value) : ["artist", "detail", "empty"]),
+    queryFn: () => getArtistByIdOrThrow(artistId.value!),
+    enabled: computed(() => !!artistId.value),
+  });
+
+  const artist = computed(() => (artistData.value ? { id: artistData.value.id, name: artistData.value.name } : null));
 
   const {
     data: coverBlob,
@@ -79,6 +98,7 @@ export function useAlbumPage() {
       image: coverUrl.value ?? "",
       releaseYear: album.value.year ?? 0,
       trackCount: trackCount.value,
+      duration: totalDuration.value,
     };
   });
 

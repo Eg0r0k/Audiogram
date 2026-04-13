@@ -12,6 +12,7 @@
   </component>
   <WhatsNewDialog />
   <ExternalLinkDialog />
+  <DeleteConfirmDialog />
   <Toaster
     position="top-center"
     class="pointer-events-auto"
@@ -45,6 +46,7 @@ import { useUpdateScheduler } from "@/modules/update/composables/useUpdateSchedu
 import { usePwaUpdate } from "@/modules/update/composables/usePwaUpdate";
 import { useChangelogOnStartup } from "@/modules/update/composables/useChangelogOnStartup";
 import WhatsNewDialog from "@/modules/update/components/WhatsNewDialog.vue";
+import DeleteConfirmDialog from "@/components/dialogs/DeleteConfirmDialog.vue";
 import { useTrayBehavior } from "@/modules/settings/composables/useTrayBehavior";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { ephemeralFromPath } from "@/modules/player/types";

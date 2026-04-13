@@ -1,5 +1,9 @@
 import { defineStore } from "pinia";
 import { computed, ref, watch } from "vue";
+import { toast } from "vue-sonner";
+import { i18n } from "@/app/i18n";
+import { StorageError, StorageErrorCode } from "@/db/errors/storage.errors";
+import { TrackSource } from "@/db/entities";
 import { QueueItemId } from "@/types/ids";
 import { isEphemeralTrack, type PlayerTrack } from "@/modules/player/types";
 import type { QueueItem, QueueSource } from "../types";
@@ -88,6 +92,22 @@ export const useQueueStore = defineStore("queue", () => {
     queue.value = patchQueueItem(queue.value, nextTrack);
     originalQueue.value = patchQueueItem(originalQueue.value, nextTrack);
   }
+
+  function resetPlaybackSelection(): void {
+    currentIndex.value = -1;
+    playerStore.stop();
+    playerStore.clearCurrentTrack();
+  }
+
+  function handlePlaybackError(track: PlayerTrack, err: unknown): void {
+    if (!isEphemeralTrack(track)
+      && track.source === TrackSource.LOCAL_EXTERNAL
+      && err instanceof StorageError
+      && err.code === StorageErrorCode.FILE_NOT_FOUND) {
+      toast.warning(i18n.global.t("watchedFolders.trackPathMissing"));
+    }
+  }
+
   async function playAtIndex(index: number): Promise<boolean> {
     if (index < 0 || index >= queue.value.length) return false;
 
@@ -100,6 +120,7 @@ export const useQueueStore = defineStore("queue", () => {
     }
     catch (err) {
       console.error(`[Queue] Failed to play "${item.track.title}":`, err);
+      handlePlaybackError(item.track, err);
       return false;
     }
   }
@@ -113,7 +134,7 @@ export const useQueueStore = defineStore("queue", () => {
           const success = await playAtIndex(0);
           if (success) return;
         }
-        playerStore.stop();
+        resetPlaybackSelection();
         return;
       }
 
@@ -121,7 +142,7 @@ export const useQueueStore = defineStore("queue", () => {
       if (success) return;
     }
 
-    playerStore.stop();
+    resetPlaybackSelection();
   }
 
   async function setQueue(
@@ -187,11 +208,11 @@ export const useQueueStore = defineStore("queue", () => {
       if (!success) await skipToNextPlayable();
     }
     else if (playerStore.repeatMode === "all") {
-      await playAtIndex(0);
+      const success = await playAtIndex(0);
+      if (!success) await skipToNextPlayable();
     }
     else {
-      playerStore.stop();
-      currentIndex.value = -1;
+      resetPlaybackSelection();
     }
   }
 
@@ -235,8 +256,7 @@ export const useQueueStore = defineStore("queue", () => {
     queue.value.splice(index, 1);
 
     if (queue.value.length === 0) {
-      currentIndex.value = -1;
-      playerStore.stop();
+      resetPlaybackSelection();
       return;
     }
 
@@ -259,8 +279,7 @@ export const useQueueStore = defineStore("queue", () => {
     queue.value = queue.value.filter(item => !idSet.has(item.id));
 
     if (queue.value.length === 0) {
-      currentIndex.value = -1;
-      playerStore.stop();
+      resetPlaybackSelection();
       return;
     }
 
@@ -335,7 +354,7 @@ export const useQueueStore = defineStore("queue", () => {
   function clear(): void {
     queue.value = [];
     originalQueue.value = [];
-    currentIndex.value = -1;
+    resetPlaybackSelection();
     isShuffled.value = false;
   }
 

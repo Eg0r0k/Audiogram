@@ -61,7 +61,7 @@
           <Button
             variant="ghost"
             size="icon-lg"
-            class="rounded-full"
+            class="rounded-full text-white"
             :aria-label="$t('player.nextTrack')"
             :disabled="!queueStore.hasNext"
             @click.stop="queueStore.next()"

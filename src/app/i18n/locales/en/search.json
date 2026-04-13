@@ -5,6 +5,8 @@
     "hint": "Try searching for something else"
   },
   "bestResult": "Best result",
+  "recentTitle": "Recent searches",
+  "clearHistory": "Clear history",
   "filter": {
     "all": "All",
     "track": "Tracks",

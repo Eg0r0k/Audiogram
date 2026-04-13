@@ -56,9 +56,10 @@ export async function getArtistTracksPaginated(
   offset: number,
   limit = PAGE_SIZE,
 ): Promise<PaginatedTracksResult> {
-  const [rawTracks, countResult] = await Promise.all([
+  const [rawTracks, countResult, durationResult] = await Promise.all([
     unwrapResult(artistRepository.findTracksPaginated(artistId, offset, limit)),
     unwrapResult(artistRepository.countTracksByArtistId(artistId)),
+    unwrapResult(trackRepository.sumDurationByArtistId(artistId)),
   ]);
 
   await getArtistByIdOrThrow(artistId);
@@ -77,6 +78,7 @@ export async function getArtistTracksPaginated(
     tracks: mappedTracks,
     nextOffset,
     total,
+    totalDuration: durationResult ?? 0,
   };
 }
 

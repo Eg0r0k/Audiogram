@@ -22,6 +22,7 @@ export interface LibraryItem {
   artistName?: string;
   to: RouteLocationRaw;
   rounded: boolean;
+  trackCount?: number;
 }
 
 export interface PinnedItem {

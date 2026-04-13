@@ -18,8 +18,54 @@
     "noPlaylistsYet": "У вас пока нет плейлистов",
     "moveUp": "Переместить выше",
     "moveDown": "Переместить ниже",
+    "details": "Подробнее",
     "removeFromQueue": "Удалить из очереди",
     "removeFromPlaylist": "Удалить из плейлиста"
+  },
+  "details": {
+    "title": "Информация о треке",
+    "sections": {
+      "playback": "Основное",
+      "storage": "Хранилище",
+      "metadata": "Метаданные",
+      "loudness": "Громкость"
+    },
+    "fields": {
+      "title": "Название",
+      "artist": "Исполнитель",
+      "album": "Альбом",
+      "duration": "Длительность",
+      "source": "Источник",
+      "state": "Состояние",
+      "liked": "В избранном",
+      "artistIds": "ID исполнителей",
+      "albumId": "ID альбома",
+      "trackId": "ID трека",
+      "storagePath": "Путь хранения",
+      "lyricsPath": "Путь к тексту",
+      "fingerprint": "Отпечаток",
+      "trackNo": "Номер трека",
+      "diskNo": "Номер диска",
+      "playCount": "Количество прослушиваний",
+      "addedAt": "Добавлен",
+      "lastPlayedAt": "Последнее прослушивание",
+      "codec": "Кодек",
+      "bitrate": "Битрейт",
+      "sampleRate": "Частота дискретизации",
+      "channels": "Каналы",
+      "lossless": "Lossless",
+      "integratedLufs": "Integrated LUFS",
+      "truePeakDbtp": "True Peak dBTP",
+      "replayGainDb": "ReplayGain dB",
+      "replayPeak": "Replay Peak"
+    },
+    "values": {
+      "localInternal": "Локальный файл приложения",
+      "localExternal": "Внешний локальный файл",
+      "remoteHls": "Удалённый HLS поток",
+      "ready": "Готов",
+      "broken": "Повреждён"
+    }
   },
   "downloadSuccess": "Файл скачан",
   "downloadFailed": "Не удалось скачать файл"

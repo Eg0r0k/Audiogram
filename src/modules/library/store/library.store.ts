@@ -56,6 +56,10 @@ export const useLibraryStore = defineStore("library", () => {
     searchQuery.value = "";
   };
 
+  const clearPins = () => {
+    pinnedItems.value = [];
+  };
+
   return {
     pinnedItems,
     sortBy,
@@ -70,6 +74,7 @@ export const useLibraryStore = defineStore("library", () => {
     setSortBy,
     setSearchQuery,
     clearSearch,
+    clearPins,
   };
 }, {
   persist: {

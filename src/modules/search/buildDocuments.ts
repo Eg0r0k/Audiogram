@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import type { AlbumEntity, ArtistEntity, PlaylistEntity, TrackEntity } from "@/db/entities";
+import { mapTrack } from "@/modules/tracks/lib/mappers";
 import type { SearchDocument } from "./types";
 
 export function buildArtistDoc(artist: ArtistEntity): SearchDocument {
@@ -29,16 +30,20 @@ export function buildTrackDoc(
   artistMap: Map<string, ArtistEntity>,
   albumMap: Map<string, AlbumEntity>,
 ): SearchDocument {
-  const firstArtistId = track.artistIds[0];
-  const artistName = firstArtistId ? artistMap.get(firstArtistId)?.name : undefined;
+  const artists = track.artistIds
+    .map(artistId => artistMap.get(artistId))
+    .filter((artist): artist is ArtistEntity => !!artist);
+  const album = albumMap.get(track.albumId);
+  const mappedTrack = mapTrack(track, artists, album);
 
   return {
     id: `track:${track.id}`,
     type: "track",
     title: track.title,
-    artist: artistName,
-    album: albumMap.get(track.albumId)?.title,
+    artist: mappedTrack.artist,
+    album: mappedTrack.albumName,
     entityId: track.id,
+    track: mappedTrack,
   };
 }
 
@@ -52,19 +57,21 @@ export function buildPlaylistDoc(playlist: PlaylistEntity): SearchDocument {
 }
 
 export async function buildTrackDocFromDb(track: TrackEntity): Promise<SearchDocument> {
-  const firstArtistId = track.artistIds[0];
-  const [artist, album] = await Promise.all([
-    firstArtistId ? db.artists.get(firstArtistId) : Promise.resolve(undefined),
+  const [artists, album] = await Promise.all([
+    db.artists.bulkGet(track.artistIds),
     db.albums.get(track.albumId),
   ]);
+  const artistEntities = artists.filter((artist): artist is ArtistEntity => !!artist);
+  const mappedTrack = mapTrack(track, artistEntities, album);
 
   return {
     id: `track:${track.id}`,
     type: "track",
     title: track.title,
-    artist: artist?.name,
-    album: album?.title,
+    artist: mappedTrack.artist,
+    album: mappedTrack.albumName,
     entityId: track.id,
+    track: mappedTrack,
   };
 }
 

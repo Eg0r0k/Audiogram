@@ -12,7 +12,9 @@ import type { InfiniteData, QueryClient } from "@tanstack/vue-query";
 import { patchTrackEntityLike, patchTrackLike, removeById, upsertById } from "./shared";
 import type {
   AlbumPageData,
+  AlbumWithTrackCount,
   ArtistPageData,
+  ArtistWithTrackCount,
   LibrarySummaryData,
   LikedTracksPageData,
   PaginatedTracksResult,
@@ -72,7 +74,7 @@ export function syncArtistCaches(queryClient: QueryClient, artist: ArtistEntity)
     queryKeys.library.summary(),
     data => ({
       ...data,
-      artists: upsertById(data.artists, artist),
+      artists: upsertById(data.artists, artist as ArtistWithTrackCount),
     }),
   );
 }
@@ -115,7 +117,7 @@ export function syncAlbumCaches(queryClient: QueryClient, album: AlbumEntity) {
     queryKeys.library.summary(),
     data => ({
       ...data,
-      albums: upsertById(data.albums, album),
+      albums: upsertById(data.albums, album as AlbumWithTrackCount),
     }),
   );
 }
