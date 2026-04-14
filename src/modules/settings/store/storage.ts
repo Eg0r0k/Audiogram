@@ -1,16 +1,20 @@
 import { ref, computed } from "vue";
+import { useQueryClient } from "@tanstack/vue-query";
 import { StorageInfo } from "../schema/storage";
-import { collectStorageInfo } from "@/services/storage-info.service";
+import { collectStorageInfo, clearAllData } from "@/services/storage-info.service";
 import { formatBytes } from "@/lib/format/memory";
-import { useLibrary } from "@/modules/library/composables/useLibrary";
+import { clearLibraryData } from "@/queries/library.queries";
+import { useLibraryStore } from "@/modules/library/store/library.store";
 
 export function useStorageSettings() {
   const info = ref<StorageInfo | null>(null);
   const isLoading = ref(false);
   const isClearing = ref(false);
-  const {
-    clearLibrary,
-  } = useLibrary();
+
+  const queryClient = useQueryClient();
+  const libraryStore = useLibraryStore();
+
+  // ── Computed ──────────────────────────────────────────────────────────────
 
   const totalUsedByApp = computed(() => {
     if (!info.value) return 0;
@@ -44,9 +48,7 @@ export function useStorageSettings() {
       totalUsed: formatBytes(totalUsedByApp.value),
       quotaTotal: i.quotaTotal > 0 ? formatBytes(i.quotaTotal) : null,
       quotaUsed: i.quotaUsed > 0 ? formatBytes(i.quotaUsed) : null,
-      quotaFree: i.quotaTotal > 0
-        ? formatBytes(i.quotaTotal - i.quotaUsed)
-        : null,
+      quotaFree: i.quotaTotal > 0 ? formatBytes(i.quotaTotal - i.quotaUsed) : null,
       tracksCount: i.tracksCount,
       albumsCount: i.albumsCount,
       artistsCount: i.artistsCount,
@@ -67,20 +69,12 @@ export function useStorageSettings() {
     }
   }
 
-  async function handleClearCovers() {
+  async function clearAllDataHandler() {
     isClearing.value = true;
     try {
-      await refresh();
-    }
-    finally {
-      isClearing.value = false;
-    }
-  }
-
-  async function handleClearAll() {
-    isClearing.value = true;
-    try {
-      await clearLibrary();
+      await clearAllData();
+      libraryStore.clearPins();
+      await clearLibraryData(queryClient);
       await refresh();
     }
     finally {
@@ -94,7 +88,6 @@ export function useStorageSettings() {
     isClearing,
     formatted,
     refresh,
-    clearCovers: handleClearCovers,
-    clearAllData: handleClearAll,
+    clearAllData: clearAllDataHandler,
   };
 }

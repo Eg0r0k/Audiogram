@@ -5,7 +5,7 @@
   "addFolder": "Add folder",
   "scanAll": "Scan all",
   "removeDialogTitle": "Remove folder?",
-  "removeDialogDescription": "Are you sure you want to remove \"{name}\" from watched folders? This won't delete any files.",
+  "removeDialogDescription": "Are you sure you want to remove \"{name}\" from watched folders?",
   "scanning": "Scanning...",
   "tracks": "tracks",
   "scan": "Scan",

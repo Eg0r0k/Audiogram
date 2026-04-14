@@ -1,104 +1,48 @@
-<template>
-  <div
-    class="group flex items-center gap-3 px-2.5 rounded-md cursor-pointer select-none
-           hover:bg-muted/50 transition-colors duration-150
-           h-14"
-    @click="emit('click')"
-  >
-    <!-- Cover -->
-    <div
-      class="shrink-0 size-10 overflow-hidden bg-muted"
-      :class="item.type === 'artist' ? 'rounded-full' : 'rounded'"
-    >
-      <NuxtImage
-        v-if="item.coverPath"
-        :src="item.coverPath"
-        :alt="item.title"
-        fallback-src="/img/fallback.svg"
-        class="size-full object-cover"
-      />
-      <div
-        v-else
-        class="size-full flex items-center justify-center text-muted-foreground"
-      >
-        <component
-          :is="typeIcon"
-          class="size-4"
-        />
-      </div>
-    </div>
-
-    <!-- Info -->
-    <div class="flex-1 min-w-0 flex flex-col">
-      <span class="font-medium truncate text-sm leading-snug">{{ item.title }}</span>
-      <div class="flex items-center gap-1 text-xs text-muted-foreground truncate mt-0.5">
-        <!-- Artist name (for tracks, albums, playlists) -->
-        <template v-if="item.artist && item.type !== 'artist'">
-          <span class="truncate">{{ item.artist }}</span>
-        </template>
-        <!-- Album name (only for tracks) -->
-        <template v-if="item.album && item.type === 'track'">
-          <span class="opacity-40 shrink-0">·</span>
-          <span class="truncate">{{ item.album }}</span>
-        </template>
-        <!-- Type label for playlists without artist -->
-        <template v-if="item.type === 'playlist' && !item.artist">
-          <span class="truncate capitalize">{{ typeLabel }}</span>
-        </template>
-        <!-- Type label for artists -->
-        <template v-if="item.type === 'artist'">
-          <span class="truncate capitalize">{{ typeLabel }}</span>
-        </template>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { computed } from "vue";
-import { useI18n } from "vue-i18n";
 import type { SearchResultItem } from "@/modules/search/types";
-import NuxtImage from "@/components/ui/image/NuxtImage.vue";
-import IconMusic from "~icons/tabler/music";
-import IconUser from "~icons/tabler/user";
-import IconDisc from "~icons/tabler/disc";
-import IconPlaylist from "~icons/tabler/playlist";
+import type { LibraryItem } from "@/modules/library/types";
+import type { RouteLocationRaw } from "vue-router";
+import TrackRow from "@/modules/tracks/components/TrackRow.vue";
+import LibrarySidebarItem from "@/components/layout/sidebar/LibrarySidebarItem.vue";
 
-const props = defineProps<{
-  item: SearchResultItem;
-}>();
+const props = defineProps<{ item: SearchResultItem }>();
+const emit = defineEmits<{ click: [] }>();
 
-const emit = defineEmits<{
-  click: [];
-}>();
-
-const { t } = useI18n();
-
-const typeIcon = computed(() => {
-  switch (props.item.type) {
-    case "artist":
-      return IconUser;
-    case "album":
-      return IconDisc;
-    case "playlist":
-      return IconPlaylist;
-    case "track":
-    default:
-      return IconMusic;
+function routeForItem(item: SearchResultItem): RouteLocationRaw {
+  switch (item.type) {
+    case "artist": return { name: "artist", params: { id: item.entityId } };
+    case "album": return { name: "album", params: { id: item.entityId } };
+    case "playlist": return { name: "playlist", params: { id: item.entityId } };
+    default: return "/";
   }
-});
+}
 
-const typeLabel = computed(() => {
-  switch (props.item.type) {
-    case "artist":
-      return t("search.filter.artist");
-    case "album":
-      return t("search.filter.album");
-    case "playlist":
-      return t("search.filter.playlist");
-    case "track":
-    default:
-      return t("search.filter.track");
-  }
-});
+const libraryItem = computed<LibraryItem>(() => ({
+  id: props.item.entityId,
+  type: props.item.type as "artist" | "album" | "playlist",
+  title: props.item.title,
+  subtitle: props.item.artist,
+  image: props.item.coverPath,
+  isPinned: false,
+  addedAt: 0,
+  rounded: props.item.type === "artist",
+  to: routeForItem(props.item),
+}));
 </script>
+
+<template>
+  <TrackRow
+    v-if="item.type === 'track' && item.track"
+    :track="item.track"
+    :cover-url="item.coverPath"
+    hide-index
+    menu-target="search"
+    @play="emit('click')"
+  />
+
+  <LibrarySidebarItem
+    v-else-if="item.type !== 'track'"
+    :item="libraryItem"
+  />
+</template>

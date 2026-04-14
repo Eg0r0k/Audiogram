@@ -99,8 +99,13 @@ export function useWatchedFolders() {
       const excludedPaths = store.getNestedFolderPaths(folder.path);
       const result = await musicLibraryEngine.syncFolder(folder, undefined, excludedPaths);
 
+      const currentCount = await db.tracks
+        .where("storagePath")
+        .startsWith(folder.path + "/")
+        .count();
+
       store.updateFolderStatus(folder.id, "idle", {
-        fileCount: result.added + (folder.fileCount - result.removed),
+        fileCount: currentCount,
         lastScanAt: Date.now(),
       });
 

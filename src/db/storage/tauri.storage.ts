@@ -9,6 +9,7 @@ import {
   copyFile,
   readFile,
   open,
+  stat,
 } from "@tauri-apps/plugin-fs";
 import { appDataDir } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/core";
@@ -164,6 +165,16 @@ export class TauriStorage implements IFileStorageWithNativeSupport {
         }
       })(),
       error => StorageError.deleteFailed(path, error),
+    );
+  }
+
+  getFileSize(path: string): ResultAsync<number, StorageError> {
+    return fromPromise(
+      (async () => {
+        const meta = await stat(path, { baseDir: this.baseDir });
+        return meta.size;
+      })(),
+      error => StorageError.readFailed(path, error),
     );
   }
 }

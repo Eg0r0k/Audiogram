@@ -1,13 +1,13 @@
-import { RouteRecordRaw } from "vue-router";
+// import { RouteRecordRaw } from "vue-router";
 
-export const searchRoutes: RouteRecordRaw[] = [
-  {
-    path: "/search",
-    name: "search",
-    component: () => import("@/pages/SearchPage.vue"),
-    meta: {
-      titleKey: "nav.search",
-      depth: 1,
-    },
-  },
-];
+// export const searchRoutes: RouteRecordRaw[] = [
+//   {
+//     path: "/search",
+//     name: "search",
+//     component: () => import("@/pages/SearchPage.vue"),
+//     meta: {
+//       titleKey: "nav.search",
+//       depth: 1,
+//     },
+//   },
+// ];

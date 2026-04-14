@@ -133,11 +133,11 @@ const isValidImageSrc = computed(() => {
 
 const imageSrc = computed(() => {
   if (!isValidImageSrc.value) {
-    return props.fallbackSrc || generatePlaceholderDataUrl(100, 100);
+    return props.fallbackSrc;
   }
 
   if (useFallback.value || originalSrcFailed.value) {
-    return props.fallbackSrc || generatePlaceholderDataUrl(100, 100);
+    return props.fallbackSrc;
   }
 
   if (placeholderSrc.value) {

@@ -59,7 +59,7 @@ self.onmessage = async (e: MessageEvent<ParseRequest>) => {
     const artists = Array.isArray(metadata.common.artist)
       ? metadata.common.artist
       : metadata.common.artist
-        ? metadata.common.artist.split(/[;,]\s*/)
+        ? metadata.common.artist.split(/[,;&|/]\s*/)
         : ["Unknown Artist"];
 
     const meta: BaseMetadata = {

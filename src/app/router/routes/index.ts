@@ -1,7 +1,7 @@
 import { RouteRecordRaw } from "vue-router";
 import { homeRoutes } from "./home";
 import { libraryRoutes } from "./library";
-import { searchRoutes } from "./search";
+// import { searchRoutes } from "./search";
 import { profileRoutes } from "./profile";
 import { settingsRoutes } from "./settings";
 import { albumRoutes } from "./album";
@@ -12,7 +12,7 @@ import { favoriteRoutes } from "./favorite";
 export const routes: RouteRecordRaw[] = [
   ...homeRoutes,
   ...libraryRoutes,
-  ...searchRoutes,
+  // ...searchRoutes,
   ...settingsRoutes,
   ...profileRoutes,
   ...albumRoutes,
@@ -25,7 +25,7 @@ export {
   homeRoutes,
   libraryRoutes,
   profileRoutes,
-  searchRoutes,
+  // searchRoutes,
   settingsRoutes,
   playlistRoutes,
   artistRoutes,

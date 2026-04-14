@@ -14,8 +14,8 @@ async function calculateFolderSize(folder: string): Promise<number> {
 
   const sizes = await Promise.all(
     files.map(async (filePath) => {
-      const fileResult = await storageService.getFile(filePath);
-      return fileResult.isOk() ? fileResult.value.size : 0;
+      const sizeResult = await storageService.getFileSize(filePath);
+      return sizeResult.isOk() ? sizeResult.value : 0;
     }),
   );
 

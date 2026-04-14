@@ -12,6 +12,7 @@
   </component>
   <WhatsNewDialog />
   <ExternalLinkDialog />
+  <TrackDetailsDialog />
   <DeleteConfirmDialog />
   <Toaster
     position="top-center"
@@ -50,6 +51,7 @@ import DeleteConfirmDialog from "@/components/dialogs/DeleteConfirmDialog.vue";
 import { useTrayBehavior } from "@/modules/settings/composables/useTrayBehavior";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { ephemeralFromPath } from "@/modules/player/types";
+import TrackDetailsDialog from "@/modules/tracks/components/TrackDetailsDialog.vue";
 
 const currentRoute = useRoute();
 const { isMobileLayout } = useDeviceLayout();

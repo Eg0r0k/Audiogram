@@ -22,7 +22,7 @@
             animate-on-overflow-only
             pause-on-hover
             gradient
-            gradient-color="var(--background)"
+            gradient-color="transperent"
             gradient-length="20px"
           >
             <span class="text-lg font-semibold">{{ currentTrack?.title }}</span>
@@ -32,7 +32,7 @@
             animate-on-overflow-only
             pause-on-hover
             gradient
-            gradient-color="var(--background)"
+            gradient-color="transperent"
             gradient-length="20px"
           >
             <span class="text-muted-foreground capitalize">
@@ -40,7 +40,7 @@
             </span>
           </MarqueeBlock>
         </div>
-        <div>
+        <div class="flex flex-nowrap">
           <Button
             variant="ghost"
             size="icon-lg"

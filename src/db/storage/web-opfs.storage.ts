@@ -154,4 +154,8 @@ export class WebOpfsStorage implements IFileStorage {
       && (error.name === "NotFoundError" || error.name === "TypeMismatchError")
     );
   }
+
+  getFileSize(path: string): ResultAsync<number, StorageError> {
+    return this.getFile(path).map(file => file.size);
+  }
 }

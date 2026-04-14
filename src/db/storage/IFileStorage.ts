@@ -7,6 +7,7 @@ export interface IFileStorage {
   getFile(path: string): ResultAsync<Blob, StorageError>;
   getAudioUrl(path: string): ResultAsync<string, StorageError>;
   listFiles(folder: string): ResultAsync<string[], StorageError>;
+  getFileSize(path: string): ResultAsync<number, StorageError>;
 }
 
 export interface IFileStorageWithNativeSupport extends IFileStorage {

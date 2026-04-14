@@ -94,13 +94,7 @@ const tabs: TabItem[] = [
     icon: IconHome,
     activeIcon: IconHomeFilled,
   },
-  {
-    name: "search",
-    to: "/search",
-    labelKey: "nav.search",
-    icon: IconSearch,
-    activeIcon: IconSearch,
-  },
+
   {
     name: "library",
     to: "/library",

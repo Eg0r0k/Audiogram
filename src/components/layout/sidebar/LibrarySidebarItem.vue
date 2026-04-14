@@ -90,7 +90,7 @@ const isCurrentPlaybackSource = computed(() => {
           v-if="hasStaticImage"
           :src="item.image"
           :alt="item.title"
-          class="size-full object-cover"
+          class="size-full object-cover mb-1"
         />
 
         <EntityCoverImage
@@ -98,7 +98,7 @@ const isCurrentPlaybackSource = computed(() => {
           :owner-type="coverOwnerType"
           :owner-id="coverOwnerId"
           :alt="item.title"
-          class="size-full object-cover"
+          class="size-full object-cover mb-1"
           :image-class="item.rounded
             ? 'size-full object-cover rounded-full'
             : 'size-full object-cover rounded-md'"

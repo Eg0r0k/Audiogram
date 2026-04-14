@@ -4,7 +4,7 @@
     :class="isScrolled ? '' : 'bg-transparent'"
     :style="headerStyle"
   >
-    <div class="flex items-center gap-7 px-7 py-4">
+    <div class="flex items-center gap-7 sm:px-7 px-4 py-4">
       <Button
         variant="ghost"
         size="icon-lg"

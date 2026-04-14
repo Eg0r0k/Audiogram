@@ -12,7 +12,7 @@
     <WindowToolbar class="toolbar" />
     <DropOverlay :show="isDragging" />
     <ImportProgressSheet />
-    <TrackDetailsDialog />
+
     <div class="content-area">
       <ResizableSidebar>
         <div class="relative flex-1 pt-4 h-full flex flex-col min-h-0 overflow-hidden">
@@ -95,10 +95,7 @@ import { useScreenSafeArea } from "@vueuse/core";
 import WindowToolbar from "@/components/WindowToolbar.vue";
 import FooterMediaPlayer from "@/components/layout/footer/FooterMediaPlayer.vue";
 import ResizableSidebar from "@/components/layout/sidebar/ResizableSidebar.vue";
-// import { computed } from "vue";
 import { useFileDrop } from "@/composables/useFileDrop";
-// import { useTheme } from "@/composables/useTheme";
-// import { Moon, Sun } from "lucide-vue-next";
 
 import SidebarHeader from "@/components/layout/sidebar/header/SidebarHeader.vue";
 import FloatingButton from "@/components/layout/sidebar/floatingButton/FloatingButton.vue";
@@ -106,7 +103,6 @@ import DropOverlay from "@/components/DropOverlay.vue";
 import { useImport } from "@/composables/useImport";
 import ImportProgressSheet from "@/components/ImportProgressSheet.vue";
 import SearchPanel from "@/modules/search/components/SearchPanel.vue";
-import TrackDetailsDialog from "@/modules/tracks/components/TrackDetailsDialog.vue";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import { computed } from "vue";
 import { useLibrary } from "@/modules/library/composables/useLibrary";

@@ -1,11 +1,11 @@
 <template>
   <button
-    class="relative flex flex-col shrink-0 w-full px-2 pb-2 cursor-pointer text-left [-webkit-tap-highlight-color:transparent]"
+    class="relative flex shrink-0 w-full h-14 px-2 cursor-pointer text-left [-webkit-tap-highlight-color:transparent]"
     :aria-label="$t('player.nowPlaying')"
     @click="$emit('click')"
   >
     <div
-      class="relative rounded-lg overflow-hidden transition-colors duration-300 w-full"
+      class="relative flex-1 rounded-lg overflow-hidden transition-colors duration-300"
       :style="containerStyle"
     >
       <div class="flex items-center gap-2.5 px-2 h-14">
@@ -39,7 +39,7 @@
             :gradient-color="gradientColor"
             gradient-length="20px"
           >
-            <span class="text-[11px] text-white/70">
+            <span class="text-[11px] text-white/80">
               {{ artistName ?? "" }}
             </span>
           </MarqueeBlock>
@@ -74,7 +74,7 @@
       <div class="absolute bottom-0 left-2 right-2">
         <div class="h-0.5 w-full bg-white/50 rounded-full">
           <div
-            class="h-full bg-white rounded-full transition-[width] duration-300 ease-linear will-change-[width]"
+            class="h-full bg-white rounded-full "
             :style="{ width: `${progressPercent}%` }"
           />
         </div>
@@ -84,11 +84,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onUnmounted } from "vue";
+import { computed, ref, watch, onUnmounted, type Ref, type ComputedRef } from "vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
-import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
-import { useImageColor } from "@/composables/useImageColor";
+import { useMobilePlayerColor } from "@/composables/useMobilePlayerColor";
 import { Button } from "@/components/ui/button";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
@@ -96,42 +95,19 @@ import IconPlay from "~icons/tabler/player-play-filled";
 import IconPause from "~icons/tabler/player-pause-filled";
 import IconSkipForward from "~icons/tabler/player-track-next-filled";
 
-defineEmits<{ click: [] }>();
-
 const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
 
 const currentTrack = computed(() => playerStore.currentTrack);
 const artistName = computed(() => currentTrack.value?.artist);
 
-const libraryTrack = computed(() => {
-  const track = currentTrack.value;
-  return track?.kind === "library" ? track : null;
-});
-
-const { url: coverBlobUrl } = useEntityCover(
-  "album",
-  () => libraryTrack.value?.albumId ?? null,
-);
-
-const coverUrl = computed(() => {
-  const track = currentTrack.value;
-  if (!track) return undefined;
-  if (track.kind === "ephemeral") return track.cover;
-  return coverBlobUrl.value ?? undefined;
-});
-
-const { color, extractColor } = useImageColor();
+const { color: playerColor, coverUrl } = useMobilePlayerColor();
 
 const containerStyle = computed(() => ({
-  backgroundColor: color.value.hsl,
+  backgroundColor: playerColor.value.hsl,
 }));
 
-const gradientColor = computed(() => color.value.hsl);
-
-watch(coverUrl, async (newCover) => {
-  if (newCover) await extractColor(newCover);
-}, { immediate: true });
+const gradientColor = computed(() => playerColor.value.hsl);
 
 const progressPercent = ref(0);
 let rafId: number | null = null;
