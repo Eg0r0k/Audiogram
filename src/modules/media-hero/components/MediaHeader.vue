@@ -9,7 +9,7 @@
         variant="ghost"
         size="icon-lg"
         class="rounded-full shrink-0 text-white"
-        @click="$router.back()"
+        @click="goBack()"
       >
         <IconArrowLeft class="size-5" />
       </Button>
@@ -61,6 +61,9 @@ import { inject, computed, type ComputedRef } from "vue";
 import { Button } from "@/components/ui/button";
 import IconArrowLeft from "~icons/tabler/arrow-left";
 import IconPlay from "~icons/tabler/player-play-filled";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
 
 const props = defineProps<{
   title: string;
@@ -81,6 +84,19 @@ const isScrolled = computed(() => {
   if (!scrollable) return false;
   return scrollable.scrollPosition.value > 60;
 });
+
+const FALLBACK_ROUTE = "/";
+
+const goBack = () => {
+  const prevPath = router.options.history.state?.back;
+
+  if (prevPath && typeof prevPath === "string") {
+    router.back();
+  }
+  else {
+    void router.push(FALLBACK_ROUTE);
+  }
+};
 
 const headerStyle = computed(() => {
   if (!isScrolled.value) {

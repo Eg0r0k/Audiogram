@@ -1,9 +1,7 @@
 <template>
-  <div class="flex flex-col max-w-lg w-full mx-auto min-h-0 p-8 ">
-    <div class="flex justify-center items-start">
-      <div
-        class="aspect-square max-w-100 max-h-[calc(100dvh-22.5rem)] w-[min(100%,calc(100dvh-22.5rem))] rounded-xl bg-muted flex items-center justify-center overflow-hidden"
-      >
+  <div class="flex flex-col w-full mx-auto min-h-0 px-6 pt-4 pb-6 max-w-md">
+    <div class="flex-1 min-h-0 [container-type:size] flex items-start justify-center pb-2">
+      <div class="aspect-square w-[min(100cqw,100cqh)] rounded-2xl bg-muted overflow-hidden shadow-lg">
         <NuxtImage
           :src="coverUrl"
           fallback-src="/img/fallback.svg"
@@ -14,134 +12,143 @@
       </div>
     </div>
 
-    <div class="pt-5">
-      <div class="flex items-center justify-between gap-2">
-        <div class="data-track min-w-0 w-fill max-w-fit overflow-hidden mx-2">
-          <MarqueeBlock
-            :duration="10"
-            animate-on-overflow-only
-            pause-on-hover
-            gradient
-            gradient-color="transperent"
-            gradient-length="20px"
-          >
-            <span class="text-lg font-semibold">{{ currentTrack?.title }}</span>
-          </MarqueeBlock>
-          <MarqueeBlock
-            :duration="6"
-            animate-on-overflow-only
-            pause-on-hover
-            gradient
-            gradient-color="transperent"
-            gradient-length="20px"
-          >
-            <span class="text-muted-foreground capitalize">
-              {{ currentTrack?.artist }}
-            </span>
-          </MarqueeBlock>
-        </div>
-        <div class="flex flex-nowrap">
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            class="rounded-full"
-            @click.stop="toggleLike"
-          >
-            <IconLikedFilled
-              v-if="currentTrack?.isLiked"
-              class="size-7 text-primary"
-            />
-            <IconLike
-              v-else
-              class="size-7"
-            />
-          </Button>
-          <Button
-            class="rounded-full"
-            variant="ghost"
-            size="icon-lg"
-            @click.stop="onDotsClick"
-          >
-            <IconDots class="size-7" />
-          </Button>
-        </div>
-      </div>
-      <div class="flex flex-col gap-3 pt-4">
-        <Slider />
-        <div class="flex justify-between w-full text-foreground/50 text-sm">
-          <span>{{ timeDisplay.current }}</span>
-          <span>{{ timeDisplay.duration }}</span>
-        </div>
-      </div>
-      <div class="flex pb-4 gap-5 w-full justify-center items-center mt-7">
-        <Button
-          class="rounded-full"
-          size="icon-lg"
-          variant="ghost"
-          :disabled="!queueStore.hasPrevious"
-          @click.stop="queueStore.previous()"
+    <div class="flex items-center justify-between gap-3 mt-6">
+      <div class="min-w-0 flex-1">
+        <MarqueeBlock
+          :duration="10"
+          animate-on-overflow-only
+          pause-on-hover
+          gradient
+          gradient-color="transparent"
+          gradient-length="20px"
         >
-          <IconBack class="size-6" />
+          <span class="text-xl font-semibold leading-tight">{{ currentTrack?.title }}</span>
+        </MarqueeBlock>
+        <MarqueeBlock
+          :duration="6"
+          animate-on-overflow-only
+          pause-on-hover
+          gradient
+          gradient-color="transparent"
+          gradient-length="20px"
+        >
+          <span class="text-base text-white/60 capitalize mt-0.5 block">
+            {{ currentTrack?.artist }}
+          </span>
+        </MarqueeBlock>
+      </div>
+
+      <div class="flex items-center gap-1 shrink-0">
+        <Button
+          variant="ghost"
+          size="icon-lg"
+          class="rounded-full"
+          @click.stop="toggleLike"
+        >
+          <IconLikedFilled
+            v-if="currentTrack?.isLiked"
+            class="size-6 text-primary"
+          />
+          <IconLike
+            v-else
+            class="size-6"
+          />
         </Button>
-        <PlayButton
-          class="size-16!"
-          @click.stop
-        />
         <Button
-          class="rounded-full"
           variant="ghost"
           size="icon-lg"
-          :disabled="!queueStore.hasNext"
-          @click.stop="queueStore.next()"
+          class="rounded-full"
+          @click.stop="onDotsClick"
         >
-          <IconForvard class="size-6" />
+          <IconDots class="size-6" />
         </Button>
       </div>
     </div>
-    <div class="flex gap-3 items-center justify-between mt-auto">
+
+    <div class="mt-6 flex flex-col gap-2">
+      <RangeSelector
+        :model-value="displayProgress"
+        :step="1000 / 60 / 1000"
+        :keyboard-step="5"
+        :min="0"
+        :max="100"
+        :use-transform="true"
+        :with-transition="false"
+        :disable-transition="!isTransitionEnabled"
+        :disabled="!playerStore.canSeek"
+        :show-thumb="true"
+        style="--range-height: 4px; --range-height-hover: 4px; --range-radius: 9999px;"
+        @mousedown="onScrubStart"
+        @scrub="onScrub"
+        @mouseup="onScrubEnd"
+      />
+      <div class="flex justify-between text-xs text-white/50 font-medium tabular-nums">
+        <span>{{ timeDisplay.current }}</span>
+        <span>{{ timeDisplay.duration }}</span>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between mt-6 px-2">
       <Button
         size="icon-lg"
+        variant="ghost"
+        class="rounded-full"
+        :disabled="!queueStore.hasPrevious"
+        @click.stop="queueStore.previous()"
+      >
+        <IconBack class="size-7" />
+      </Button>
+      <PlayButton
+        class="size-18!"
+        @click.stop
+      />
+      <Button
+        size="icon-lg"
+        variant="ghost"
+        class="rounded-full"
+        :disabled="!queueStore.hasNext"
+        @click.stop="queueStore.next()"
+      >
+        <IconForvard class="size-7" />
+      </Button>
+    </div>
+
+    <div class="flex items-center justify-between mt-6 px-1">
+      <Button
+        size="icon"
         variant="ghost"
         :class="repeatModeClass"
         @click.stop="playerStore.toggleRepeat"
       >
         <IconRepeatOnce
           v-if="playerStore.repeatMode === 'one'"
-          class="size-7"
+          class="size-5"
         />
         <IconRepeat
           v-else
-          class="size-7"
+          class="size-5"
         />
       </Button>
       <Button
-        size="icon-lg"
+        size="icon"
         variant="ghost"
         :class="{ 'text-primary': queueStore.isShuffled }"
         @click.stop="queueStore.toggleShuffle()"
       >
-        <IconShuffle class="size-7" />
+        <IconShuffle class="size-5" />
       </Button>
+
       <Button
-        size="icon-lg"
+        size="icon"
         variant="ghost"
-        @click.stop
       >
-        <IconPlaylist class="size-7" />
-      </Button>
-      <Button
-        size="icon-lg"
-        variant="ghost"
-        @click.stop
-      >
-        <IconClocs class="size-7" />
+        <IconClocs class="size-5" />
       </Button>
     </div>
 
     <TrackDropdown />
   </div>
 </template>
-
 <script setup lang="ts">
 import { computed } from "vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
@@ -152,7 +159,6 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import { formatDuration } from "@/lib/format/time";
 
-import IconPlaylist from "~icons/tabler/playlist";
 import IconClocs from "~icons/tabler/stopwatch";
 import IconBack from "~icons/tabler/player-skip-back-filled";
 import IconForvard from "~icons/tabler/player-skip-forward-filled";
@@ -163,12 +169,13 @@ import IconDots from "~icons/tabler/dots";
 import IconLike from "~icons/tabler/heart";
 import IconLikedFilled from "~icons/tabler/heart-filled";
 
-import Slider from "@/components/ui/slider/Slider.vue";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
 import { Button } from "@/components/ui/button";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import PlayButton from "@/modules/player/components/PlayButton.vue";
 import type { Track } from "@/modules/player/types";
+import { RangeSelector } from "@/modules/player";
+import { usePlayerProgress } from "@/modules/tracks/composables/usePlayerProgress";
 
 withDefaults(defineProps<{
   backgroundColor?: string | null;
@@ -184,6 +191,7 @@ const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
 const { toggleTrackLike } = useToggleTrackLike();
 const { openDropdown } = useTrackMenu();
+const { displayProgress, isTransitionEnabled, onScrubStart, onScrub, onScrubEnd } = usePlayerProgress();
 
 const currentTrack = computed<Track | null>(() => {
   const track = playerStore.currentTrack;

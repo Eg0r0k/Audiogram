@@ -4,7 +4,7 @@
     :open="isOpen"
     @update:open="val => !isRunning && !val && handleClose()"
   >
-    <DialogContent class="sm:max-w-md p-0 gap-0 overflow-hidden">
+    <DialogContent class="flex flex-col max-h-[80vh] sm:max-w-2xl gap-0 p-0 overflow-hidden h-full">
       <div class="px-6 pt-5 pb-4">
         <div class="flex items-start justify-between gap-4">
           <div class="flex flex-col gap-1">
@@ -25,6 +25,12 @@
               class="text-sm text-muted-foreground"
             >
               {{ current }} из {{ total }} файлов
+            </p>
+            <p
+              v-if="files.length < total"
+              class="text-xs text-muted-foreground"
+            >
+              Показаны только первые {{ visibleFileCount }} файлов из {{ total }}
             </p>
             <p
               v-else
@@ -87,46 +93,40 @@
 
       <Separator />
 
-      <!-- File list -->
-      <Scrollable class="h-100!  ">
-        <div class="flex flex-col p-2 gap-1.5">
-          <div
+      <Scrollable>
+        <div class="flex flex-col p-2">
+          <Item
             v-for="file in files"
             :key="file.name"
-            class="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors"
-            :class="{
-              'text-muted-foreground': file.status === 'pending',
-              'text-primary bg-primary/5': file.status === 'ok',
-              'text-muted-foreground bg-muted/30': file.status === 'skipped',
-              'text-destructive bg-destructive/5': file.status === 'error',
-            }"
+            size="sm"
           >
-            <IconLoader2
-              v-if="file.status === 'pending'"
-              class="size-3.5 shrink-0 animate-spin"
-            />
-            <IconCheck
-              v-else-if="file.status === 'ok'"
-              class="size-3.5 shrink-0"
-            />
-            <IconMinus
-              v-else-if="file.status === 'skipped'"
-              class="size-3.5 shrink-0"
-            />
-            <IconAlertCircle
-              v-else
-              class="size-3.5 shrink-0"
-            />
-
-            <span class="truncate flex-1 font-medium">{{ file.name }}</span>
-
-            <span
-              v-if="file.error"
-              class="text-xs text-destructive/70 shrink-0 max-w-[120px] truncate"
-            >
-              {{ file.error }}
-            </span>
-          </div>
+            <ItemMedia>
+              <IconLoader2
+                v-if="file.status === 'pending'"
+                class="size-5 shrink-0 animate-spin"
+              />
+              <IconCheck
+                v-else-if="file.status === 'ok'"
+                class="size-5 shrink-0 text-primary"
+              />
+              <IconMinus
+                v-else-if="file.status === 'skipped'"
+                class="size-5 shrink-0"
+              />
+              <IconAlertCircle
+                v-else
+                class="size-5 shrink-0"
+              />
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle>
+                {{ file.name }}
+              </ItemTitle>
+              <ItemDescription v-if="file.error">
+                {{ file.error }}
+              </ItemDescription>
+            </ItemContent>
+          </Item>
         </div>
       </Scrollable>
 
@@ -171,6 +171,13 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
@@ -187,6 +194,7 @@ const {
   files,
   total,
   current,
+  visibleFileCount,
   successCount,
   errorCount,
   skippedCount,

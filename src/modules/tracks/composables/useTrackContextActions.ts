@@ -55,7 +55,11 @@ export const useTrackContextActions = (
   const addToQueue = () => {
     if (!track.value) return;
     queueStore.addToQueue(track.value);
-    toast.success(t("queue.added"));
+    toast.success(t("queue.added"), {
+      action: {
+        label: t("queue.goToQueue"),
+      },
+    });
   };
 
   const toggleLike = async () => {

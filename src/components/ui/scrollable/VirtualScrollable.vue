@@ -26,6 +26,7 @@
       </div>
 
       <div
+        v-if="items.length > 0"
         :style="{
           height: `${totalSize}px`,
           width: '100%',
@@ -42,7 +43,7 @@
             top: 0,
             left: 0,
             width: '100%',
-            transform: `translateY(${virtualRow.start + props.paddingTop}px)`,
+            transform: `translateY(${virtualRow.start + effectivePaddingTop}px)`,
           }"
         >
           <slot
@@ -61,7 +62,6 @@
 
       <div
         v-if="!loading && items.length === 0"
-        class="flex items-center justify-center py-8"
       >
         <slot name="empty" />
       </div>
@@ -110,20 +110,35 @@ const emit = defineEmits<{
 
 const beforeHeight = ref(0);
 
-const totalSize = computed(() =>
-  virtualizer.value.getTotalSize() + props.paddingTop + props.paddingBottom,
+const effectivePaddingTop = computed(() =>
+  props.items.length > 0 ? props.paddingTop : 0,
 );
+
+const effectivePaddingBottom = computed(() =>
+  props.items.length > 0 ? props.paddingBottom : 0,
+);
+
+const totalSize = computed(() => {
+  if (props.items.length === 0) {
+    return 0;
+  }
+  return virtualizer.value.getTotalSize() + effectivePaddingTop.value + effectivePaddingBottom.value;
+});
 
 const containerRef = useTemplateRef("containerRef");
 const beforeRef = useTemplateRef("beforeRef");
 
 let beforeResizeObserver: ResizeObserver | null = null;
 let lastLoadMoreItemsCount = -1;
+let scrollDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 function updateBeforeHeight() {
-  beforeHeight.value = beforeRef.value?.offsetHeight ?? 0;
-  virtualizer.value.measure();
-  scrollable.updateThumb();
+  const newHeight = beforeRef.value?.offsetHeight ?? 0;
+  if (beforeHeight.value !== newHeight) {
+    beforeHeight.value = newHeight;
+    virtualizer.value.measure();
+    scrollable.updateThumb();
+  }
 }
 
 const scrollable = useScrollable(containerRef, {
@@ -140,6 +155,7 @@ const virtualizer = useVirtualizer({
   estimateSize: () => props.itemHeight ?? props.estimateSize,
   overscan: props.overscan,
   getItemKey: index => props.getItemKey(index),
+  scrollMargin: beforeHeight.value,
 });
 
 const measureElement = (el: Element | null) => {
@@ -149,7 +165,12 @@ const measureElement = (el: Element | null) => {
 };
 
 const handleScroll = (e: Event) => {
-  scrollable.updateThumb();
+  if (scrollDebounceTimer) {
+    clearTimeout(scrollDebounceTimer);
+  }
+  scrollDebounceTimer = setTimeout(() => {
+    scrollable.updateThumb();
+  }, 16);
 
   const target = e.target as HTMLElement;
   const distanceToBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
@@ -204,44 +225,73 @@ interface ScrollToIndexOptions {
 }
 
 const scrollToIndex = (index: number, options?: ScrollToIndexOptions) => {
-  virtualizer.value.scrollToIndex(index, options);
+  if (index >= 0 && index < props.items.length) {
+    virtualizer.value.scrollToIndex(index, options);
+  }
 };
 
 const scrollToOffset = (offset: number, options?: { behavior?: "auto" | "smooth" }) => {
   virtualizer.value.scrollToOffset(offset, options);
 };
 
-watch(() => props.items.length, () => {
-  lastLoadMoreItemsCount = -1;
-  virtualizer.value.measure();
-  scrollable.updateThumb();
+watch(() => props.items.length, (newLength, oldLength) => {
+  if (newLength < oldLength || newLength === 0) {
+    lastLoadMoreItemsCount = -1;
+  }
+
+  nextTick(() => {
+    virtualizer.value.measure();
+    scrollable.updateThumb();
+  });
 });
 
 watch(
-  () => [props.itemHeight, props.estimateSize, props.paddingTop, props.paddingBottom] as const,
+  () => [props.itemHeight, props.estimateSize] as const,
   () => {
-    virtualizer.value.measure();
-    scrollable.updateThumb();
+    nextTick(() => {
+      virtualizer.value.measure();
+      scrollable.updateThumb();
+    });
   },
-  { flush: "post" },
+);
+
+watch(
+  () => [props.paddingTop, props.paddingBottom] as const,
+  () => {
+    if (props.items.length > 0) {
+      nextTick(() => {
+        virtualizer.value.measure();
+        scrollable.updateThumb();
+      });
+    }
+  },
 );
 
 watch(() => props.items, () => {
-  virtualizer.value.measure();
-  scrollable.updateThumb();
+  nextTick(() => {
+    virtualizer.value.measure();
+    scrollable.updateThumb();
+  });
 }, { deep: false });
 
 onMounted(() => {
-  nextTick(() => updateBeforeHeight());
+  nextTick(() => {
+    updateBeforeHeight();
 
-  if (beforeRef.value && typeof ResizeObserver !== "undefined") {
-    beforeResizeObserver = new ResizeObserver(() => updateBeforeHeight());
-    beforeResizeObserver.observe(beforeRef.value);
-  }
+    if (beforeRef.value && typeof ResizeObserver !== "undefined") {
+      beforeResizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(updateBeforeHeight);
+      });
+      beforeResizeObserver.observe(beforeRef.value);
+    }
+  });
 });
 
 onUnmounted(() => {
   beforeResizeObserver?.disconnect();
+  if (scrollDebounceTimer) {
+    clearTimeout(scrollDebounceTimer);
+  }
 });
 
 defineExpose({
@@ -256,36 +306,32 @@ defineExpose({
   virtualizer,
 });
 </script>
+
 <style>
 :root {
-  --z-thumb: 20 ;
+  --z-thumb: 20;
 }
 
 html.is-firefox .scrollable-y {
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0) rgba(0, 0, 0, 0);
 }
+
 html.overlay-scroll .scrollable-y:hover {
   scrollbar-color: var(--scrollbar-color) transparent;
 }
 
 html.overlay-scroll .scrollable::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  opacity: 0;
   width: 0.375rem;
+  opacity: 0;
 }
 
 html.overlay-scroll .scrollable::-webkit-scrollbar-thumb {
-  width: 0;
-  height: 0;
+  transition: opacity 0.2s ease-in-out;
   opacity: 0;
-  transition: 0.2s ease-in-out;
 }
 
 html.overlay-scroll .scrollable::-webkit-scrollbar-button {
-  width: 0;
-  height: 0;
   display: none;
 }
 
@@ -315,9 +361,11 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
   overflow: hidden !important;
   width: 100%;
 }
+
 .scrollable-direction-y {
   height: 100%;
 }
+
 .scrollable-direction-x {
   height: auto;
 }
@@ -326,35 +374,23 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
   width: 100%;
   height: 100%;
   max-height: 100%;
-  overflow-y: hidden;
-  overflow-x: hidden;
+  overflow: hidden;
   position: absolute;
   inset: 0;
   -webkit-overflow-scrolling: touch;
 }
 
 .scrollable::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  opacity: 0;
   width: 0.375rem;
-}
-
-.scrollable::-webkit-scrollbar-thumb {
-  width: 0;
-  height: 0;
   opacity: 0;
-  transition: 0.2s ease-in-out;
 }
 
 .scrollable::-webkit-scrollbar-thumb {
   opacity: 0;
-  transition: 0.2s ease-in-out;
+  transition: opacity 0.2s ease-in-out;
 }
 
 .scrollable::-webkit-scrollbar-button {
-  width: 0;
-  height: 0;
   display: none;
 }
 
@@ -384,11 +420,13 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
   overscroll-behavior-x: contain;
   white-space: nowrap;
 }
+
 .no-scrollbar,
 .scrollable.no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
 .scrollable-x::-webkit-scrollbar,
 .no-scrollbar::-webkit-scrollbar {
   display: none;
@@ -408,6 +446,7 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
   float: right;
   margin-right: 1px;
 }
+
 .scrollable-thumb-container-x {
   left: 0;
   right: 0;
@@ -417,20 +456,20 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
 
 .scrollable-thumb {
   position: absolute;
-  width: 5px;
+  width: 6px;
   background: var(--color-muted-foreground);
   border-radius: 3px;
   pointer-events: auto;
   cursor: default;
   opacity: 0;
-  transition: opacity 0.1s ease-in-out;
+  transition: opacity 0.15s ease-in-out;
   inset-inline-end: 1px;
+  will-change: transform, opacity;
 }
 
 .scrollable-thumb-container-y .scrollable-thumb {
   top: 0;
   right: 0;
-  width: 6px;
 }
 
 .scrollable-thumb-container-x .scrollable-thumb {
@@ -443,10 +482,12 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
 .scrollable-thumb.is-focused {
   opacity: 1;
 }
+
 .scrollable-thumb:hover,
 .scrollable-thumb.is-focused {
   background: rgba(0, 0, 0, 0.5);
 }
+
 .scrollable:hover::-webkit-scrollbar-thumb {
   min-height: 5rem;
   max-height: 12.5rem;
@@ -464,7 +505,7 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
   height: 1px;
   background: var(--border, #e0e0e0);
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s ease-in-out;
   z-index: 10;
   pointer-events: none;
 }

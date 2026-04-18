@@ -8,6 +8,11 @@
       ref="filledRef"
       class="range-selector__filled"
     />
+    <div
+      v-if="showThumb"
+      ref="thumbRef"
+      class="range-selector__thumb"
+    />
     <input
       ref="seekRef"
       class="range-selector__input"
@@ -39,6 +44,7 @@ export interface RangeSelectorProps {
   keyboardStep?: number;
   min?: number;
   max?: number;
+  showThumb?: boolean;
   withTransition?: boolean;
   useTransform?: boolean;
   vertical?: boolean;
@@ -55,6 +61,7 @@ const props = withDefaults(defineProps<RangeSelectorProps>(), {
   vertical: false,
   offsetAxisValue: 0,
   modelValue: 0,
+  showThumb: false,
   disableTransition: false,
   disabled: false,
 });
@@ -94,6 +101,8 @@ const containerClasses = computed(() => [
   },
 ]);
 
+const thumbRef = ref<HTMLDivElement | null>(null);
+
 function setFilled(value: number): void {
   if (!filledRef.value) return;
 
@@ -105,6 +114,10 @@ function setFilled(value: number): void {
   }
   else {
     filledRef.value.style.width = `${percents * 100}%`;
+  }
+
+  if (thumbRef.value) {
+    thumbRef.value.style.left = `${percents * 100}%`;
   }
 }
 
@@ -351,4 +364,16 @@ defineExpose({
   outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
+
+.range-selector__thumb {
+  position: absolute;
+  bottom: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--range-filled);
+  transform: translate(-50%, 50%);
+  pointer-events: none;
+}
+
 </style>

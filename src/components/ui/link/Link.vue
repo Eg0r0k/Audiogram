@@ -20,11 +20,12 @@
   >
     <a
       v-bind="$attrs"
-      :href="href"
+      :href="inactive ? undefined : href"
       :class="computedActiveClass(isActive, isExactActive)"
       :aria-current="isExactActive ? 'page' : undefined"
       :draggable="draggable"
-      @click="navigate"
+      :style="inactive ? 'pointer-events: none' : undefined"
+      @click="inactive ? $event.preventDefault() : navigate($event)"
     >
       <slot
         :is-active="isActive"
@@ -55,6 +56,7 @@ interface LinkProps {
   rel?: string;
   replace?: boolean;
   confirmExternal?: boolean;
+  inactive?: boolean;
 }
 
 defineOptions({
@@ -70,6 +72,7 @@ const props = withDefaults(defineProps<LinkProps>(), {
   replace: false,
   draggable: false,
   confirmExternal: false,
+  inactive: false,
 });
 
 const isExternalLink = computed(() => {

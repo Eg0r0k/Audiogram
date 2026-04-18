@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/vue-query";
-import type { Track } from "@/modules/player/types";
+import { isLibraryTrack, type Track } from "@/modules/player/types";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import { toggleTrackLikeAndSync } from "@/queries/track.queries";
@@ -18,13 +18,12 @@ export function useToggleTrackLike() {
 
       track.isLiked = nextTrack.isLiked;
 
-      if (playerStore.currentTrack?.id === nextTrack.id && "artistId" in playerStore.currentTrack) {
+      if (playerStore.currentTrack?.id === nextTrack.id && isLibraryTrack(playerStore.currentTrack)) {
         playerStore.currentTrack = {
           ...playerStore.currentTrack,
           isLiked: nextTrack.isLiked,
         };
       }
-
       queueStore.syncTrackMetadata(nextTrack);
 
       return nextTrack;

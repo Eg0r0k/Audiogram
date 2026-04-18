@@ -245,7 +245,7 @@ const styles = {
     "h-16 data-[compact=true]:h-8",
     "focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none focus-visible:border-ring",
   ])(),
-  index: "text-center font-semibold text-muted-foreground font-mono w-8 text-base group-data-[compact=true]:w-6 group-data-[compact=true]:text-xs",
+  index: "text-center font-semibold text-muted-foreground font-mono w-8 text-base group-data-[compact=true]:w-6 group-data-[compact=true]:text-xs hidden sm:block",
   image: "size-full rounded object-cover",
   imageOverlay: [
     "absolute inset-0 rounded flex items-center justify-center",
@@ -254,8 +254,8 @@ const styles = {
   info: "flex-1 min-w-0 flex flex-col group-data-[compact=true]:flex-row group-data-[compact=true]:items-baseline group-data-[compact=true]:gap-2",
   title: "font-medium truncate text-base group-data-[compact=true]:text-sm hover:underline",
   artist: "flex items-center text-muted-foreground truncate text-sm group-data-[compact=true]:text-xs",
-  duration: "text-muted-foreground font-medium text-sm group-data-[compact=true]:text-xs hidden sm:block sm:group-hover:hidden",
-  dots: "absolute rounded-full transition-opacity opacity-0 sm:group-hover:opacity-100",
+  duration: "text-muted-foreground font-medium text-sm group-data-[compact=true]:text-xs hidden sm:block sm:group-hover:hidden [@media(hover:none)]:hidden",
+  dots: "absolute rounded-full transition-opacity opacity-0 [@media(hover:none)]:opacity-100 sm:group-hover:opacity-100",
 };
 
 const {

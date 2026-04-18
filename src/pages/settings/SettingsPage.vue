@@ -67,7 +67,7 @@
           variant="ghost-primary"
           @click="handleResetAllSettings"
         >
-          <IconRefresh class="size-5" />
+          <IconRefresh class="size-6" />
           {{ $t("settings.index.resetAllAction") }}
         </Button>
       </SettingsGroup>

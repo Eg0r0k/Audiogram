@@ -9,172 +9,47 @@
       v-if="isSearchOpen"
       class="absolute inset-0 top-[72px] z-20 flex flex-col bg-card overflow-hidden"
     >
-      <!-- ── Filters ──────────────────────────────────────────────────── -->
+      <SearchFilters
+        :active-filter="activeFilter"
+        :available-filters="availableFilters"
+        @update:filter="setFilter($event)"
+      />
 
-      <Scrollable
-        direction="horizontal"
-        hide-thumb
-        class="shrink-0 border-b border-background"
-      >
-        <Tabs
-          :model-value="activeFilter"
-          @update:model-value="setFilter($event as SearchFilter)"
-        >
-          <TabsList class="inline-flex items-center gap-0 px-4">
-            <TabsTrigger
-              v-for="filter in availableFilters"
-              :key="filter.value"
-              class=" text-base font-medium mb-0.5"
-              :value="filter.value"
-            >
-              {{ filterLabel(filter.value) }}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </Scrollable>
-
-      <!-- ── Results area ─────────────────────────────────────────────── -->
       <Scrollable class="flex-1 min-h-0">
-        <!-- Loading -->
-        <div
-          v-if="isSearching"
-          class="flex-1 gap-2 flex flex-col p-2"
-        >
-          <div
-            v-for="i in 3"
-            :key="i"
-            class="flex items-center gap-3 px-2"
-          >
-            <Skeleton class="size-[54px] rounded-full shrink-0" />
-            <div class="flex flex-col gap-2 w-full">
-              <Skeleton class="h-3 w-[40%]" />
-              <Skeleton class="h-3 w-[65%]" />
-            </div>
-          </div>
-        </div>
+        <SearchLoading v-if="isSearching" />
 
-        <!-- Empty state -->
         <div
           v-else-if="!hasQuery"
-          class="flex flex-col items-center justify-center py-16 gap-3 px-6 text-center"
+          class="flex flex-col py-6 gap-4 px-4 pt-0"
         >
-          <div class="size-12 rounded-full bg-muted flex items-center justify-center">
-            <IconSearch class="size-5 text-muted-foreground" />
-          </div>
-          <p class="text-xs text-muted-foreground">
-            {{ $t("search.placeholder") }}
-          </p>
-        </div>
-
-        <!-- No results -->
-        <div
-          v-else-if="!hasResults"
-          class="flex flex-col items-center justify-center py-16 gap-3 px-6 text-center"
-        >
-          <div class="size-12 rounded-full bg-muted flex items-center justify-center">
-            <IconSearchOff class="size-5 text-muted-foreground" />
-          </div>
-          <p class="text-xs font-medium">
-            {{ $t("search.noResults.title", { query }) }}
-          </p>
-          <p class="text-xs text-muted-foreground">
-            {{ $t("search.noResults.hint") }}
-          </p>
-        </div>
-
-        <!-- Results: all filter ─ top result + tracks + artists + albums + playlists -->
-        <template v-else-if="activeFilter === 'all'">
-          <!-- Top result -->
-          <div
-            v-if="topResult"
-            class="px-3 pt-3 pb-2"
-          >
-            <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-2">
-              {{ $t("search.bestResult") }}
-            </p>
-            <SearchDropdownRow
-              :item="topResult"
-              @click="navigate(topResult!)"
-            />
-          </div>
-
-          <!-- Tracks -->
-          <div
-            v-if="trackResults.length"
-            class="px-3 pb-2"
-          >
-            <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-1">
-              {{ $t("search.filter.track") }}
-            </p>
-            <SearchDropdownRow
-              v-for="item in trackResults.slice(0, 4)"
-              :key="item.id"
-              :item="item"
-              @click="navigate(item)"
-            />
-          </div>
-
-          <!-- Artists -->
-          <div
-            v-if="artistResults.length"
-            class="px-3 pb-2"
-          >
-            <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-1">
-              {{ $t("search.filter.artist") }}
-            </p>
-            <SearchDropdownRow
-              v-for="item in artistResults.slice(0, 4)"
-              :key="item.id"
-              :item="item"
-              @click="navigate(item)"
-            />
-          </div>
-
-          <!-- Albums -->
-          <div
-            v-if="albumResults.length"
-            class="px-3 pb-2"
-          >
-            <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-1">
-              {{ $t("search.filter.album") }}
-            </p>
-            <SearchDropdownRow
-              v-for="item in albumResults.slice(0, 4)"
-              :key="item.id"
-              :item="item"
-              @click="navigate(item)"
-            />
-          </div>
-
-          <!-- Playlists -->
-          <div
-            v-if="playlistResults.length"
-            class="px-3 pb-4"
-          >
-            <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-1">
-              {{ $t("search.filter.playlist") }}
-            </p>
-            <SearchDropdownRow
-              v-for="item in playlistResults.slice(0, 4)"
-              :key="item.id"
-              :item="item"
-              @click="navigate(item)"
-            />
-          </div>
-        </template>
-
-        <!-- Results: filtered -->
-        <div
-          v-else
-          class="px-3 py-2 flex flex-col"
-        >
-          <SearchDropdownRow
-            v-for="item in filteredResults"
-            :key="item.id"
-            :item="item"
-            @click="navigate(item)"
+          <SearchRecentQueries
+            v-if="recentQueries.length"
+            :items="recentQueries"
+            @apply="applyHistoryItem"
+            @remove="removeHistoryItem"
+            @clear="clearHistory"
           />
+          <SearchEmptyPlaceholder />
         </div>
+
+        <SearchNoResults
+          v-else-if="!hasResults"
+          :query="query"
+        />
+
+        <SearchResults
+          v-else
+          :active-filter="activeFilter"
+          :top-results="topResults"
+          :track-results="trackResults"
+          :artist-results="artistResults"
+          :album-results="albumResults"
+          :playlist-results="playlistResults"
+          :filtered-results="filteredResults"
+          :filtered-track-rows="filteredTrackRows"
+          @navigate="navigate"
+          @play-tracks="playTracks"
+        />
       </Scrollable>
     </div>
   </Transition>
@@ -183,69 +58,60 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRouter } from "vue-router";
-import { useI18n } from "vue-i18n";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useSearch } from "@/modules/search/composables/useSearch";
-import { SEARCH_ENTITY_TYPES } from "@/modules/search/types";
-import type { SearchFilter, SearchResultItem } from "@/modules/search/types";
-import { Button } from "@/components/ui/button";
-import SearchDropdownRow from "@/modules/search/components/SearchDropdownRow.vue";
-import IconLoader2 from "~icons/tabler/loader-2";
-import IconSearch from "~icons/tabler/search";
-import IconSearchOff from "~icons/tabler/search-off";
+import type { SearchResultItem } from "@/modules/search/types";
+import type { Track } from "@/modules/player/types";
 import { Scrollable } from "@/components/ui/scrollable";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Skeleton from "@/components/ui/skeleton/Skeleton.vue";
+import SearchFilters from "@/modules/search/components/SearchFilters.vue";
+import SearchLoading from "@/modules/search/components/SearchLoading.vue";
+import SearchEmptyPlaceholder from "@/modules/search/components/SearchEmptyPlaceholder.vue";
+import SearchNoResults from "@/modules/search/components/SearchNoResults.vue";
+import SearchRecentQueries from "@/modules/search/components/SearchRecentQueries.vue";
+import SearchResults from "@/modules/search/components/SearchResults.vue";
 
 const router = useRouter();
-const { t } = useI18n();
+const queueStore = useQueueStore();
 
 const {
   query,
   activeFilter,
   availableFilters,
+  recentQueries,
   results,
   isSearching,
   isSearchOpen,
   hasQuery,
   setFilter,
-  closeSearch,
+  saveQueryToHistory,
+  removeHistoryItem,
+  clearHistory,
+  applyHistoryItem,
 } = useSearch();
 
-// ── Derived ───────────────────────────────────────────────────────────────────
-
-const topResult = computed(() => results.value.topResults[0] ?? null);
+const topResults = computed(() => results.value.topResults);
 const trackResults = computed(() => results.value.groups.track);
 const artistResults = computed(() => results.value.groups.artist);
 const albumResults = computed(() => results.value.groups.album);
 const playlistResults = computed(() => results.value.groups.playlist);
 
-const hasResults = computed(
-  () =>
-    results.value.topResults.length > 0
-    || SEARCH_ENTITY_TYPES.some(t => results.value.groups[t].length > 0),
-);
+const hasResults = computed(() => {
+  if (results.value.topResults.length > 0) return true;
+  const groups = results.value.groups;
+  return groups.track.length > 0 || groups.artist.length > 0 || groups.album.length > 0 || groups.playlist.length > 0;
+});
 
 const filteredResults = computed(() => {
   if (activeFilter.value === "all") return results.value.topResults;
   return results.value.groups[activeFilter.value] ?? [];
 });
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const filterLabels: Record<SearchFilter, string> = {
-  all: t("search.filter.all"),
-  track: t("search.filter.track"),
-  artist: t("library.filterArtists"),
-  album: t("library.filterAlbums"),
-  playlist: t("library.filterPlaylists"),
-};
-
-function filterLabel(value: SearchFilter) {
-  return filterLabels[value] ?? value;
-}
+const filteredTrackRows = computed(() =>
+  filteredResults.value.flatMap(item => item.track ? [item.track] : []),
+);
 
 function navigate(item: SearchResultItem) {
-  closeSearch();
+  saveQueryToHistory();
   switch (item.type) {
     case "artist":
       router.push({ name: "artist", params: { id: item.entityId } });
@@ -257,8 +123,16 @@ function navigate(item: SearchResultItem) {
       router.push({ name: "playlist", params: { id: item.entityId } });
       break;
     case "track":
-      // TODO: play track
+      if (item.track) {
+        void playTracks([item.track], 0);
+      }
       break;
   }
+}
+
+async function playTracks(tracks: Track[], index: number) {
+  if (tracks.length === 0) return;
+  saveQueryToHistory();
+  await queueStore.setQueue(tracks, index, { type: "search" });
 }
 </script>

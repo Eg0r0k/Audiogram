@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/vue-query";
 import { StorageInfo } from "../schema/storage";
 import { collectStorageInfo, clearAllData } from "@/services/storage-info.service";
 import { formatBytes } from "@/lib/format/memory";
-import { clearLibraryData } from "@/queries/library.queries";
 import { useLibraryStore } from "@/modules/library/store/library.store";
 
 export function useStorageSettings() {
@@ -74,7 +73,19 @@ export function useStorageSettings() {
     try {
       await clearAllData();
       libraryStore.clearPins();
-      await clearLibraryData(queryClient);
+      const keys = [
+        ["library", "summary"],
+        ["artists"],
+        ["albums"],
+        ["playlists"],
+        ["tracks", "liked"],
+      ];
+      await Promise.all(
+        keys.map(key => queryClient.invalidateQueries({ queryKey: key })),
+      );
+      await Promise.all(
+        keys.map(key => queryClient.refetchQueries({ queryKey: key })),
+      );
       await refresh();
     }
     finally {

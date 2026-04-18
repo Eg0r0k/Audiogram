@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col items-center justify-center  h-full text-center">
     <div class="size-16 flex items-center justify-center ">
-      <IconPlaylist class="size-8 text-primary" />
+      <IconPlaylist class="size-8 text-muted-foreground" />
     </div>
     <h3 class="text-xl font-medium ">
       {{ $t("common.empty") }}

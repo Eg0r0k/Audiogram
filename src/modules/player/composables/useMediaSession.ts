@@ -183,6 +183,12 @@ export const useMediaSession = () => {
       updateAvailableActions();
     },
   );
+  watch(
+    coverBlobUrl,
+    () => {
+      updateMetadata();
+    },
+  );
 
   watch(() => player.canSeek, updateAvailableActions);
 

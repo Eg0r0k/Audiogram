@@ -42,10 +42,7 @@
                 <IconBookmark class="size-5.5" />
                 Favorite
               </DropdownMenuItem>
-              <DropdownMenuItem @click="goLibrary">
-                <IconLibrary class="size-5.5" />
-                Library
-              </DropdownMenuItem>
+
               <DropdownMenuItem @click="goSettings">
                 <IconSettings class="size-5.5" />
                 Settings
@@ -116,7 +113,6 @@ import {
 import { useTheme } from "@/modules/settings/composables/useTheme";
 import { useSearch } from "@/modules/search/composables/useSearch";
 import IconMenu2 from "~icons/tabler/menu-2";
-import IconLibrary from "~icons/tabler/book";
 import IconArrowLeft from "~icons/tabler/arrow-left";
 import IconBookmark from "~icons/tabler/bookmark";
 import IconSettings from "~icons/tabler/settings";
@@ -143,10 +139,6 @@ function goFavorite() {
 function goSettings() {
   router.push("/settings");
 }
-
-const goLibrary = () => {
-  router.push("/library");
-};
 
 function handleClose() {
   closeSearch();

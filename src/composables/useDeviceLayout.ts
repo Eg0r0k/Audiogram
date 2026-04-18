@@ -1,16 +1,17 @@
-import { IS_MOBILE, IS_TAURI } from "@/lib/environment/userAgent";
+import { useBreakpoints } from "@vueuse/core";
+import { computed } from "vue";
+
+const breakpoints = useBreakpoints({ tablet: 1024 });
 
 export type LayoutType = "desktop" | "mobile";
 
-const layoutType: LayoutType = (IS_MOBILE && !IS_TAURI) ? "mobile" : "desktop";
-
 export function useDeviceLayout() {
-  const isMobileLayout = layoutType === "mobile";
-  const isDesktopLayout = layoutType === "desktop";
+  const isMobileLayout = breakpoints.smaller("tablet");
+  const isDesktopLayout = breakpoints.greaterOrEqual("tablet");
 
-  return {
-    layoutType,
-    isMobileLayout,
-    isDesktopLayout,
-  } as const;
+  const layoutType = computed<LayoutType>(() =>
+    isMobileLayout.value ? "mobile" : "desktop",
+  );
+
+  return { layoutType, isMobileLayout, isDesktopLayout } as const;
 }

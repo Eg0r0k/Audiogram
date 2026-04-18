@@ -1,6 +1,6 @@
 <template>
   <nav
-    class="flex select-none items-stretch shrink-0 h-14 px-2 py-1 bg-card [&>*]:[tap-highlight:transparent]"
+    class="flex select-none  border-t dark:border-background border-border items-stretch shrink-0 h-14 px-2 py-1 bg-card [&>*]:[tap-highlight:transparent]"
     role="tablist"
   >
     <RouterLink
@@ -27,7 +27,7 @@
       </Button>
     </RouterLink>
 
-    <DropdownMenu>
+    <!-- <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <Button
           class="flex flex-1 press-scale flex-col gap-0.5 items-center justify-center h-full text-muted-foreground"
@@ -49,7 +49,7 @@
           </span>
         </DropdownMenuItem>
       </DropdownMenuContent>
-    </DropdownMenu>
+    </DropdownMenu> -->
   </nav>
 </template>
 
