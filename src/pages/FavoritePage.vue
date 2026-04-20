@@ -40,7 +40,6 @@
             <MediaHero
               :data="likedData"
               @play="handlePlayAll"
-              @shuffle="handleShuffle"
               @add-to-queue="handleAddToQueue"
             />
           </template>
@@ -62,6 +61,20 @@
           <template #loader>
             <IconLoader2 class="size-5 animate-spin text-muted-foreground" />
           </template>
+          <template
+            #empty
+          >
+            <div class="p-4">
+              <Button
+                size="lg"
+                variant="secondary"
+                class=" rounded-full w-full"
+              >
+                <IconPlus class=" size-5" />
+                Добавить
+              </Button>
+            </div>
+          </template>
         </VirtualScrollable>
       </TrackContextMenu>
 
@@ -77,6 +90,7 @@ import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import { Button } from "@/components/ui/button";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import IconLoader2 from "~icons/tabler/loader-2";
+import IconPlus from "~icons/tabler/plus";
 import { useLikedTracksPage } from "@/modules/favorite/composables/useLikedTracksPage";
 import { getLikedTracksPageData } from "@/queries/track.queries";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
@@ -113,16 +127,6 @@ function handlePlayAll() {
         type: "liked",
       });
     }
-  });
-}
-
-function handleShuffle() {
-  if (tracks.value.length === 0) return;
-
-  const startIndex = Math.floor(Math.random() * tracks.value.length);
-
-  queueStore.setQueue(tracks.value, startIndex, {
-    type: "liked",
   });
 }
 

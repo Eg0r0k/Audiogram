@@ -32,14 +32,13 @@
       />
     </div>
 
-    <MediaDisplayDropdown />
+    <!-- <MediaDisplayDropdown /> -->
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
 import MediaDropdown from "./menu/dropdown/MediaDropdown.vue";
-import MediaDisplayDropdown from "./MediaDisplayDropdown.vue";
 import IconPlay from "~icons/tabler/player-play-filled";
 import IconPause from "~icons/tabler/player-pause-filled";
 import IconShuffle from "~icons/tabler/arrows-shuffle";

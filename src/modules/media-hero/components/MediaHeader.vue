@@ -94,7 +94,7 @@ const goBack = () => {
     router.back();
   }
   else {
-    void router.push(FALLBACK_ROUTE);
+    router.push(FALLBACK_ROUTE);
   }
 };
 

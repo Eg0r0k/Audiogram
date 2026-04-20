@@ -52,16 +52,16 @@ export async function getLikedTracksPaginated(
   offset: number,
   limit = PAGE_SIZE,
 ): Promise<PaginatedTracksResult> {
-  const [tracks, countResult, durationResult] = await Promise.all([
+  // Fetch page, total count, and total duration in parallel.
+  // sumDurationByLiked() uses a dedicated indexed query — never loads all records.
+  const [tracks, total, totalDuration] = await Promise.all([
     unwrapResult(trackRepository.findLikedPaginated(offset, limit)),
     unwrapResult(trackRepository.countLiked()),
-    unwrapResult(trackRepository.findLiked()),
+    unwrapResult(trackRepository.sumDurationByLiked()),
   ]);
 
   const mappedTracks = await loadTrackRelations(tracks);
-  const total = countResult ?? 0;
   const nextOffset = offset + limit < total ? offset + limit : null;
-  const totalDuration = (durationResult ?? []).reduce((sum, t) => sum + (t.duration ?? 0), 0);
 
   return {
     tracks: mappedTracks,
@@ -71,6 +71,8 @@ export async function getLikedTracksPaginated(
   };
 }
 
+// queryOptions factories — only for non-infinite queries.
+// Infinite queries are configured directly in composables via useInfiniteQuery.
 export const trackQueries = {
   liked: () =>
     queryOptions({
@@ -81,11 +83,6 @@ export const trackQueries = {
     queryOptions({
       queryKey: queryKeys.tracks.likedPage(),
       queryFn: getLikedTracksPageData,
-    }),
-  likedPageInfinite: (pageParam: number) =>
-    queryOptions({
-      queryKey: [...queryKeys.tracks.likedPageInfinite(), pageParam],
-      queryFn: () => getLikedTracksPaginated(pageParam),
     }),
 } as const;
 

@@ -126,7 +126,6 @@
 </template>
 
 <script setup lang="ts">
-import IconMusic from "~icons/tabler/music";
 import IconGithub from "~icons/tabler/brand-github-filled";
 import IconTelegram from "~icons/tabler/brand-telegram";
 import IconChevronRight from "~icons/tabler/chevron-right";

@@ -45,11 +45,9 @@ const contextComponent = computed(() => contexts[props.context]);
 
 const contextProps = computed(() => {
   const base = { actions };
-  switch (props.context) {
-    case "playlist":
-      return { ...base, isOwner: props.isPlaylistOwner };
-    default:
-      return base;
+  if (props.context === "playlist") {
+    return { ...base, isOwner: props.isPlaylistOwner };
   }
+  return base;
 });
 </script>

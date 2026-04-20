@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import type { TrackEntity } from "@/db/entities";
-import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
+import type { AlbumId, ArtistId, TagId, TrackId } from "@/types/ids";
 import { Result, ok, err } from "neverthrow";
 import { BaseRepository } from "./base.repository";
 
@@ -202,6 +202,16 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     }
   }
 
+  async sumDurationByLiked(): Promise<Result<number, Error>> {
+    try {
+      const tracks = await this.table.where("likedAt").above(0).toArray();
+      return ok(tracks.reduce((sum, t) => sum + (t.duration ?? 0), 0));
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
   async findLikedPaginated(offset: number, limit: number): Promise<Result<TrackEntity[], Error>> {
     try {
       const tracks = await this.table
@@ -225,6 +235,57 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
         .above(0)
         .count();
       return ok(count);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async addTagToTrack(trackId: TrackId, tagId: TagId): Promise<Result<void, Error>> {
+    try {
+      const track = await this.table.get(trackId);
+      if (!track) {
+        return err(new Error(`Track not found: ${trackId}`));
+      }
+      const currentTagIds = track.tagIds ?? [];
+      if (currentTagIds.includes(tagId)) {
+        return ok(undefined);
+      }
+      await this.table.update(trackId, {
+        tagIds: [...currentTagIds, tagId],
+      });
+      return ok(undefined);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async removeTagFromTrack(trackId: TrackId, tagId: TagId): Promise<Result<void, Error>> {
+    try {
+      const track = await this.table.get(trackId);
+      if (!track) {
+        return err(new Error(`Track not found: ${trackId}`));
+      }
+      const currentTagIds = track.tagIds ?? [];
+      const newTagIds = currentTagIds.filter(id => id !== tagId);
+      await this.table.update(trackId, {
+        tagIds: newTagIds,
+      });
+      return ok(undefined);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async findByTagId(tagId: TagId): Promise<Result<TrackEntity[], Error>> {
+    try {
+      const tracks = await this.table
+        .where("tagIds")
+        .equals(tagId)
+        .toArray();
+      return ok(tracks);
     }
     catch (error) {
       return err(error as Error);

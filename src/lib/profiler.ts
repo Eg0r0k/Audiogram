@@ -9,7 +9,6 @@ export class TimeProfiler {
   end(phase: string): number {
     const start = this.starts.get(phase);
     if (start === undefined) {
-      // console.warn(`TimeProfiler: phase "${phase}" ended without start`);
       return 0;
     }
 

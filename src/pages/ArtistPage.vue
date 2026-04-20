@@ -88,7 +88,6 @@ import { getArtistPageData } from "@/queries/artist.queries";
 import { getAlbumPageData } from "@/queries/album.queries";
 import { AlbumId } from "@/types/ids";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
-import MediaCard from "@/modules/media-hero/components/MediaCard.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 import { useTrackSelection } from "@/composables/useTrackSelection";
 

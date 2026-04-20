@@ -1,8 +1,7 @@
-import { watch as fsWatch } from "@tauri-apps/plugin-fs";
+import { watch as fsWatch, exists } from "@tauri-apps/plugin-fs";
 import { useDebounceFn } from "@vueuse/core";
 import { isValidImportItem } from "@/lib/environment/mimeSupport";
 import { normalizePath } from "@/lib/files/filterFiles";
-import { exists } from "@tauri-apps/plugin-fs";
 
 export type FileChangeHandler = (paths: string[]) => void;
 export type FolderMissingHandler = () => void;

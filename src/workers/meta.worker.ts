@@ -13,6 +13,12 @@ function asFiniteNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
+function parseArtists(raw: string | string[] | undefined): string[] {
+  if (!raw) return ["Unknown Artist"];
+  if (Array.isArray(raw)) return raw;
+  return raw.split(/[,;&|/]\s*/);
+}
+
 function ratioToDbtp(ratio: number | undefined): number | undefined {
   if (ratio === undefined || ratio <= 0) return undefined;
   return 20 * Math.log10(ratio);
@@ -56,11 +62,7 @@ self.onmessage = async (e: MessageEvent<ParseRequest>) => {
     const titleFromFile = fileName.replace(/\.[^/.]+$/, "");
     const loudness = extractLoudness(metadata);
 
-    const artists = Array.isArray(metadata.common.artist)
-      ? metadata.common.artist
-      : metadata.common.artist
-        ? metadata.common.artist.split(/[,;&|/]\s*/)
-        : ["Unknown Artist"];
+    const artists = parseArtists(metadata.common.artist);
 
     const meta: BaseMetadata = {
       title: metadata.common.title || titleFromFile,

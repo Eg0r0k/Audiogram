@@ -50,7 +50,13 @@ export function usePlayerProgress() {
   };
 
   watch(() => playerStore.isPlaying, (playing) => {
-    playing ? startRAF() : (stopRAF(), syncProgress());
+    if (playing) {
+      startRAF();
+    }
+    else {
+      stopRAF();
+      syncProgress();
+    }
   });
 
   watch(() => playerStore.currentTrack?.id, (newId, oldId) => {

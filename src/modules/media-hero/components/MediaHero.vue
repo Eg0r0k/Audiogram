@@ -147,12 +147,9 @@ const heroSource = computed<QueueSource>(() => {
   return { type: "unknown" };
 });
 
-const canEdit = computed(() => {
-  if (isPlaylist(props.data)) return props.data.isOwner;
-  if (isAlbum(props.data)) return true;
-  return false;
-});
-
+const canEdit = computed(() =>
+  (isPlaylist(props.data) && props.data.isOwner) || isAlbum(props.data),
+);
 const contextType = computed(() => {
   switch (props.data.type) {
     case "artist": return "artist-page";

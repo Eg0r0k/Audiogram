@@ -51,47 +51,6 @@
               @add-to-queue="handleAddToQueue"
               @share="handleShare"
             />
-            <div
-              v-if="isSelectionMode"
-              class="flex items-center gap-2 px-4 pb-2"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                @click="selectAllTracks"
-              >
-                {{ $t("common.selectAll") }}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                @click="deselectAll"
-              >
-                {{ $t("common.deselectAll") }}
-              </Button>
-              <span class="text-sm text-muted-foreground">
-                {{ selectedCount }} {{ $t("common.selected") }}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                @click="exitSelectionMode"
-              >
-                {{ $t("common.cancel") }}
-              </Button>
-            </div>
-            <div
-              v-else
-              class="flex items-center gap-2 px-4 pb-2"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                @click="enterSelectionMode"
-              >
-                {{ $t("common.select") }}
-              </Button>
-            </div>
           </template>
 
           <template #default="{ item, index }">
@@ -112,6 +71,20 @@
           <template #loader>
             <div class="flex items-center px-4 flex-col w-full">
               <TrackRowLoading />
+            </div>
+          </template>
+          <template
+            #empty
+          >
+            <div class="p-4">
+              <Button
+                size="lg"
+                variant="secondary"
+                class=" rounded-full w-full"
+              >
+                <IconPlus class=" size-5" />
+                Добавить
+              </Button>
             </div>
           </template>
         </VirtualScrollable>
@@ -152,6 +125,7 @@ import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 import { useDeleteConfirmDialog } from "@/composables/useDeleteConfirmDialog";
 import { useTrackSelection } from "@/composables/useTrackSelection";
+import IconPlus from "~icons/tabler/plus";
 
 const { t } = useI18n();
 const { isCompact } = useLibraryView();
@@ -159,13 +133,9 @@ const queueStore = useQueueStore();
 const { openDeleteDialog: openGlobalDeleteDialog } = useDeleteConfirmDialog();
 const {
   isSelectionMode,
-  enterSelectionMode,
-  exitSelectionMode,
   isSelected,
   toggleSelect,
   selectAll,
-  deselectAll,
-  selectedCount,
 } = useTrackSelection();
 
 const {

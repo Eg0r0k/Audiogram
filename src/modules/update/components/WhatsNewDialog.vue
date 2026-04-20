@@ -4,17 +4,13 @@
     @update:open="handleOpenChange"
   >
     <DialogContent class="flex flex-col max-h-[80vh] sm:max-w-2xl gap-0 p-0 overflow-hidden h-full">
-      <div class="border-b px-6 py-5 shrink-0">
+      <div class="border-b  px-6 py-5 shrink-0">
         <DialogHeader class="gap-2 pr-10">
-          <div class="flex items-center gap-2">
-            <span class="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+          <DialogTitle>
+            What's new <span class="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
               v{{ activeVersion }}
             </span>
-            <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Release notes
-            </span>
-          </div>
-          <DialogTitle>What's new</DialogTitle>
+          </DialogTitle>
           <DialogDescription>
             Changes included in this release.
           </DialogDescription>

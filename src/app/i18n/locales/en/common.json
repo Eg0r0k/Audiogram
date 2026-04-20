@@ -1,4 +1,7 @@
 {
+  "import": {
+    "button": "Import tracks"
+  },
   "error": "Error",
   "save": "Save",
   "change": "Change",

@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onUnmounted, type Ref, type ComputedRef } from "vue";
+import { computed, ref, watch, onUnmounted } from "vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useMobilePlayerColor } from "@/composables/useMobilePlayerColor";
@@ -97,6 +97,10 @@ import IconSkipForward from "~icons/tabler/player-track-next-filled";
 
 const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
+
+defineEmits<{
+  click: [];
+}>();
 
 const currentTrack = computed(() => playerStore.currentTrack);
 const artistName = computed(() => currentTrack.value?.artist);

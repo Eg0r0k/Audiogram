@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import LibrarySidebar from "@/components/layout/sidebar/LibrarySidebar.vue";
-import { Button } from "@/components/ui/button";
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
-import IconLogo from "~icons/audiogram/logo";
-import IconPlus from "~icons/tabler/plus";
 
 const { isMobileLayout } = useDeviceLayout();
 

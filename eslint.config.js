@@ -4,6 +4,8 @@ import vue from "eslint-plugin-vue";
 import globals from "globals";
 import vuejsAccessibility from "eslint-plugin-vuejs-accessibility";
 import stylistic from "@stylistic/eslint-plugin";
+import importX from "eslint-plugin-import-x";
+import sonarjs from "eslint-plugin-sonarjs";
 
 export default typescript.config(
   {
@@ -14,6 +16,7 @@ export default typescript.config(
   ...typescript.configs.recommended,
   ...vue.configs["flat/recommended"],
   ...vuejsAccessibility.configs["flat/recommended"],
+  sonarjs.configs.recommended,
 
   stylistic.configs.customize({
     indent: 2,
@@ -40,7 +43,25 @@ export default typescript.config(
       },
     },
   },
-
+  {
+    files: ["**/*.{ts,vue}"],
+    plugins: {
+      "import-x": importX,
+    },
+    settings: {
+      "import-x/resolver": {
+        typescript: {
+          alwaysTryTypes: true,
+          project: "./tsconfig.json",
+        },
+      },
+    },
+    rules: {
+      "import-x/no-cycle": "error",
+      "import-x/no-self-import": "error",
+      "import-x/no-duplicates": "error",
+    },
+  },
   {
     rules: {
       "vue/multi-word-component-names": "off",
@@ -57,6 +78,9 @@ export default typescript.config(
       // Accessibility
       "vuejs-accessibility/alt-text": "warn",
       "vuejs-accessibility/iframe-has-title": "warn",
+      "sonarjs/no-duplicate-string": ["warn", { threshold: 5 }],
+      "sonarjs/cognitive-complexity": ["warn", 20],
+      "sonarjs/todo-tag": "off",
     },
   },
 );

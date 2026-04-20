@@ -1,6 +1,6 @@
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery, skipToken } from "@tanstack/vue-query";
 import { AlbumId } from "@/types/ids";
 import { useObjectUrl } from "@vueuse/core";
 import type { AlbumData } from "@/modules/media-hero/types";
@@ -65,15 +65,18 @@ export function useAlbumPage() {
 
   const artistId = computed(() => album.value?.artistId);
 
-  const {
-    data: artistData,
-  } = useQuery({
-    queryKey: computed(() => artistId.value ? queryKeys.artists.detail(artistId.value) : ["artist", "detail", "empty"]),
-    queryFn: () => getArtistByIdOrThrow(artistId.value!),
-    enabled: computed(() => !!artistId.value),
+  const { data: artistData } = useQuery({
+    queryKey: computed(() => queryKeys.artists.detail(artistId.value!)),
+    queryFn: computed(() =>
+      artistId.value
+        ? () => getArtistByIdOrThrow(artistId.value!)
+        : skipToken,
+    ),
   });
 
-  const artist = computed(() => (artistData.value ? { id: artistData.value.id, name: artistData.value.name } : null));
+  const artist = computed(() =>
+    artistData.value ? { id: artistData.value.id, name: artistData.value.name } : null,
+  );
 
   const {
     data: coverBlob,

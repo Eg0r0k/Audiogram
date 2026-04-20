@@ -57,8 +57,10 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   context: "default",
+  playlistId: undefined,
+  albumId: undefined,
+  isPlaylistOwner: false,
 });
-
 const {
   activeTrack,
   activeIndex,
@@ -110,11 +112,10 @@ const contextProps = computed(() => {
 
   const base = { track: activeTrack.value, actions };
 
-  switch (props.context) {
-    case "playlist":
-      return { ...base, playlistId: props.playlistId, isOwner: props.isPlaylistOwner };
-    default:
-      return base;
+  if (props.context === "playlist") {
+    return { ...base, playlistId: props.playlistId, isOwner: props.isPlaylistOwner };
   }
+
+  return base;
 });
 </script>

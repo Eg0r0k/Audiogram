@@ -1,4 +1,4 @@
-import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
+import type { AlbumId, ArtistId, PlaylistId, TagId, TrackId } from "@/types/ids";
 
 export const queryKeys = {
   library: {
@@ -34,6 +34,11 @@ export const queryKeys = {
     liked: () => ["tracks", "liked"] as const,
     likedPage: () => ["tracks", "liked", "page"] as const,
     likedPageInfinite: () => ["tracks", "liked", "page", "infinite"] as const,
+  },
+  tags: {
+    all: () => ["tags"] as const,
+    detail: (id: TagId) => ["tags", id] as const,
+    byTrack: (trackId: TrackId) => ["tags", "track", trackId] as const,
   },
   covers: {
     detail: (ownerType: "album" | "playlist" | "artist", ownerId: string) =>

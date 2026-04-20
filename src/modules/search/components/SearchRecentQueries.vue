@@ -48,7 +48,7 @@ const { t } = useI18n();
         @click.stop="emit('remove', item)"
       >
         {{ t("common.remove") }}
-</button>
+      </button>
     </div>
   </div>
 </template>

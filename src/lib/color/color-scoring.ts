@@ -110,7 +110,7 @@ export function scoreColor(
 }
 
 export function isUsefulColor(hsl: HSL, rgb: RGB): boolean {
-  const { h, s, l } = hsl;
+  const { s, l } = hsl;
   const { r, g, b } = rgb;
 
   if (s < 0.10) return false;
