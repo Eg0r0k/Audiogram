@@ -1,4 +1,11 @@
 {
+  "addTracks": "Добавить треки",
+  "removeSelected": "Удалить выбранные",
+  "addSelected": "Добавить выбранные",
+  "likeToggleFailed": "Не удалось изменить статус избранного",
+  "favorite": {
+    "addTracks": "Добавить треки"
+  },
   "contextMenu": {
     "addToFavorites": "Добавить в любимые треки",
     "removeFromFavorites": "Удалить из любимых треков",

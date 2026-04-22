@@ -62,34 +62,39 @@
         </DropdownMenu>
       </div>
     </Transition>
-    <InputGroup class="dark:bg-background! bg-muted!  rounded-full h-10 flex-1">
-      <InputGroupAddon tabindex="-1">
-        <IconSearch class="ml-1 size-5" />
-      </InputGroupAddon>
-      <InputGroupInput
-        ref="inputRef"
-        v-model="query"
-        class="pl-4!"
-        :placeholder="$t('common.search')"
-        @keydown.stop
-        @keydown.escape="handleClose"
-        @focus="openSearch"
-      />
-      <InputGroupAddon
-        v-if="query.trim()"
-        tabindex="-1"
-        align="inline-end"
-      >
-        <Button
-          class="rounded-full"
-          variant="ghost-primary"
-          size="icon-sm"
-          @click="clear"
+    <div
+      class="flex-1"
+      @focusin="openSearch"
+    >
+      <InputGroup class="dark:bg-background! bg-muted! rounded-full h-10 flex-1">
+        <InputGroupAddon tabindex="-1">
+          <IconSearch class="ml-1 size-5" />
+        </InputGroupAddon>
+        <InputGroupInput
+          ref="inputRef"
+          v-model="query"
+          class="pl-4!"
+          :placeholder="$t('common.search')"
+          @keydown.stop
+          @keydown.escape="handleClose"
+          @update:model-value="openSearch"
+        />
+        <InputGroupAddon
+          v-if="query.trim()"
+          tabindex="-1"
+          align="inline-end"
         >
-          <IconX class="size-5" />
-        </Button>
-      </InputGroupAddon>
-    </InputGroup>
+          <Button
+            class="rounded-full"
+            variant="ghost-primary"
+            size="icon-sm"
+            @click="clear"
+          >
+            <IconX class="size-5" />
+          </Button>
+        </InputGroupAddon>
+      </InputGroup>
+    </div>
   </div>
 </template>
 

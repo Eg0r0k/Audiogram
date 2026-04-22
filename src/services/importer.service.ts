@@ -1063,6 +1063,8 @@ export class MusicLibraryEngine {
           tracksToAdd.push({
             id: item.trackId,
             title: item.meta.title,
+            artistName: item.meta.artists.join(", "),
+            albumTitle: item.meta.album,
             artistIds,
             albumId: albumData.id,
             tagIds: [],

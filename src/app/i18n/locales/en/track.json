@@ -1,4 +1,8 @@
 {
+  "addTracks": "Add tracks",
+  "removeSelected": "Remove selected",
+  "addSelected": "Add selected",
+  "likeToggleFailed": "Failed to change favorite status",
   "contextMenu": {
     "addToFavorites": "Add to favorites",
     "removeFromFavorites": "Remove from favorites",

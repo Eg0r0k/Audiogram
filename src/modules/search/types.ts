@@ -34,13 +34,13 @@ export interface GroupedResults {
 
 export type WorkerRequest
   = | { action: "build"; documents: SearchDocument[] }
-    | { action: "search"; query: string; id: number; limit?: number; filter?: SearchFilter }
+    | { action: "search"; query: string; id: number; limit?: number; offset?: number; filter?: SearchFilter }
     | { action: "add"; documents: SearchDocument[] }
     | { action: "remove"; ids: string[] };
 
 export type WorkerResponse
   = | { action: "ready"; count: number }
-    | { action: "results"; results: SearchResultItem[]; id: number }
+    | { action: "results"; results: SearchResultItem[]; id: number; total: number; totalDuration: number }
     | { action: "error"; message: string; id?: number };
 
 export function createEmptyGroups(): Record<SearchEntityType, SearchResultItem[]> {

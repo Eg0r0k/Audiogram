@@ -19,9 +19,20 @@ const MAX_HISTORY_ITEMS = 6;
 const SEARCH_HISTORY_KEY = "audiogram-search-history";
 
 type PendingSearch = {
-  resolve: (results: SearchResultItem[]) => void;
+  resolve: (results: SearchResponse) => void;
   reject: (err: Error) => void;
 };
+
+export interface SearchResponse {
+  results: SearchResultItem[];
+  total: number;
+  totalDuration: number;
+}
+
+interface SearchOptions {
+  limit?: number;
+  offset?: number;
+}
 
 class SearchWorkerClient {
   private readonly worker: Worker;
@@ -38,7 +49,11 @@ class SearchWorkerClient {
 
     if (msg.action === "results") {
       const p = this.pending.get(msg.id);
-      p?.resolve(msg.results);
+      p?.resolve({
+        results: msg.results,
+        total: msg.total,
+        totalDuration: msg.totalDuration,
+      });
       this.pending.delete(msg.id);
     }
     else if (msg.action === "error" && msg.id != null) {
@@ -67,12 +82,19 @@ class SearchWorkerClient {
     });
   }
 
-  search(query: string, filter: SearchFilter, limit?: number): Promise<SearchResultItem[]> {
+  search(query: string, filter: SearchFilter, options?: SearchOptions): Promise<SearchResponse> {
     const id = ++this.idCounter;
 
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
-      this.post({ action: "search", query, id, filter, limit });
+      this.post({
+        action: "search",
+        query,
+        id,
+        filter,
+        limit: options?.limit,
+        offset: options?.offset,
+      });
     });
   }
 
@@ -136,6 +158,32 @@ export function initSearchIndex(): Promise<void> {
   return initPromise;
 }
 
+export async function searchTracks(
+  query: string,
+  offset = 0,
+  limit?: number,
+) {
+  await initSearchIndex();
+
+  const response = await getClient().search(query, "track", {
+    offset,
+    limit,
+  });
+
+  return {
+    tracks: response.results.flatMap(item => item.track ? [item.track] : []),
+    total: response.total,
+    totalDuration: response.totalDuration,
+  };
+}
+
+export async function rebuildSearchIndex() {
+  client?.terminate();
+  client = null;
+  initPromise = null;
+  await initSearchIndex();
+}
+
 const query = ref("");
 const activeFilter = ref<SearchFilter>("all");
 const results = shallowRef<GroupedResults>(createEmptyResults());
@@ -162,11 +210,11 @@ const debouncedSearch = useDebounceFn(async (q: string, filter: SearchFilter) =>
     await initSearchIndex();
 
     const thisId = ++latestSearchId;
-    const raw = await getClient().search(q, filter, 50);
+    const response = await getClient().search(q, filter, { limit: 50 });
 
     if (thisId !== latestSearchId) return;
 
-    results.value = groupResults(raw);
+    results.value = groupResults(response.results);
   }
   catch (err) {
     console.error("[Search]", err);
@@ -252,10 +300,7 @@ export function useSearch() {
     },
 
     async rebuildIndex() {
-      client?.terminate();
-      client = null;
-      initPromise = null;
-      await initSearchIndex();
+      await rebuildSearchIndex();
     },
   };
 }

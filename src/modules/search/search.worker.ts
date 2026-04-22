@@ -5,40 +5,41 @@ import type {
   WorkerRequest,
   WorkerResponse,
 } from "./types";
+import { buildSearchAliases, termProcessor, unicodeTokenizer } from "./searchNormalization";
 
-let index: MiniSearch<SearchDocument> | null = null;
+interface IndexedSearchDocument extends SearchDocument {
+  searchAliases: string;
+}
+
+let index: MiniSearch<IndexedSearchDocument> | null = null;
 
 function post(msg: WorkerResponse) {
   self.postMessage(msg);
 }
 
-const unicodeTokenizer = (text: string): string[] =>
-  text
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter(t => t.length > 0);
-
-const termProcessor = (term: string): string | null => {
-  const lower = term.toLowerCase();
-  return lower.length >= 1 ? lower : null;
-};
-
 const DEFAULT_SEARCH_OPTIONS: SearchOptions = {
   prefix: true,
   fuzzy: 0.2,
-  boost: { title: 3, artist: 2, album: 1 },
+  boost: { title: 3, artist: 2, album: 1, searchAliases: 0.75 },
   tokenize: unicodeTokenizer,
   processTerm: termProcessor,
 };
 
-function createIndex(): MiniSearch<SearchDocument> {
-  return new MiniSearch<SearchDocument>({
-    fields: ["title", "artist", "album"],
+function createIndex(): MiniSearch<IndexedSearchDocument> {
+  return new MiniSearch<IndexedSearchDocument>({
+    fields: ["title", "artist", "album", "searchAliases"],
     storeFields: ["type", "title", "artist", "album", "entityId", "coverPath", "track"],
     tokenize: unicodeTokenizer,
     processTerm: termProcessor,
     searchOptions: DEFAULT_SEARCH_OPTIONS,
   });
+}
+
+function createIndexedDocument(document: SearchDocument): IndexedSearchDocument {
+  return {
+    ...document,
+    searchAliases: buildSearchAliases(document.title, document.artist, document.album),
+  };
 }
 
 function mapHit(hit: SearchResult): SearchResultItem {
@@ -62,14 +63,14 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
     switch (msg.action) {
       case "build": {
         index = createIndex();
-        index.addAll(msg.documents);
+        index.addAll(msg.documents.map(createIndexedDocument));
         post({ action: "ready", count: msg.documents.length });
         break;
       }
 
       case "search": {
         if (!index) {
-          post({ action: "results", results: [], id: msg.id });
+          post({ action: "results", results: [], id: msg.id, total: 0, totalDuration: 0 });
           return;
         }
 
@@ -81,9 +82,16 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
         }
 
         const raw = index.search(msg.query, options);
-        const results = raw.slice(0, msg.limit ?? 50).map(mapHit);
+        const offset = msg.offset ?? 0;
+        const limit = msg.limit ?? 50;
+        const total = raw.length;
+        const totalDuration = raw.reduce((sum, hit) => {
+          const track = hit.track as SearchResultItem["track"] | undefined;
+          return sum + (track?.duration ?? 0);
+        }, 0);
+        const results = raw.slice(offset, offset + limit).map(mapHit);
 
-        post({ action: "results", results, id: msg.id });
+        post({ action: "results", results, id: msg.id, total, totalDuration });
         break;
       }
 
@@ -93,7 +101,7 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
         for (const doc of msg.documents) {
           index.discard(doc.id);
         }
-        index.addAll(msg.documents);
+        index.addAll(msg.documents.map(createIndexedDocument));
         break;
       }
 

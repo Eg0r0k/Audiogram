@@ -1,0 +1,9 @@
+{
+  "addToPlaylist": "Add to playlist",
+  "addToAlbum": "Add to album",
+  "addToArtist": "Add to artist",
+  "addToFavorites": "Add to favorites",
+  "selectedTracks": "No tracks selected | 1 track selected | {count} tracks selected",
+  "addSuccess": "Successfully added",
+  "addFailed": "Failed to add"
+}

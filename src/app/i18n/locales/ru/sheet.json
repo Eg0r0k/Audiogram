@@ -1,0 +1,9 @@
+{
+  "addToPlaylist": "Добавить в плейлист",
+  "addToAlbum": "Добавить в альбом",
+  "addToArtist": "Добавить к артисту",
+  "addToFavorites": "Добавить в избранное",
+  "selectedTracks": "Не выбрано треков | Выбран {count} трек | Выбрано {count} трека | Выбрано {count} треков",
+  "addSuccess": "Успешно добавлено",
+  "addFailed": "Ошибка добавления"
+}

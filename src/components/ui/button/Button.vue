@@ -28,3 +28,13 @@ const props = withDefaults(defineProps<Props>(), {
     <slot />
   </Primitive>
 </template>
+
+<style scoped>
+[data-slot="button"] {
+  transition: transform 160ms var(--ease-out);
+}
+
+[data-slot="button"]:active {
+  transform: scale(0.97);
+}
+</style>

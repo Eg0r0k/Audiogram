@@ -1,4 +1,5 @@
 import type { AlbumId, ArtistId, PlaylistId, TagId, TrackId } from "@/types/ids";
+import type { TrackSortKey } from "@/modules/tracks/types";
 
 export const queryKeys = {
   library: {
@@ -34,6 +35,9 @@ export const queryKeys = {
     liked: () => ["tracks", "liked"] as const,
     likedPage: () => ["tracks", "liked", "page"] as const,
     likedPageInfinite: () => ["tracks", "liked", "page", "infinite"] as const,
+    search: (query: string) => ["tracks", "search", query] as const,
+    allPaginated: (search = "") => ["tracks", "all", "paginated", search] as const,
+    index: (sortKey: TrackSortKey, search = "") => ["tracks", "index", sortKey, search] as const,
   },
   tags: {
     all: () => ["tags"] as const,

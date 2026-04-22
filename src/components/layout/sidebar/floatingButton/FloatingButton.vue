@@ -1,5 +1,5 @@
 <template>
-  <DropdownMenu>
+  <DropdownMenu :modal="false">
     <DropdownMenuTrigger as-child>
       <Button
         class="absolute bottom-4 right-4 size-12 rounded-full "

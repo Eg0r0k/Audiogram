@@ -13,6 +13,7 @@ import playlist from "./playlist.json";
 import watchedFolders from "./watchedFolders.json";
 import dialogs from "./dialogs";
 import errors from "./errors.json";
+import sheet from "./sheet.json";
 
 export default {
   common,
@@ -30,4 +31,5 @@ export default {
   watchedFolders,
   dialogs,
   errors,
+  sheet,
 };

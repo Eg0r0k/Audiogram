@@ -75,7 +75,7 @@
   },
   "editHint": "Double-click to edit",
   "editLabel": "Edit value",
-  "trackCount": "{count} track | {count} traks",
+  "trackCount": "{count} track | {count} tracks",
   "albums": "{count} album | {count} albums",
   "tracks": "{count} track | {count} tracks",
 
