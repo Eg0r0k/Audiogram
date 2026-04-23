@@ -23,6 +23,7 @@ export interface ArtistData extends BaseMediaData {
   id: ArtistId;
   monthlyListeners: number;
   isFollowing?: boolean;
+  bio?: string;
 }
 
 export interface AlbumData extends BaseMediaData {

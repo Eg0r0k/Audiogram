@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import type { CoverEntity, CoverOwnerType } from "@/db/entities";
-import type { AlbumId, PlaylistId } from "@/types/ids";
+import type { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 import { err, ok, type Result } from "neverthrow";
 
 class CoverRepository {
@@ -31,6 +31,12 @@ class CoverRepository {
     playlistId: PlaylistId,
   ): Promise<Result<CoverEntity | undefined, Error>> {
     return this.findByOwner("playlist", playlistId);
+  }
+
+  async getArtistCover(
+    artistId: ArtistId,
+  ): Promise<Result<CoverEntity | undefined, Error>> {
+    return this.findByOwner("artist", artistId);
   }
 
   async upsertOwnerCover(
@@ -89,6 +95,13 @@ class CoverRepository {
     return this.upsertOwnerCover("playlist", playlistId, blob);
   }
 
+  async upsertArtistCover(
+    artistId: ArtistId,
+    blob: Blob,
+  ): Promise<Result<string, Error>> {
+    return this.upsertOwnerCover("artist", artistId, blob);
+  }
+
   async deleteByOwner(
     ownerType: CoverOwnerType,
     ownerId: string,
@@ -116,6 +129,10 @@ class CoverRepository {
 
   async deletePlaylistCover(playlistId: PlaylistId): Promise<Result<void, Error>> {
     return this.deleteByOwner("playlist", playlistId);
+  }
+
+  async deleteArtistCover(artistId: ArtistId): Promise<Result<void, Error>> {
+    return this.deleteByOwner("artist", artistId);
   }
 }
 

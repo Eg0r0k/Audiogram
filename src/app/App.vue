@@ -12,8 +12,8 @@
   </component>
   <WhatsNewDialog />
   <ExternalLinkDialog />
+  <DeleteConfirmDialog />
   <TrackDetailsDialog />
-  <!-- <DeleteConfirmDialog /> -->
   <Toaster
     position="top-center"
     class="pointer-events-auto"
@@ -23,7 +23,7 @@
 <script setup lang="ts">
 import "vue-sonner/style.css";
 import { Toaster } from "@/components/ui/sonner";
-import { type Component as VueComponent, computed, onMounted, onUnmounted } from "vue";
+import { type Component as VueComponent, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import DefaultLayout from "@/layouts/DefaultLayout.vue";
 import BlankLayout from "@/layouts/BlankLayout.vue";
@@ -51,11 +51,14 @@ import { useTrayBehavior } from "@/modules/settings/composables/useTrayBehavior"
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { ephemeralFromPath } from "@/modules/player/types";
 import TrackDetailsDialog from "@/modules/tracks/components/TrackDetailsDialog.vue";
+import DeleteConfirmDialog from "@/components/dialogs/DeleteConfirmDialog.vue";
+import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 
 const currentRoute = useRoute();
 const { isMobileLayout } = useDeviceLayout();
 const { init } = useWatchedFolders();
 const queueStore = useQueueStore();
+const rightPanelStore = useRightPanelStore();
 
 const layouts: Record<string, VueComponent> = {
   default: DefaultLayout,
@@ -137,6 +140,10 @@ useChangelogOnStartup();
 if (IS_TAURI) {
   useTrayBehavior();
 }
+
+watch(() => currentRoute.fullPath, (fullPath) => {
+  rightPanelStore.invalidateRouteScope(fullPath);
+});
 
 </script>
 

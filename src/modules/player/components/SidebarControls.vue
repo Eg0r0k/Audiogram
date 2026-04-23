@@ -1,13 +1,17 @@
 <template>
   <div class="flex min-w-[180px] w-[30%] justify-end pr-1">
     <div class="flex w-full gap-0.5 justify-end items-center grow">
-      <div class="text-sm font-medium select-none text-muted-foreground whitespace-nowrap mr-2 flex items-center">
+      <Button
+        variant="ghost"
+        class="mr-2 h-auto rounded-full px-2 gap-0.5 py-1 text-sm font-medium text-muted-foreground select-none whitespace-nowrap"
+        @click="toggleTimeDisplayMode"
+      >
         <span>{{ timeDisplay.current }}</span>
-        <span class="mx-1">/</span>
+        <span class="mx-0.5">/</span>
         <span :class="{ 'text-red-500 font-semibold': playerStore.isLiveStream }">
           {{ timeDisplay.duration }}
         </span>
-      </div>
+      </Button>
 
       <VolumeButton />
 
@@ -87,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { App, computed } from "vue";
+import { App, computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { formatDuration } from "@/lib/format/time";
@@ -129,6 +133,7 @@ const presets = [
 
 const { t } = useI18n();
 const playerStore = usePlayerStore();
+const timeDisplayMode = ref<"total" | "remaining">("total");
 
 const statusText = computed(() => {
   if (playerStore.sleepTimerRemainingMs > 0) {
@@ -166,10 +171,21 @@ const handlePreset = (minutes: number) => {
   playerStore.setSleepTimer(minutes * 60 * 1000);
 };
 
+const toggleTimeDisplayMode = () => {
+  if (playerStore.isLiveStream) return;
+
+  timeDisplayMode.value = timeDisplayMode.value === "total" ? "remaining" : "total";
+};
+
 const timeDisplay = computed(() => {
   if (playerStore.isLiveStream) return { current: "🔴", duration: "LIVE" };
+
+  const remainingTime = Math.max(playerStore.duration - playerStore.currentTime, 0);
+
   return {
-    current: formatDuration(playerStore.currentTime),
+    current: timeDisplayMode.value === "remaining"
+      ? `-${formatDuration(remainingTime)}`
+      : formatDuration(playerStore.currentTime),
     duration: formatDuration(playerStore.duration),
   };
 });

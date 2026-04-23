@@ -280,3 +280,40 @@ export async function addTrackToPlaylistAndSync(
 
   return nextPlaylist;
 }
+
+export async function addTracksToPlaylistAndSync(
+  queryClient: QueryClient,
+  playlistId: PlaylistId,
+  tracks: Track[],
+) {
+  const playlist = await getPlaylistByIdOrThrow(playlistId);
+  const nextTrackIds = [...playlist.trackIds];
+
+  for (const track of tracks) {
+    await unwrapResult(playlistRepository.addTrack(playlistId, track.id));
+
+    if (!nextTrackIds.includes(track.id)) {
+      nextTrackIds.push(track.id);
+    }
+
+    syncPlaylistTrackAddition(queryClient, playlistId, track);
+  }
+
+  const nextPlaylist: PlaylistEntity = {
+    ...playlist,
+    trackIds: nextTrackIds,
+    updatedAt: Date.now(),
+  };
+
+  syncPlaylistCaches(queryClient, nextPlaylist);
+
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.detail(playlistId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.page(playlistId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.tracksPage(playlistId) }),
+  ]);
+
+  return nextPlaylist;
+}

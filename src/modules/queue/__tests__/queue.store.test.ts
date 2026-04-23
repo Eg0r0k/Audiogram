@@ -198,6 +198,36 @@ describe("queue.store", () => {
       expect(stopSpy).toHaveBeenCalled();
       expect(clearCurrentTrackSpy).toHaveBeenCalled();
     });
+
+    it("should start shuffled playback from the selected track", async () => {
+      const store = useQueueStore();
+      const playerStore = usePlayerStore();
+      const playPlayerTrackSpy = vi.spyOn(playerStore, "playPlayerTrack").mockResolvedValue(undefined);
+
+      const tracks = [createTrack("1"), createTrack("2"), createTrack("3")];
+      await store.setQueue(tracks, 1, { type: "album", albumId: "album-1" as Track["albumId"] }, { shuffled: true });
+
+      expect(store.isShuffled).toBe(true);
+      expect(store.currentIndex).toBe(0);
+      expect(store.queue[0].track.id).toBe("2");
+      expect(store.originalQueue.map(item => item.track.id)).toEqual(["1", "2", "3"]);
+      expect(playPlayerTrackSpy).toHaveBeenCalledWith(tracks[1]);
+    });
+
+    it("should preserve shuffle mode for a new queue when shuffle is enabled", async () => {
+      const store = useQueueStore();
+      const playerStore = usePlayerStore();
+      vi.spyOn(playerStore, "playPlayerTrack").mockResolvedValue(undefined);
+
+      store.isShuffled = true;
+
+      const tracks = [createTrack("1"), createTrack("2"), createTrack("3")];
+      await store.setQueue(tracks, 2, { type: "playlist", playlistId: "playlist-1" as any });
+
+      expect(store.isShuffled).toBe(true);
+      expect(store.currentIndex).toBe(0);
+      expect(store.queue[0].track.id).toBe("3");
+    });
   });
 
   describe("addToQueue", () => {
@@ -357,42 +387,38 @@ describe("queue.store", () => {
 
       store.shuffle();
 
-      expect(store.isShuffled).toBe(false);
+      expect(store.isShuffled).toBe(true);
+      expect(store.queue).toHaveLength(1);
     });
   });
 
   describe("unshuffle", () => {
-    it("should restore original queue", () => {
+    it("should restore original queue", async () => {
       const store = useQueueStore();
       const playerStore = usePlayerStore();
       vi.spyOn(playerStore, "playPlayerTrack").mockResolvedValue(undefined);
 
-      const originalQueue: typeof store.queue = [
-        { id: "item-1" as any, track: createTrack("1"), source: { type: "manual" as const }, addedAt: Date.now() },
-        { id: "item-2" as any, track: createTrack("2"), source: { type: "manual" as const }, addedAt: Date.now() },
-      ];
-      store.queue = [...originalQueue];
-      store.originalQueue = [...originalQueue];
-      store.isShuffled = true;
-      store.currentIndex = 0;
+      const tracks = [createTrack("1"), createTrack("2")];
+
+      await store.setQueue(tracks, 0, { type: "manual" });
+      store.shuffle();
 
       store.unshuffle();
 
       expect(store.isShuffled).toBe(false);
-      expect(store.queue).toEqual(originalQueue);
+      expect(store.queue.map(item => item.track.id)).toEqual(["1", "2"]);
     });
   });
 
   describe("clear", () => {
-    it("should clear queue and reset state", () => {
+    it("should clear queue and reset state", async () => {
       const store = useQueueStore();
       const playerStore = usePlayerStore();
       vi.spyOn(playerStore, "stop").mockReturnValue(undefined);
+      vi.spyOn(playerStore, "playPlayerTrack").mockResolvedValue(undefined);
 
-      store.queue = [{ id: "item-1" as any, track: createTrack("1"), source: { type: "manual" }, addedAt: Date.now() }];
-      store.originalQueue = [{ id: "item-1" as any, track: createTrack("1"), source: { type: "manual" }, addedAt: Date.now() }];
-      store.currentIndex = 0;
-      store.isShuffled = true;
+      await store.setQueue([createTrack("1")], 0, { type: "manual" });
+      store.shuffle();
 
       store.clear();
 
@@ -404,15 +430,15 @@ describe("queue.store", () => {
   });
 
   describe("syncTrackMetadata", () => {
-    it("should update track metadata in queue", () => {
+    it("should update track metadata in queue", async () => {
       const store = useQueueStore();
+      const playerStore = usePlayerStore();
+      vi.spyOn(playerStore, "playPlayerTrack").mockResolvedValue(undefined);
+
       const track1 = createTrack("1");
       const track2 = createTrack("2");
-      store.queue = [
-        { id: "item-1" as any, track: track1, source: { type: "manual" }, addedAt: Date.now() },
-        { id: "item-2" as any, track: track2, source: { type: "manual" }, addedAt: Date.now() },
-      ];
-      store.originalQueue = [...store.queue];
+
+      await store.setQueue([track1, track2], 0, { type: "manual" });
 
       store.syncTrackMetadata({ ...track1, lyricsPath: "lyrics/1.lrc" } as Track);
 
@@ -687,12 +713,79 @@ describe("queue.store", () => {
         { id: "item-1" as any, track: createTrack("1"), source: { type: "manual" }, addedAt: Date.now() },
         { id: "item-2" as any, track: createTrack("2"), source: { type: "manual" }, addedAt: Date.now() },
       ];
-      store.originalQueue = [...store.queue];
       store.isShuffled = true;
 
       store.toggleShuffle();
 
       expect(store.isShuffled).toBe(false);
+    });
+
+    it("should restore the original order while keeping the current track selected", async () => {
+      const store = useQueueStore();
+      const playerStore = usePlayerStore();
+      vi.spyOn(playerStore, "playPlayerTrack").mockResolvedValue(undefined);
+
+      await store.setQueue([createTrack("1"), createTrack("2"), createTrack("3")], 1, { type: "manual" });
+
+      store.toggleShuffle();
+
+      store.toggleShuffle();
+
+      expect(store.isShuffled).toBe(false);
+      expect(store.queue.map(item => item.track.id)).toEqual(["1", "2", "3"]);
+      expect(store.currentIndex).toBe(1);
+    });
+
+    it("should keep appended tracks after turning shuffle off", async () => {
+      const store = useQueueStore();
+      const playerStore = usePlayerStore();
+      vi.spyOn(playerStore, "playPlayerTrack").mockResolvedValue(undefined);
+
+      await store.setQueue([createTrack("1"), createTrack("2"), createTrack("3")], 1, { type: "manual" });
+
+      store.toggleShuffle();
+      store.addToQueue(createTrack("4"));
+      store.toggleShuffle();
+
+      expect(store.queue.map(item => item.track.id)).toEqual(["1", "2", "3", "4"]);
+      expect(store.currentTrack?.id).toBe("2");
+      expect(store.currentIndex).toBe(1);
+    });
+
+    it("should keep insert-next ordering after turning shuffle off", async () => {
+      const store = useQueueStore();
+      const playerStore = usePlayerStore();
+      vi.spyOn(playerStore, "playPlayerTrack").mockResolvedValue(undefined);
+
+      await store.setQueue([createTrack("1"), createTrack("2"), createTrack("3")], 1, { type: "manual" });
+
+      store.toggleShuffle();
+      store.insertNext(createTrack("99"));
+      store.toggleShuffle();
+
+      expect(store.queue.map(item => item.track.id)).toEqual(["1", "2", "99", "3"]);
+      expect(store.currentTrack?.id).toBe("2");
+      expect(store.currentIndex).toBe(1);
+    });
+
+    it("should not restore removed tracks after turning shuffle off", async () => {
+      const store = useQueueStore();
+      const playerStore = usePlayerStore();
+      vi.spyOn(playerStore, "playPlayerTrack").mockResolvedValue(undefined);
+
+      await store.setQueue([createTrack("1"), createTrack("2"), createTrack("3")], 1, { type: "manual" });
+
+      store.toggleShuffle();
+
+      const removedItem = store.queue.find(item => item.track.id === "1");
+      expect(removedItem).toBeDefined();
+
+      store.removeFromQueue(removedItem!.id);
+      store.toggleShuffle();
+
+      expect(store.queue.map(item => item.track.id)).toEqual(["2", "3"]);
+      expect(store.currentTrack?.id).toBe("2");
+      expect(store.currentIndex).toBe(0);
     });
   });
 
@@ -877,7 +970,6 @@ describe("queue.store", () => {
       store.queue = [
         { id: "item-1" as any, track: createTrack("1"), source: { type: "manual" }, addedAt: Date.now() },
       ];
-      store.originalQueue = [];
       store.isShuffled = false;
 
       store.unshuffle();
@@ -891,11 +983,11 @@ describe("queue.store", () => {
       store.queue = [
         { id: "item-1" as any, track: createTrack("1"), source: { type: "manual" }, addedAt: Date.now() },
       ];
-      store.originalQueue = [];
       store.isShuffled = true;
 
       store.unshuffle();
 
+      expect(store.isShuffled).toBe(false);
       expect(store.queue[0].track.id).toBe("1");
     });
   });

@@ -1,4 +1,4 @@
-import { AlbumId, ArtistId, PlaylistId, TagId, TrackId } from "@/types/ids";
+import { AlbumId, ArtistId, PlaylistId, RadioStationId, TagId, TrackId } from "@/types/ids";
 
 export enum TrackSource {
   LOCAL_INTERNAL = "local_internal",
@@ -53,6 +53,8 @@ export interface PlaylistEntity {
 export interface TrackEntity {
   id: TrackId;
   title: string;
+  artistName?: string;
+  albumTitle?: string;
   artistIds: ArtistId[];
   albumId: AlbumId;
   tagIds: TagId[];
@@ -98,4 +100,16 @@ export interface CoverEntity {
   mimeType: string;
   addedAt: number;
   updatedAt: number;
+}
+
+export interface RadioStationEntity {
+  id: RadioStationId;
+  name: string;
+  streamUrl: string;
+  addedAt: number;
+  faviconUrl?: string;
+  isFavorite: boolean;
+  country?: string;
+  updatedAt: number;
+  lastPlayedAt?: number;
 }

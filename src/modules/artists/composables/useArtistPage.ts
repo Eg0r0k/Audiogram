@@ -2,16 +2,19 @@ import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
 import { ArtistId } from "@/types/ids";
-import type { ArtistEntity } from "@/db/entities";
 import { ArtistData } from "@/modules/media-hero/types";
 import { queryKeys } from "@/queries/query-keys";
+import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
 import {
   artistQueries,
   deleteArtistAndSync,
   getArtistAlbumsPaginated,
   getArtistTracksPaginated,
+  type ArtistChanges,
   updateArtistAndSync,
 } from "@/queries/artist.queries";
+
+export type { ArtistChanges } from "@/queries/artist.queries";
 
 export function useArtistPage() {
   const route = useRoute();
@@ -72,8 +75,13 @@ export function useArtistPage() {
     () => albumsInfiniteData.value?.pages[0]?.total ?? 0,
   );
 
+  const {
+    url: coverUrl,
+    isLoading: isCoverLoading,
+  } = useEntityCover("artist", artistId);
+
   const isLoading = computed(
-    () => isArtistLoading.value,
+    () => isArtistLoading.value || isCoverLoading.value,
   );
 
   const artistDataMapped = computed<ArtistData | null>(() => {
@@ -83,9 +91,10 @@ export function useArtistPage() {
       type: "artist",
       id: artist.value.id,
       title: artist.value.name,
-      image: "",
+      image: coverUrl.value ?? "",
       monthlyListeners: 0,
       isFollowing: false,
+      bio: artist.value.bio,
     };
   });
 
@@ -97,7 +106,7 @@ export function useArtistPage() {
   });
 
   const { mutateAsync: updateArtist } = useMutation({
-    mutationFn: async (changes: Partial<ArtistEntity>) => {
+    mutationFn: async (changes: ArtistChanges) => {
       const current = artist.value;
       if (!current) {
         return;
@@ -112,6 +121,7 @@ export function useArtistPage() {
     albums,
     tracks,
     artistData: artistDataMapped,
+    coverUrl,
     trackCount,
     albumCount,
     isLoading,

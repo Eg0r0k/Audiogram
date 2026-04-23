@@ -10,6 +10,14 @@ type CopyValue = string | CopyOptions;
 
 const handlerMap = new WeakMap<HTMLElement, () => void>();
 
+function createHandler(el: HTMLElement, binding: DirectiveBinding<CopyValue>) {
+  return () => {
+    const text = getText(el, binding.value);
+    if (!text) return;
+    copy(text, binding);
+  };
+}
+
 async function copy(text: string, binding: DirectiveBinding<CopyValue>) {
   const opts = resolveOptions(binding.value);
 
@@ -17,12 +25,12 @@ async function copy(text: string, binding: DirectiveBinding<CopyValue>) {
     await navigator.clipboard.writeText(text);
     opts.onCopy?.(text);
   }
-  catch (_err) {
+  catch (err) {
     fallbackCopy(text);
     opts.onCopy?.(text);
+    opts.onError?.(err);
   }
 }
-
 function fallbackCopy(text: string) {
   const ta = document.createElement("textarea");
   ta.value = text;
@@ -45,11 +53,7 @@ function getText(el: HTMLElement, value: CopyValue): string {
 
 export const vCopy: Directive<HTMLElement, CopyValue> = {
   mounted(el, binding) {
-    const handler = () => {
-      const text = getText(el, binding.value);
-      if (!text) return;
-      copy(text, binding);
-    };
+    const handler = createHandler(el, binding);
 
     handlerMap.set(el, handler);
     el.addEventListener("click", handler);
@@ -61,11 +65,7 @@ export const vCopy: Directive<HTMLElement, CopyValue> = {
     const old = handlerMap.get(el);
     if (old) el.removeEventListener("click", old);
 
-    const handler = () => {
-      const text = getText(el, binding.value);
-      if (!text) return;
-      copy(text, binding);
-    };
+    const handler = createHandler(el, binding);
 
     handlerMap.set(el, handler);
     el.addEventListener("click", handler);

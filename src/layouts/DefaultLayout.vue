@@ -25,7 +25,7 @@
         <slot />
       </main>
       <aside class="right-column bg-card border-l dark:border-background">
-        <QueueList />
+        <RightPanelHost />
       </aside>
     </div>
 
@@ -43,7 +43,7 @@ import DropOverlay from "@/components/DropOverlay.vue";
 import { useImport } from "@/composables/useImport";
 import ImportProgressSheet from "@/components/ImportProgressSheet.vue";
 import { useFileDrop } from "@/composables/useFileDrop";
-import QueueList from "@/modules/queue/components/QueueList.vue";
+import RightPanelHost from "@/modules/right-panel/components/RightPanelHost.vue";
 
 const { importFiles } = useImport();
 
@@ -89,7 +89,7 @@ const { top, right, bottom, left } = useScreenSafeArea();
   min-width: 0;
 }
 .right-column {
-  width: 320px;
+  width: 420px;
   min-width: 320px;
   overflow-y: hidden;
   overflow-x: hidden;

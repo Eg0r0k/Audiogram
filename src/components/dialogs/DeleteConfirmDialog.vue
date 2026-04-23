@@ -5,49 +5,56 @@
   >
     <DialogContent class="sm:max-w-sm">
       <DialogHeader>
-        <DialogTitle>{{ $t(titleKey) }}</DialogTitle>
+        <DialogTitle>{{ dialogTitle }}</DialogTitle>
+        <DialogDescription>
+          {{ dialogDescription }}
+        </DialogDescription>
       </DialogHeader>
 
-      <div class="flex items-start gap-4 overflow-hidden">
-        <div class="size-16 rounded-lg bg-muted overflow-hidden shrink-0">
+      <div
+        v-if="deleteData"
+        class="flex items-start gap-4 overflow-hidden"
+      >
+        <div
+          class="size-16 shrink-0 overflow-hidden bg-muted"
+          :class="coverShapeClass"
+        >
           <img
             v-if="coverUrl"
             :src="coverUrl"
-            :alt="deleteData?.name"
+            :alt="deleteData.name"
             class="size-full object-cover"
           >
           <div
             v-else
-            class="size-full flex items-center justify-center"
+            class="flex size-full items-center justify-center"
           >
             <component
-              :is="iconComponent"
+              :is="fallbackIcon"
               class="size-6 text-muted-foreground"
             />
           </div>
         </div>
 
-        <div class="flex-1 min-w-0 overflow-hidden">
-          <p class="font-medium truncate w-full">
-            {{ deleteData?.name }}
+        <div class="min-w-0 flex-1 overflow-hidden">
+          <p class="w-full truncate font-medium">
+            {{ deleteData.name }}
           </p>
           <p class="text-sm text-muted-foreground">
-            {{ $t("common.trackCount", deleteData?.trackCount ?? 0) }}
+            {{ $t("common.trackCount", deleteData.trackCount) }}
           </p>
         </div>
       </div>
 
       <DialogFooter>
         <Button
-          variant="destructive-link"
-          :disabled="isDeleting"
+          variant="ghost-primary"
           @click="closeDeleteDialog"
         >
           {{ $t("common.cancel") }}
         </Button>
         <Button
-          variant="link"
-          :disabled="isDeleting"
+          variant="destructive-link"
           @click="handleConfirm"
         >
           {{ $t("common.delete") }}
@@ -58,49 +65,79 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDeleteConfirmDialog } from "@/composables/useDeleteConfirmDialog";
+import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
+
 import IconPlaylist from "~icons/tabler/playlist";
-import IconAlbum from "~icons/tabler/album";
+import IconDisc from "~icons/tabler/disc";
 import IconUser from "~icons/tabler/user";
 
-const { isOpen, deleteData, closeDeleteDialog, handleConfirm: confirmHandler } = useDeleteConfirmDialog();
+const { t } = useI18n();
+const {
+  isOpen,
+  deleteData,
+  closeDeleteDialog,
+  handleConfirm,
+} = useDeleteConfirmDialog();
 
-const isDeleting = ref(false);
-const coverUrl = ref<string | null>(null);
+const ownerType = computed(() => deleteData.value?.type ?? null);
+const ownerId = computed(() => deleteData.value?.id ?? null);
 
-const titleKey = computed(() => {
-  const type = deleteData.value?.type;
-  if (type === "playlist") return "dialogs.deletePlaylist.title";
-  if (type === "album") return "dialogs.deleteAlbum.title";
-  if (type === "artist") return "dialogs.deleteArtist.title";
-  return "dialogs.delete.title";
+const { url: coverUrl } = useEntityCover(ownerType, ownerId);
+
+const dialogTitle = computed(() => {
+  switch (deleteData.value?.type) {
+    case "album":
+      return t("library.contextMenu.deleteAlbum");
+    case "playlist":
+      return t("library.contextMenu.deletePlaylist");
+    case "artist":
+      return t("dialogs.deleteArtist.title");
+    default:
+      return t("common.delete");
+  }
 });
 
-const iconComponent = computed(() => {
-  const type = deleteData.value?.type;
-  if (type === "playlist") return IconPlaylist;
-  if (type === "album") return IconAlbum;
-  if (type === "artist") return IconUser;
-  return IconPlaylist;
+const dialogDescription = computed(() => {
+  if (!deleteData.value) {
+    return "";
+  }
+
+  return t("dialogs.deleteConfirm.description", {
+    name: deleteData.value.name,
+  });
+});
+
+const coverShapeClass = computed(() =>
+  deleteData.value?.type === "artist" ? "rounded-full" : "rounded-lg",
+);
+
+const fallbackIcon = computed(() => {
+  switch (deleteData.value?.type) {
+    case "album":
+      return IconDisc;
+    case "artist":
+      return IconUser;
+    case "playlist":
+    default:
+      return IconPlaylist;
+  }
 });
 
 function handleOpenChange(open: boolean) {
   if (!open) {
     closeDeleteDialog();
   }
-}
-
-function handleConfirm() {
-  isDeleting.value = true;
-  confirmHandler();
 }
 </script>

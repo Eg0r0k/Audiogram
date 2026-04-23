@@ -20,38 +20,12 @@ export class AppDatabase extends Dexie {
   listenEvents!: Table<ListenEventEntity, string>;
   covers!: Table<CoverEntity, string>;
   radioStations!: Table<RadioStationEntity, RadioStationId>;
+
   constructor() {
     super("AudiogramDB");
 
-    this.version(1).stores({
-      tracks: "&id, title, artistId, albumId, *tagIds, state, likedAt, addedAt, duration, storagePath, fingerprint, [artistId+albumId+trackNo]",
-      artists: "&id, name, updatedAt",
-      albums: "&id, title, artistId, year, updatedAt, [artistId+year], [title+artistId]",
-      tags: "&id, &name",
-      playlists: "&id, name, updatedAt, addedAt",
-      listenEvents: "&id, trackId, artistId, albumId, startedAt",
-      covers: "&id, ownerType, ownerId, [ownerType+ownerId], updatedAt",
-    });
-
-    this.version(2).stores({
-      tracks: "&id, title, *artistIds, albumId, *tagIds, state, likedAt, addedAt, duration, storagePath, fingerprint",
-      artists: "&id, name, updatedAt",
-      albums: "&id, title, artistId, year, updatedAt, [artistId+year], [title+artistId]",
-      tags: "&id, &name",
-      playlists: "&id, name, updatedAt, addedAt",
-      listenEvents: "&id, trackId, artistId, albumId, startedAt",
-      covers: "&id, ownerType, ownerId, [ownerType+ownerId], updatedAt",
-    }).upgrade((tx) => {
-      return tx.table("tracks").toCollection().modify((track) => {
-        if (track.artistId && !track.artistIds) {
-          track.artistIds = [track.artistId];
-        }
-        delete track.artistId;
-      });
-    });
-
-    this.version(3).stores({
-      tracks: "&id, title, *artistIds, albumId, *tagIds, state, likedAt, addedAt, duration, storagePath, fingerprint",
+    this.version(5).stores({
+      tracks: "&id, title, artistName, albumTitle, *artistIds, albumId, *tagIds, state, likedAt, addedAt, duration, playCount, storagePath, fingerprint",
       artists: "&id, name, updatedAt",
       albums: "&id, title, artistId, year, updatedAt, [artistId+year], [title+artistId]",
       tags: "&id, &name",
@@ -68,7 +42,7 @@ export class AppDatabase extends Dexie {
     this.playlists = this.table("playlists");
     this.listenEvents = this.table("listenEvents");
     this.covers = this.table("covers");
-    this.radioStations = this.table("radioStations"); ;
+    this.radioStations = this.table("radioStations");
   }
 }
 

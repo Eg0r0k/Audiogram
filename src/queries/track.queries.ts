@@ -4,14 +4,18 @@ import {
   artistRepository,
   trackRepository,
 } from "@/db/repositories";
+import { searchTracks as searchIndexedTracks } from "@/modules/search/composables/useSearch";
+import type { TrackSortKey } from "@/modules/tracks/types";
 import { queryKeys } from "@/queries/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { Track } from "@/modules/player/types";
-import type { TrackId } from "@/types/ids";
+import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import { syncTrackLikeCaches, syncTrackMetadataCaches } from "./cache";
 import { unique, unwrapResult } from "./shared";
-import type { LikedTracksPageData, PaginatedTracksResult } from "./types";
+import type { LikedTracksPageData, PaginatedTracksResult, TracksIndexPageData } from "./types";
+import { getAlbumByIdOrThrow } from "./album.queries";
+import { getArtistByIdOrThrow } from "./artist.queries";
 
 const PAGE_SIZE = 50;
 
@@ -31,6 +35,47 @@ async function loadTrackRelations(tracks: TrackEntity[]): Promise<Track[]> {
   return mapTracks(tracks, artists, albums);
 }
 
+async function getTracksSortedByAlbum(searchTrackIds?: Set<TrackId>, desc = false): Promise<Track[]> {
+  const albums = await unwrapResult(albumRepository.findAllSortedByTitle(desc));
+
+  const trackGroups = await Promise.all(
+    albums.map(async (album) => {
+      const tracks = await unwrapResult(trackRepository.findByAlbumId(album.id));
+
+      if (!searchTrackIds) {
+        return tracks;
+      }
+
+      return tracks.filter(track => searchTrackIds.has(track.id));
+    }),
+  );
+
+  return loadTrackRelations(trackGroups.flat());
+}
+
+async function resolveArtistName(artistIds: ArtistId[]): Promise<string> {
+  if (artistIds.length === 0) {
+    return "Unknown Artist";
+  }
+
+  const artists = await unwrapResult(artistRepository.findByIds(artistIds));
+  return artists.map(artist => artist.name).join(", ") || "Unknown Artist";
+}
+
+async function invalidateTrackRelations(queryClient: QueryClient) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.tracks.all() }),
+    queryClient.invalidateQueries({
+      predicate: query =>
+        query.queryKey[0] === "tracks" && query.queryKey[1] === "index",
+    }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.albums.all() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.artists.all() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() }),
+  ]);
+}
+
 export async function getLikedTracks() {
   return unwrapResult(trackRepository.findLiked());
 }
@@ -48,12 +93,72 @@ export async function getLikedTracksPageData(): Promise<LikedTracksPageData> {
   };
 }
 
+export async function getTracksIndexPageData(
+  sortKey: TrackSortKey,
+  searchQuery = "",
+): Promise<TracksIndexPageData> {
+  const normalizedSearchQuery = searchQuery.trim();
+
+  const isAlbumSort = sortKey === "album_asc" || sortKey === "album_desc";
+  const isAlbumSortDesc = sortKey === "album_desc";
+
+  if (normalizedSearchQuery.length > 0) {
+    const searchResult = await searchIndexedTracks(normalizedSearchQuery, 0, undefined);
+
+    if (isAlbumSort) {
+      const searchTrackIds = new Set(searchResult.tracks.map(track => track.id as TrackId));
+
+      return {
+        tracks: await getTracksSortedByAlbum(searchTrackIds, isAlbumSortDesc),
+        total: searchResult.total,
+        totalDuration: searchResult.totalDuration,
+      };
+    }
+
+    // Search matches come from the worker index. We re-apply ordering through Dexie
+    // so the visible list still follows an indexed database sort instead of in-memory sorting.
+    const rawTracks = await unwrapResult(
+      trackRepository.findSortedByIds(searchResult.tracks.map(track => track.id as TrackId), sortKey),
+    );
+
+    return {
+      tracks: await loadTrackRelations(rawTracks),
+      total: searchResult.total,
+      totalDuration: searchResult.totalDuration,
+    };
+  }
+
+  if (isAlbumSort) {
+    const [tracks, total, totalDuration] = await Promise.all([
+      getTracksSortedByAlbum(undefined, isAlbumSortDesc),
+      unwrapResult(trackRepository.countAll()),
+      unwrapResult(trackRepository.sumDurationAll()),
+    ]);
+
+    return {
+      tracks,
+      total,
+      totalDuration,
+    };
+  }
+
+  const [rawTracks, total, totalDuration] = await Promise.all([
+    unwrapResult(trackRepository.findAllSorted(sortKey)),
+    unwrapResult(trackRepository.countAll()),
+    unwrapResult(trackRepository.sumDurationAll()),
+  ]);
+
+  return {
+    tracks: await loadTrackRelations(rawTracks),
+    total,
+    totalDuration,
+  };
+}
+
 export async function getLikedTracksPaginated(
   offset: number,
   limit = PAGE_SIZE,
 ): Promise<PaginatedTracksResult> {
-  // Fetch page, total count, and total duration in parallel.
-  // sumDurationByLiked() uses a dedicated indexed query — never loads all records.
   const [tracks, total, totalDuration] = await Promise.all([
     unwrapResult(trackRepository.findLikedPaginated(offset, limit)),
     unwrapResult(trackRepository.countLiked()),
@@ -84,7 +189,153 @@ export const trackQueries = {
       queryKey: queryKeys.tracks.likedPage(),
       queryFn: getLikedTracksPageData,
     }),
+  index: (sortKey: TrackSortKey, searchQuery = "") =>
+    queryOptions({
+      queryKey: queryKeys.tracks.index(sortKey, searchQuery),
+      queryFn: () => getTracksIndexPageData(sortKey, searchQuery),
+      staleTime: Infinity,
+    }),
 } as const;
+
+export async function getAllTracksPaginated(
+  offset: number,
+  limit = PAGE_SIZE,
+): Promise<PaginatedTracksResult> {
+  const [tracks, total, totalDuration] = await Promise.all([
+    unwrapResult(trackRepository.findPaginated(offset, limit)),
+    unwrapResult(trackRepository.countAll()),
+    unwrapResult(trackRepository.sumDurationAll()),
+  ]);
+
+  const mappedTracks = await loadTrackRelations(tracks);
+  const nextOffset = offset + limit < total ? offset + limit : null;
+
+  return {
+    tracks: mappedTracks,
+    nextOffset,
+    total,
+    totalDuration,
+  };
+}
+
+export async function searchTracksPaginated(
+  query: string,
+  offset: number,
+  limit = PAGE_SIZE,
+): Promise<PaginatedTracksResult> {
+  const { tracks, total, totalDuration } = await searchIndexedTracks(query, offset, limit);
+  const nextOffset = offset + limit < total ? offset + limit : null;
+
+  return {
+    tracks,
+    nextOffset,
+    total,
+    totalDuration,
+  };
+}
+
+export async function getTracksPaginated(
+  offset: number,
+  searchQuery = "",
+  limit = PAGE_SIZE,
+): Promise<PaginatedTracksResult> {
+  const normalizedSearchQuery = searchQuery.trim();
+
+  if (normalizedSearchQuery.length > 0) {
+    return searchTracksPaginated(normalizedSearchQuery, offset, limit);
+  }
+
+  return getAllTracksPaginated(offset, limit);
+}
+
+export async function addTracksToAlbumAndSync(
+  queryClient: QueryClient,
+  albumId: AlbumId,
+  tracks: Track[],
+) {
+  const album = await getAlbumByIdOrThrow(albumId);
+  const trackIds = unique(tracks.map(track => track.id as TrackId));
+  const currentTracks = await unwrapResult(trackRepository.findByIds(trackIds));
+  const trackMap = new Map(currentTracks.map(track => [track.id, track]));
+
+  for (const trackId of trackIds) {
+    const currentTrack = trackMap.get(trackId);
+
+    if (!currentTrack) {
+      throw new Error(`Track not found: ${trackId}`);
+    }
+
+    const nextArtistIds = currentTrack.artistIds.includes(album.artistId)
+      ? currentTrack.artistIds
+      : [album.artistId, ...currentTrack.artistIds];
+    const nextArtistName = await resolveArtistName(nextArtistIds);
+
+    if (currentTrack.albumId === albumId && nextArtistIds.length === currentTrack.artistIds.length) {
+      continue;
+    }
+
+    await unwrapResult(trackRepository.update(trackId, {
+      albumId,
+      albumTitle: album.title,
+      artistIds: nextArtistIds,
+      artistName: nextArtistName,
+    }));
+  }
+
+  await invalidateTrackRelations(queryClient);
+}
+
+export async function addTracksToArtistAndSync(
+  queryClient: QueryClient,
+  artistId: ArtistId,
+  tracks: Track[],
+) {
+  await getArtistByIdOrThrow(artistId);
+
+  const trackIds = unique(tracks.map(track => track.id as TrackId));
+  const currentTracks = await unwrapResult(trackRepository.findByIds(trackIds));
+  const trackMap = new Map(currentTracks.map(track => [track.id, track]));
+
+  for (const trackId of trackIds) {
+    const currentTrack = trackMap.get(trackId);
+
+    if (!currentTrack) {
+      throw new Error(`Track not found: ${trackId}`);
+    }
+
+    if (currentTrack.artistIds.includes(artistId)) {
+      continue;
+    }
+
+    const nextArtistIds = [...currentTrack.artistIds, artistId];
+    const nextArtistName = await resolveArtistName(nextArtistIds);
+
+    await unwrapResult(trackRepository.update(trackId, {
+      artistIds: nextArtistIds,
+      artistName: nextArtistName,
+    }));
+  }
+
+  await invalidateTrackRelations(queryClient);
+}
+
+export async function favoriteTracksAndSync(
+  queryClient: QueryClient,
+  tracks: Track[],
+) {
+  const trackIds = unique(tracks.map(track => track.id as TrackId));
+  const currentTracks = await unwrapResult(trackRepository.findByIds(trackIds));
+
+  for (const track of currentTracks) {
+    if (track.likedAt) {
+      continue;
+    }
+
+    await unwrapResult(trackRepository.setLiked(track.id, true));
+  }
+
+  await invalidateTrackRelations(queryClient);
+}
 
 export async function toggleTrackLikeAndSync(
   queryClient: QueryClient,
@@ -99,7 +350,7 @@ export async function toggleTrackLikeAndSync(
   const nextValue = !track.isLiked;
   const likedAt = nextValue ? Date.now() : undefined;
 
-  await unwrapResult(trackRepository.setLiked(track.id, nextValue));
+  await unwrapResult(trackRepository.setLiked(track.id as TrackId, nextValue));
 
   const nextTrackEntity: TrackEntity = {
     ...currentTrack,
@@ -123,7 +374,7 @@ export async function attachTrackLyricsAndSync(
     throw new Error("Track not found");
   }
 
-  await unwrapResult(trackRepository.setLyricsPath(track.id, lyricsPath));
+  await unwrapResult(trackRepository.setLyricsPath(track.id as TrackId, lyricsPath));
 
   const nextTrackEntity: TrackEntity = {
     ...currentTrack,

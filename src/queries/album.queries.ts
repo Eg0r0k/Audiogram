@@ -142,6 +142,14 @@ export async function updateAlbumAndSync(
       title: changes.title,
     }));
 
+    const albumTracks = await unwrapResult(trackRepository.findByAlbumId(currentAlbum.id));
+
+    for (const track of albumTracks) {
+      await unwrapResult(trackRepository.update(track.id, {
+        albumTitle: changes.title,
+      }));
+    }
+
     syncAlbumCaches(queryClient, nextAlbum);
     didUpdateAlbum = true;
   }
@@ -149,6 +157,9 @@ export async function updateAlbumAndSync(
   if (didUpdateAlbum) {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.tracks.likedPage() }),
+      queryClient.invalidateQueries({
+        predicate: q => q.queryKey[0] === "tracks" && q.queryKey[1] === "index",
+      }),
       queryClient.invalidateQueries({
         predicate: q => q.queryKey[0] === "playlists" && q.queryKey[2] === "page",
       }),

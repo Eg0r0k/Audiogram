@@ -1,12 +1,40 @@
 import { db } from "@/db";
 import type { TrackEntity } from "@/db/entities";
+import type { TrackSortKey } from "@/modules/tracks/types";
 import type { AlbumId, ArtistId, TagId, TrackId } from "@/types/ids";
+import type { Collection } from "dexie";
 import { Result, ok, err } from "neverthrow";
 import { BaseRepository } from "./base.repository";
 
 class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   constructor() {
     super(db.tracks);
+  }
+
+  private getSortedCollection(sortKey: TrackSortKey): Collection<TrackEntity, TrackId, TrackEntity> {
+    switch (sortKey) {
+      case "date_added_asc":
+        return this.table.orderBy("addedAt");
+      case "title_asc":
+        return this.table.orderBy("title");
+      case "title_desc":
+        return this.table.orderBy("title").reverse();
+      case "artist_asc":
+        return this.table.orderBy("artistName");
+      case "album_asc":
+        return this.table.orderBy("albumTitle");
+      case "album_desc":
+        return this.table.orderBy("albumTitle").reverse();
+      case "duration_asc":
+        return this.table.orderBy("duration");
+      case "duration_desc":
+        return this.table.orderBy("duration").reverse();
+      case "plays_desc":
+        return this.table.orderBy("playCount").reverse();
+      case "date_added_desc":
+      default:
+        return this.table.orderBy("addedAt").reverse();
+    }
   }
 
   async findByAlbumId(albumId: AlbumId): Promise<Result<TrackEntity[], Error>> {
@@ -142,6 +170,70 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
 
       const map = new Map(tracks.map(track => [track.id, track]));
       return ok(ids.flatMap(id => map.get(id) ? [map.get(id)!] : []));
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async findPaginated(offset: number, limit: number): Promise<Result<TrackEntity[], Error>> {
+    try {
+      const tracks = await this.table
+        .orderBy("addedAt")
+        .reverse()
+        .offset(offset)
+        .limit(limit)
+        .toArray();
+      return ok(tracks);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async findAllSorted(sortKey: TrackSortKey): Promise<Result<TrackEntity[], Error>> {
+    try {
+      const tracks = await this.getSortedCollection(sortKey).toArray();
+      return ok(tracks);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async findSortedByIds(ids: TrackId[], sortKey: TrackSortKey): Promise<Result<TrackEntity[], Error>> {
+    try {
+      if (ids.length === 0) {
+        return ok([]);
+      }
+
+      const idSet = new Set(ids);
+      const tracks = await this.getSortedCollection(sortKey)
+        .filter(track => idSet.has(track.id))
+        .toArray();
+
+      return ok(tracks);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async countAll(): Promise<Result<number, Error>> {
+    try {
+      const count = await this.table.count();
+      return ok(count);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async sumDurationAll(): Promise<Result<number, Error>> {
+    try {
+      const tracks = await this.table.toArray();
+      const total = tracks.reduce((sum, track) => sum + (track.duration ?? 0), 0);
+      return ok(total);
     }
     catch (error) {
       return err(error as Error);

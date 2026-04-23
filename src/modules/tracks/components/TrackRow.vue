@@ -25,17 +25,6 @@
       <IconGripVertical class="size-4.5" />
     </button>
 
-    <button
-      v-else-if="selectable"
-      class="shrink-0 w-8 h-full flex items-center justify-center"
-      @click.stop="$emit('toggleSelect', track)"
-    >
-      <Checkbox
-        :checked="isSelected"
-        size="sm"
-      />
-    </button>
-
     <span
       v-else-if="!hideIndex"
       :class="styles.index"
@@ -109,7 +98,7 @@
         'rounded-full transition-colors transition-opacity',
         isLiked
           ? 'opacity-100 text-primary hover:text-primary'
-          : 'opacity-0 text-muted-foreground sm:group-hover:opacity-100 hover:text-foreground'
+          : 'opacity-0 text-muted-foreground sm:group-hover:opacity-100 [@media(hover:none)]:opacity-100 hover:text-foreground'
       ]"
       @click.stop="toggle"
     >
@@ -155,7 +144,6 @@ import { formatDuration } from "@/lib/format/time";
 import type { Track } from "@/modules/player/types";
 import type { TrackContext } from "@/modules/tracks/components/menu/type";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useRouter } from "vue-router";
 import type { QueueItemId } from "@/types/ids";
@@ -177,8 +165,6 @@ interface Props {
   hideCover?: boolean;
   coverUrl?: string | null;
   hideIndex?: boolean;
-  selectable?: boolean;
-  isSelected?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -193,15 +179,12 @@ const props = withDefaults(defineProps<Props>(), {
   beingDragged: false,
   hideCover: false,
   coverUrl: undefined,
-  selectable: false,
   hideIndex: false,
-  isSelected: false,
 });
 
 const emit = defineEmits<{
   play: [track: Track];
   dragStart: [event: PointerEvent];
-  toggleSelect: [track: Track];
 }>();
 
 const playerStore = usePlayerStore();
@@ -282,10 +265,6 @@ const rowStateClass = computed(() => {
 });
 
 const handleClick = () => {
-  if (props.selectable) {
-    emit("toggleSelect", props.track);
-    return;
-  }
   if (isCurrentTrack.value) {
     playerStore.togglePlay();
   }

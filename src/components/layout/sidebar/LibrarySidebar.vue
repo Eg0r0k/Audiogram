@@ -48,17 +48,18 @@
         :items="libraryItems"
         :item-height="72"
         class="flex-1"
+        @scroll="handleScroll"
       >
         <template #default="{ item }">
           <LibrarySidebarItem
-            class="mx-2 "
+            class="mx-2"
             :item="item"
           />
         </template>
       </VirtualScrollable>
     </LibraryContextMenu>
 
-    <FloatingButton />
+    <FloatingButton :show="isButtonVisible" />
     <SearchPanel />
   </div>
 </template>
@@ -75,7 +76,7 @@ import { LIBRARY_FILTERS, LibraryFilter, LibraryItem } from "@/modules/library/t
 import { useI18n } from "vue-i18n";
 import { Scrollable } from "@/components/ui/scrollable";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { computed, useTemplateRef } from "vue";
+import { computed, useTemplateRef, ref } from "vue";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 
@@ -113,4 +114,34 @@ const libraryItems = computed(() => [
   ...pinnedItems.value,
   ...unpinnedItems.value,
 ]);
+
+const isButtonVisible = ref(true);
+let lastScrollTop = 0;
+const SCROLL_THRESHOLD = 10;
+const BOTTOM_THRESHOLD = 30;
+
+function handleScroll(event: Event) {
+  const target = event.target as HTMLElement;
+  const scrollTop = target.scrollTop;
+  const isAtBottom
+    = target.scrollHeight - scrollTop - target.clientHeight < BOTTOM_THRESHOLD;
+
+  if (scrollTop < 50 || isAtBottom) {
+    isButtonVisible.value = true;
+    lastScrollTop = scrollTop;
+    return;
+  }
+
+  const diff = scrollTop - lastScrollTop;
+
+  if (diff > SCROLL_THRESHOLD && isButtonVisible.value) {
+    isButtonVisible.value = false;
+  }
+  else if (diff < -SCROLL_THRESHOLD && !isButtonVisible.value) {
+    isButtonVisible.value = true;
+  }
+
+  lastScrollTop = scrollTop;
+}
+
 </script>

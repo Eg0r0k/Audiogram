@@ -18,3 +18,24 @@ export interface QueueItem {
   addedAt: number;
   cover?: string | null;
 }
+
+export function isSameQueueSource(left: QueueSource, right: QueueSource): boolean {
+  if (left.type !== right.type) return false;
+
+  switch (left.type) {
+    case "album":
+      return "albumId" in right && left.albumId === right.albumId;
+    case "playlist":
+      return "playlistId" in right && left.playlistId === right.playlistId;
+    case "artist":
+      return "artistId" in right && left.artistId === right.artistId;
+    case "liked":
+    case "search":
+    case "manual":
+    case "external":
+    case "unknown":
+      return true;
+    default:
+      return false;
+  }
+}

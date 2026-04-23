@@ -23,6 +23,8 @@ export function mapTrack(
     state: entity.state,
     duration: entity.duration,
     isLiked: !!entity.likedAt,
+    playCount: entity.playCount,
+    addedAt: entity.addedAt,
     trackNo: entity.trackNo,
     diskNo: entity.diskNo,
     lyricsPath: entity.lyricsPath,

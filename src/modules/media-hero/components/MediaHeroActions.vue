@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center justify-between">
+  <div class="flex items-center justify-between gap-3">
     <div class="flex items-center gap-3">
       <Button
         class="size-14 rounded-full "
@@ -17,10 +17,10 @@
       </Button>
 
       <Button
-        v-if="showShuffle"
         class="rounded-full text-white"
         size="icon-lg"
         variant="ghost"
+        :class="{ 'text-primary': isShuffleActive }"
         @click="emit('shuffle')"
       >
         <IconShuffle class="size-5" />
@@ -30,9 +30,11 @@
         :context="contextType"
         :is-playlist-owner="props.isPlaylistOwner"
       />
+
+      <slot name="after-primary" />
     </div>
 
-    <!-- <MediaDisplayDropdown /> -->
+    <slot name="actions" />
   </div>
 </template>
 
@@ -47,6 +49,7 @@ import { usePlayerStore } from "@/modules/player/store/player.store";
 import { usePlaybackState } from "@/modules/player/composables/usePlaybackState";
 import { MediaType } from "@/modules/media-hero/types";
 import { Button } from "@/components/ui/button";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
 
 const props = defineProps<{
   type: MediaType;
@@ -60,6 +63,7 @@ const emit = defineEmits<{
 }>();
 
 const playerStore = usePlayerStore();
+const queueStore = useQueueStore();
 const { isActiveSource, isPlaying, isLoading } = usePlaybackState(() => props.source);
 
 function handlePlay() {
@@ -81,5 +85,5 @@ const contextType = computed(() => {
   }
 });
 
-const showShuffle = computed(() => props.type !== "artist");
+const isShuffleActive = computed(() => isActiveSource.value && queueStore.isShuffled);
 </script>

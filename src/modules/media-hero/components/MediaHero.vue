@@ -67,7 +67,11 @@
             :is-playlist-owner="isPlaylist(data) ? data.isOwner : undefined"
             @play="$emit('play')"
             @shuffle="$emit('shuffle')"
-          />
+          >
+            <template #actions>
+              <slot name="actions" />
+            </template>
+          </MediaHeroActions>
         </div>
       </div>
     </div>

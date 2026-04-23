@@ -130,6 +130,28 @@ export const artistQueries = {
     }),
 } as const;
 
+async function syncTrackArtistNames(artistId: ArtistId, nextArtistName: string) {
+  const tracks = await unwrapResult(trackRepository.findByArtistId(artistId));
+
+  if (tracks.length === 0) {
+    return;
+  }
+
+  const allArtistIds = unique(tracks.flatMap(track => track.artistIds));
+  const artists = await unwrapResult(artistRepository.findByIds(allArtistIds));
+  const artistNameById = new Map(artists.map(artist => [artist.id, artist.name]));
+  artistNameById.set(artistId, nextArtistName);
+
+  for (const track of tracks) {
+    const artistName = track.artistIds
+      .map(id => artistNameById.get(id))
+      .filter(Boolean)
+      .join(", ") || "Unknown Artist";
+
+    await unwrapResult(trackRepository.update(track.id, { artistName }));
+  }
+}
+
 export async function updateArtistAndSync(
   queryClient: QueryClient,
   currentArtist: ArtistEntity,
@@ -142,11 +164,16 @@ export async function updateArtistAndSync(
   };
 
   await unwrapResult(artistRepository.update(currentArtist.id, changes));
+  await syncTrackArtistNames(currentArtist.id, nextArtist.name);
   syncArtistCaches(queryClient, nextArtist);
 
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.artists.page(currentArtist.id) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.tracks.likedPage() }),
+    queryClient.invalidateQueries({
+      predicate: query =>
+        query.queryKey[0] === "tracks" && query.queryKey[1] === "index",
+    }),
     queryClient.invalidateQueries({
       predicate: query =>
         query.queryKey[0] === "albums" && query.queryKey[2] === "page",

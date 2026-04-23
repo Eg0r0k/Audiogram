@@ -42,6 +42,12 @@ export interface LikedTracksPageData {
   tracks: Track[];
 }
 
+export interface TracksIndexPageData {
+  tracks: Track[];
+  total: number;
+  totalDuration: number;
+}
+
 export interface PaginatedTracksResult {
   tracks: Track[];
   nextOffset: number | null;

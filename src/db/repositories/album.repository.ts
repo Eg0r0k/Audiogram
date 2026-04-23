@@ -37,6 +37,19 @@ class AlbumRepository extends BaseRepository<AlbumEntity, AlbumId> {
     }
   }
 
+  async findAllSortedByTitle(desc = false): Promise<Result<AlbumEntity[], Error>> {
+    try {
+      const collection = desc
+        ? this.table.orderBy("title").reverse()
+        : this.table.orderBy("title");
+      const albums = await collection.toArray();
+      return ok(albums);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
   async countByArtistId(artistId: ArtistId): Promise<Result<number, Error>> {
     try {
       const count = await this.table

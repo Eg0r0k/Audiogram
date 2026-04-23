@@ -65,27 +65,16 @@ const morphedPath = useTransform(progress, [0, 1], paths, {
 });
 
 const isLoading = computed(() => playerStore.isLoading || playerStore.status === "loading");
+const shouldShowPauseIcon = computed(() => playerStore.isPlaying || isLoading.value);
 const canInteract = computed(() => !isLoading.value);
 
 watch(
-  () => playerStore.isPlaying,
-  (playing) => {
-    animate(progress, playing ? 1 : 0, {
+  shouldShowPauseIcon,
+  (showPauseIcon) => {
+    animate(progress, showPauseIcon ? 1 : 0, {
       duration: 0.25,
       ease: "anticipate",
     });
-  },
-);
-
-watch(
-  () => playerStore.status,
-  (status) => {
-    if (status === "playing") {
-      animate(progress, 1, { duration: 0.25, ease: "anticipate" });
-    }
-    else if (status === "paused" || status === "ready" || status === "idle") {
-      animate(progress, 0, { duration: 0.25, ease: "anticipate" });
-    }
   },
   { immediate: true },
 );

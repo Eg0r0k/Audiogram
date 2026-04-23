@@ -19,6 +19,7 @@ import type {
   LikedTracksPageData,
   PaginatedTracksResult,
   PlaylistPageData,
+  TracksIndexPageData,
 } from "./types";
 
 function setQueryDataIfPresent<T>(
@@ -58,6 +59,43 @@ function mapInfiniteTrackPages(
       tracks: mapTracks(page.tracks),
     })),
   };
+}
+
+function patchInfiniteLikedPages(
+  data: InfiniteData<PaginatedTracksResult>,
+  nextTrack: Track,
+): InfiniteData<PaginatedTracksResult> {
+  const totalDelta = nextTrack.isLiked ? 1 : -1;
+  const durationDelta = nextTrack.isLiked ? nextTrack.duration : -nextTrack.duration;
+
+  return {
+    ...data,
+    pages: data.pages.map((page, index) => {
+      const withoutCurrent = page.tracks.filter(track => track.id !== nextTrack.id);
+
+      return {
+        ...page,
+        tracks: nextTrack.isLiked && index === 0 ? [nextTrack, ...withoutCurrent] : withoutCurrent,
+        total: Math.max(0, page.total + totalDelta),
+        totalDuration: Math.max(0, page.totalDuration + durationDelta),
+      };
+    }),
+  };
+}
+
+function patchTracksIndexPages(
+  queryClient: QueryClient,
+  updater: (data: TracksIndexPageData) => TracksIndexPageData,
+) {
+  setQueriesDataIfPresent<TracksIndexPageData>(
+    queryClient,
+    {
+      predicate: query =>
+        query.queryKey[0] === "tracks"
+        && query.queryKey[1] === "index",
+    },
+    updater,
+  );
 }
 
 export function syncArtistCaches(queryClient: QueryClient, artist: ArtistEntity) {
@@ -356,6 +394,13 @@ export function syncTrackLikeCaches(
     },
   );
 
+  patchTracksIndexPages(queryClient, data => ({
+    ...data,
+    tracks: data.tracks.map(track =>
+      track.id === nextTrack.id ? patchTrackLike(track, nextTrack.isLiked) : track,
+    ),
+  }));
+
   setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
     queryClient,
     {
@@ -365,12 +410,7 @@ export function syncTrackLikeCaches(
         && query.queryKey[2] === "page"
         && query.queryKey[3] === "infinite",
     },
-    (data) => {
-      return mapInfiniteTrackPages(data, (tracks) => {
-        const withoutCurrent = tracks.filter(track => track.id !== nextTrack.id);
-        return nextTrack.isLiked ? [nextTrack, ...withoutCurrent] : withoutCurrent;
-      });
-    },
+    data => patchInfiniteLikedPages(data, nextTrack),
   );
 
   setQueryDataIfPresent<LikedTracksPageData>(
@@ -450,6 +490,13 @@ export function syncTrackLikeCaches(
       ),
     }),
   );
+
+  patchTracksIndexPages(queryClient, data => ({
+    ...data,
+    tracks: data.tracks.map(track =>
+      track.id === nextTrack.id ? nextTrack : track,
+    ),
+  }));
 
   setQueryDataIfPresent<ArtistPageData>(
     queryClient,

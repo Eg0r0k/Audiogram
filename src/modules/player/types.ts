@@ -30,6 +30,9 @@ export interface Track extends TrackLoudnessMetadata {
   state: TrackState;
   duration: number;
   isLiked: boolean;
+  playCount?: number;
+  addedAt?: number;
+  isExplicit?: boolean;
   trackNo?: number;
   diskNo?: number;
   lyricsPath?: string;
