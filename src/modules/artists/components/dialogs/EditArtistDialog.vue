@@ -56,7 +56,7 @@
           </button>
         </div>
 
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 min-w-0">
           <div class="space-y-2">
             <Label
               for="artist-name"
@@ -92,10 +92,12 @@
 
             <Textarea
               id="artist-bio"
+
               v-model="bio"
               :placeholder="$t('dialogs.editArtist.bioPlaceholder')"
               :disabled="isSaving"
               :class="{ 'border-destructive focus-visible:ring-destructive': errors.bio }"
+              class="max-w-fit"
             />
 
             <p

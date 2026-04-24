@@ -56,7 +56,7 @@
           </button>
         </div>
 
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 min-w-0">
           <div class="space-y-2">
             <Label
               for="playlist-name"
