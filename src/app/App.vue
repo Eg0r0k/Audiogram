@@ -13,7 +13,6 @@
   <WhatsNewDialog />
   <ExternalLinkDialog />
   <DeleteConfirmDialog />
-  <TrackDetailsDialog />
   <Toaster
     position="top-center"
     class="pointer-events-auto"
@@ -50,9 +49,9 @@ import WhatsNewDialog from "@/modules/update/components/WhatsNewDialog.vue";
 import { useTrayBehavior } from "@/modules/settings/composables/useTrayBehavior";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { ephemeralFromPath } from "@/modules/player/types";
-import TrackDetailsDialog from "@/modules/tracks/components/TrackDetailsDialog.vue";
 import DeleteConfirmDialog from "@/components/dialogs/DeleteConfirmDialog.vue";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
+import { useNowPlayingTitle } from "@/modules/player/composables/useNowPlayingTitle";
 
 const currentRoute = useRoute();
 const { isMobileLayout } = useDeviceLayout();
@@ -120,6 +119,7 @@ usePreventPinchZoom();
 useAudioSettings();
 useGlobalHotKeys();
 useMediaSession();
+useNowPlayingTitle();
 
 // UPDATE
 

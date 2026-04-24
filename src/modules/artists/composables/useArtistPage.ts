@@ -13,6 +13,7 @@ import {
   type ArtistChanges,
   updateArtistAndSync,
 } from "@/queries/artist.queries";
+import { routeLocation } from "@/app/router/route-locations";
 
 export type { ArtistChanges } from "@/queries/artist.queries";
 
@@ -101,7 +102,7 @@ export function useArtistPage() {
   const { mutateAsync: deleteArtist } = useMutation({
     mutationFn: () => deleteArtistAndSync(queryClient, artistData.value ?? null),
     onSuccess: () => {
-      router.push("/library");
+      router.push(routeLocation.home());
     },
   });
 

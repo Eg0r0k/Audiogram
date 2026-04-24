@@ -1,9 +1,10 @@
 import type { RouteRecordRaw } from "vue-router";
+import { ROUTE_NAMES } from "@/app/router/route-names";
 
 export const settingsRoutes: RouteRecordRaw[] = [
   {
     path: "/settings",
-    name: "settings",
+    name: ROUTE_NAMES.SETTINGS,
     component: () => import("@/pages/settings/SettingsPage.vue"),
     meta: {
       titleKey: "nav.settings",
@@ -12,7 +13,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
   },
   {
     path: "/settings/general",
-    name: "settings-general",
+    name: ROUTE_NAMES.SETTINGS_GENERAL,
     component: () => import("@/pages/settings/GeneralSettings.vue"),
     meta: {
       titleKey: "settings.general",
@@ -21,7 +22,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
   },
   {
     path: "/settings/audio",
-    name: "settings-audio",
+    name: ROUTE_NAMES.SETTINGS_AUDIO,
     component: () => import("@/pages/settings/AudioSettings.vue"),
     meta: {
       titleKey: "settings.audio",
@@ -30,7 +31,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
   },
   {
     path: "/settings/storage",
-    name: "settings-storage",
+    name: ROUTE_NAMES.SETTINGS_STORAGE,
     component: () => import("@/pages/settings/StorageSettings.vue"),
     meta: {
       titleKey: "settings.storage",
@@ -39,7 +40,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
   },
   {
     path: "/settings/language",
-    name: "settings-language",
+    name: ROUTE_NAMES.SETTINGS_LANGUAGE,
     component: () => import("@/pages/settings/LanguageSettings.vue"),
     meta: {
       titleKey: "settings.language",
@@ -48,7 +49,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
   },
   {
     path: "/settings/notifications",
-    name: "settings-notifications",
+    name: ROUTE_NAMES.SETTINGS_NOTIFICATIONS,
     component: () => import("@/pages/settings/NotificationsSettings.vue"),
     meta: {
       titleKey: "settings.notifications",
@@ -57,7 +58,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
   },
   {
     path: "/settings/appearance",
-    name: "settings-appearance",
+    name: ROUTE_NAMES.SETTINGS_APPEARANCE,
     component: () => import("@/pages/settings/AppearanceSettings.vue"),
     meta: {
       titleKey: "settings.appearance",
@@ -66,7 +67,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
   },
   {
     path: "/settings/about",
-    name: "settings-about",
+    name: ROUTE_NAMES.SETTINGS_ABOUT,
     component: () => import("@/pages/settings/AboutSettings.vue"),
     meta: {
       titleKey: "settings.about",

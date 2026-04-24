@@ -15,6 +15,7 @@ import {
   type PlaylistChanges,
   updatePlaylistAndSync,
 } from "@/queries/playlist.queries";
+import { routeLocation } from "@/app/router/route-locations";
 
 export type { PlaylistChanges } from "@/queries/playlist.queries";
 
@@ -90,7 +91,7 @@ export function usePlaylistPage() {
   const { mutateAsync: deletePlaylist } = useMutation({
     mutationFn: () => deletePlaylistAndSync(queryClient, playlist.value),
     onSuccess: () => {
-      router.push("/library");
+      router.push(routeLocation.home());
     },
   });
 

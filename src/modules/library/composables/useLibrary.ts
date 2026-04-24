@@ -2,9 +2,9 @@ import { useRouter } from "vue-router";
 import { useLibraryStore } from "../store/library.store";
 import { storeToRefs } from "pinia";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import type { LibraryItem } from "../types";
+import { LIBRARY_FILTERS, type LibraryFilter, type LibraryItem } from "../types";
 import { clearAllData } from "@/services/storage-info.service";
 import { deleteAlbumAndSync } from "@/queries/album.queries";
 import { deleteArtistAndSync } from "@/queries/artist.queries";
@@ -19,6 +19,8 @@ import {
 } from "@/queries/playlist.queries";
 import { useDeleteConfirmDialog } from "@/composables/useDeleteConfirmDialog";
 import type { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
+import { routeLocation } from "@/app/router/route-locations";
+import { ROUTE_NAMES } from "@/app/router/route-names";
 
 export const useLibrary = () => {
   const store = useLibraryStore();
@@ -28,6 +30,23 @@ export const useLibrary = () => {
   const { openDeleteDialog } = useDeleteConfirmDialog();
 
   const { sortBy, activeFilter, searchQuery } = storeToRefs(store);
+  const navigateHome = () => router.push(routeLocation.home());
+
+  const libraryItemRouteNames = {
+    artist: ROUTE_NAMES.ARTIST,
+    album: ROUTE_NAMES.ALBUM,
+    playlist: ROUTE_NAMES.PLAYLIST,
+  } as const;
+
+  const navigateHomeIfViewingItem = (item: LibraryItem) => {
+    const currentRoute = router.currentRoute.value;
+
+    if (item.type === "liked") return;
+    if (currentRoute.name !== libraryItemRouteNames[item.type]) return;
+    if (currentRoute.params.id !== item.id) return;
+
+    return navigateHome();
+  };
 
   const { data, isLoading } = useQuery(libraryQueries.summary());
   const artists = computed(() => data.value?.artists ?? []);
@@ -55,7 +74,7 @@ export const useLibrary = () => {
     isSystem: true,
     addedAt: 0,
     updatedAt: 0,
-    to: { name: "liked" },
+    to: routeLocation.liked(),
     rounded: false,
   }));
 
@@ -71,7 +90,7 @@ export const useLibrary = () => {
         addedAt: artist.addedAt,
         updatedAt: artist.updatedAt,
         artistName: artist.name,
-        to: { name: "artist", params: { id: artist.id } },
+        to: routeLocation.artist(artist.id),
         rounded: true,
         trackCount: artist.trackCount,
       });
@@ -89,7 +108,7 @@ export const useLibrary = () => {
         addedAt: album.addedAt,
         updatedAt: album.updatedAt,
         artistName,
-        to: { name: "album", params: { id: album.id } },
+        to: routeLocation.album(album.id),
         rounded: false,
         trackCount: album.trackCount,
       });
@@ -104,7 +123,7 @@ export const useLibrary = () => {
         isPinned: store.isPinned("playlist", playlist.id),
         addedAt: playlist.addedAt,
         updatedAt: playlist.updatedAt,
-        to: { name: "playlist", params: { id: playlist.id } },
+        to: routeLocation.playlist(playlist.id),
         rounded: false,
         trackCount: playlist.trackIds.length,
       });
@@ -184,9 +203,30 @@ export const useLibrary = () => {
   const isEmpty = computed(() => allItems.value.length === 0 && !isLoading.value);
   const hasResults = computed(() => sortedItems.value.length > 0);
 
+  const availableFilters = computed<LibraryFilter[]>(() => {
+    return LIBRARY_FILTERS.filter((filter) => {
+      switch (filter) {
+        case "all":
+          return true;
+        case "artist":
+          return artists.value.length > 0;
+        case "album":
+          return albums.value.length > 0;
+        case "playlist":
+          return playlists.value.length > 0;
+      }
+    });
+  });
+
+  watch(availableFilters, (filters) => {
+    if (!filters.includes(activeFilter.value)) {
+      store.setFilter("all");
+    }
+  }, { immediate: true });
+
   const createPlaylist = async () => {
     const playlist = await createPlaylistAndSync(queryClient);
-    router.push({ name: "playlist", params: { id: playlist.id } });
+    router.push(routeLocation.playlist(playlist.id));
   };
 
   const invalidateLibrary = async () => {
@@ -201,23 +241,17 @@ export const useLibrary = () => {
         case "artist":
           await deleteArtistAndSync(queryClient, artists.value.find(artist => artist.id === item.id) ?? null);
           store.unpin("artist", item.id);
-          if (router.currentRoute.value.name === "artist" && router.currentRoute.value.params.id === item.id) {
-            router.push("/library");
-          }
+          await navigateHomeIfViewingItem(item);
           break;
         case "album":
           await deleteAlbumAndSync(queryClient, albums.value.find(album => album.id === item.id) ?? null);
           store.unpin("album", item.id);
-          if (router.currentRoute.value.name === "album" && router.currentRoute.value.params.id === item.id) {
-            router.push("/library");
-          }
+          await navigateHomeIfViewingItem(item);
           break;
         case "playlist":
           await deletePlaylistAndSync(queryClient, playlists.value.find(playlist => playlist.id === item.id) ?? null);
           store.unpin("playlist", item.id);
-          if (router.currentRoute.value.name === "playlist" && router.currentRoute.value.params.id === item.id) {
-            router.push("/library");
-          }
+          await navigateHomeIfViewingItem(item);
           break;
       }
     };
@@ -243,6 +277,7 @@ export const useLibrary = () => {
     allItems,
     pinnedItems,
     unpinnedItems,
+    availableFilters,
     isLoading,
     isEmpty,
     hasResults,

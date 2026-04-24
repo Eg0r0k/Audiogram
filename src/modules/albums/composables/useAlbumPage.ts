@@ -16,6 +16,7 @@ import {
 } from "@/queries/album.queries";
 import { coverQueries } from "@/queries/cover.queries";
 import { getArtistByIdOrThrow } from "@/queries/artist.queries";
+import { routeLocation } from "@/app/router/route-locations";
 
 export type { AlbumChanges } from "@/queries/album.queries";
 
@@ -108,7 +109,7 @@ export function useAlbumPage() {
   const { mutateAsync: deleteAlbum } = useMutation({
     mutationFn: () => deleteAlbumAndSync(queryClient, albumData.value ?? null),
     onSuccess: () => {
-      router.push("/library");
+      router.push(routeLocation.home());
     },
   });
 

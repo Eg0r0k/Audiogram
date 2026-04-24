@@ -1,9 +1,10 @@
 import { RouteRecordRaw } from "vue-router";
+import { ROUTE_NAMES } from "@/app/router/route-names";
 
 export const homeRoutes: RouteRecordRaw[] = [
   {
     path: "/",
-    name: "home",
+    name: ROUTE_NAMES.HOME,
     component: () => import("@/pages/IndexPage.vue"),
     meta: {
       titleKey: "nav.home",

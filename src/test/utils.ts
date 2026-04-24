@@ -3,13 +3,14 @@ import { createPinia } from "pinia";
 import { type Component } from "vue";
 import { createI18n } from "vue-i18n";
 import { createRouter, createWebHistory } from "vue-router";
+import { ROUTE_NAMES } from "@/app/router/route-names";
 
 function createTestRouter() {
   return createRouter({
     history: createWebHistory(),
     routes: [
-      { path: "/", component: { template: "<div>Home</div>" } },
-      { path: "/library", component: { template: "<div>Library</div>" } },
+      { path: "/", name: ROUTE_NAMES.HOME, component: { template: "<div>Home</div>" } },
+      { path: "/library", name: "library", component: { template: "<div>Library</div>" } },
     ],
   });
 }
