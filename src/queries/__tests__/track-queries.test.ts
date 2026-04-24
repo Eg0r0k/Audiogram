@@ -20,8 +20,9 @@ const repositories = vi.hoisted(() => ({
 }));
 
 vi.mock("@/db/repositories", () => repositories);
-vi.mock("@/modules/search/composables/useSearch", () => ({
+vi.mock("@/modules/search/searchIndex", () => ({
   searchTracks: vi.fn(),
+  upsertSearchDocuments: vi.fn(),
 }));
 
 import { getTracksIndexPageData } from "../track.queries";

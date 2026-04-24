@@ -69,6 +69,7 @@ import SearchEmptyPlaceholder from "@/modules/search/components/SearchEmptyPlace
 import SearchNoResults from "@/modules/search/components/SearchNoResults.vue";
 import SearchRecentQueries from "@/modules/search/components/SearchRecentQueries.vue";
 import SearchResults from "@/modules/search/components/SearchResults.vue";
+import { routeLocation } from "@/app/router/route-locations";
 
 const router = useRouter();
 const queueStore = useQueueStore();
@@ -114,13 +115,13 @@ function navigate(item: SearchResultItem) {
   saveQueryToHistory();
   switch (item.type) {
     case "artist":
-      router.push({ name: "artist", params: { id: item.entityId } });
+      router.push(routeLocation.artist(item.entityId));
       break;
     case "album":
-      router.push({ name: "album", params: { id: item.entityId } });
+      router.push(routeLocation.album(item.entityId));
       break;
     case "playlist":
-      router.push({ name: "playlist", params: { id: item.entityId } });
+      router.push(routeLocation.playlist(item.entityId));
       break;
     case "track":
       if (item.track) {

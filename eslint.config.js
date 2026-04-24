@@ -9,7 +9,7 @@ import sonarjs from "eslint-plugin-sonarjs";
 
 export default typescript.config(
   {
-    ignores: ["dist/**", "node_modules/**", "src-tauri/**"],
+    ignores: ["dist/**", "node_modules/**", "src-tauri/**", "**/__tests__/**", "**/__test__/**"],
   },
 
   js.configs.recommended,

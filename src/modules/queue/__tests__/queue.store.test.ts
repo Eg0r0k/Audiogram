@@ -1,10 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createPinia, setActivePinia } from "pinia";
+import { ok } from "neverthrow";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { trackRepository } from "@/db/repositories";
 import { TrackSource, TrackState } from "@/db/entities";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import type { Track } from "@/modules/player/types";
 import { useQueueStore } from "../store/queue.store";
+
+vi.mock("@/db/repositories", () => ({
+  trackRepository: {
+    findByIds: vi.fn(),
+  },
+}));
 
 function createTrack(id: string, title: string = "Test Track"): Track {
   return {
@@ -26,6 +34,9 @@ function createTrack(id: string, title: string = "Test Track"): Track {
 describe("queue.store", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
+    localStorage.clear();
+    vi.clearAllMocks();
+    vi.mocked(trackRepository.findByIds).mockResolvedValue(ok([]));
   });
 
   describe("initial state", () => {
@@ -228,6 +239,24 @@ describe("queue.store", () => {
       expect(store.currentIndex).toBe(0);
       expect(store.queue[0].track.id).toBe("3");
     });
+
+    it("should preserve queue item ids when rebuilding the same source", async () => {
+      const store = useQueueStore();
+      const playerStore = usePlayerStore();
+      vi.spyOn(playerStore, "playPlayerTrack").mockResolvedValue(undefined);
+
+      const source = { type: "playlist", playlistId: "playlist-1" as any } as const;
+      const tracks = [createTrack("1"), createTrack("2"), createTrack("3")];
+
+      await store.setQueue(tracks, 0, source);
+
+      const initialIds = store.queue.map(item => item.id);
+
+      await store.setQueue(tracks, 2, source);
+
+      expect(store.queue.map(item => item.id)).toEqual(initialIds);
+      expect(store.currentIndex).toBe(2);
+    });
   });
 
   describe("addToQueue", () => {
@@ -426,6 +455,113 @@ describe("queue.store", () => {
       expect(store.originalQueue).toEqual([]);
       expect(store.currentIndex).toBe(-1);
       expect(store.isShuffled).toBe(false);
+    });
+  });
+
+  describe("persistence", () => {
+    it("should persist a compact queue snapshot", async () => {
+      const store = useQueueStore();
+      const playerStore = usePlayerStore();
+      vi.spyOn(playerStore, "playPlayerTrack").mockResolvedValue(undefined);
+
+      await store.setQueue([createTrack("1"), createTrack("2")], 1, { type: "manual" });
+      await Promise.resolve();
+
+      expect(trackRepository.findByIds).not.toHaveBeenCalled();
+
+      expect(store.persistedSnapshot).toEqual({
+        version: 1,
+        queue: [
+          {
+            id: store.queue[0].id,
+            track: { kind: "library", trackId: "1" },
+            source: { type: "manual" },
+            addedAt: store.queue[0].addedAt,
+          },
+          {
+            id: store.queue[1].id,
+            track: { kind: "library", trackId: "2" },
+            source: { type: "manual" },
+            addedAt: store.queue[1].addedAt,
+          },
+        ],
+        originalQueueOrder: store.queue.map(item => item.id),
+        currentIndex: 1,
+        isShuffled: false,
+      });
+    });
+
+    it("should restore persisted queue and sync current track", async () => {
+      const track1 = createTrack("1");
+      const track2 = createTrack("2");
+
+      vi.mocked(trackRepository.findByIds).mockResolvedValue(ok([
+        {
+          id: track1.id,
+          title: track1.title,
+          artistName: track1.artist,
+          albumTitle: track1.albumName,
+          artistIds: track1.artistIds,
+          albumId: track1.albumId,
+          tagIds: [],
+          source: track1.source,
+          storagePath: track1.storagePath,
+          state: track1.state,
+          duration: track1.duration,
+          format: {},
+          playCount: track1.playCount ?? 0,
+          addedAt: track1.addedAt ?? 0,
+          likedAt: track1.isLiked ? Date.now() : undefined,
+        },
+        {
+          id: track2.id,
+          title: track2.title,
+          artistName: track2.artist,
+          albumTitle: track2.albumName,
+          artistIds: track2.artistIds,
+          albumId: track2.albumId,
+          tagIds: [],
+          source: track2.source,
+          storagePath: track2.storagePath,
+          state: track2.state,
+          duration: track2.duration,
+          format: {},
+          playCount: track2.playCount ?? 0,
+          addedAt: track2.addedAt ?? 0,
+          likedAt: track2.isLiked ? Date.now() : undefined,
+        },
+      ]));
+
+      const store = useQueueStore();
+      const playerStore = usePlayerStore();
+
+      store.persistedSnapshot = {
+        version: 1,
+        queue: [
+          {
+            id: "item-1",
+            track: { kind: "library", trackId: "1" },
+            source: { type: "manual" },
+            addedAt: 100,
+          },
+          {
+            id: "item-2",
+            track: { kind: "library", trackId: "2" },
+            source: { type: "manual" },
+            addedAt: 200,
+          },
+        ],
+        originalQueueOrder: ["item-1", "item-2"],
+        currentIndex: 1,
+        isShuffled: false,
+      };
+
+      await store.restorePersistedQueue();
+
+      expect(trackRepository.findByIds).toHaveBeenCalledWith(["1", "2"]);
+      expect(store.queue.map(item => item.track.id)).toEqual(["1", "2"]);
+      expect(store.currentIndex).toBe(1);
+      expect(playerStore.currentTrack?.id).toBe("2");
     });
   });
 
