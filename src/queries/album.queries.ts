@@ -1,4 +1,4 @@
-import type { AlbumEntity } from "@/db/entities";
+import type { AlbumEntity, TrackEntity } from "@/db/entities";
 import {
   albumRepository,
   artistRepository,
@@ -6,6 +6,8 @@ import {
   trackRepository,
 } from "@/db/repositories";
 import { queryKeys } from "@/queries/query-keys";
+import { buildAlbumDocFromDb, buildTrackDocFromDb } from "@/modules/search/buildDocuments";
+import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/searchIndex";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { AlbumId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
@@ -121,6 +123,7 @@ export async function updateAlbumAndSync(
 ) {
   let nextAlbum = currentAlbum;
   let didUpdateAlbum = false;
+  let updatedTracks: TrackEntity[] = [];
 
   if (changes.coverBlob) {
     await unwrapResult(coverRepository.upsertAlbumCover(currentAlbum.id, changes.coverBlob));
@@ -143,6 +146,7 @@ export async function updateAlbumAndSync(
     }));
 
     const albumTracks = await unwrapResult(trackRepository.findByAlbumId(currentAlbum.id));
+    updatedTracks = albumTracks;
 
     for (const track of albumTracks) {
       await unwrapResult(trackRepository.update(track.id, {
@@ -155,6 +159,13 @@ export async function updateAlbumAndSync(
   }
 
   if (didUpdateAlbum) {
+    const searchDocuments = [
+      await buildAlbumDocFromDb(nextAlbum),
+      ...await Promise.all(updatedTracks.map(track => buildTrackDocFromDb(track))),
+    ];
+
+    await upsertSearchDocuments(searchDocuments);
+
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.tracks.likedPage() }),
       queryClient.invalidateQueries({
@@ -182,6 +193,10 @@ export async function deleteAlbumAndSync(
   await unwrapResult(coverRepository.deleteAlbumCover(albumEntity.id));
   await unwrapResult(trackRepository.deleteByAlbumId(albumEntity.id));
   await unwrapResult(albumRepository.delete(albumEntity.id));
+  await removeSearchDocuments([
+    `album:${albumEntity.id}`,
+    ...rawTracks.map(track => `track:${track.id}`),
+  ]);
 
   removeAlbumCaches(queryClient, albumEntity.id, albumEntity.artistId);
   removeTracksFromCaches(queryClient, rawTracks.map(track => track.id));

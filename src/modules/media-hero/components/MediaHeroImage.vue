@@ -50,7 +50,7 @@ const emit = defineEmits<{
 }>();
 
 const containerClass = computed(() => {
-  const base = "w-full max-w-[232px] shadow-xl aspect-square overflow-hidden";
+  const base = "aspect-square w-full overflow-hidden shadow-xl";
   return props.rounded
     ? `${base} rounded-full`
     : `${base} rounded-md`;

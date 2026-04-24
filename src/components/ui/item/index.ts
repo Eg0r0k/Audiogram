@@ -24,7 +24,7 @@ export const itemVariants = cva(
         muted: "bg-muted/50",
       },
       size: {
-        default: "p-4 gap-8 ",
+        default: "p-4 gap-4 ",
         sm: "py-3 px-4 gap-4",
       },
     },

@@ -7,19 +7,20 @@ import { useQueryClient } from "@tanstack/vue-query";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import type { Ref } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
 import { IS_TAURI } from "@/lib/environment/userAgent";
+import { routeLocation } from "@/app/router/route-locations";
 import { useAttachTrackLyrics } from "./useAttachTrackLyrics";
-import { useTrackDetailsDialog } from "./useTrackDetailsDialog";
 import { useToggleTrackLike } from "./useToggleTrackLike";
 import {
   addTrackToPlaylistAndSync,
   removeTrackFromPlaylistAndSync,
 } from "@/queries/playlist.queries";
+import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 
 interface RefLike<T> {
   value: T;
@@ -34,12 +35,13 @@ export const useTrackContextActions = (
   } = {},
 ): ContextActions => {
   const router = useRouter();
+  const route = useRoute();
   const queueStore = useQueueStore();
   const playerStore = usePlayerStore();
+  const rightPanelStore = useRightPanelStore();
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const { attachTrackLyrics } = useAttachTrackLyrics();
-  const { openTrackDetails } = useTrackDetailsDialog();
   const { toggleTrackLike } = useToggleTrackLike();
 
   const play = () => {
@@ -69,7 +71,11 @@ export const useTrackContextActions = (
 
   const showDetails = () => {
     if (!track.value) return;
-    openTrackDetails(track.value);
+
+    rightPanelStore.openTrackInfo({ track: track.value }, {
+      scope: { type: "route", routeKey: route.fullPath },
+      depth: 1,
+    });
   };
 
   const attachLyricsToTrack = async () => {
@@ -112,12 +118,12 @@ export const useTrackContextActions = (
   };
 
   const goToArtist = (artistId: ArtistId) => {
-    router.push({ name: "artist", params: { id: artistId } });
+    router.push(routeLocation.artist(artistId));
   };
 
   const goToAlbum = () => {
     if (!track.value) return;
-    router.push({ name: "album", params: { id: track.value.albumId } });
+    router.push(routeLocation.album(track.value.albumId));
   };
 
   const download = async () => {

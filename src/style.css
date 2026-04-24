@@ -278,6 +278,7 @@ video {
   --z-toolbar: 9998;
   --z-dropoverlay: 9999;
   --z-fullscreen: 10000;
+  --toolbar-height: 26px;
 }
 
 /* Cropper style */

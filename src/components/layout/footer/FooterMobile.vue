@@ -6,7 +6,7 @@
     >
       <Link
         class="flex flex-col h-full items-center flex-1 gap-1"
-        to="/"
+        :to="routeLocation.home()"
       >
         <Icon
           class=" size-7"
@@ -21,7 +21,7 @@
     >
       <Link
         class="flex flex-col h-full items-center flex-1 gap-1"
-        to="/settings"
+        :to="routeLocation.settings()"
       >
         <Icon
           class=" size-7"
@@ -36,7 +36,7 @@
     >
       <Link
         class="flex flex-col h-full items-center flex-1 gap-1"
-        to="/"
+        :to="routeLocation.home()"
       >
         <Icon
           class=" size-7"
@@ -51,7 +51,7 @@
     >
       <Link
         class="flex flex-col h-full items-center flex-1 gap-1"
-        to="/"
+        :to="routeLocation.home()"
       >
         <Icon
           class=" size-7"
@@ -63,6 +63,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { routeLocation } from "@/app/router/route-locations";
 import { Link } from "@/components/ui/link";
 import { Icon } from "@iconify/vue";
 import { Button } from "@/components/ui/button";

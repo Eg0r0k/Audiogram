@@ -61,6 +61,28 @@ function mapInfiniteTrackPages(
   };
 }
 
+function removeTracksFromInfinitePages(
+  data: InfiniteData<PaginatedTracksResult>,
+  trackIdSet: ReadonlySet<string>,
+): InfiniteData<PaginatedTracksResult> {
+  const removedTracks = data.pages
+    .flatMap(page => page.tracks)
+    .filter(track => trackIdSet.has(track.id));
+
+  const removedCount = removedTracks.length;
+  const removedDuration = removedTracks.reduce((sum, track) => sum + track.duration, 0);
+
+  return {
+    ...data,
+    pages: data.pages.map(page => ({
+      ...page,
+      tracks: page.tracks.filter(track => !trackIdSet.has(track.id)),
+      total: Math.max(0, page.total - removedCount),
+      totalDuration: Math.max(0, page.totalDuration - removedDuration),
+    })),
+  };
+}
+
 function patchInfiniteLikedPages(
   data: InfiniteData<PaginatedTracksResult>,
   nextTrack: Track,
@@ -255,6 +277,32 @@ export function syncPlaylistTrackRemoval(
       tracks: data.tracks.filter(track => track.id !== trackId),
     }),
   );
+
+  setQueryDataIfPresent<InfiniteData<PaginatedTracksResult>>(
+    queryClient,
+    queryKeys.playlists.tracksPage(playlistId),
+    (data) => {
+      let removedCount = 0;
+
+      const nextData = mapInfiniteTrackPages(data, (tracks) => {
+        const nextTracks = tracks.filter(track => track.id !== trackId);
+        removedCount += tracks.length - nextTracks.length;
+        return nextTracks;
+      });
+
+      if (removedCount === 0) {
+        return data;
+      }
+
+      return {
+        ...nextData,
+        pages: nextData.pages.map(page => ({
+          ...page,
+          total: Math.max(0, page.total - removedCount),
+        })),
+      };
+    },
+  );
 }
 
 export function syncPlaylistTrackAddition(
@@ -309,6 +357,11 @@ export function removeTracksFromCaches(
       ...data,
       tracks: data.tracks.filter(track => !trackIdSet.has(track.id)),
     }),
+  );
+  setQueryDataIfPresent<InfiniteData<PaginatedTracksResult>>(
+    queryClient,
+    queryKeys.tracks.likedPageInfinite(),
+    data => removeTracksFromInfinitePages(data, trackIdSet),
   );
   setQueriesDataIfPresent<PlaylistPageData>(
     queryClient,

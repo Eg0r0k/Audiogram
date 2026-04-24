@@ -125,6 +125,7 @@ import IconSearch from "~icons/tabler/search";
 import IconX from "~icons/tabler/x";
 import IconSun from "~icons/tabler/sun";
 import IconMoon from "~icons/tabler/moon";
+import { routeLocation } from "@/app/router/route-locations";
 
 const router = useRouter();
 const theme = useTheme();
@@ -138,11 +139,11 @@ function handleThemeToggle(event: MouseEvent) {
 }
 
 function goFavorite() {
-  router.push("/liked");
+  router.push(routeLocation.liked());
 }
 
 function goSettings() {
-  router.push("/settings");
+  router.push(routeLocation.settings());
 }
 
 function handleClose() {

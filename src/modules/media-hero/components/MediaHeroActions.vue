@@ -1,13 +1,13 @@
 <template>
-  <div class="flex items-center justify-between gap-3">
-    <div class="flex items-center gap-3">
+  <div class="@container flex flex-col items-center gap-4 @md:flex-row @md:items-center @md:justify-between">
+    <div class="flex flex-wrap items-center justify-center gap-3 @md:justify-start">
       <Button
         class="size-14 rounded-full "
         :disabled="isLoading"
         @click="handlePlay"
       >
         <IconPause
-          v-if="isPlaying"
+          v-if="showPauseIcon"
           class="size-5 fill-current"
         />
         <IconPlay
@@ -34,7 +34,9 @@
       <slot name="after-primary" />
     </div>
 
-    <slot name="actions" />
+    <div class="flex flex-wrap items-center justify-center gap-2 @md:justify-end">
+      <slot name="actions" />
+    </div>
   </div>
 </template>
 
@@ -65,6 +67,7 @@ const emit = defineEmits<{
 const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
 const { isActiveSource, isPlaying, isLoading } = usePlaybackState(() => props.source);
+const showPauseIcon = computed(() => isActiveSource.value && (isPlaying.value || isLoading.value));
 
 function handlePlay() {
   if (isActiveSource.value) {

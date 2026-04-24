@@ -4,7 +4,7 @@
     :class="isScrolled ? '' : 'bg-transparent'"
     :style="headerStyle"
   >
-    <div class="flex items-center gap-7 sm:px-7 px-4 py-4">
+    <div class="flex items-center gap-7 sm:px-6 px-4 py-4">
       <Button
         variant="ghost"
         size="icon-lg"
@@ -62,6 +62,7 @@ import { Button } from "@/components/ui/button";
 import IconArrowLeft from "~icons/tabler/arrow-left";
 import IconPlay from "~icons/tabler/player-play-filled";
 import { useRouter } from "vue-router";
+import { routeLocation } from "@/app/router/route-locations";
 
 const router = useRouter();
 
@@ -85,7 +86,7 @@ const isScrolled = computed(() => {
   return scrollable.scrollPosition.value > 60;
 });
 
-const FALLBACK_ROUTE = "/";
+const fallbackRoute = routeLocation.home();
 
 const goBack = () => {
   const prevPath = router.options.history.state?.back;
@@ -94,7 +95,7 @@ const goBack = () => {
     router.back();
   }
   else {
-    router.push(FALLBACK_ROUTE);
+    router.push(fallbackRoute);
   }
 };
 

@@ -6,6 +6,12 @@ import {
   trackRepository,
 } from "@/db/repositories";
 import { queryKeys } from "@/queries/query-keys";
+import {
+  buildAlbumDocFromDb,
+  buildArtistDoc,
+  buildTrackDocFromDb,
+} from "@/modules/search/buildDocuments";
+import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/searchIndex";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { ArtistId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
@@ -14,9 +20,17 @@ import {
   removeArtistCaches,
   removeTracksFromCaches,
   syncArtistCaches,
+  updateCoverCache,
 } from "./cache";
 import { unwrapResult, unique } from "./shared";
 import type { ArtistPageData, PaginatedTracksResult, PaginatedAlbumsResult } from "./types";
+
+export interface ArtistChanges {
+  name?: string;
+  bio?: string;
+  coverBlob?: Blob;
+  removeCover?: boolean;
+}
 
 const PAGE_SIZE = 50;
 
@@ -155,21 +169,61 @@ async function syncTrackArtistNames(artistId: ArtistId, nextArtistName: string) 
 export async function updateArtistAndSync(
   queryClient: QueryClient,
   currentArtist: ArtistEntity,
-  changes: Partial<ArtistEntity>,
+  changes: ArtistChanges,
 ) {
+  if (changes.coverBlob) {
+    await unwrapResult(coverRepository.upsertArtistCover(currentArtist.id, changes.coverBlob));
+    updateCoverCache(queryClient, "artist", currentArtist.id, changes.coverBlob);
+  }
+  else if (changes.removeCover) {
+    await unwrapResult(coverRepository.deleteArtistCover(currentArtist.id));
+    updateCoverCache(queryClient, "artist", currentArtist.id, null);
+  }
+
+  const updateData: Partial<ArtistEntity> = {};
+
+  if (changes.name && changes.name !== currentArtist.name) {
+    updateData.name = changes.name;
+  }
+
+  if (changes.bio !== undefined) {
+    updateData.bio = changes.bio;
+  }
+
   const nextArtist: ArtistEntity = {
     ...currentArtist,
-    ...changes,
+    ...updateData,
     updatedAt: Date.now(),
   };
 
-  await unwrapResult(artistRepository.update(currentArtist.id, changes));
-  await syncTrackArtistNames(currentArtist.id, nextArtist.name);
-  syncArtistCaches(queryClient, nextArtist);
+  if (Object.keys(updateData).length > 0) {
+    await unwrapResult(artistRepository.update(currentArtist.id, updateData));
+
+    if (updateData.name) {
+      await syncTrackArtistNames(currentArtist.id, nextArtist.name);
+    }
+
+    syncArtistCaches(queryClient, nextArtist);
+
+    const [albums, tracks] = await Promise.all([
+      unwrapResult(albumRepository.findByArtistId(currentArtist.id)),
+      unwrapResult(trackRepository.findByArtistId(currentArtist.id)),
+    ]);
+
+    const searchDocuments = [
+      buildArtistDoc(nextArtist),
+      ...await Promise.all(albums.map(album => buildAlbumDocFromDb(album))),
+      ...await Promise.all(tracks.map(track => buildTrackDocFromDb(track))),
+    ];
+
+    await upsertSearchDocuments(searchDocuments);
+  }
 
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.artists.page(currentArtist.id) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.artists.tracksPage(currentArtist.id) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.tracks.likedPage() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.tracks.likedPageInfinite() }),
     queryClient.invalidateQueries({
       predicate: query =>
         query.queryKey[0] === "tracks" && query.queryKey[1] === "index",
@@ -205,9 +259,16 @@ export async function deleteArtistAndSync(
     queryClient.removeQueries({ queryKey: queryKeys.albums.cover(album.id), exact: true });
   }
 
+  await unwrapResult(coverRepository.deleteArtistCover(artistEntity.id));
   await unwrapResult(trackRepository.deleteByArtistId(artistEntity.id));
   await unwrapResult(artistRepository.delete(artistEntity.id));
+  await removeSearchDocuments([
+    `artist:${artistEntity.id}`,
+    ...albums.map(album => `album:${album.id}`),
+    ...rawTracks.map(track => `track:${track.id}`),
+  ]);
 
   removeArtistCaches(queryClient, artistEntity.id);
   removeTracksFromCaches(queryClient, rawTracks.map(track => track.id));
+  queryClient.removeQueries({ queryKey: queryKeys.covers.detail("artist", artistEntity.id), exact: true });
 }

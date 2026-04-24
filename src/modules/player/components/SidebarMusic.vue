@@ -101,6 +101,7 @@ import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
+import { routeLocation } from "@/app/router/route-locations";
 import type { Track } from "../types";
 
 const playerStore = usePlayerStore();
@@ -125,7 +126,7 @@ const artistsList = computed(() => {
 const goToArtist = (index: number) => {
   const artistId = currentTrack.value?.artistIds?.[index];
   if (artistId) {
-    route.push({ name: "artist", params: { id: artistId } });
+    route.push(routeLocation.artist(artistId));
   }
 };
 

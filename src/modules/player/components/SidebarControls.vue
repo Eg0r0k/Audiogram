@@ -15,6 +15,17 @@
 
       <VolumeButton />
 
+      <Button
+        size="icon-sm"
+        variant="ghost"
+        :class="{ 'text-primary': isQueueOpen }"
+        :aria-label="$t('queue.title')"
+        :title="$t('queue.title')"
+        @click="toggleQueuePanel"
+      >
+        <IconPlaylist class="size-4.5" />
+      </Button>
+
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
           <Button
@@ -72,7 +83,7 @@
               </template>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
-          <DropdownMenuItem @click="router.push({ name: 'settings-audio' })">
+          <DropdownMenuItem @click="router.push(routeLocation.settingsAudio())">
             <IconEqualizer class="size-5" />
             {{ $t("player.equalizer") }}
           </DropdownMenuItem>
@@ -116,9 +127,12 @@ import IconPIP from "~icons/tabler/picture-in-picture";
 
 import VolumeButton from "./actions/VolumeButton.vue";
 import { useRouter } from "vue-router";
+import { routeLocation } from "@/app/router/route-locations";
 import { getActivePinia, Pinia } from "pinia";
 import { usePictureInPicture } from "@/composables/usePictureInPicture";
 import { i18n } from "@/app/i18n";
+import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
+import IconPlaylist from "~icons/tabler/playlist";
 
 import PIPContent from "./pip/PIPContent.vue";
 import { useQueryClient, VueQueryPlugin } from "@tanstack/vue-query";
@@ -133,7 +147,12 @@ const presets = [
 
 const { t } = useI18n();
 const playerStore = usePlayerStore();
+const rightPanelStore = useRightPanelStore();
 const timeDisplayMode = ref<"total" | "remaining">("total");
+
+const isQueueOpen = computed(() =>
+  rightPanelStore.isOpen && rightPanelStore.view === "queue",
+);
 
 const statusText = computed(() => {
   if (playerStore.sleepTimerRemainingMs > 0) {
@@ -169,6 +188,15 @@ const handlePipToggle = async () => {
 
 const handlePreset = (minutes: number) => {
   playerStore.setSleepTimer(minutes * 60 * 1000);
+};
+
+const toggleQueuePanel = () => {
+  if (isQueueOpen.value) {
+    rightPanelStore.close();
+    return;
+  }
+
+  rightPanelStore.openQueue();
 };
 
 const toggleTimeDisplayMode = () => {

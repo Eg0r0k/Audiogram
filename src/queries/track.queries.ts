@@ -2,16 +2,28 @@ import type { TrackEntity } from "@/db/entities";
 import {
   albumRepository,
   artistRepository,
+  playlistRepository,
   trackRepository,
 } from "@/db/repositories";
-import { searchTracks as searchIndexedTracks } from "@/modules/search/composables/useSearch";
+import { buildTrackDocFromDb } from "@/modules/search/buildDocuments";
+import {
+  removeSearchDocuments,
+  searchTracks as searchIndexedTracks,
+  upsertSearchDocuments,
+} from "@/modules/search/searchIndex";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { queryKeys } from "@/queries/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { Track } from "@/modules/player/types";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
-import { syncTrackLikeCaches, syncTrackMetadataCaches } from "./cache";
+import {
+  removeTracksFromCaches,
+  syncPlaylistCaches,
+  syncPlaylistTrackRemoval,
+  syncTrackLikeCaches,
+  syncTrackMetadataCaches,
+} from "./cache";
 import { unique, unwrapResult } from "./shared";
 import type { LikedTracksPageData, PaginatedTracksResult, TracksIndexPageData } from "./types";
 import { getAlbumByIdOrThrow } from "./album.queries";
@@ -282,7 +294,11 @@ export async function addTracksToAlbumAndSync(
     }));
   }
 
+  const updatedTracks = await unwrapResult(trackRepository.findByIds(trackIds));
+  const searchDocuments = await Promise.all(updatedTracks.map(track => buildTrackDocFromDb(track)));
+
   await invalidateTrackRelations(queryClient);
+  await upsertSearchDocuments(searchDocuments);
 }
 
 export async function addTracksToArtistAndSync(
@@ -316,7 +332,11 @@ export async function addTracksToArtistAndSync(
     }));
   }
 
+  const updatedTracks = await unwrapResult(trackRepository.findByIds(trackIds));
+  const searchDocuments = await Promise.all(updatedTracks.map(track => buildTrackDocFromDb(track)));
+
   await invalidateTrackRelations(queryClient);
+  await upsertSearchDocuments(searchDocuments);
 }
 
 export async function favoriteTracksAndSync(
@@ -388,4 +408,56 @@ export async function attachTrackLyricsAndSync(
   syncTrackMetadataCaches(queryClient, nextTrackEntity, nextTrack);
 
   return nextTrack;
+}
+
+export async function deleteTrackAndSync(
+  queryClient: QueryClient,
+  track: Track,
+) {
+  const trackId = track.id as TrackId;
+  const currentTrack = await unwrapResult(trackRepository.findById(trackId));
+
+  if (!currentTrack) {
+    throw new Error("Track not found");
+  }
+
+  const playlists = await unwrapResult(playlistRepository.findAll());
+  const affectedPlaylists = playlists.filter(playlist => playlist.trackIds.includes(trackId));
+
+  for (const playlist of affectedPlaylists) {
+    await unwrapResult(playlistRepository.removeTrack(playlist.id, trackId));
+
+    const nextPlaylist = {
+      ...playlist,
+      trackIds: playlist.trackIds.filter(id => id !== trackId),
+      updatedAt: Date.now(),
+    };
+
+    syncPlaylistCaches(queryClient, nextPlaylist);
+    syncPlaylistTrackRemoval(queryClient, playlist.id, trackId);
+  }
+
+  await unwrapResult(trackRepository.delete(trackId));
+  removeTracksFromCaches(queryClient, [trackId]);
+  queryClient.removeQueries({ queryKey: queryKeys.tracks.detail(trackId), exact: true });
+  await removeSearchDocuments([`track:${trackId}`]);
+
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.albums.page(currentTrack.albumId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.albums.tracksPage(currentTrack.albumId) }),
+    ...affectedPlaylists.flatMap(playlist => [
+      queryClient.invalidateQueries({ queryKey: queryKeys.playlists.detail(playlist.id) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.playlists.page(playlist.id) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.playlists.tracksPage(playlist.id) }),
+    ]),
+    ...currentTrack.artistIds.flatMap(artistId => [
+      queryClient.invalidateQueries({ queryKey: queryKeys.artists.page(artistId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.artists.tracksPage(artistId) }),
+    ]),
+    queryClient.invalidateQueries({
+      predicate: query =>
+        query.queryKey[0] === "tracks" && query.queryKey[1] === "index",
+    }),
+  ]);
 }

@@ -18,7 +18,7 @@
       <Checkbox
         :model-value="isSelected"
         size="lg"
-        class="pointer-events-none rounded-full"
+        class="pointer-events-none"
       />
     </button>
 

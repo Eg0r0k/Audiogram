@@ -4,7 +4,7 @@
     :is-playlist-owner="isPlaylist(data) ? data.isOwner : undefined"
   >
     <div
-      class="relative"
+      class="relative @container"
       data-media-context
     >
       <div
@@ -19,20 +19,8 @@
         @play="$emit('play')"
       />
 
-      <div class="relative flex flex-col pt-[72px] lg:flex-row lg:items-end px-4 lg:px-7 pb-6 lg:pb-7 min-h-[265px]">
-        <div class="flex  justify-center lg:hidden mb-4">
-          <MediaHeroImage
-            :src="data.image"
-            :alt="data.title"
-            :rounded="isArtist(data)"
-            :editable="canEdit"
-            :fallback-src="fallbackSrc"
-            class="size-48"
-            @edit="$emit('edit')"
-          />
-        </div>
-
-        <div class="hidden lg:block shrink-0 mr-7 w-[232px]">
+      <div class="relative flex min-h-[265px] flex-col items-center gap-5 px-4 pb-6 pt-[72px] text-center @lg:flex-row @lg:items-end @lg:gap-7 @lg:px-7 @lg:pb-7 @lg:text-left">
+        <div class="w-full max-w-[176px] shrink-0 @sm:max-w-[208px] @lg:max-w-[232px]">
           <MediaHeroImage
             :src="data.image"
             :alt="data.title"
@@ -43,25 +31,31 @@
           />
         </div>
 
-        <div class="flex flex-col w-full select-none text-white min-w-0 text-center lg:text-left @container">
-          <span class="text-xs lg:text-sm font-medium mb-1 opacity-90">
+        <div class="flex min-w-0 w-full flex-col items-center text-white @lg:items-start">
+          <span class="mb-1 text-xs font-medium opacity-90 @sm:text-sm">
             {{ typeLabel }}
           </span>
 
           <h1
-            class="font-black tracking-tight truncate
-               text-2xl @lg:text-3xl @md:text-4xl @lg:text-5xl @xl:text-6xl
-               leading-tight"
+            class="w-full break-words font-black leading-none tracking-tight text-3xl @sm:text-4xl @md:text-5xl @xl:text-6xl"
           >
             {{ data.title }}
           </h1>
 
           <MediaHeroMeta
-            class="mt-2 justify-center lg:justify-start text-white font-medium"
+            class="mt-3 text-white font-medium"
             :data="data"
           />
+
+          <p
+            v-if="descriptionText"
+            class="mt-3 max-w-2xl text-sm leading-6 text-white/80 line-clamp-3 @lg:max-w-none"
+          >
+            {{ descriptionText }}
+          </p>
+
           <MediaHeroActions
-            class="mt-4 lg:mt-6"
+            class="mt-5 w-full @lg:mt-6"
             :type="data.type"
             :source="heroSource"
             :is-playlist-owner="isPlaylist(data) ? data.isOwner : undefined"
@@ -152,8 +146,20 @@ const heroSource = computed<QueueSource>(() => {
 });
 
 const canEdit = computed(() =>
-  (isPlaylist(props.data) && props.data.isOwner) || isAlbum(props.data),
+  (isPlaylist(props.data) && props.data.isOwner) || isAlbum(props.data) || isArtist(props.data),
 );
+
+const descriptionText = computed(() => {
+  if (isPlaylist(props.data)) {
+    return props.data.description?.trim() || null;
+  }
+
+  if (isArtist(props.data)) {
+    return props.data.bio?.trim() || null;
+  }
+
+  return null;
+});
 const contextType = computed(() => {
   switch (props.data.type) {
     case "artist": return "artist-page";

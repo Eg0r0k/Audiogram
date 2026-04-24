@@ -295,6 +295,7 @@ onUnmounted(() => {
 });
 
 defineExpose({
+  beforeHeight,
   scrollToIndex,
   scrollToOffset,
   scrollToEnd: scrollable.scrollToEnd,

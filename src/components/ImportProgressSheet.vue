@@ -181,6 +181,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
+import { routeLocation } from "@/app/router/route-locations";
 import IconCheck from "~icons/tabler/check";
 import IconMinus from "~icons/tabler/minus";
 import IconLoader2 from "~icons/tabler/loader-2";
@@ -210,6 +211,6 @@ function handleClose() {
 function goToLibrary() {
   closeSheet();
   reset();
-  router.push("/library");
+  router.push(routeLocation.home());
 }
 </script>

@@ -12,7 +12,7 @@
       >
         <TabsList class="inline-flex items-center gap-0 px-4">
           <TabsTrigger
-            v-for="filter in LIBRARY_FILTERS"
+            v-for="filter in availableFilters"
             :key="filter"
             :value="filter"
             class="text-base font-medium mb-0.5"
@@ -72,7 +72,7 @@ import LibrarySidebarItem from "@/components/layout/sidebar/LibrarySidebarItem.v
 import Skeleton from "@/components/ui/skeleton/Skeleton.vue";
 import LibraryContextMenu from "@/modules/library/components/LibraryContextMenu.vue";
 import SearchPanel from "@/modules/search/components/SearchPanel.vue";
-import { LIBRARY_FILTERS, LibraryFilter, LibraryItem } from "@/modules/library/types";
+import { LibraryFilter, LibraryItem } from "@/modules/library/types";
 import { useI18n } from "vue-i18n";
 import { Scrollable } from "@/components/ui/scrollable";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -83,6 +83,7 @@ import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestor
 const {
   pinnedItems,
   unpinnedItems,
+  availableFilters,
   isLoading,
   activeFilter,
   setFilter,

@@ -150,6 +150,7 @@ import type { QueueItemId } from "@/types/ids";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
+import { routeLocation } from "@/app/router/route-locations";
 
 interface Props {
   track: Track;
@@ -218,7 +219,7 @@ const artists = computed(() => {
 const handleArtistClick = (index: number) => {
   const artistId = props.track.artistIds?.[index] ?? props.track.artistIds?.[0];
   if (artistId) {
-    route.push({ name: "artist", params: { id: artistId } });
+    route.push(routeLocation.artist(artistId));
   }
 };
 

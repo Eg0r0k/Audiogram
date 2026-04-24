@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center flex-wrap gap-x-1 text-sm text-foreground/70 leading-relaxed">
+  <div class="flex flex-wrap items-center justify-center gap-x-1 gap-y-1 text-center text-sm leading-relaxed text-foreground/70 @lg:justify-start @lg:text-left">
     <template v-if="isPlaylist(data)">
       <span
         v-if="data.ownerName"
@@ -24,7 +24,7 @@
 
     <template v-else-if="isAlbum(data)">
       <RouterLink
-        :to="`/artist/${data.artistId}`"
+        :to="routeLocation.artist(data.artistId)"
         class="font-medium text-white/90 hover:text-white hover:underline underline-offset-2 transition-colors duration-200"
       >
         {{ data.artistName }}
@@ -51,6 +51,7 @@
 
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
+import { routeLocation } from "@/app/router/route-locations";
 import { isAlbum, isArtist, isLiked, isPlaylist, MediaData } from "@/modules/media-hero/types";
 
 defineProps<{

@@ -41,7 +41,7 @@
               <IconChevronDown class="size-5" />
             </Button>
 
-            <div class="text-sm font-medium text-white/70">
+            <div class="text-sm font-medium text-white">
               {{ $t('player.nowPlaying') }}
             </div>
 

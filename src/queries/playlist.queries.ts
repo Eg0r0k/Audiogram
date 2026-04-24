@@ -7,6 +7,8 @@ import {
   trackRepository,
 } from "@/db/repositories";
 import { queryKeys } from "@/queries/query-keys";
+import { buildPlaylistDoc } from "@/modules/search/buildDocuments";
+import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/searchIndex";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { Track } from "@/modules/player/types";
 import type { PlaylistId } from "@/types/ids";
@@ -154,6 +156,7 @@ export async function createPlaylistAndSync(queryClient: QueryClient) {
 
   await unwrapResult(playlistRepository.create(playlist));
   syncPlaylistCaches(queryClient, playlist);
+  await upsertSearchDocuments([buildPlaylistDoc(playlist)]);
 
   return playlist;
 }
@@ -201,6 +204,8 @@ export async function updatePlaylistAndSync(
   }
 
   if (didUpdatePlaylist) {
+    await upsertSearchDocuments([buildPlaylistDoc(nextPlaylist)]);
+
     queryClient.setQueryData(queryKeys.playlists.page(currentPlaylist.id), (data: PlaylistPageData | undefined) =>
       data
         ? {
@@ -224,6 +229,7 @@ export async function deletePlaylistAndSync(
 
   await unwrapResult(coverRepository.deletePlaylistCover(currentPlaylist.id));
   await unwrapResult(playlistRepository.delete(currentPlaylist.id));
+  await removeSearchDocuments([`playlist:${currentPlaylist.id}`]);
 
   removePlaylistCaches(queryClient, currentPlaylist.id);
   queryClient.removeQueries({ queryKey: queryKeys.playlists.cover(currentPlaylist.id), exact: true });
@@ -249,6 +255,7 @@ export async function removeTrackFromPlaylistAndSync(
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.playlists.detail(playlistId) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.playlists.page(playlistId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.tracksPage(playlistId) }),
   ]);
 
   return nextPlaylist;
