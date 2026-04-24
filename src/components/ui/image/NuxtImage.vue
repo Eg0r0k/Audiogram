@@ -4,6 +4,7 @@
     ref="imgEl"
     :class="placeholderSrc ? placeholderClass : undefined"
     v-bind="imgAttrs"
+    :alt="props.alt"
     :src="imageSrc"
   >
   <slot
@@ -43,9 +44,17 @@ export interface DefaultSlotProps {
 }
 
 const props = withDefaults(defineProps<ImageProps>(), {
+  src: undefined,
   alt: "",
+  width: undefined,
+  height: undefined,
   loading: "lazy",
   decoding: "async",
+  crossorigin: undefined,
+  sizes: undefined,
+  srcset: undefined,
+  placeholder: undefined,
+  placeholderClass: undefined,
   fallbackSrc: "",
 });
 
@@ -61,7 +70,6 @@ defineSlots<{
 const imgEl = useTemplateRef<HTMLImageElement>("imgEl");
 const placeholderLoaded = ref(false);
 const useFallback = ref(false);
-const loadAttempted = ref(false);
 const originalSrcFailed = ref(false);
 
 defineExpose({
@@ -104,11 +112,17 @@ const placeholderSrc = computed<string | false>(() => {
     return placeholderProp;
   }
 
-  const [width = 10, height = width] = Array.isArray(placeholderProp)
-    ? placeholderProp
-    : typeof placeholderProp === "number"
-      ? [placeholderProp]
-      : [];
+  let width = 10;
+  let height = 10;
+
+  if (Array.isArray(placeholderProp)) {
+    width = placeholderProp[0] ?? 10;
+    height = placeholderProp[1] ?? width;
+  }
+  else if (typeof placeholderProp === "number") {
+    width = placeholderProp;
+    height = placeholderProp;
+  }
 
   return generatePlaceholderDataUrl(width, height);
 });
@@ -160,7 +174,6 @@ function generatePlaceholderDataUrl(width: number, height: number): string {
 function resetState() {
   placeholderLoaded.value = false;
   useFallback.value = false;
-  loadAttempted.value = false;
   originalSrcFailed.value = false;
 }
 
@@ -175,7 +188,6 @@ function handleLoadError(error: unknown) {
   }
 
   originalSrcFailed.value = true;
-  loadAttempted.value = true;
   useFallback.value = true;
   emit("error", error instanceof Event ? error : String(error));
 }
