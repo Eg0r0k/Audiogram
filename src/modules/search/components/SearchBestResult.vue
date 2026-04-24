@@ -9,8 +9,6 @@ import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 const props = defineProps<{ item: SearchResultItem }>();
 const emit = defineEmits<{ click: [] }>();
 
-const { t } = useI18n();
-
 const libraryItem = computed<LibraryItem>(() => ({
   id: props.item.entityId,
   type: props.item.type as "artist" | "album" | "playlist",

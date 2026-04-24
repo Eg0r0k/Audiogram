@@ -1,0 +1,17 @@
+{
+  "title": "Edit Artist",
+  "artistName": "Artist Name",
+  "namePlaceholder": "Enter artist name",
+  "bio": "Bio",
+  "bioPlaceholder": "Tell listeners something about this artist",
+  "validation": {
+    "nameRequired": "Name is required",
+    "nameMaxLength": "Name must be {max} characters or less",
+    "bioMaxLength": "Bio must be {max} characters or less"
+  },
+  "errors": {
+    "invalidFormat": "Invalid image format. Please select a valid image file (JPEG, PNG, WebP, etc.)",
+    "readError": "Failed to read the file. Please try again.",
+    "unknown": "An unexpected error occurred. Please try again."
+  }
+}

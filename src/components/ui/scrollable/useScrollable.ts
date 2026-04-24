@@ -175,12 +175,15 @@ export default function useScrollable(
         = containerRef.value?.[props.value.scrollPosition] ?? 0;
       scrollPositionRef.value = currentPosition;
 
-      lastScrollDirection.value
-        = lastScrollPosition.value === currentPosition
-          ? 0
-          : lastScrollPosition.value < currentPosition
-            ? 1
-            : -1;
+      if (lastScrollPosition.value === currentPosition) {
+        lastScrollDirection.value = 0;
+      }
+      else if (lastScrollPosition.value < currentPosition) {
+        lastScrollDirection.value = 1;
+      }
+      else {
+        lastScrollDirection.value = -1;
+      }
       lastScrollPosition.value = currentPosition;
 
       if (USE_OWN_SCROLL) {

@@ -71,6 +71,8 @@
       "broken": "Broken"
     }
   },
+  "deleted": "Track deleted",
+  "deleteFailed": "Failed to delete track",
   "downloadSuccess": "File downloaded",
   "downloadFailed": "Failed to download file"
 }

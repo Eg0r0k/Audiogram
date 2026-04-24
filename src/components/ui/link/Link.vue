@@ -73,6 +73,11 @@ const props = withDefaults(defineProps<LinkProps>(), {
   draggable: false,
   confirmExternal: false,
   inactive: false,
+  rel: undefined,
+  exactActiveClass: undefined,
+  activeClass: undefined,
+  class: undefined,
+  inactiveClass: undefined,
 });
 
 const isExternalLink = computed(() => {

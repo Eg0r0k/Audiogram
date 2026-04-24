@@ -74,6 +74,8 @@
       "broken": "Повреждён"
     }
   },
+  "deleted": "Трек удалён",
+  "deleteFailed": "Не удалось удалить трек",
   "downloadSuccess": "Файл скачан",
   "downloadFailed": "Не удалось скачать файл"
 }

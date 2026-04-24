@@ -12,7 +12,11 @@ const props = withDefaults(defineProps<PrimitiveProps & {
   size?: ItemVariants["size"];
 }>(), {
   as: "div",
+  class: undefined,
+  variant: "default",
+  size: "default",
 });
+
 </script>
 
 <template>
