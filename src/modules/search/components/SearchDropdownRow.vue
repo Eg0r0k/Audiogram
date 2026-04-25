@@ -5,16 +5,17 @@ import type { LibraryItem } from "@/modules/library/types";
 import type { RouteLocationRaw } from "vue-router";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import LibrarySidebarItem from "@/components/layout/sidebar/LibrarySidebarItem.vue";
+import { routeLocation } from "@/app/router/route-locations";
 
 const props = defineProps<{ item: SearchResultItem }>();
 const emit = defineEmits<{ click: [] }>();
 
 function routeForItem(item: SearchResultItem): RouteLocationRaw {
   switch (item.type) {
-    case "artist": return { name: "artist", params: { id: item.entityId } };
-    case "album": return { name: "album", params: { id: item.entityId } };
-    case "playlist": return { name: "playlist", params: { id: item.entityId } };
-    default: return "/";
+    case "artist": return routeLocation.artist(item.entityId);
+    case "album": return routeLocation.album(item.entityId);
+    case "playlist": return routeLocation.playlist(item.entityId);
+    default: return routeLocation.home();
   }
 }
 

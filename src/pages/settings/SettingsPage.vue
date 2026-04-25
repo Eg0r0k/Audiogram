@@ -8,17 +8,17 @@
 
       <SettingsGroup>
         <SettingsLink
-          to="/settings/general"
+          :to="routeLocation.settingsGeneral()"
           :icon="IconSettings"
           :title="$t('settings.index.general')"
         />
         <SettingsLink
-          to="/settings/appearance"
+          :to="routeLocation.settingsAppearance()"
           :icon="IconPalette"
           :title="$t('settings.index.appearance')"
         />
         <SettingsLink
-          to="/settings/language"
+          :to="routeLocation.settingsLanguage()"
           :icon="IconLanguage"
           :title="$t('settings.index.language')"
           :subtitle="language"
@@ -27,17 +27,17 @@
 
       <SettingsGroup class=" mt-3">
         <SettingsLink
-          to="/settings/audio"
+          :to="routeLocation.settingsAudio()"
           :icon="IconHeadphones"
           :title="$t('settings.index.audio')"
         />
         <SettingsLink
-          to="/settings/storage"
+          :to="routeLocation.settingsStorage()"
           :icon="IconDatabase"
           :title="$t('settings.index.storage')"
         />
         <SettingsLink
-          to="/settings/notifications"
+          :to="routeLocation.settingsNotifications()"
           :icon="IconBell"
           :title="$t('settings.index.notifications')"
         />
@@ -45,7 +45,7 @@
 
       <SettingsGroup class="mt-3">
         <SettingsLink
-          to="/settings/about"
+          :to="routeLocation.settingsAbout()"
           :icon="IconInfo"
           :title="$t('settings.index.about')"
         />
@@ -96,6 +96,7 @@ import { useSettingsStore } from "@/modules/settings/store";
 import { useAudioSettingsStore } from "@/modules/settings/store/audio";
 import { useTheme } from "@/modules/settings/composables/useTheme";
 import { useAccentColor } from "@/modules/settings/composables/useAccentColor";
+import { routeLocation } from "@/app/router/route-locations";
 
 const { language } = useGeneralSettings();
 const { t } = useI18n();

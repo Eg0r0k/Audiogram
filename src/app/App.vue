@@ -52,6 +52,7 @@ import { ephemeralFromPath } from "@/modules/player/types";
 import DeleteConfirmDialog from "@/components/dialogs/DeleteConfirmDialog.vue";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { useNowPlayingTitle } from "@/modules/player/composables/useNowPlayingTitle";
+import { useExternalLinkInterceptor } from "@/composables/useExternalLinkInterceptor";
 
 const currentRoute = useRoute();
 const { isMobileLayout } = useDeviceLayout();
@@ -121,6 +122,7 @@ useGlobalHotKeys();
 useMediaSession();
 useNowPlayingTitle();
 
+useExternalLinkInterceptor();
 // UPDATE
 
 const updateStore = useUpdateStore();

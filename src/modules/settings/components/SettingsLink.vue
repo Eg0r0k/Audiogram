@@ -32,9 +32,10 @@
 import { Item, ItemContent, ItemMedia, ItemTitle, ItemActions, ItemSubtitle } from "@/components/ui/item";
 import Link from "@/components/ui/link/Link.vue";
 import { type Component } from "vue";
+import type { RouteLocationRaw } from "vue-router";
 
 interface Props {
-  to: string;
+  to: RouteLocationRaw;
   icon: Component;
   title: string;
   subtitle?: string;

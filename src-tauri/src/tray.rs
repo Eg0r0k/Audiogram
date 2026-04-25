@@ -4,7 +4,6 @@ use tauri::{
     Manager,
 };
 
-
 pub fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let show = MenuItemBuilder::with_id("show", "Show Audiogram").build(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;

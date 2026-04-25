@@ -6,7 +6,7 @@
     tabindex="0"
     data-track-row
     :class="[
-      'group flex h-14 w-full select-none cursor-pointer items-center gap-3 rounded-md px-3 transition-colors outline-none',
+      'library-track-row group h-14 w-full select-none cursor-pointer items-center rounded-md px-3 transition-colors outline-none',
       rowStateClass,
       'focus-visible:ring-ring/50 focus-visible:ring-[3px]',
     ]"
@@ -14,13 +14,13 @@
     @keypress="handleClick"
     @contextmenu="emit('contextmenu', track)"
   >
-    <div class="hidden w-10 shrink-0 items-center justify-center md:flex">
+    <div class="index-col hidden md:flex items-center justify-center">
       <span class="text-center font-medium text-muted-foreground text-sm">
         {{ index }}
       </span>
     </div>
 
-    <div class="flex min-w-0 flex-[3_1_0%] items-center gap-3">
+    <div class="first-col flex min-w-0 items-center gap-3">
       <div class="relative size-10 shrink-0 overflow-hidden rounded bg-muted z-10">
         <NuxtImage
           :src="coverUrl"
@@ -28,7 +28,6 @@
           fallback-src="/img/fallback.svg"
           class="size-full object-cover"
         />
-
         <div
           :class="[
             'absolute inset-0 flex items-center justify-center bg-black/45 transition-opacity',
@@ -47,23 +46,14 @@
       </div>
 
       <div class="min-w-0 flex-1">
-        <div
-          :class="[
-            'truncate text-sm font-medium hover:underline',
-            isActive ? 'text-primary' : 'text-foreground',
-          ]"
-        >
+        <div :class="['truncate text-sm font-medium hover:underline', isActive ? 'text-primary' : 'text-foreground']">
           {{ track.title }}
         </div>
-
         <div class="flex items-center truncate text-xs text-muted-foreground">
           <span
             v-if="isExplicit"
             class="mr-1.5 inline-flex size-4 shrink-0 items-center justify-center rounded-[4px] bg-muted font-semibold text-[10px] uppercase text-foreground"
-          >
-            E
-          </span>
-
+          >E</span>
           <template
             v-for="(artist, artistIndex) in artists"
             :key="`${track.id}-${artistIndex}`"
@@ -71,9 +61,9 @@
             <span
               role="link"
               tabindex="0"
-              class="cursor-pointer truncate underline-offset-2 transition-colors duration-200 hover:text-foreground hover:underline"
+              class="cursor-pointer  truncate underline-offset-2 hover:text-foreground hover:underline"
               @click.stop="handleArtistClick(artistIndex)"
-              @keypress.enter.stop="handleArtistClick(artistIndex)"
+              @keydown.enter.stop="handleArtistClick(artistIndex)"
             >
               {{ artist }}
             </span>
@@ -83,27 +73,26 @@
       </div>
     </div>
 
-    <div class="hidden min-w-0 flex-[2_1_0%] truncate text-sm text-muted-foreground md:block">
+    <div class="var1-col hidden min-w-0 md:block truncate text-sm text-muted-foreground">
       <span
         role="link"
         tabindex="0"
-        class="cursor-pointer truncate underline-offset-2 transition-colors duration-200 hover:text-foreground hover:underline"
+        class="cursor-pointer hover:text-foreground hover:underline pl-2"
         @click.stop="handleAlbumClick"
-        @keypress.enter.stop="handleAlbumClick"
+        @keydown.enter.stop="handleAlbumClick"
       >
         {{ track.albumName }}
       </span>
     </div>
 
-    <div class="hidden min-w-0 flex-[1.5_1_0%] truncate text-sm text-muted-foreground md:block">
+    <div class="var2-col pl-2 hidden min-w-0 lg:block truncate text-sm text-muted-foreground">
       {{ relativeAddedAt }}
     </div>
 
-    <div class="flex w-[60px] shrink-0 items-center justify-end relative">
+    <div class="last-col flex items-center justify-end relative">
       <span class="text-sm text-muted-foreground sm:group-hover:hidden [@media(hover:none)]:hidden">
         {{ formatDuration(track.duration) }}
       </span>
-
       <Button
         variant="ghost"
         size="icon-sm"
@@ -128,6 +117,7 @@ import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+import { routeLocation } from "@/app/router/route-locations";
 import IconDots from "~icons/tabler/dots";
 import IconPause from "~icons/tabler/player-pause-filled";
 import IconPlay from "~icons/tabler/player-play-filled";
@@ -161,7 +151,7 @@ const { url: coverBlobUrl } = useEntityCover("album", () => props.track.albumId)
 
 const coverUrl = computed(() => coverBlobUrl.value ?? "/img/fallback.svg");
 const isPlaying = computed(() => playerStore.isPlaying);
-const isExplicit = computed(() => Boolean((props.track as Track & { isExplicit?: boolean }).isExplicit));
+const isExplicit = computed(() => Boolean(props.track.isExplicit));
 const relativeAddedAt = computed(() => formatRelativeTime(props.track.addedAt));
 const artists = computed(() => {
   const artistStr = props.track.artist;
@@ -180,7 +170,6 @@ function handleClick(event: MouseEvent | KeyboardEvent) {
     emit("select", props.track);
     return;
   }
-
   emit("play", props.track);
 }
 
@@ -190,42 +179,51 @@ function onDotsClick(event: MouseEvent) {
 
 function handleArtistClick(index: number) {
   const artistId = props.track.artistIds?.[index] ?? props.track.artistIds?.[0];
-
-  if (artistId) {
-    router.push({ name: "artist", params: { id: artistId } });
-  }
+  if (artistId) router.push(routeLocation.artist(artistId));
 }
 
 function handleAlbumClick() {
-  router.push({ name: "album", params: { id: props.track.albumId } });
+  router.push(routeLocation.album(props.track.albumId));
 }
 
 function formatRelativeTime(value?: number): string {
-  if (!value) {
-    return "-";
-  }
-
+  if (!value) return "-";
   const diffSeconds = Math.round((value - Date.now()) / 1000);
   const absSeconds = Math.abs(diffSeconds);
   const formatter = new Intl.RelativeTimeFormat(locale.value, { numeric: "auto" });
-
   if (absSeconds < 60) return formatter.format(diffSeconds, "second");
-
   const diffMinutes = Math.round(diffSeconds / 60);
   if (Math.abs(diffMinutes) < 60) return formatter.format(diffMinutes, "minute");
-
   const diffHours = Math.round(diffMinutes / 60);
-  if (Math.abs(diffHours) < 24) return formatter.format(diffHours, "hour");
-
-  const diffDays = Math.round(diffHours / 24);
-  if (Math.abs(diffDays) < 7) return formatter.format(diffDays, "day");
-
-  const diffWeeks = Math.round(diffDays / 7);
-  if (Math.abs(diffWeeks) < 5) return formatter.format(diffWeeks, "week");
-
-  const diffMonths = Math.round(diffDays / 30);
-  if (Math.abs(diffMonths) < 12) return formatter.format(diffMonths, "month");
-
-  return formatter.format(Math.round(diffDays / 365), "year");
+  if (absSeconds < 86400) return formatter.format(diffHours, "hour");
+  return formatter.format(Math.round(diffHours / 24), "day");
 }
 </script>
+
+<style scoped>
+.library-track-row {
+  display: grid;
+  grid-template-columns: var(--grid-template-columns);
+  gap: 12px;
+  align-items: center;
+}
+
+.index-col { grid-column: index; }
+.first-col { grid-column: first; }
+.var1-col { grid-column: var1; }
+.var2-col { grid-column: var2; }
+.last-col { grid-column: last; }
+
+@media (max-width: 1024px) {
+  .library-track-row {
+    --grid-template-columns: [first] 4fr [var1] 2fr [last] 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .library-track-row {
+    --grid-template-columns: [first] 1fr [last] auto !important;
+    gap: 8px;
+  }
+}
+</style>

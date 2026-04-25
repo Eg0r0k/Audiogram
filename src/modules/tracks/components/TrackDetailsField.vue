@@ -1,15 +1,39 @@
 <template>
-  <div :class="['rounded-lg bg-muted p-3', $attrs.class]">
-    <div class="text-sm font-medium tracking-wide text-muted-foreground">
-      {{ label }}
-    </div>
-    <div class="mt-1 text-sm break-all">
-      {{ displayValue }}
-    </div>
-  </div>
+  <Item class="px-2">
+    <ItemMedia v-if="icon">
+      <div
+        class="size-8 rounded-lg flex items-center justify-center"
+        :class="iconClass"
+      >
+        <Icon
+          :icon="icon"
+          class="size-6"
+        />
+      </div>
+    </ItemMedia>
+    <ItemContent>
+      <ItemTitle>{{ title }}</ItemTitle>
+      <ItemSubtitle v-if="displayValue">
+        {{ displayValue }}
+      </ItemSubtitle>
+    </ItemContent>
+
+    <ItemActions>
+      <slot name="action" />
+    </ItemActions>
+  </Item>
 </template>
 
 <script setup lang="ts">
+import { Icon } from "@iconify/vue";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemMedia,
+  ItemSubtitle,
+  ItemTitle,
+} from "@/components/ui/item";
 import { computed } from "vue";
 
 defineOptions({
@@ -17,7 +41,9 @@ defineOptions({
 });
 
 const props = defineProps<{
-  label: string;
+  icon?: string;
+  iconClass?: string;
+  title: string;
   value?: string | number | null;
 }>();
 

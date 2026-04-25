@@ -89,7 +89,7 @@ const { top, right, bottom, left } = useScreenSafeArea();
   min-width: 0;
 }
 .right-column {
-  width: 420px;
+  width: 390px;
   min-width: 320px;
   overflow-y: hidden;
   overflow-x: hidden;

@@ -1,6 +1,5 @@
 <template>
   <Item
-    v-ripple
     tabindex="0"
     size="sm"
     class="cursor-pointer"
@@ -18,7 +17,7 @@
       </div>
     </ItemMedia>
 
-    <ItemContent :class="icon && 'ml-3'">
+    <ItemContent>
       <ItemTitle>{{ title }}</ItemTitle>
       <ItemSubtitle v-if="subtitle">
         {{ subtitle }}
