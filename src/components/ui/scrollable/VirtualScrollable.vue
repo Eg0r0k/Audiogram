@@ -43,7 +43,7 @@
             top: 0,
             left: 0,
             width: '100%',
-            transform: `translateY(${virtualRow.start + effectivePaddingTop}px)`,
+            transform: `translateY(${virtualRow.start - beforeHeight + effectivePaddingTop}px)`,
           }"
         >
           <slot
@@ -133,7 +133,7 @@ let lastLoadMoreItemsCount = -1;
 let scrollDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 function updateBeforeHeight() {
-  const newHeight = beforeRef.value?.offsetHeight ?? 0;
+  const newHeight = beforeRef.value?.getBoundingClientRect().height ?? 0;
   if (beforeHeight.value !== newHeight) {
     beforeHeight.value = newHeight;
     virtualizer.value.measure();
@@ -147,16 +147,14 @@ const scrollable = useScrollable(containerRef, {
   onScrolledTop: () => emit("scrolledTop"),
 });
 
-const virtualizer = useVirtualizer({
-  get count() {
-    return props.items.length;
-  },
+const virtualizer = useVirtualizer(computed(() => ({
+  count: props.items.length,
   getScrollElement: () => containerRef.value,
   estimateSize: () => props.itemHeight ?? props.estimateSize,
   overscan: props.overscan,
   getItemKey: index => props.getItemKey(index),
   scrollMargin: beforeHeight.value,
-});
+})));
 
 const measureElement = (el: Element | null) => {
   if (el && !props.itemHeight) {
