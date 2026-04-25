@@ -1,4 +1,5 @@
 import { ref } from "vue";
+import { openExternal } from "../useExternalLinkInterceptor";
 
 const isOpen = ref(false);
 const pendingUrl = ref<string | null>(null);
@@ -14,10 +15,11 @@ export function useExternalLinkDialog() {
     pendingUrl.value = null;
   };
 
-  const confirmNavigation = () => {
-    if (pendingUrl.value) {
-      window.open(pendingUrl.value, "_blank", "noopener,noreferrer");
-    }
+  const confirmNavigation = async () => {
+    const url = pendingUrl.value;
+    if (!url) return;
+
+    await openExternal(url).catch(() => undefined);
     closeDialog();
   };
 
