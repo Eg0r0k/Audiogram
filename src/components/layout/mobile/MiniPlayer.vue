@@ -1,8 +1,9 @@
 <template>
   <button
+    ref="rootRef"
     class="relative flex shrink-0 w-full h-14 px-2 cursor-pointer text-left [-webkit-tap-highlight-color:transparent]"
     :aria-label="$t('player.nowPlaying')"
-    @click="$emit('click')"
+    @click="handleOpenFullPlayer"
   >
     <div
       class="relative flex-1 rounded-lg overflow-hidden transition-colors duration-300"
@@ -62,11 +63,10 @@
             variant="ghost"
             size="icon-lg"
             class="rounded-full text-white"
-            :aria-label="$t('player.nextTrack')"
-            :disabled="!queueStore.hasNext"
-            @click.stop="queueStore.next()"
+            :aria-label="$t('player.queue')"
+            @click.stop="rightPanel.openQueue()"
           >
-            <IconSkipForward class="size-5" />
+            <IconPlaylist class="size-5" />
           </Button>
         </div>
       </div>
@@ -75,7 +75,7 @@
         <div class="h-0.5 w-full bg-white/50 rounded-full">
           <div
             class="h-full bg-white rounded-full "
-            :style="{ width: `${progressPercent}%` }"
+            :style="{ width: `${displayProgress}%` }"
           />
         </div>
       </div>
@@ -84,21 +84,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onUnmounted } from "vue";
+import { computed, ref, useTemplateRef } from "vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
+import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { useMobilePlayerColor } from "@/composables/useMobilePlayerColor";
+import { useSwipeControl } from "@/composables/useSwipeControl";
+import { usePlayerProgress } from "@/modules/tracks/composables/usePlayerProgress";
 import { Button } from "@/components/ui/button";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
 import IconPlay from "~icons/tabler/player-play-filled";
 import IconPause from "~icons/tabler/player-pause-filled";
-import IconSkipForward from "~icons/tabler/player-track-next-filled";
+import IconPlaylist from "~icons/tabler/playlist";
 
 const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
+const rightPanel = useRightPanelStore();
+const rootRef = useTemplateRef<HTMLButtonElement>("rootRef");
 
-defineEmits<{
+const emit = defineEmits<{
   click: [];
 }>();
 
@@ -113,34 +118,39 @@ const containerStyle = computed(() => ({
 
 const gradientColor = computed(() => playerColor.value.hsl);
 
-const progressPercent = ref(0);
-let rafId: number | null = null;
+const { displayProgress } = usePlayerProgress();
+const suppressClickUntil = ref(0);
 
-const updateProgress = () => {
-  const player = playerStore.player;
-  if (player && player.duration > 0 && isFinite(player.duration as number)) {
-    progressPercent.value = ((player.currentTime as number) / (player.duration as number)) * 100;
-  }
-  if (playerStore.isPlaying) {
-    rafId = requestAnimationFrame(updateProgress);
-  }
-};
+function markSwipeHandled() {
+  suppressClickUntil.value = Date.now() + 250;
+}
 
-watch(() => playerStore.isPlaying, (playing) => {
-  if (playing) {
-    rafId = requestAnimationFrame(updateProgress);
-  }
-  else if (rafId) {
-    cancelAnimationFrame(rafId);
-    rafId = null;
-  }
-}, { immediate: true });
+function handleOpenFullPlayer() {
+  if (Date.now() < suppressClickUntil.value) return;
+  emit("click");
+}
 
-watch(() => currentTrack.value?.id, () => {
-  progressPercent.value = 0;
-});
+function handleSwipePrevious() {
+  markSwipeHandled();
+  if (!queueStore.hasPrevious) return;
+  queueStore.previous();
+}
 
-onUnmounted(() => {
-  if (rafId) cancelAnimationFrame(rafId);
+function handleSwipeNext() {
+  markSwipeHandled();
+  if (!queueStore.hasNext) return;
+  queueStore.next();
+}
+
+function handleSwipeUp() {
+  markSwipeHandled();
+  emit("click");
+}
+
+useSwipeControl(rootRef, {
+  threshold: 40,
+  onSwipeLeft: handleSwipeNext,
+  onSwipeRight: handleSwipePrevious,
+  onSwipeUp: handleSwipeUp,
 });
 </script>

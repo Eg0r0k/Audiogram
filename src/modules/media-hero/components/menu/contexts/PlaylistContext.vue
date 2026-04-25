@@ -26,11 +26,7 @@
       <IconTrash class="size-5.5" />
       {{ $t('common.delete') }}
     </component>
-
-    <component :is="Separator" />
   </template>
-
-  <ShareItem @share="actions.share" />
 </template>
 
 <script setup lang="ts">
@@ -39,7 +35,6 @@ import IconTrash from "~icons/tabler/trash";
 import IconPlaylistAdd from "~icons/tabler/playlist-add";
 import { useMenuComponents } from "@/modules/media-hero/composables/useMenuComponents";
 import { MediaActions } from "../types";
-import ShareItem from "../items/ShareItem.vue";
 
 defineProps<{
   actions: MediaActions;

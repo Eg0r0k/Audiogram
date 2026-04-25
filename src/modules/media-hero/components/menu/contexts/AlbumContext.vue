@@ -19,22 +19,17 @@
     />
     {{ $t('common.delete') }}
   </component>
-
-  <component :is="Separator" />
-
-  <ShareItem @share="actions.share" />
 </template>
 
 <script setup lang="ts">
 import type { MediaActions } from "../types";
 import IconPencil from "~icons/tabler/pencil";
 import IconTrash from "~icons/tabler/trash";
-import ShareItem from "../items/ShareItem.vue";
 import { useMenuComponents } from "@/modules/media-hero/composables/useMenuComponents";
 
 defineProps<{
   actions: MediaActions;
 }>();
 
-const { Item, Separator } = useMenuComponents();
+const { Item } = useMenuComponents();
 </script>

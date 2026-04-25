@@ -3,7 +3,7 @@
     <div class="flex flex-wrap items-center justify-center gap-3 @md:justify-start">
       <Button
         class="size-14 rounded-full "
-        :disabled="isLoading"
+        :disabled="isLoading || !props.hasTracks"
         @click="handlePlay"
       >
         <IconPause
@@ -56,6 +56,7 @@ import { useQueueStore } from "@/modules/queue/store/queue.store";
 const props = defineProps<{
   type: MediaType;
   source: QueueSource;
+  hasTracks?: boolean;
   isPlaylistOwner?: boolean;
 }>();
 

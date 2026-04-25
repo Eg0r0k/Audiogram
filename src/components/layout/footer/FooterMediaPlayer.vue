@@ -4,7 +4,6 @@ import RangeSelector from "@/modules/player/components/RangeSelector.vue";
 import SidebarMusic from "@/modules/player/components/SidebarMusic.vue";
 import PlayBarControls from "@/modules/player/components/PlayBarControls.vue";
 import SidebarControls from "@/modules/player/components/SidebarControls.vue";
-import FooterMobile from "./FooterMobile.vue";
 import { usePlayerProgress } from "@/modules/tracks/composables/usePlayerProgress";
 
 const playerStore = usePlayerStore();
@@ -42,6 +41,5 @@ const { displayProgress, isTransitionEnabled, onScrubStart, onScrub, onScrubEnd 
         <SidebarControls />
       </div>
     </aside>
-    <FooterMobile class="hidden" />
   </footer>
 </template>

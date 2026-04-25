@@ -6,10 +6,10 @@
           <IconExternalLink
             class="size-6"
           />
-          Open external link?
+          {{ $t("common.externalLink.title") }}
         </DialogTitle>
         <DialogDescription>
-          You are about to leave the app and open an external website.
+          {{ $t("common.externalLink.description") }}
         </DialogDescription>
       </DialogHeader>
 
@@ -33,7 +33,7 @@
           variant="link"
           @click="confirmNavigation"
         >
-          Open link
+          {{ $t("common.externalLink.openLink") }}
           <IconExternalLink
             class="size-4"
           />

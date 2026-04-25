@@ -6,7 +6,7 @@
   "save": "Save",
   "change": "Change",
   "cancel": "Cancel",
-  "comingSoon": "Сoming Soon",
+  "comingSoon": "Coming Soon",
   "continue": "Continue",
   "loading": "Loading",
   "unknown": "Unknown",
@@ -46,7 +46,6 @@
   "accept": "Accept",
   "decline": "Decline",
 
-
   "success": "Success",
   "warning": "Warning",
   "info": "Info",
@@ -66,6 +65,12 @@
   "favorite": "Favorite",
   "addToQueue": "Add to queue",
   "select": "Select",
+
+  "externalLink": {
+    "title": "Open external link?",
+    "description": "You are about to leave the app and open an external website.",
+    "openLink": "Open link"
+  },
 
   "window": {
     "minimize": "Minimize",

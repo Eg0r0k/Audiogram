@@ -1,5 +1,6 @@
 {
   "placeholder": "Search your library",
+  "mainPlaceholder": "Search tracks, artists, albums",
   "noResults": {
     "title": "No results for \"{query}\"",
     "hint": "Try searching for something else"

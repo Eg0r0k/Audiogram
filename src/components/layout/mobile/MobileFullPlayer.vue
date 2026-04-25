@@ -1,14 +1,27 @@
 <template>
-  <div class="flex flex-col w-full mx-auto min-h-0 px-6 pt-4 pb-6 max-w-md">
+  <div
+    ref="rootRef"
+    class="flex flex-col w-full mx-auto min-h-0 px-6 pt-4 pb-6 max-w-md"
+  >
     <div class="flex-1 min-h-0 [container-type:size] flex items-start justify-center pb-2">
       <div class="aspect-square w-[min(100cqw,100cqh)] rounded-2xl bg-muted overflow-hidden shadow-lg">
         <NuxtImage
+          v-slot="{ imgAttrs, isLoaded, src }"
           :src="coverUrl"
           fallback-src="/img/fallback.svg"
           :alt="currentTrack?.title ?? ''"
           :placeholder="true"
-          class="size-full object-cover"
-        />
+          custom
+        >
+          <img
+            :key="src"
+            v-bind="imgAttrs"
+            :src="src"
+            :alt="currentTrack?.title ?? ''"
+            class="size-full object-cover transition-[transform,opacity] duration-180 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:scale-100 motion-reduce:transition-opacity motion-reduce:duration-150"
+            :class="isLoaded ? 'scale-100 opacity-100' : 'scale-[1.02] opacity-0 motion-reduce:scale-100'"
+          >
+        </NuxtImage>
       </div>
     </div>
 
@@ -150,7 +163,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, useTemplateRef } from "vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
@@ -176,6 +189,7 @@ import PlayButton from "@/modules/player/components/PlayButton.vue";
 import type { Track } from "@/modules/player/types";
 import { RangeSelector } from "@/modules/player";
 import { usePlayerProgress } from "@/modules/tracks/composables/usePlayerProgress";
+import { useSwipeControl } from "@/composables/useSwipeControl";
 
 withDefaults(defineProps<{
   backgroundColor?: string | null;
@@ -183,15 +197,21 @@ withDefaults(defineProps<{
   backgroundColor: null,
 });
 
-defineEmits<{
+const emit = defineEmits<{
   close: [];
 }>();
 
+const rootRef = useTemplateRef<HTMLDivElement>("rootRef");
 const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
 const { toggleTrackLike } = useToggleTrackLike();
 const { openDropdown } = useTrackMenu();
 const { displayProgress, isTransitionEnabled, onScrubStart, onScrub, onScrubEnd } = usePlayerProgress();
+
+useSwipeControl(rootRef, {
+  threshold: 50,
+  onSwipeDown: () => emit("close"),
+});
 
 const currentTrack = computed<Track | null>(() => {
   const track = playerStore.currentTrack;

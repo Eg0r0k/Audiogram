@@ -29,5 +29,10 @@
     "deleteAlbum": "Delete album",
     "deletePlaylist": "Delete playlist",
     "deleteItem": "Delete item"
+  },
+  "sortColumn": {
+    "title": "Title",
+    "album": "Album",
+    "dateAdded": "Date Added"
   }
 }

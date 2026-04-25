@@ -29,5 +29,10 @@
     "deleteAlbum": "Удалить альбом",
     "deletePlaylist": "Удалить плейлист",
     "deleteItem": "Удалить"
+  },
+  "sortColumn": {
+    "title": "Название",
+    "album": "Альбом",
+    "dateAdded": "Дата добавления"
   }
 }

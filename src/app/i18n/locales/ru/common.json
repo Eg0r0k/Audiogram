@@ -70,6 +70,12 @@
   "addToQueue": "Добавить в очередь",
   "select": "Выбрать",
 
+  "externalLink": {
+    "title": "Открыть внешнюю ссылку?",
+    "description": "Вы покидаете приложение и переходите на внешний сайт.",
+    "openLink": "Открыть ссылку"
+  },
+
   "editHint": "Двойное нажатие для изменения",
   "editLabel": "Изменить значение",
   "trackCount": "0 треков | {count} трек | {count} трека | {count} треков",
@@ -78,5 +84,4 @@
 
   "hoursShort": "{count} ч",
   "minutesShort": "{count} мин"
-
 }

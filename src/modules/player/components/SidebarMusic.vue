@@ -6,12 +6,22 @@
     >
       <div class="relative shrink-0 group size-14 rounded overflow-hidden">
         <NuxtImage
+          v-slot="{ imgAttrs, isLoaded, src }"
           :src="coverUrl"
-          class="w-full h-full object-cover object-center absolute left-0 top-0"
           draggable="false"
           fallback-src="/img/fallback.svg"
           :alt="currentTrack?.title ?? ''"
-        />
+          custom
+        >
+          <img
+            :key="src"
+            v-bind="imgAttrs"
+            :src="src"
+            :alt="currentTrack?.title ?? ''"
+            class="absolute left-0 top-0 h-full w-full object-cover object-center transition-[transform,opacity] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:scale-100 motion-reduce:transition-opacity motion-reduce:duration-100"
+            :class="isLoaded ? 'scale-100 opacity-100' : 'scale-[1.01] opacity-0 motion-reduce:scale-100'"
+          >
+        </NuxtImage>
 
         <FullscreenTrigger class="absolute rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>

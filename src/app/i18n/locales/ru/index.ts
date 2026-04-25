@@ -14,6 +14,7 @@ import watchedFolders from "./watchedFolders.json";
 import dialogs from "./dialogs";
 import errors from "./errors.json";
 import sheet from "./sheet.json";
+import update from "./update.json";
 
 export default {
   common,
@@ -32,4 +33,5 @@ export default {
   dialogs,
   errors,
   sheet,
+  update,
 };

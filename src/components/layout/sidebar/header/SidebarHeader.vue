@@ -40,12 +40,12 @@
             <DropdownMenuGroup>
               <DropdownMenuItem @click="goFavorite">
                 <IconBookmark class="size-5.5" />
-                Favorite
+                {{ t("nav.favorite") }}
               </DropdownMenuItem>
 
               <DropdownMenuItem @click="goSettings">
                 <IconSettings class="size-5.5" />
-                Settings
+                {{ t("nav.settings") }}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -55,7 +55,7 @@
                   :is="themeIcon"
                   class="size-5.5"
                 />
-                Change Theme
+                {{ t("nav.changeTheme") }}
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
@@ -101,6 +101,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -127,6 +128,7 @@ import IconSun from "~icons/tabler/sun";
 import IconMoon from "~icons/tabler/moon";
 import { routeLocation } from "@/app/router/route-locations";
 
+const { t } = useI18n();
 const router = useRouter();
 const theme = useTheme();
 
