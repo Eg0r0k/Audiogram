@@ -13,6 +13,7 @@ import {
 } from "@/modules/search/buildDocuments";
 import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/searchIndex";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
+import type { TrackSortKey } from "@/modules/tracks/types";
 import type { ArtistId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import {
@@ -34,6 +35,16 @@ export interface ArtistChanges {
 
 const PAGE_SIZE = 50;
 
+async function getArtistTrackEntities(artistId: ArtistId, sortKey: TrackSortKey | null) {
+  const artistTracks = await unwrapResult(trackRepository.findByArtistId(artistId));
+
+  if (!sortKey) {
+    return artistTracks;
+  }
+
+  return unwrapResult(trackRepository.findSortedByIds(artistTracks.map(track => track.id), sortKey));
+}
+
 export async function getArtists() {
   return unwrapResult(artistRepository.findAll());
 }
@@ -48,11 +59,11 @@ export async function getArtistByIdOrThrow(artistId: ArtistId) {
   return artist;
 }
 
-export async function getArtistPageData(artistId: ArtistId): Promise<ArtistPageData> {
+export async function getArtistPageData(artistId: ArtistId, sortKey: TrackSortKey | null = null): Promise<ArtistPageData> {
   const [artist, albums, rawTracks] = await Promise.all([
     getArtistByIdOrThrow(artistId),
     unwrapResult(albumRepository.findByArtistId(artistId)),
-    unwrapResult(trackRepository.findByArtistId(artistId)),
+    getArtistTrackEntities(artistId, sortKey),
   ]);
 
   const allArtistIds = unique(rawTracks.flatMap(t => t.artistIds));
@@ -69,12 +80,14 @@ export async function getArtistTracksPaginated(
   artistId: ArtistId,
   offset: number,
   limit = PAGE_SIZE,
+  sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> {
-  const [rawTracks, countResult, durationResult] = await Promise.all([
-    unwrapResult(artistRepository.findTracksPaginated(artistId, offset, limit)),
+  const [sortedTracks, countResult, durationResult] = await Promise.all([
+    getArtistTrackEntities(artistId, sortKey),
     unwrapResult(artistRepository.countTracksByArtistId(artistId)),
     unwrapResult(trackRepository.sumDurationByArtistId(artistId)),
   ]);
+  const rawTracks = sortedTracks.slice(offset, offset + limit);
 
   await getArtistByIdOrThrow(artistId);
   const albumIds = unique(rawTracks.map(track => track.albumId));
@@ -132,10 +145,10 @@ export const artistQueries = {
       queryKey: queryKeys.artists.page(artistId),
       queryFn: () => getArtistPageData(artistId),
     }),
-  tracksPageInfinite: (artistId: ArtistId, pageParam: number) =>
+  tracksPageInfinite: (artistId: ArtistId, pageParam: number, sortKey: TrackSortKey | null = null) =>
     queryOptions({
-      queryKey: [...queryKeys.artists.tracksPage(artistId), pageParam],
-      queryFn: () => getArtistTracksPaginated(artistId, pageParam),
+      queryKey: [...queryKeys.artists.tracksPage(artistId, sortKey), pageParam],
+      queryFn: () => getArtistTracksPaginated(artistId, pageParam, PAGE_SIZE, sortKey),
     }),
   albumsPageInfinite: (artistId: ArtistId, pageParam: number) =>
     queryOptions({

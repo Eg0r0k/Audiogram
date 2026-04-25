@@ -69,13 +69,13 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-  toggleSelect: [track: Track];
+  toggleSelect: [track: Track, event: MouseEvent | KeyboardEvent];
 }>();
 
 const { url: coverBlobUrl } = useEntityCover("album", () => props.track.albumId);
 const coverUrl = computed(() => coverBlobUrl.value ?? "/img/fallback.svg");
 
-function handleClick() {
-  emit("toggleSelect", props.track);
+function handleClick(event: MouseEvent | KeyboardEvent) {
+  emit("toggleSelect", props.track, event);
 }
 </script>

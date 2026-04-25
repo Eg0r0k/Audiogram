@@ -64,7 +64,7 @@
         </div>
         <Item>
           <ItemMedia>
-            <MusicIcon class="size-6" />
+            <MusicIcon class="size-6 mr-3" />
           </ItemMedia>
           <ItemContent>
             <ItemTitle>{{ $t('settings.storage.database') }}</ItemTitle>
@@ -80,7 +80,7 @@
         </Item>
         <Item>
           <ItemMedia>
-            <MusicIcon class="size-6" />
+            <MusicIcon class="size-6 mr-3" />
           </ItemMedia>
           <ItemContent>
             <ItemTitle>{{ $t('settings.storage.tracks') }}</ItemTitle>
@@ -96,7 +96,7 @@
 
         <Item>
           <ItemMedia>
-            <ImageIcon class="size-6" />
+            <ImageIcon class="size-6 mr-3" />
           </ItemMedia>
           <ItemContent>
             <ItemTitle>{{ $t('settings.storage.covers') }}</ItemTitle>

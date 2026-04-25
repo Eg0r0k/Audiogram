@@ -1,4 +1,4 @@
-import { computed } from "vue";
+import { computed, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useMutation, useQuery, useQueryClient, useInfiniteQuery, skipToken } from "@tanstack/vue-query";
 import { AlbumId } from "@/types/ids";
@@ -17,10 +17,11 @@ import {
 import { coverQueries } from "@/queries/cover.queries";
 import { getArtistByIdOrThrow } from "@/queries/artist.queries";
 import { routeLocation } from "@/app/router/route-locations";
+import type { TrackSortKey } from "@/modules/tracks/types";
 
 export type { AlbumChanges } from "@/queries/album.queries";
 
-export function useAlbumPage() {
+export function useAlbumPage(sortKey: Ref<TrackSortKey | null>) {
   const route = useRoute();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -42,12 +43,14 @@ export function useAlbumPage() {
     data: infiniteData,
     fetchNextPage,
     hasNextPage,
+    isLoading: isTracksLoading,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.albums.tracksPage(albumId.value)),
-    queryFn: ({ pageParam = 0 }) => getAlbumTracksPaginated(albumId.value, pageParam),
+    queryKey: computed(() => queryKeys.albums.tracksPage(albumId.value, sortKey.value)),
+    queryFn: ({ pageParam = 0 }) => getAlbumTracksPaginated(albumId.value, pageParam, undefined, sortKey.value),
     initialPageParam: 0,
     getNextPageParam: lastPage => lastPage.nextOffset,
+    placeholderData: previousData => previousData,
     enabled: computed(() => !!album.value),
   });
 
@@ -87,7 +90,7 @@ export function useAlbumPage() {
   const coverUrl = useObjectUrl(computed(() => coverBlob.value));
 
   const isLoading = computed(() =>
-    isAlbumLoading.value || isCoverLoading.value,
+    isAlbumLoading.value || isCoverLoading.value || isTracksLoading.value,
   );
 
   const albumDataMapped = computed<AlbumData | null>(() => {
@@ -129,6 +132,7 @@ export function useAlbumPage() {
     tracks,
     albumData: albumDataMapped,
     coverUrl,
+    trackCount,
     isLoading,
     isError,
     error,
@@ -137,6 +141,7 @@ export function useAlbumPage() {
     refetch,
     fetchNextPage,
     hasNextPage,
+    isTracksLoading,
     isFetchingNextPage,
   };
 }

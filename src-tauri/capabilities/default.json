@@ -2,7 +2,9 @@
   "$schema": "../gen/schemas/mobile-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "core:tray:default",
@@ -26,15 +28,28 @@
     {
       "identifier": "fs:scope",
       "allow": [
-        { "path": "$APPDATA" },
-        { "path": "$APPDATA/**" },
-        { "path": "$HOME/**" },
-        { "path": "$AUDIO/**" },
-        { "path": "$DOWNLOAD/**" },
-        { "path": "**" }
+        {
+          "path": "$APPDATA"
+        },
+        {
+          "path": "$APPDATA/**"
+        },
+        {
+          "path": "$HOME/**"
+        },
+        {
+          "path": "$AUDIO/**"
+        },
+        {
+          "path": "$DOWNLOAD/**"
+        },
+        {
+          "path": "**"
+        }
       ]
     },
     "dialog:default",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "shell:default"
   ]
 }

@@ -1,123 +1,127 @@
 <template>
-  <div class="pip-container">
-    <div
-      class="content-cover"
-      :style="contentCoverStyle"
-    >
-      <div class="content ">
-        <img
-          v-if="showCover"
-          :src="coverUrl"
-          :alt="currentTrack?.title ?? ''"
-          class="cover-image"
-          draggable="false"
-          @error="coverLoadFailed = true"
-        >
+  <div class="pip-root @container">
+    <div class="pip-container">
+      <div
+        class="content-cover"
+        :style="contentCoverStyle"
+      >
+        <div class="content">
+          <img
+            v-if="showCover"
+            :src="coverUrl"
+            :alt="currentTrack?.title ?? ''"
+            class="cover-image"
+            draggable="false"
+            @error="coverLoadFailed = true"
+          >
 
-        <div
-          v-else
-          class="content-fallback"
-          :style="fallbackIconStyle"
-        >
-          <IconMusic class="content-fallback__icon" />
+          <div
+            v-else
+            class="content-fallback bg-accent"
+            :style="fallbackIconStyle"
+          >
+            <IconMusic class="content-fallback__icon text-white" />
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="controls">
-      <Button
-        class="rounded-full"
-        size="icon-sm"
-        variant="ghost"
-        :class="{ 'text-primary': queueStore.isShuffled }"
-        @click="queueStore.toggleShuffle()"
-      >
-        <IconArrowsShuffle2 class="size-4.5" />
-      </Button>
+      <div class="controls">
+        <Button
+          class="control-extra rounded-full"
+          size="icon-sm"
+          variant="ghost"
+          :class="{ 'text-primary': queueStore.isShuffled }"
+          @click="queueStore.toggleShuffle()"
+        >
+          <IconArrowsShuffle2 class="size-4.5" />
+        </Button>
+        <VolumeButton />
+        <Button
+          class="control-previous control-extra rounded-full"
+          size="icon-sm"
+          variant="ghost"
+          :disabled="!queueStore.hasPrevious"
+          @click="queueStore.previous()"
+        >
+          <IconPlayerTrackPrevFilled class="size-4.5" />
+        </Button>
 
-      <Button
-        class="rounded-full"
-        size="icon-sm"
-        variant="ghost"
-        :disabled="!queueStore.hasPrevious"
-        @click="queueStore.previous()"
-      >
-        <IconPlayerTrackPrevFilled class="size-4.5" />
-      </Button>
-
-      <PlayButton class="size-10" />
-
-      <Button
-        class="rounded-full"
-        size="icon-sm"
-        variant="ghost"
-        :disabled="!queueStore.hasNext"
-        @click="queueStore.next()"
-      >
-        <IconPlayerTrackNextFilled class="size-4.5" />
-      </Button>
-
-      <Button
-        class="rounded-full"
-        size="icon-sm"
-        variant="ghost"
-        :class="{ 'text-primary': playerStore.repeatMode !== 'off' }"
-        @click="playerStore.toggleRepeat()"
-      >
-        <IconRepeatOnce
-          v-if="playerStore.repeatMode === 'one'"
-          class="size-4.5"
-        />
-        <IconRepeat
-          v-else
-          class="size-4.5"
-        />
-      </Button>
-
-      <Button
-        class="rounded-full"
-        size="icon-sm"
-        variant="ghost"
-        :class="{ 'text-primary': isLiked }"
-        @click="toggleLike"
-      >
-        <IconLikedFilled
-          v-if="isLiked"
-          class="size-4.5"
-        />
-        <IconLike
-          v-else
-          class="size-4.5"
-        />
-      </Button>
-    </div>
-
-    <div class="context-info">
-      <MarqueeBlock
-        :duration="6"
-        animate-on-overflow-only
-        pause-on-hover
-        gradient
-        gradient-color="var(--background)"
-        gradient-length="20px"
-      >
-        <span class="context-info__title">
-          {{ currentTrack?.title ?? "—" }}
+        <span class="control-play">
+          <PlayButton class="size-10" />
         </span>
-      </MarqueeBlock>
 
-      <MarqueeBlock
-        :duration="6"
-        animate-on-overflow-only
-        pause-on-hover
-        gradient
-        gradient-color="var(--background)"
-        gradient-length="20px"
-      >
-        <span class="context-info__sub">
-          {{ currentTrack?.artist ?? "" }}
-        </span>
-      </MarqueeBlock>
+        <Button
+          class="control-next rounded-full"
+          size="icon-sm"
+          variant="ghost"
+          :disabled="!queueStore.hasNext"
+          @click="queueStore.next()"
+        >
+          <IconPlayerTrackNextFilled class="size-4.5" />
+        </Button>
+
+        <Button
+          class="control-extra rounded-full"
+          size="icon-sm"
+          variant="ghost"
+          :class="{ 'text-primary': playerStore.repeatMode !== 'off' }"
+          @click="playerStore.toggleRepeat()"
+        >
+          <IconRepeatOnce
+            v-if="playerStore.repeatMode === 'one'"
+            class="size-4.5"
+          />
+          <IconRepeat
+            v-else
+            class="size-4.5"
+          />
+        </Button>
+
+        <Button
+          class="control-extra rounded-full"
+          size="icon-sm"
+          variant="ghost"
+          :class="{ 'text-primary': isLiked }"
+          @click="toggleLike"
+        >
+          <IconLikedFilled
+            v-if="isLiked"
+            class="size-4.5"
+          />
+          <IconLike
+            v-else
+            class="size-4.5"
+          />
+        </Button>
+      </div>
+
+      <div class="context-info">
+        <MarqueeBlock
+          :duration="6"
+          animate-on-overflow-only
+          pause-on-hover
+          gradient
+          gradient-color="var(--background)"
+          gradient-length="20px"
+        >
+          <span class="context-info__title">
+            {{ currentTrack?.title ?? "—" }}
+          </span>
+        </MarqueeBlock>
+
+        <MarqueeBlock
+          :duration="6"
+          animate-on-overflow-only
+          pause-on-hover
+          gradient
+          gradient-color="var(--background)"
+          gradient-length="20px"
+        >
+          <span class="context-info__sub">
+            {{ currentTrack?.artist ?? "" }}
+          </span>
+        </MarqueeBlock>
+      </div>
     </div>
   </div>
 </template>
@@ -140,6 +144,7 @@ import IconPlayerTrackNextFilled from "~icons/tabler/player-track-next-filled";
 import IconRepeat from "~icons/tabler/repeat";
 import IconRepeatOnce from "~icons/tabler/repeat-once";
 import IconMusic from "~icons/tabler/music";
+import VolumeButton from "../actions/VolumeButton.vue";
 
 const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
@@ -199,6 +204,12 @@ html, body, #app {
 </style>
 
 <style lang="css" scoped>
+.pip-root {
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+}
+
 .pip-container {
   display: grid;
   user-select: none;
@@ -210,6 +221,7 @@ html, body, #app {
   width: 100%;
   height: 100%;
   min-height: 100vh;
+  min-width: 0;
 }
 
 .content-cover {
@@ -221,6 +233,7 @@ html, body, #app {
   margin: 4px 4px 0;
   border-radius: 8px;
   min-height: 40px;
+  min-width: 0;
   overflow: hidden;
   transition: background 220ms ease;
 }
@@ -263,8 +276,14 @@ html, body, #app {
 .controls {
   grid-area: controls;
   display: flex;
+  gap: 4px;
   align-items: center;
   justify-content: center;
+  min-width: 0;
+}
+
+.control-play {
+  display: flex;
 }
 
 .context-info {
@@ -274,6 +293,8 @@ html, body, #app {
   justify-content: center;
   flex-direction: column;
   padding: 0 8px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .context-info__title {
@@ -292,6 +313,47 @@ html, body, #app {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@container (max-width: 360px) {
+  .pip-container {
+    grid-template-areas:
+      "media"
+      "contextinfo"
+      "controls";
+    grid-template-rows: minmax(0, 1fr) auto var(--controls-height);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .content-cover {
+    margin: 4px 4px 0;
+  }
+   .content {
+      margin: 0;
+    }
+
+  .context-info {
+    padding: 4px 12px 0;
+    line-height: 1.15;
+  }
+
+  .controls {
+    align-self: center;
+    width: 100%;
+    padding: 2px 4px 6px;
+    gap: 2px;
+  }
+}
+
+@container (max-width: 240px) {
+  .pip-container {
+    grid-template-rows: minmax(0, 1fr) auto auto;
+  }
+
+  .controls {
+    flex-wrap: wrap;
+    align-content: center;
+  }
 }
 
 @media (max-height: 170px) {
@@ -321,6 +383,67 @@ html, body, #app {
   .context-info {
     padding: 0 8px;
   }
+
+  @container (max-width: 360px) {
+    .pip-container {
+      gap: 4px 8px;
+      grid-template-areas:
+        "media contextinfo"
+        "media controls";
+      grid-template-rows: minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr);
+      padding: 4px;
+    }
+
+    .content-cover {
+      height: 100%;
+      min-width: 96px;
+      max-width: 124px;
+    }
+
+    .content {
+      margin: 0;
+    }
+
+    .context-info {
+      align-items: flex-start;
+      justify-content: end;
+      padding: 4px 4px 0 0;
+      line-height: 1.1;
+    }
+
+    .context-info__title {
+      font-size: 16px;
+    }
+
+    .context-info__sub {
+      font-size: 12px;
+    }
+
+    .controls {
+      align-self: end;
+      justify-content: flex-start;
+      width: auto;
+      padding: 0 0 2px;
+      gap: 4px;
+    }
+
+    .control-extra {
+      display: none;
+    }
+
+    .control-play {
+      order: 1;
+    }
+
+    .control-next {
+      order: 2;
+    }
+
+    .control-previous {
+      order: 3;
+    }
+  }
 }
 
 @media (min-height: 171px) {
@@ -346,6 +469,9 @@ html, body, #app {
     min-width: 40px;
     height: 100%;
   }
+ .content {
+      margin: 0;
+    }
 
   .context-info {
     grid-area: contextinfo;

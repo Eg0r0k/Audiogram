@@ -1,4 +1,4 @@
-import { computed } from "vue";
+import { computed, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
 import { PlaylistId } from "@/types/ids";
@@ -16,10 +16,11 @@ import {
   updatePlaylistAndSync,
 } from "@/queries/playlist.queries";
 import { routeLocation } from "@/app/router/route-locations";
+import type { TrackSortKey } from "@/modules/tracks/types";
 
 export type { PlaylistChanges } from "@/queries/playlist.queries";
 
-export function usePlaylistPage() {
+export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>) {
   const route = useRoute();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -41,12 +42,14 @@ export function usePlaylistPage() {
     data: infiniteData,
     fetchNextPage,
     hasNextPage,
+    isLoading: isTracksLoading,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.playlists.tracksPage(playlistId.value)),
-    queryFn: ({ pageParam = 0 }) => getPlaylistTracksPaginated(playlistId.value, pageParam),
+    queryKey: computed(() => queryKeys.playlists.tracksPage(playlistId.value, sortKey.value)),
+    queryFn: ({ pageParam = 0 }) => getPlaylistTracksPaginated(playlistId.value, pageParam, undefined, sortKey.value),
     initialPageParam: 0,
     getNextPageParam: lastPage => lastPage.nextOffset,
+    placeholderData: previousData => previousData,
     enabled: computed(() => !!playlist.value),
   });
 
@@ -69,7 +72,7 @@ export function usePlaylistPage() {
   } = usePlaylistCover(playlistId);
 
   const isLoading = computed(() =>
-    isPlaylistLoading.value || isCoverLoading.value,
+    isPlaylistLoading.value || isCoverLoading.value || isTracksLoading.value,
   );
 
   const playlistDetailData = computed<PlaylistData | null>(() => {
@@ -120,6 +123,7 @@ export function usePlaylistPage() {
     tracks,
     playlistData: playlistDetailData,
     coverUrl,
+    trackCount,
     totalDuration,
     isLoading,
     isError,
@@ -130,6 +134,7 @@ export function usePlaylistPage() {
     refetch,
     fetchNextPage,
     hasNextPage,
+    isTracksLoading,
     isFetchingNextPage,
   };
 }

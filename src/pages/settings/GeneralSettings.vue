@@ -1,4 +1,3 @@
-<!-- src/modules/settings/pages/GeneralSettings.vue -->
 <template>
   <Scrollable
     direction="vertical"
@@ -7,8 +6,7 @@
     <div class="pb-8">
       <SettingsHeader :title="$t('settings.index.general')" />
 
-      <!-- Updates -->
-      <SettingsGroup class="mt-2">
+      <SettingsGroup>
         <Item @click="setCheckUpdatesOnLaunch(!checkUpdatesOnLaunch)">
           <ItemContent>
             <ItemTitle>{{ $t('settings.general.checkUpdates') }}</ItemTitle>
@@ -23,7 +21,6 @@
         </Item>
       </SettingsGroup>
 
-      <!-- System (Tauri only) -->
       <template v-if="isTauri">
         <SettingsGroup class="mt-2">
           <Item @click="setLaunchAtStartup(!launchAtStartup)">

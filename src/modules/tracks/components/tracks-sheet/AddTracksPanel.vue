@@ -69,6 +69,7 @@
         </template>
       </VirtualScrollable>
       <AddFloatingButton
+        :count="selectedCount"
         :show="selectedCount > 0"
         @click="handleConfirm"
       />
@@ -117,6 +118,7 @@ const rightPanel = useRightPanelStore();
 const searchInput = ref("");
 const debouncedSearchQuery = refDebounced(searchInput, 200);
 const selectedTrackMap = ref(new Map<string, Track>());
+const lastSelectedTrackId = ref<string | null>(null);
 
 const normalizedEntityId = computed(() => String(props.payload.entityId));
 const normalizedSearchQuery = computed(() => debouncedSearchQuery.value.trim());
@@ -219,8 +221,31 @@ function isTrackSelected(trackId: string) {
   return selectedTrackMap.value.has(trackId);
 }
 
-function toggleTrackSelect(track: Track) {
+function toggleTrackSelect(track: Track, event: MouseEvent | KeyboardEvent) {
   const next = new Map(selectedTrackMap.value);
+  const currentIndex = tracks.value.findIndex(item => item.id === track.id);
+  const anchorIndex = lastSelectedTrackId.value === null
+    ? -1
+    : tracks.value.findIndex(item => item.id === lastSelectedTrackId.value);
+
+  if (event.shiftKey && currentIndex !== -1 && anchorIndex !== -1) {
+    const start = Math.min(anchorIndex, currentIndex);
+    const end = Math.max(anchorIndex, currentIndex);
+    const shouldSelectRange = !next.has(track.id);
+
+    for (const rangeTrack of tracks.value.slice(start, end + 1)) {
+      if (shouldSelectRange) {
+        next.set(rangeTrack.id, rangeTrack);
+      }
+      else {
+        next.delete(rangeTrack.id);
+      }
+    }
+
+    selectedTrackMap.value = next;
+    lastSelectedTrackId.value = track.id;
+    return;
+  }
 
   if (next.has(track.id)) {
     next.delete(track.id);
@@ -230,6 +255,7 @@ function toggleTrackSelect(track: Track) {
   }
 
   selectedTrackMap.value = next;
+  lastSelectedTrackId.value = track.id;
 }
 
 async function handleConfirm() {
@@ -250,6 +276,7 @@ async function handleConfirm() {
 
 function resetState() {
   selectedTrackMap.value = new Map();
+  lastSelectedTrackId.value = null;
   searchInput.value = "";
 }
 

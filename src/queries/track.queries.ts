@@ -96,8 +96,13 @@ export async function getTrackEntityById(trackId: TrackId) {
   return unwrapResult(trackRepository.findById(trackId));
 }
 
-export async function getLikedTracksPageData(): Promise<LikedTracksPageData> {
-  const tracks = await getLikedTracks();
+export async function getLikedTracksPageData(sortKey: TrackSortKey | null = null): Promise<LikedTracksPageData> {
+  const tracks = sortKey
+    ? await unwrapResult(trackRepository.findSortedByIds(
+        (await getLikedTracks()).map(track => track.id),
+        sortKey,
+      ))
+    : await getLikedTracks();
   const mappedTracks = await loadTrackRelations(tracks);
 
   return {
@@ -170,12 +175,18 @@ export async function getTracksIndexPageData(
 export async function getLikedTracksPaginated(
   offset: number,
   limit = PAGE_SIZE,
+  sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> {
-  const [tracks, total, totalDuration] = await Promise.all([
-    unwrapResult(trackRepository.findLikedPaginated(offset, limit)),
+  const [rawTracks, total, totalDuration] = await Promise.all([
+    sortKey
+      ? getLikedTracks().then(tracks => unwrapResult(
+          trackRepository.findSortedByIds(tracks.map(track => track.id), sortKey),
+        ))
+      : unwrapResult(trackRepository.findLikedPaginated(offset, limit)),
     unwrapResult(trackRepository.countLiked()),
     unwrapResult(trackRepository.sumDurationByLiked()),
   ]);
+  const tracks = sortKey ? rawTracks.slice(offset, offset + limit) : rawTracks;
 
   const mappedTracks = await loadTrackRelations(tracks);
   const nextOffset = offset + limit < total ? offset + limit : null;
@@ -199,7 +210,7 @@ export const trackQueries = {
   likedPage: () =>
     queryOptions({
       queryKey: queryKeys.tracks.likedPage(),
-      queryFn: getLikedTracksPageData,
+      queryFn: () => getLikedTracksPageData(),
     }),
   index: (sortKey: TrackSortKey, searchQuery = "") =>
     queryOptions({

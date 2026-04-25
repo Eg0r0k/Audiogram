@@ -36,11 +36,11 @@
           :icon="IconDatabase"
           :title="$t('settings.index.storage')"
         />
-        <SettingsLink
+        <!-- <SettingsLink
           :to="routeLocation.settingsNotifications()"
           :icon="IconBell"
           :title="$t('settings.index.notifications')"
-        />
+        /> -->
       </SettingsGroup>
 
       <SettingsGroup class="mt-3">
@@ -85,7 +85,6 @@ import IconPalette from "~icons/tabler/palette";
 import IconLanguage from "~icons/tabler/language";
 import IconHeadphones from "~icons/tabler/headphones";
 import IconDatabase from "~icons/tabler/database";
-import IconBell from "~icons/tabler/bell";
 import IconInfo from "~icons/tabler/info-circle";
 import IconRefresh from "~icons/tabler/refresh";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";

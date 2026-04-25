@@ -5,12 +5,22 @@
     />
     <Scrollable class="flex-1">
       <div class="grid gap-4 p-4 pt-0">
-        <div class="overflow-hidden min-w-0 rounded-2xl bg-muted ">
+        <div class="relative min-w-0 overflow-hidden rounded-2xl bg-muted">
           <NuxtImage
+            v-slot="{ imgAttrs, isLoaded, src }"
             :src="coverUrl"
             fallback-src="/img/fallback.svg"
-            class="aspect-square w-full object-cover"
-          />
+            custom
+          >
+            <img
+              :key="src"
+              v-bind="imgAttrs"
+              :src="src"
+              alt=""
+              class="aspect-square w-full object-cover transition-[transform,opacity] duration-180 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:scale-100 motion-reduce:transition-opacity motion-reduce:duration-150"
+              :class="isLoaded ? 'scale-100 opacity-100' : 'scale-[1.02] opacity-0 motion-reduce:scale-100'"
+            >
+          </NuxtImage>
         </div>
         <template v-if="currentTrack">
           <div class="grid gap-3">
@@ -110,7 +120,7 @@
 
         <div
           v-else
-          class="rounded-xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground"
+          class=" p-4 text-center text-sm text-muted-foreground"
         >
           Сейчас ничего не играет.
         </div>

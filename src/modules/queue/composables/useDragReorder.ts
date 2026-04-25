@@ -87,15 +87,17 @@ export function useDragReorder(options: UseDragReorderOptions) {
   }
 
   function handlePointerUp() {
-    if (dragActivated) {
-      const { dragIndex, dropIndex } = state.value;
-
-      if (dragIndex !== dropIndex && dragIndex >= 0 && dropIndex >= 0) {
-        onReorder(dragIndex, dropIndex);
-      }
-    }
+    const { dragIndex, dropIndex } = state.value;
+    const shouldReorder = dragActivated
+      && dragIndex !== dropIndex
+      && dragIndex >= 0
+      && dropIndex >= 0;
 
     cleanup();
+
+    if (shouldReorder) {
+      onReorder(dragIndex, dropIndex);
+    }
   }
 
   function cleanup() {

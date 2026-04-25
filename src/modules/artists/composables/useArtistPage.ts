@@ -1,4 +1,4 @@
-import { computed } from "vue";
+import { computed, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
 import { ArtistId } from "@/types/ids";
@@ -14,10 +14,11 @@ import {
   updateArtistAndSync,
 } from "@/queries/artist.queries";
 import { routeLocation } from "@/app/router/route-locations";
+import type { TrackSortKey } from "@/modules/tracks/types";
 
 export type { ArtistChanges } from "@/queries/artist.queries";
 
-export function useArtistPage() {
+export function useArtistPage(sortKey: Ref<TrackSortKey | null>) {
   const route = useRoute();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -38,12 +39,14 @@ export function useArtistPage() {
     data: tracksInfiniteData,
     fetchNextPage: fetchNextTrackPage,
     hasNextPage: hasNextTrackPage,
+    isLoading: isTracksLoading,
     isFetchingNextPage: isFetchingNextTrackPage,
   } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.artists.tracksPage(artistId.value)),
-    queryFn: ({ pageParam = 0 }) => getArtistTracksPaginated(artistId.value, pageParam),
+    queryKey: computed(() => queryKeys.artists.tracksPage(artistId.value, sortKey.value)),
+    queryFn: ({ pageParam = 0 }) => getArtistTracksPaginated(artistId.value, pageParam, undefined, sortKey.value),
     initialPageParam: 0,
     getNextPageParam: lastPage => lastPage.nextOffset,
+    placeholderData: previousData => previousData,
     enabled: computed(() => !!artist.value),
   });
 
@@ -82,7 +85,7 @@ export function useArtistPage() {
   } = useEntityCover("artist", artistId);
 
   const isLoading = computed(
-    () => isArtistLoading.value || isCoverLoading.value,
+    () => isArtistLoading.value || isCoverLoading.value || isTracksLoading.value,
   );
 
   const artistDataMapped = computed<ArtistData | null>(() => {
@@ -133,6 +136,7 @@ export function useArtistPage() {
     refetch,
     fetchNextTrackPage,
     hasNextTrackPage,
+    isTracksLoading,
     isFetchingNextTrackPage,
     fetchNextAlbumPage,
     hasNextAlbumPage,

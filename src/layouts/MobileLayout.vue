@@ -49,7 +49,10 @@
           </div>
 
           <div class="min-h-0 flex-1">
-            <MobileFullPlayer class="h-full" />
+            <MobileFullPlayer
+              class="h-full"
+              @close="isFullPlayerOpen = false"
+            />
           </div>
         </div>
       </div>

@@ -10,8 +10,9 @@ import { queryKeys } from "@/queries/query-keys";
 import { buildPlaylistDoc } from "@/modules/search/buildDocuments";
 import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/searchIndex";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
+import type { TrackSortKey } from "@/modules/tracks/types";
 import type { Track } from "@/modules/player/types";
-import type { PlaylistId } from "@/types/ids";
+import type { PlaylistId, TrackId } from "@/types/ids";
 import { PlaylistId as createPlaylistId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import {
@@ -33,6 +34,18 @@ export interface PlaylistChanges {
   removeCover?: boolean;
 }
 
+async function getSortedPlaylistTrackIds(
+  trackIds: TrackId[],
+  sortKey: TrackSortKey | null,
+) {
+  if (!sortKey) {
+    return trackIds;
+  }
+
+  const sortedTracks = await unwrapResult(trackRepository.findSortedByIds(trackIds, sortKey));
+  return sortedTracks.map(track => track.id);
+}
+
 export async function getPlaylists() {
   return unwrapResult(playlistRepository.findAll());
 }
@@ -49,6 +62,7 @@ export async function getPlaylistByIdOrThrow(playlistId: PlaylistId) {
 
 export async function getPlaylistPageData(
   playlistId: PlaylistId,
+  sortKey: TrackSortKey | null = null,
 ): Promise<PlaylistPageData> {
   const playlist = await getPlaylistByIdOrThrow(playlistId);
 
@@ -59,7 +73,8 @@ export async function getPlaylistPageData(
     };
   }
 
-  const rawTracks = await unwrapResult(trackRepository.findByIds(playlist.trackIds));
+  const sortedTrackIds = await getSortedPlaylistTrackIds(playlist.trackIds, sortKey);
+  const rawTracks = await unwrapResult(trackRepository.findByIds(sortedTrackIds));
   const artistIds = unique(rawTracks.flatMap(track => track.artistIds));
   const albumIds = unique(rawTracks.map(track => track.albumId));
 
@@ -68,15 +83,9 @@ export async function getPlaylistPageData(
     unwrapResult(albumRepository.findByIds(albumIds)),
   ]);
 
-  const trackMap = new Map(rawTracks.map(track => [track.id, track]));
-  const orderedTracks = playlist.trackIds.flatMap((trackId) => {
-    const track = trackMap.get(trackId);
-    return track ? [track] : [];
-  });
-
   return {
     playlist,
-    tracks: mapTracks(orderedTracks, artists, albums),
+    tracks: mapTracks(rawTracks, artists, albums),
   };
 }
 
@@ -84,10 +93,12 @@ export async function getPlaylistTracksPaginated(
   playlistId: PlaylistId,
   offset: number,
   limit = PAGE_SIZE,
+  sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedPlaylistTracksResult> {
-  const { trackIds, total } = await unwrapResult(
-    playlistRepository.findTrackIdsPaginated(playlistId, offset, limit),
-  );
+  const playlist = await getPlaylistByIdOrThrow(playlistId);
+  const sortedTrackIds = await getSortedPlaylistTrackIds(playlist.trackIds, sortKey);
+  const trackIds = sortedTrackIds.slice(offset, offset + limit);
+  const total = sortedTrackIds.length;
 
   if (trackIds.length === 0) {
     return { tracks: [], nextOffset: null, total, totalDuration: 0 };
@@ -95,7 +106,7 @@ export async function getPlaylistTracksPaginated(
 
   const rawTracks = await unwrapResult(trackRepository.findByIds(trackIds));
   const [durationResult, artistIds, albumIds] = await Promise.all([
-    unwrapResult(trackRepository.sumDurationByTrackIds(trackIds)),
+    unwrapResult(trackRepository.sumDurationByTrackIds(sortedTrackIds)),
     Promise.resolve(unique(rawTracks.flatMap(track => track.artistIds))),
     Promise.resolve(unique(rawTracks.map(track => track.albumId))),
   ]);
@@ -137,10 +148,10 @@ export const playlistQueries = {
       queryKey: queryKeys.playlists.page(playlistId),
       queryFn: () => getPlaylistPageData(playlistId),
     }),
-  tracksPageInfinite: (playlistId: PlaylistId, pageParam: number) =>
+  tracksPageInfinite: (playlistId: PlaylistId, pageParam: number, sortKey: TrackSortKey | null = null) =>
     queryOptions({
-      queryKey: [...queryKeys.playlists.tracksPage(playlistId), pageParam],
-      queryFn: () => getPlaylistTracksPaginated(playlistId, pageParam),
+      queryKey: [...queryKeys.playlists.tracksPage(playlistId, sortKey), pageParam],
+      queryFn: () => getPlaylistTracksPaginated(playlistId, pageParam, PAGE_SIZE, sortKey),
     }),
 } as const;
 
