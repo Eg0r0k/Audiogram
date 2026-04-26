@@ -35,7 +35,7 @@
           gradient-color="transparent"
           gradient-length="20px"
         >
-          <span class="text-xl font-semibold leading-tight">{{ currentTrack?.title }}</span>
+          <span class="text-xl text-white font-semibold leading-tight">{{ currentTrack?.title }}</span>
         </MarqueeBlock>
         <MarqueeBlock
           :duration="6"
@@ -45,7 +45,7 @@
           gradient-color="transparent"
           gradient-length="20px"
         >
-          <span class="text-base text-white/60 capitalize mt-0.5 block">
+          <span class="text-base text-white/80 capitalize mt-0.5 block">
             {{ currentTrack?.artist }}
           </span>
         </MarqueeBlock>
@@ -55,7 +55,7 @@
         <Button
           variant="ghost"
           size="icon-lg"
-          class="rounded-full"
+          class="rounded-full text-white"
           @click.stop="toggleLike"
         >
           <IconLikedFilled
@@ -70,7 +70,7 @@
         <Button
           variant="ghost"
           size="icon-lg"
-          class="rounded-full"
+          class="rounded-full text-white"
           @click.stop="onDotsClick"
         >
           <IconDots class="size-6" />

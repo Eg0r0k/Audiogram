@@ -8,14 +8,14 @@
         <div class="flex items-start justify-between gap-4">
           <div class="flex flex-col gap-1">
             <DialogTitle>
-              {{ t("import.title", { count: current }) }}
+              {{ t("common.import.title", { count: current }) }}
             </DialogTitle>
 
             <p
               v-if="files.length < total"
               class="text-xs text-muted-foreground"
             >
-              {{ t("import.visibleFiles", { visible: visibleFileCount, total }) }}
+              {{ t("common.import.visibleFiles", { visible: visibleFileCount, total }) }}
             </p>
           </div>
         </div>
@@ -23,12 +23,18 @@
 
       <Separator />
 
-      <Scrollable>
-        <div class="flex flex-col p-2">
+      <VirtualScrollable
+        :items="files"
+        :item-height="48"
+        :padding-top="8"
+        :padding-bottom="8"
+        class="flex-1 min-h-0"
+      >
+        <template #default="{ item: file }">
           <Item
-            v-for="file in files"
             :key="file.name"
             size="sm"
+            class="mx-2 h-12 flex-nowrap py-0"
           >
             <ItemMedia>
               <IconLoader2
@@ -58,8 +64,8 @@
               </ItemDescription>
             </ItemContent>
           </Item>
-        </div>
-      </Scrollable>
+        </template>
+      </VirtualScrollable>
 
       <Separator />
       <div class="px-4 py-3 flex gap-2">
@@ -79,7 +85,7 @@
           variant="ghost-primary"
           @click="goToLibrary"
         >
-          {{ t("import.goToLibrary") }}
+          {{ t("common.import.goToLibrary") }}
         </Button>
 
         <Button
@@ -89,7 +95,7 @@
           disabled
           class="flex-1"
         >
-          {{ isCancelling ? t("import.status.cancelling") : isPaused ? t("import.status.paused") : t("import.status.running") }}
+          {{ isCancelling ? t("common.import.status.cancelling") : isPaused ? t("common.import.status.paused") : t("common.import.status.running") }}
         </Button>
       </div>
     </DialogContent>
@@ -102,10 +108,10 @@
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
         <DialogTitle>
-          {{ t("import.status.cancelTitle") }}
+          {{ t("common.import.status.cancelTitle") }}
         </DialogTitle>
         <DialogDescription>
-          {{ t("import.status.cancelDescription") }}
+          {{ t("common.import.status.cancelDescription") }}
         </DialogDescription>
       </DialogHeader>
 
@@ -115,14 +121,14 @@
           :disabled="isCancelling"
           @click="continueImport"
         >
-          {{ t("import.status.continueImport") }}
+          {{ t("common.import.status.continueImport") }}
         </Button>
         <Button
           variant="destructive-link"
           :disabled="isCancelling"
           @click="confirmCancelImport"
         >
-          {{ t("import.status.confirmCancel") }}
+          {{ t("common.import.status.confirmCancel") }}
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -151,7 +157,7 @@ import {
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
+import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import { routeLocation } from "@/app/router/route-locations";
 import IconCheck from "~icons/tabler/check";
 import IconMinus from "~icons/tabler/minus";

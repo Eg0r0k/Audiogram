@@ -15,6 +15,7 @@
   <ImportProgressDialog />
   <DeleteConfirmDialog />
   <Toaster
+    :expand="true"
     position="top-center"
     class="pointer-events-auto"
   />

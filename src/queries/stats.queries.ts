@@ -6,7 +6,18 @@ import {
 import { queryKeys } from "@/queries/query-keys";
 import type { TrackId, ArtistId } from "@/types/ids";
 import { queryOptions } from "@tanstack/vue-query";
+import type { QueryClient } from "@tanstack/vue-query";
 import { unwrapResult } from "./shared";
+import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
+
+export interface RecentHistoryEntry {
+  eventId: string;
+  listenedAt: number;
+  secondsListened: number;
+  completed: boolean;
+  skipped: boolean;
+  track: ReturnType<typeof mapTrackEntityToPlayerTrack>;
+}
 
 const STATS_STALE_TIME = 5 * 60 * 1000;
 
@@ -56,4 +67,33 @@ export const statsQueries = {
       },
       staleTime: STATS_STALE_TIME,
     }),
+  recentHistory: (limit: number) =>
+    queryOptions({
+      queryKey: queryKeys.stats.recentHistory(limit),
+      queryFn: async (): Promise<RecentHistoryEntry[]> => {
+        const events = await statsRepository.recentHistory(limit);
+        const trackIds = events.map(event => event.trackId);
+        const tracks = await unwrapResult(trackRepository.findByIds(trackIds));
+        const tracksById = new Map(tracks.map(track => [track.id, mapTrackEntityToPlayerTrack(track)]));
+
+        return events.flatMap((event) => {
+          const track = tracksById.get(event.trackId);
+          if (!track) return [];
+
+          return [{
+            eventId: event.id,
+            listenedAt: event.startedAt,
+            secondsListened: event.secondsListened,
+            completed: event.completed,
+            skipped: event.skipped,
+            track,
+          }];
+        });
+      },
+      staleTime: 10_000,
+    }),
 } as const;
+
+export function invalidateStatsQueries(queryClient: QueryClient): Promise<void> {
+  return queryClient.invalidateQueries({ queryKey: queryKeys.stats.all() });
+}

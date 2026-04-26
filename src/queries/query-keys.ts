@@ -68,5 +68,6 @@ export const queryKeys = {
       ["stats", "topArtistsMeta", ...ids] as const,
     totalTime: (since?: number) => ["stats", "totalTime", since] as const,
     dailyActivity: (days: number) => ["stats", "dailyActivity", days] as const,
+    recentHistory: (limit: number) => ["stats", "recentHistory", limit] as const,
   },
 } as const;

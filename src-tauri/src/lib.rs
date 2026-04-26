@@ -1,4 +1,6 @@
-use tauri::Emitter;
+use std::{fs, path::Path};
+
+use tauri::{Emitter, Manager};
 
 #[cfg(desktop)]
 mod updater;
@@ -6,9 +8,36 @@ mod updater;
 #[cfg(desktop)]
 mod tray;
 
+fn dir_size(path: &Path) -> std::io::Result<u64> {
+    let mut total = 0;
+
+    if !path.exists() {
+        return Ok(0);
+    }
+
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        let metadata = entry.metadata()?;
+
+        if metadata.is_dir() {
+            total += dir_size(&entry.path())?;
+        } else {
+            total += metadata.len();
+        }
+    }
+
+    Ok(total)
+}
+
 #[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+fn app_data_folder_size(app: tauri::AppHandle, folder: String) -> Result<u64, String> {
+    match folder.as_str() {
+        "tracks" | "lyrics" => {}
+        _ => return Err("unsupported app data folder".into()),
+    }
+
+    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    dir_size(&app_data_dir.join(folder)).map_err(|e| e.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -37,13 +66,13 @@ pub fn run() {
 
     #[cfg(desktop)]
     let builder = builder.invoke_handler(tauri::generate_handler![
-        greet,
+        app_data_folder_size,
         updater::check_update,
         updater::install_update,
     ]);
 
     #[cfg(mobile)]
-    let builder = builder.invoke_handler(tauri::generate_handler![greet]);
+    let builder = builder.invoke_handler(tauri::generate_handler![]);
 
     builder
         .setup(|app| {

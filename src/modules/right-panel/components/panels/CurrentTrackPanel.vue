@@ -4,7 +4,7 @@
       title="Сейчас играет"
     />
     <Scrollable class="flex-1">
-      <div class="grid gap-4 p-4 pt-0">
+      <div class="grid gap-4 py-4 px-5 pt-0">
         <div class="relative min-w-0 overflow-hidden rounded-2xl bg-muted">
           <NuxtImage
             v-slot="{ imgAttrs, isLoaded, src }"
@@ -102,6 +102,7 @@
                   Показать очередь
                 </Button>
               </div>
+
               <TrackContextMenu context="queue">
                 <TrackRow
                   v-if="nextQueueItem"
@@ -120,7 +121,7 @@
 
         <div
           v-else
-          class=" p-4 text-center text-sm text-muted-foreground"
+          class=" p-2 text-center font-medium text-sm text-muted-foreground"
         >
           Сейчас ничего не играет.
         </div>

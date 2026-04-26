@@ -1,7 +1,7 @@
 import { ref, computed } from "vue";
 import { useQueryClient } from "@tanstack/vue-query";
 import { StorageInfo } from "../schema/storage";
-import { collectStorageInfo, clearAllData } from "@/services/storage-info.service";
+import { collectStorageInfo, clearAllData, clearLyricsData } from "@/services/storage-info.service";
 import { formatBytes } from "@/lib/format/memory";
 import { useLibraryStore } from "@/modules/library/store/library.store";
 
@@ -17,14 +17,14 @@ export function useStorageSettings() {
 
   const totalUsedByApp = computed(() => {
     if (!info.value) return 0;
-    return info.value.tracksSize + info.value.coversSize + info.value.dbSize;
+    return info.value.tracksSize + info.value.lyricsSize + info.value.dbSize;
   });
 
   const formatted = computed(() => {
     if (!info.value) {
       return {
         tracksSize: "—",
-        coversSize: "—",
+        lyricsSize: "—",
         dbSize: "—",
         totalUsed: "—",
         quotaTotal: "—",
@@ -42,7 +42,7 @@ export function useStorageSettings() {
 
     return {
       tracksSize: formatBytes(i.tracksSize),
-      coversSize: formatBytes(i.coversSize),
+      lyricsSize: formatBytes(i.lyricsSize),
       dbSize: formatBytes(i.dbSize),
       totalUsed: formatBytes(totalUsedByApp.value),
       quotaTotal: i.quotaTotal > 0 ? formatBytes(i.quotaTotal) : null,
@@ -93,6 +93,18 @@ export function useStorageSettings() {
     }
   }
 
+  async function clearLyricsDataHandler() {
+    isClearing.value = true;
+    try {
+      await clearLyricsData();
+      await queryClient.invalidateQueries({ queryKey: ["tracks"] });
+      await refresh();
+    }
+    finally {
+      isClearing.value = false;
+    }
+  }
+
   return {
     info,
     isLoading,
@@ -100,5 +112,6 @@ export function useStorageSettings() {
     formatted,
     refresh,
     clearAllData: clearAllDataHandler,
+    clearLyricsData: clearLyricsDataHandler,
   };
 }

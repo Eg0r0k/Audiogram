@@ -1,5 +1,7 @@
 <template>
-  <div class="library-sort-header-container border-b border-border/40 px-4 sm:px-6">
+  <div
+    class="library-sort-header-container border-b border-border/40 px-4 sm:px-6"
+  >
     <div class="library-sort-header">
       <div class="index-col flex items-center pl-3">
         <IconHashtag class="size-4" />
@@ -84,7 +86,9 @@ import IconHashtag from "~icons/tabler/hash";
 
 const { t } = useI18n();
 
-defineProps<{ sortKey: TrackSortKey | null }>();
+defineProps<{
+  sortKey: TrackSortKey | null;
+}>();
 defineEmits(["toggle-title", "toggle-album", "toggle-date", "toggle-duration"]);
 </script>
 

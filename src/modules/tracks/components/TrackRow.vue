@@ -200,6 +200,11 @@ const isCurrentTrack = computed(() => {
   if (props.queueItemId) {
     return queueStore.currentItem?.id === props.queueItemId;
   }
+
+  if (props.menuTarget === "queue" || props.menuTarget === "history") {
+    return false;
+  }
+
   return playerStore.currentTrack?.id === props.track.id;
 });
 const isPlaying = computed(() => playerStore.isPlaying);

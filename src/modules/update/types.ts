@@ -31,4 +31,4 @@ export interface UpdateError {
   message: string;
 }
 
-export type UpdateChannel = "stable" | "beta";
+export type UpdateChannel = "stable";

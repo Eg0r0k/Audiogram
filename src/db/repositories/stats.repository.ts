@@ -1,4 +1,5 @@
 import { db } from "@/db";
+import type { ListenEventEntity } from "@/db/entities";
 
 export interface TopEntry {
   id: string;
@@ -7,6 +8,14 @@ export interface TopEntry {
 }
 
 class StatsRepository {
+  async recentHistory(limit = 100): Promise<ListenEventEntity[]> {
+    return db.listenEvents
+      .orderBy("startedAt")
+      .reverse()
+      .limit(limit)
+      .toArray();
+  }
+
   async topTracks(limit = 10, since?: number): Promise<TopEntry[]> {
     const query = db.listenEvents.where("startedAt");
     const events = since

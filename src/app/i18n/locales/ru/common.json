@@ -1,8 +1,8 @@
 {
   "import": {
     "button": "Импорт треков",
-    "title": "Импорт {{count}} треков",
-    "visibleFiles": "Показаны только первые {{visible}} файлов из {{total}}",
+    "title": "Импорт {count} треков",
+    "visibleFiles": "Показаны только первые {visible} файлов из {total}",
     "goToLibrary": "Перейти в библиотеку",
     "status": {
       "running": "Идёт импорт...",
@@ -32,6 +32,8 @@
   "delete": "Удалить",
   "remove": "Убрать",
   "create": "Создать",
+  "createAlbum": "Создать альбом",
+  "createArtist": "Создать артиста",
   "update": "Обновить",
   "close": "Закрыть",
   "open": "Открыть",

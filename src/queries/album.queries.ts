@@ -10,7 +10,8 @@ import { buildAlbumDocFromDb, buildTrackDocFromDb } from "@/modules/search/build
 import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/searchIndex";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { TrackSortKey } from "@/modules/tracks/types";
-import type { AlbumId } from "@/types/ids";
+import { AlbumId as createAlbumId } from "@/types/ids";
+import type { AlbumId, ArtistId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import {
   removeAlbumCaches,
@@ -128,6 +129,27 @@ export const albumQueries = {
       queryFn: () => getAlbumTracksPaginated(albumId, pageParam, PAGE_SIZE, sortKey),
     }),
 } as const;
+
+export async function createAlbumAndSync(
+  queryClient: QueryClient,
+  artistId: ArtistId,
+  title = "New album",
+) {
+  const now = Date.now();
+  const album: AlbumEntity = {
+    id: createAlbumId(crypto.randomUUID()),
+    title,
+    artistId,
+    addedAt: now,
+    updatedAt: now,
+  };
+
+  await unwrapResult(albumRepository.create(album));
+  syncAlbumCaches(queryClient, album);
+  await upsertSearchDocuments([await buildAlbumDocFromDb(album)]);
+
+  return album;
+}
 
 export async function updateAlbumAndSync(
   queryClient: QueryClient,

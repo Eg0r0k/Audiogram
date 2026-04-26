@@ -1,5 +1,8 @@
 {
   "title": "Queue",
+  "tabQueue": "Queue",
+  "tabHistory": "History",
+  "historyEmpty": "Listening history is empty",
   "nowPlaying": "Now Playing",
   "upNext": "Up Next",
   "drag": "Drag to reorder",

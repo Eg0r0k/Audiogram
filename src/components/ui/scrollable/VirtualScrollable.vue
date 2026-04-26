@@ -26,6 +26,15 @@
       </div>
 
       <div
+        v-if="$slots.sticky"
+        ref="stickyRef"
+        class="virtual-scrollable-sticky"
+        :style="stickyStyle"
+      >
+        <slot name="sticky" />
+      </div>
+
+      <div
         v-if="items.length > 0"
         :style="{
           height: `${totalSize}px`,
@@ -43,7 +52,7 @@
             top: 0,
             left: 0,
             width: '100%',
-            transform: `translateY(${virtualRow.start - beforeHeight + effectivePaddingTop}px)`,
+            transform: `translateY(${virtualRow.start - preListHeight + effectivePaddingTop}px)`,
           }"
         >
           <slot
@@ -86,6 +95,7 @@ interface Props {
   loadMoreOffset?: number;
   paddingTop?: number;
   paddingBottom?: number;
+  stickyOffset?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -99,6 +109,7 @@ const props = withDefaults(defineProps<Props>(), {
   loadMoreOffset: 300,
   paddingTop: 0,
   paddingBottom: 0,
+  stickyOffset: "0px",
 });
 
 const emit = defineEmits<{
@@ -109,6 +120,8 @@ const emit = defineEmits<{
 }>();
 
 const beforeHeight = ref(0);
+const stickyHeight = ref(0);
+const preListHeight = computed(() => beforeHeight.value + stickyHeight.value);
 
 const effectivePaddingTop = computed(() =>
   props.items.length > 0 ? props.paddingTop : 0,
@@ -127,8 +140,10 @@ const totalSize = computed(() => {
 
 const containerRef = useTemplateRef("containerRef");
 const beforeRef = useTemplateRef("beforeRef");
+const stickyRef = useTemplateRef("stickyRef");
 
 let beforeResizeObserver: ResizeObserver | null = null;
+let stickyResizeObserver: ResizeObserver | null = null;
 let lastLoadMoreItemsCount = -1;
 let scrollDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -136,6 +151,15 @@ function updateBeforeHeight() {
   const newHeight = beforeRef.value?.getBoundingClientRect().height ?? 0;
   if (beforeHeight.value !== newHeight) {
     beforeHeight.value = newHeight;
+    virtualizer.value.measure();
+    scrollable.updateThumb();
+  }
+}
+
+function updateStickyHeight() {
+  const newHeight = stickyRef.value?.getBoundingClientRect().height ?? 0;
+  if (stickyHeight.value !== newHeight) {
+    stickyHeight.value = newHeight;
     virtualizer.value.measure();
     scrollable.updateThumb();
   }
@@ -153,7 +177,7 @@ const virtualizer = useVirtualizer(computed(() => ({
   estimateSize: () => props.itemHeight ?? props.estimateSize,
   overscan: props.overscan,
   getItemKey: index => props.getItemKey(index),
-  scrollMargin: beforeHeight.value,
+  scrollMargin: preListHeight.value,
 })));
 
 const measureElement = (el: Element | null) => {
@@ -213,6 +237,10 @@ const showThumbVisible = computed(
 const thumbStyle = computed(() => ({
   height: `${scrollable.thumbSize.value}px`,
   transform: `translateY(${scrollable.thumbPosition.value}px)`,
+}));
+
+const stickyStyle = computed(() => ({
+  top: props.stickyOffset,
 }));
 
 provide("scrollable", scrollable);
@@ -275,6 +303,7 @@ watch(() => props.items, () => {
 onMounted(() => {
   nextTick(() => {
     updateBeforeHeight();
+    updateStickyHeight();
 
     if (beforeRef.value && typeof ResizeObserver !== "undefined") {
       beforeResizeObserver = new ResizeObserver(() => {
@@ -282,11 +311,19 @@ onMounted(() => {
       });
       beforeResizeObserver.observe(beforeRef.value);
     }
+
+    if (stickyRef.value && typeof ResizeObserver !== "undefined") {
+      stickyResizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(updateStickyHeight);
+      });
+      stickyResizeObserver.observe(stickyRef.value);
+    }
   });
 });
 
 onUnmounted(() => {
   beforeResizeObserver?.disconnect();
+  stickyResizeObserver?.disconnect();
   if (scrollDebounceTimer) {
     clearTimeout(scrollDebounceTimer);
   }
@@ -294,6 +331,7 @@ onUnmounted(() => {
 
 defineExpose({
   beforeHeight,
+  stickyHeight,
   scrollToIndex,
   scrollToOffset,
   scrollToEnd: scrollable.scrollToEnd,
@@ -377,6 +415,13 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
   position: absolute;
   inset: 0;
   -webkit-overflow-scrolling: touch;
+}
+
+.virtual-scrollable-sticky {
+  position: sticky;
+  z-index: 10;
+  background: color-mix(in oklab, var(--background) 92%, transparent);
+  backdrop-filter: blur(16px);
 }
 
 .scrollable::-webkit-scrollbar {

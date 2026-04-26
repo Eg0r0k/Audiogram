@@ -1,5 +1,5 @@
 import { ResultAsync } from "neverthrow";
-import type { UpdateChannel, UpdateError, UpdateErrorKind, UpdateInfo } from "../types";
+import type { UpdateError, UpdateErrorKind, UpdateInfo } from "../types";
 import { invoke } from "@tauri-apps/api/core";
 
 function getErrorKind(message: string, fallbackKind: UpdateErrorKind): UpdateErrorKind {
@@ -14,14 +14,14 @@ const toUpdateError = (raw: unknown, fallbackKind: UpdateErrorKind = "UNKNOWN"):
   return { kind: getErrorKind(message, fallbackKind), message };
 };
 
-export const installUpdate = (channel: UpdateChannel): ResultAsync<void, UpdateError> =>
+export const installUpdate = (): ResultAsync<void, UpdateError> =>
   ResultAsync.fromPromise(
-    invoke<void>("install_update", { channel }),
+    invoke<void>("install_update"),
     e => toUpdateError(e, "INSTALL_FAILED"),
   );
 
-export const checkUpdate = (channel: UpdateChannel): ResultAsync<UpdateInfo | null, UpdateError> =>
+export const checkUpdate = (): ResultAsync<UpdateInfo | null, UpdateError> =>
   ResultAsync.fromPromise(
-    invoke<UpdateInfo | null>("check_update", { channel }),
+    invoke<UpdateInfo | null>("check_update"),
     e => toUpdateError(e, "NETWORK"),
   );

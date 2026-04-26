@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { db } from "@/db";
 import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
@@ -5,6 +6,15 @@ import { IS_TAURI } from "@/lib/environment/userAgent";
 import { StorageInfo } from "@/modules/settings/schema/storage";
 
 async function calculateFolderSize(folder: string): Promise<number> {
+  if (IS_TAURI) {
+    try {
+      return await invoke<number>("app_data_folder_size", { folder });
+    }
+    catch {
+      // Fall back to the generic storage API if the native helper is unavailable.
+    }
+  }
+
   const result = await storageService.listFiles(folder);
 
   if (result.isErr()) return 0;
@@ -100,6 +110,18 @@ export async function collectStorageInfo(): Promise<StorageInfo> {
     artistsCount,
     storagePath,
   };
+}
+
+export async function clearLyricsData(): Promise<void> {
+  const result = await storageService.listFiles("lyrics");
+
+  if (result.isOk()) {
+    await Promise.all(result.value.map(file => storageService.deleteFile(file)));
+  }
+
+  await db.tracks.toCollection().modify((track) => {
+    delete track.lyricsPath;
+  });
 }
 
 export async function clearAllData(): Promise<void> {

@@ -64,7 +64,7 @@ export const useUpdateStore = defineStore("update", () => {
     error.value = null;
     downloadProgress.value = null;
 
-    const result = await checkUpdate(channel.value);
+    const result = await checkUpdate();
 
     result.match(
       (info) => {
@@ -121,7 +121,7 @@ export const useUpdateStore = defineStore("update", () => {
       unlistenProgress();
     });
 
-    const result = await installUpdate(channel.value);
+    const result = await installUpdate();
 
     unlistenProgress();
     unlistenInstallStarted();

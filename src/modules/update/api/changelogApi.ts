@@ -34,7 +34,7 @@ function toChangelogError(e: unknown): ChangelogError {
 export const changelogKeys = {
   all: ["changelog"] as const,
   byTag: (tag: string) => [...changelogKeys.all, "tag", tag] as const,
-  latestTag: (channel: "stable" | "beta") =>
+  latestTag: (channel: "stable") =>
     [...changelogKeys.all, "latestTag", channel] as const,
 };
 
@@ -54,25 +54,15 @@ export function releaseNotesQueryOptions(tag: string) {
   });
 }
 
-export const latestTagQueryOptions = (channel: "stable" | "beta") => {
+export const latestTagQueryOptions = (channel: "stable") => {
   return queryOptions({
     queryKey: changelogKeys.latestTag(channel),
     queryFn: async (): Promise<string> => {
-      if (channel === "stable") {
-        const release = await $fetch<GithubRelease>(
-          `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`,
-          { headers: GITHUB_HEADERS },
-        );
-        return release.tag_name;
-      }
-
-      const releases = await $fetch<GithubRelease[]>(
-        `https://api.github.com/repos/${GITHUB_REPO}/releases`,
+      const release = await $fetch<GithubRelease>(
+        `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`,
         { headers: GITHUB_HEADERS },
       );
-      const beta = releases.find(r => r.prerelease);
-      if (!beta) throw new FetchError("No beta release found");
-      return beta.tag_name;
+      return release.tag_name;
     },
     staleTime: 60 * 60 * 1000,
     gcTime: 2 * 60 * 60 * 1000,

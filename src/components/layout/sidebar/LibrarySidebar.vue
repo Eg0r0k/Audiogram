@@ -47,6 +47,7 @@
         :padding-bottom="8"
         :items="libraryItems"
         :item-height="72"
+        :get-item-key="getLibraryItemKey"
         class="flex-1"
         @scroll="handleScroll"
       >
@@ -98,7 +99,16 @@ const { t } = useI18n();
 
 const scrollableRef = useTemplateRef("scrollableRef");
 
-useScrollRestoration(scrollableRef);
+const libraryItems = computed(() => [
+  ...pinnedItems.value,
+  ...unpinnedItems.value,
+]);
+
+useScrollRestoration(scrollableRef, {
+  key: "library-sidebar",
+  ready: () => !isLoading.value,
+  deps: () => libraryItems.value.length,
+});
 
 const filterLabels = computed<Record<LibraryFilter, string>>(() => ({
   all: t("library.filterAll"),
@@ -111,10 +121,10 @@ function filterLabel(value: LibraryFilter) {
   return filterLabels.value[value] ?? value;
 }
 
-const libraryItems = computed(() => [
-  ...pinnedItems.value,
-  ...unpinnedItems.value,
-]);
+function getLibraryItemKey(index: number) {
+  const item = libraryItems.value[index];
+  return item ? `${item.type}:${item.id}` : index;
+}
 
 const isButtonVisible = ref(true);
 let lastScrollTop = 0;

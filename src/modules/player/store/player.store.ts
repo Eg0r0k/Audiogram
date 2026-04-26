@@ -16,6 +16,8 @@ import { storageService } from "@/db/storage";
 import { statsService } from "@/services/stats.service";
 import { TrackId } from "@/types/ids";
 import { findActiveLyricsIndex, parseLrc, type LyricsLine } from "../lib/lrc";
+import { queryClient } from "@/queries/client";
+import { invalidateStatsQueries } from "@/queries/stats.queries";
 
 export const usePlayerStore = defineStore("player", () => {
   const player = shallowRef<Player | null>(null);
@@ -24,6 +26,7 @@ export const usePlayerStore = defineStore("player", () => {
   const duration = ref(0);
   const volume = ref(1);
   const isMuted = ref(false);
+  const playbackRate = ref(1);
   const repeatMode = ref<RepeatMode>("off");
   const status = ref<PlayerState>("idle");
   const currentTrack = ref<PlayerTrack | null>(null);
@@ -118,6 +121,15 @@ export const usePlayerStore = defineStore("player", () => {
     lyricsStatus.value = "idle";
   };
 
+  const stopListeningAndSync = (completed = false) => {
+    statsService.stopListening(currentTime.value, completed)
+      .then((event) => {
+        if (!event) return;
+        return invalidateStatsQueries(queryClient);
+      })
+      .catch(console.error);
+  };
+
   const handleSleepTimerExpired = () => {
     clearSleepTimerHandles();
     sleepTimerEndsAt.value = null;
@@ -147,6 +159,7 @@ export const usePlayerStore = defineStore("player", () => {
       const newPlayer = new Player({
         mode: "auto",
         Hls,
+        playbackRate: playbackRate.value,
         loudnessNormalization: {
           enabled: audioSettings.isNormalizationEnabled,
           targetLufs: audioSettings.normalizationTargetLufs,
@@ -156,6 +169,7 @@ export const usePlayerStore = defineStore("player", () => {
 
       newPlayer.setVolume(volume.value);
       newPlayer.setMuted(isMuted.value);
+      newPlayer.setPlaybackRate(playbackRate.value);
       player.value = markRaw(newPlayer);
 
       newPlayer.on("statechange", ({ to }) => {
@@ -184,6 +198,9 @@ export const usePlayerStore = defineStore("player", () => {
         if (player.value !== newPlayer) return;
         volume.value = vol;
         isMuted.value = muted;
+      });
+      newPlayer.on("ratechange", (rate) => {
+        if (player.value === newPlayer) playbackRate.value = rate;
       });
       newPlayer.on("error", (err) => {
         if (player.value === newPlayer) console.error("[Player] error:", err);
@@ -384,7 +401,7 @@ export const usePlayerStore = defineStore("player", () => {
     }
 
     if (isLibraryTrack(currentTrack.value ?? ({} as PlayerTrack))) {
-      statsService.stopListening(currentTime.value);
+      stopListeningAndSync();
     }
 
     const p = await initPlayer();
@@ -439,6 +456,12 @@ export const usePlayerStore = defineStore("player", () => {
   const setMuted = (muted: boolean) => {
     isMuted.value = muted;
     player.value?.setMuted(muted);
+  };
+
+  const setPlaybackRate = (value: number) => {
+    if (!Number.isFinite(value)) return;
+    playbackRate.value = Math.min(Math.max(value, 0.0625), 16);
+    player.value?.setPlaybackRate(playbackRate.value);
   };
 
   const toggleMute = () => {
@@ -503,7 +526,7 @@ export const usePlayerStore = defineStore("player", () => {
   watch(trackEndedSignal, (val) => {
     if (val === 0) return;
     if (isLibraryTrack(currentTrack.value ?? ({} as PlayerTrack))) {
-      statsService.stopListening(currentTime.value, true);
+      stopListeningAndSync(true);
     }
     if (!sleepAfterCurrentTrack.value) return;
     sleepAfterCurrentTrack.value = false;
@@ -534,6 +557,7 @@ export const usePlayerStore = defineStore("player", () => {
     duration,
     volume,
     isMuted,
+    playbackRate,
     isPlaying,
     isLoading,
     repeatMode,
@@ -559,6 +583,7 @@ export const usePlayerStore = defineStore("player", () => {
     seekTo,
     seekPercent,
     setVolume,
+    setPlaybackRate,
     toggleMute,
     toggleRepeat,
     getAudioGraph,
@@ -574,6 +599,7 @@ export const usePlayerStore = defineStore("player", () => {
     pick: [
       "volume",
       "isMuted",
+      "playbackRate",
       "repeatMode",
       "currentTrack",
       "currentTime",

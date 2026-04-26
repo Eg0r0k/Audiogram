@@ -83,6 +83,32 @@
               </template>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <IconGauge class="size-5" />
+              <span>
+                {{ $t("player.playbackSpeed") }}
+              </span>
+              <span class="ml-auto text-xs text-muted-foreground">
+                {{ formattedPlaybackRate }}
+              </span>
+            </DropdownMenuSubTrigger>
+
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup
+                :model-value="String(playerStore.playbackRate)"
+                @update:model-value="handlePlaybackRateChange"
+              >
+                <DropdownMenuRadioItem
+                  v-for="rate in playbackRatePresets"
+                  :key="rate"
+                  :value="String(rate)"
+                >
+                  {{ formatPlaybackRate(rate) }}
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
           <DropdownMenuItem @click="router.push(routeLocation.settingsAudio())">
             <IconEqualizer class="size-5" />
             {{ $t("player.equalizer") }}
@@ -112,6 +138,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -124,6 +152,7 @@ import IconClockHour4 from "~icons/tabler/clock-hour-4";
 import IconPlayerStop from "~icons/tabler/circle-minus";
 import IconEqualizer from "~icons/tabler/adjustments-horizontal";
 import IconPIP from "~icons/tabler/picture-in-picture";
+import IconGauge from "~icons/tabler/gauge";
 
 import VolumeButton from "./actions/VolumeButton.vue";
 import { useRouter } from "vue-router";
@@ -144,6 +173,8 @@ const presets = [
   { minutes: 30 },
   { minutes: 45 },
 ];
+
+const playbackRatePresets = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
 
 const { t } = useI18n();
 const playerStore = usePlayerStore();
@@ -167,6 +198,8 @@ const remainingText = computed(() =>
   formatDuration(playerStore.sleepTimerRemainingMs / 1000),
 );
 
+const formattedPlaybackRate = computed(() => formatPlaybackRate(playerStore.playbackRate));
+
 const pinia = getActivePinia();
 const pip = usePictureInPicture();
 const queryClient = useQueryClient();
@@ -188,6 +221,12 @@ const handlePipToggle = async () => {
 
 const handlePreset = (minutes: number) => {
   playerStore.setSleepTimer(minutes * 60 * 1000);
+};
+
+const formatPlaybackRate = (rate: number) => `${rate.toFixed(2).replace(/\.00$/, "").replace(/0$/, "")}x`;
+
+const handlePlaybackRateChange = (value: string) => {
+  playerStore.setPlaybackRate(Number(value));
 };
 
 const toggleQueuePanel = () => {

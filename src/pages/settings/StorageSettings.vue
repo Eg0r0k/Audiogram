@@ -96,19 +96,30 @@
 
         <Item>
           <ItemMedia>
-            <ImageIcon class="size-6 mr-3" />
+            <FileTextIcon class="size-6 mr-3" />
           </ItemMedia>
           <ItemContent>
-            <ItemTitle>{{ $t('settings.storage.covers') }}</ItemTitle>
+            <ItemTitle>{{ $t('settings.storage.lyrics') }}</ItemTitle>
             <ItemSubtitle v-if="isLoading">
               {{ $t('common.loading') }}
             </ItemSubtitle>
             <ItemSubtitle v-else>
-              <span class="text-sm text-muted-foreground">{{ formatted.coversSize }}</span>
+              <span class="text-sm text-muted-foreground">{{ formatted.lyricsSize }}</span>
             </ItemSubtitle>
           </ItemContent>
+          <ItemActions class="pointer-events-auto">
+            <Button
+              variant="ghost-primary"
+              size="sm"
+              :disabled="isLoading || isClearing"
+              @click="clearLyricsData"
+            >
+              {{ $t("common.delete") }}
+              <TrashIcon class="size-4" />
+            </Button>
+          </ItemActions>
         </Item>
-        <Item>
+        <Item v-copy="{ text: formatted.storagePath, onCopy: handleStoragePathCopied }">
           <ItemContent>
             <ItemTitle>{{ $t('settings.storage.location') }}</ItemTitle>
             <ItemSubtitle v-if="isLoading">
@@ -141,6 +152,8 @@
 
 <script setup lang="ts">
 import { onMounted } from "vue";
+import { useI18n } from "vue-i18n";
+import { toast } from "vue-sonner";
 
 import {
   Item,
@@ -159,7 +172,7 @@ import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
 import { useStorageSettings } from "@/modules/settings/store/storage";
 
 import TrashIcon from "~icons/tabler/trash";
-import ImageIcon from "~icons/tabler/photo";
+import FileTextIcon from "~icons/tabler/file-text";
 import MusicIcon from "~icons/tabler/music";
 
 import { Button } from "@/components/ui/button";
@@ -168,10 +181,18 @@ import WatchedFoldersSection from "@/modules/watched-folders/components/WatchedF
 
 const {
   isLoading,
+  isClearing,
   formatted,
   refresh,
   clearAllData,
+  clearLyricsData,
 } = useStorageSettings();
+
+const { t } = useI18n();
+
+const handleStoragePathCopied = () => {
+  toast.success(t("settings.storage.locationCopied"));
+};
 
 onMounted(() => {
   refresh();

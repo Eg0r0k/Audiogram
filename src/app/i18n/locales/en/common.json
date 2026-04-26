@@ -1,8 +1,8 @@
 {
   "import": {
     "button": "Import tracks",
-    "title": "Import {{count}} tracks",
-    "visibleFiles": "Showing first {{visible}} of {{total}} files",
+    "title": "Import {count} tracks",
+    "visibleFiles": "Showing first {visible} of {total} files",
     "goToLibrary": "Go to library",
     "status": {
       "running": "Importing...",
@@ -32,6 +32,8 @@
   "delete": "Delete",
   "remove": "Remove",
   "create": "Create",
+  "createAlbum": "Create album",
+  "createArtist": "Create artist",
   "update": "Update",
   "close": "Close",
   "open": "Open",

@@ -22,13 +22,13 @@
         :album-id="album?.id"
       >
         <VirtualScrollable
-          ref="scrollableRef"
           :items="tracks"
           :get-item-key="getTrackKey"
           :item-height="56"
           :load-more-offset="120"
           :padding-top="16"
           :padding-bottom="16"
+          sticky-offset="72px"
           :loading="isTracksLoading || isFetchingNextPage"
           class="h-full"
           @load-more="handleLoadMore"
@@ -46,6 +46,7 @@
             >
               <template #actions>
                 <Button
+                  class=" text-white"
                   variant="ghost"
                   @click="openAddTracksPanel"
                 >
@@ -54,7 +55,9 @@
                 </Button>
               </template>
             </MediaHero>
+          </template>
 
+          <template #sticky>
             <LibrarySortHeader
               :sort-key="sortKey"
               @toggle-title="toggleTitleSort"
@@ -144,7 +147,6 @@ const { openDeleteDialog: openGlobalDeleteDialog } = useDeleteConfirmDialog();
 const { openMenu } = useTrackMenu();
 const route = useRoute();
 const sortKey = ref<TrackSortKey | null>(null);
-const scrollableRef = ref<{ scrollToOffset: (offset: number) => void } | null>(null);
 
 const gridStyles = {
   "--index-column-width": "32px",
@@ -211,7 +213,6 @@ function handleLoadMore() {
 
 function setSortKey(nextSortKey: TrackSortKey | null) {
   sortKey.value = nextSortKey;
-  scrollableRef.value?.scrollToOffset(0);
 }
 
 function toggleTitleSort() {

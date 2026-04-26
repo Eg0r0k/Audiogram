@@ -23,26 +23,15 @@ impl From<tauri_plugin_updater::Error> for UpdateError {
 
 fn build_updater<R: Runtime>(
     app: &AppHandle<R>,
-    channel: &str,
 ) -> Result<tauri_plugin_updater::Updater, UpdateError> {
-    app.updater_builder()
-        .header("X-Update-Channel", channel)
-        .map_err(UpdateError::from)?
-        .build()
-        .map_err(UpdateError::from)
+    app.updater_builder().build().map_err(UpdateError::from)
 }
 
 #[tauri::command]
 pub async fn check_update<R: Runtime>(
     app: AppHandle<R>,
-    channel: String,
 ) -> Result<Option<UpdateInfo>, UpdateError> {
-    match channel.as_str() {
-        "stable" | "beta" => {}
-        _ => return Err(UpdateError("invalid channel".into())),
-    }
-
-    let updater = build_updater(&app, &channel)?;
+    let updater = build_updater(&app)?;
 
     match updater.check().await {
         Ok(Some(update)) => Ok(Some(UpdateInfo {
@@ -57,16 +46,8 @@ pub async fn check_update<R: Runtime>(
 }
 
 #[tauri::command]
-pub async fn install_update<R: Runtime>(
-    app: AppHandle<R>,
-    channel: String,
-) -> Result<(), UpdateError> {
-    match channel.as_str() {
-        "stable" | "beta" => {}
-        _ => return Err(UpdateError("invalid channel".into())),
-    }
-
-    let updater = build_updater(&app, &channel)?;
+pub async fn install_update<R: Runtime>(app: AppHandle<R>) -> Result<(), UpdateError> {
+    let updater = build_updater(&app)?;
 
     let update = updater
         .check()

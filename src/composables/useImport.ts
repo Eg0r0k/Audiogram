@@ -46,6 +46,7 @@ const state = ref<ImportState>({
 let pauseResolver: (() => void) | null = null;
 let activeImportPromise: Promise<void> | null = null;
 let isCancelRequested = false;
+let activeImportId = 0;
 
 export function useImport() {
   const queryClient = useQueryClient();
@@ -88,6 +89,7 @@ export function useImport() {
       isCancelling: false,
     };
     isCancelRequested = false;
+    activeImportId++;
     pauseResolver?.();
     pauseResolver = null;
   }
@@ -102,50 +104,58 @@ export function useImport() {
       return importFromPaths(paths);
     }
 
-    _startImport(filtered.map(f => f.name));
+    const importId = _startImport(filtered.map(f => f.name));
 
     activeImportPromise = (async () => {
       const result = await musicLibraryEngine.importFiles(
         filtered,
-        (current, total) => _onProgress(current, total),
+        (current, total) => _onProgress(importId, current, total),
         {
           waitIfPaused,
           isCancelled: () => isCancelRequested,
         },
       );
 
-      await _finishImport(result);
-    })();
+      await _finishImport(importId, result);
+    })().finally(() => {
+      if (activeImportId === importId) {
+        activeImportPromise = null;
+      }
+    });
 
     await activeImportPromise;
-    activeImportPromise = null;
   }
 
   async function importFromPaths(paths: string[]) {
     if (paths.length === 0) return;
 
-    _startImport(paths.map(p => p.split(/[\\/]/).pop() ?? p));
+    const importId = _startImport(paths.map(p => p.split(/[\\/]/).pop() ?? p));
 
     activeImportPromise = (async () => {
       const result = await musicLibraryEngine.importFromPaths(
         paths,
-        (current, total) => _onProgress(current, total),
+        (current, total) => _onProgress(importId, current, total),
         {
           waitIfPaused,
           isCancelled: () => isCancelRequested,
         },
       );
 
-      await _finishImport(result);
-    })();
+      await _finishImport(importId, result);
+    })().finally(() => {
+      if (activeImportId === importId) {
+        activeImportPromise = null;
+      }
+    });
 
     await activeImportPromise;
-    activeImportPromise = null;
   }
 
   function _startImport(fileNames: string[]) {
+    const importId = activeImportId + 1;
     const visibleFiles = fileNames.slice(0, MAX_VISIBLE_IMPORT_FILES);
 
+    activeImportId = importId;
     state.value = {
       isOpen: true,
       isRunning: true,
@@ -160,6 +170,8 @@ export function useImport() {
     };
     isCancelRequested = false;
     pauseResolver = null;
+
+    return importId;
   }
 
   async function waitIfPaused() {
@@ -185,12 +197,17 @@ export function useImport() {
     if (!state.value.isRunning) return;
 
     isCancelRequested = true;
+    activeImportId++;
     state.value.isCancelling = true;
     resumeImport();
-    await activeImportPromise;
+    state.value.isRunning = false;
+    state.value.isPaused = false;
+    state.value.isCancelling = false;
   }
 
-  function _onProgress(current: number, total: number) {
+  function _onProgress(importId: number, current: number, total: number) {
+    if (importId !== activeImportId || isCancelRequested) return;
+
     const previousCurrent = state.value.current;
 
     state.value.current = current;
@@ -204,7 +221,9 @@ export function useImport() {
     }
   }
 
-  async function _finishImport(result: ImportBatchResult) {
+  async function _finishImport(importId: number, result: ImportBatchResult) {
+    if (importId !== activeImportId || isCancelRequested) return;
+
     const successSet = new Set(result.successful.map(s => s.fileName));
     const errorMap = new Map(result.failed.map(f => [f.fileName, f.error.message]));
 

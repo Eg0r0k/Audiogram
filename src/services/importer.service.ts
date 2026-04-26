@@ -112,6 +112,11 @@ export interface ImportBatchResult {
   timings?: Record<string, number>;
 }
 
+export interface ImportControl {
+  waitIfPaused?: () => Promise<void>;
+  isCancelled?: () => boolean;
+}
+
 interface ImportItem {
   type: "native" | "web";
   name: string;
@@ -190,6 +195,7 @@ export class MusicLibraryEngine {
   async importFromPaths(
     paths: string[],
     onProgress?: (current: number, total: number) => void,
+    control?: ImportControl,
   ): Promise<ImportBatchResult> {
     if (!hasNativeSupport(storageService)) {
       return this.createEmptyFailResult(paths, "Native support missing");
@@ -211,12 +217,13 @@ export class MusicLibraryEngine {
       };
     });
 
-    return this.runImportPipeline(items, onProgress, "Native Import");
+    return this.runImportPipeline(items, onProgress, "Native Import", control);
   }
 
   async importFiles(
     files: File[],
     onProgress?: (current: number, total: number) => void,
+    control?: ImportControl,
   ): Promise<ImportBatchResult> {
     const items: ImportItem[] = files.map(file => ({
       type: "web" as const,
@@ -226,7 +233,7 @@ export class MusicLibraryEngine {
       fileSize: file.size,
     }));
 
-    return this.runImportPipeline(items, onProgress, "Web Import");
+    return this.runImportPipeline(items, onProgress, "Web Import", control);
   }
 
   // ═══════════════════════════════════════════════════════
@@ -432,6 +439,7 @@ export class MusicLibraryEngine {
     items: ImportItem[],
     onProgress: ((c: number, t: number) => void) | undefined,
     label: string,
+    control?: ImportControl,
   ): Promise<ImportBatchResult> {
     this.profiler.reset();
     this.clearSessionCache();
@@ -444,9 +452,31 @@ export class MusicLibraryEngine {
 
     onProgress?.(0, total);
 
+    await control?.waitIfPaused?.();
+    if (control?.isCancelled?.()) {
+      return {
+        successful,
+        failed,
+        skipped,
+        total,
+        timings: this.profiler.getTimings(),
+      };
+    }
+
     this.profiler.start("0_loadKnownFingerprints");
     const knownFingerprints = await this.loadKnownFingerprints();
     this.profiler.end("0_loadKnownFingerprints");
+
+    await control?.waitIfPaused?.();
+    if (control?.isCancelled?.()) {
+      return {
+        successful,
+        failed,
+        skipped,
+        total,
+        timings: this.profiler.getTimings(),
+      };
+    }
 
     this.profiler.start("1_splitBatches");
     const batches: ImportItem[][] = [];
@@ -457,6 +487,9 @@ export class MusicLibraryEngine {
 
     this.profiler.start("2_processBatches");
     for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+      await control?.waitIfPaused?.();
+      if (control?.isCancelled?.()) break;
+
       const batch = batches[batchIdx];
       this.profiler.start(`2_batch_${batchIdx}`);
 
@@ -466,6 +499,7 @@ export class MusicLibraryEngine {
         (p) => {
           onProgress?.(processed + p, total);
         },
+        control,
       );
 
       skipped += batchResult.skipped;
@@ -473,12 +507,18 @@ export class MusicLibraryEngine {
       processed += batchResult.processed;
 
       if (batchResult.tracksToSave.length > 0) {
+        await control?.waitIfPaused?.();
+        if (control?.isCancelled?.()) break;
+
         this.profiler.start(`2_batch_${batchIdx}_entityResolution`);
         await this.batchPreResolveEntities(batchResult.tracksToSave.map(item => item.meta));
         this.profiler.end(`2_batch_${batchIdx}_entityResolution`);
 
         this.profiler.start(`2_batch_${batchIdx}_database`);
         for (let i = 0; i < batchResult.tracksToSave.length; i += DB_BATCH_SIZE) {
+          await control?.waitIfPaused?.();
+          if (control?.isCancelled?.()) break;
+
           const dbBatch = batchResult.tracksToSave.slice(i, i + DB_BATCH_SIZE);
           const dbResult = await this.saveBatchToDatabaseSafe(dbBatch);
           dbResult.match(
@@ -516,6 +556,7 @@ export class MusicLibraryEngine {
     items: ImportItem[],
     knownFingerprints: Set<string>,
     onItemProgress: (completed: number) => void,
+    control?: ImportControl,
   ): Promise<{
     tracksToSave: TrackToSave[];
     failed: Array<{ fileName: string; error: ImportError }>;
@@ -530,6 +571,9 @@ export class MusicLibraryEngine {
     this.profiler.start("batch_validation");
     const validated: ImportItem[] = [];
     for (const item of items) {
+      await control?.waitIfPaused?.();
+      if (control?.isCancelled?.()) break;
+
       if (!isValidImportItem(item.name, item.file?.type)) {
         failed.push({
           fileName: item.name,
@@ -547,6 +591,11 @@ export class MusicLibraryEngine {
       return { tracksToSave, failed, skipped, processed };
     }
 
+    await control?.waitIfPaused?.();
+    if (control?.isCancelled?.()) {
+      return { tracksToSave, failed, skipped, processed };
+    }
+
     this.profiler.start("batch_fingerprint");
     const fingerprinted: ImportItem[] = [];
     const fpResults = await Promise.all(
@@ -559,6 +608,9 @@ export class MusicLibraryEngine {
     );
 
     for (const { item, fp } of fpResults) {
+      await control?.waitIfPaused?.();
+      if (control?.isCancelled?.()) break;
+
       if (fp && knownFingerprints.has(fp)) {
         skipped++;
         processed++;
@@ -596,15 +648,28 @@ export class MusicLibraryEngine {
       return { tracksToSave, failed, skipped, processed };
     }
 
+    await control?.waitIfPaused?.();
+    if (control?.isCancelled?.()) {
+      return { tracksToSave, failed, skipped, processed };
+    }
+
     this.profiler.start("batch_process");
     const processResults = await Promise.all(
       dedupedItems.map(item =>
-        this.limit(() => this.processInternalItem(item)),
+        this.limit(async () => {
+          await control?.waitIfPaused?.();
+          if (control?.isCancelled?.()) return null;
+          return this.processInternalItem(item, control);
+        }),
       ),
     );
     this.profiler.end("batch_process");
 
     for (const r of processResults) {
+      await control?.waitIfPaused?.();
+      if (control?.isCancelled?.()) break;
+      if (r === null) continue;
+
       r.match(
         (data) => {
           tracksToSave.push(data);
@@ -627,6 +692,7 @@ export class MusicLibraryEngine {
   /** Internal import: parse metadata first, then save to DB, then copy file */
   private processInternalItem(
     item: ImportItem,
+    control?: ImportControl,
   ): ResultAsync<TrackToSave, ImportError> {
     const trackId = TrackId(crypto.randomUUID());
     const storagePath = `tracks/${trackId}.${item.ext}`;
@@ -651,7 +717,13 @@ export class MusicLibraryEngine {
       const fingerprint = item.fingerprint ?? "";
 
       return ResultAsync.fromPromise(
-        this.performCopy(item, storagePath),
+        (async () => {
+          await control?.waitIfPaused?.();
+          if (control?.isCancelled?.()) {
+            throw ImportError.readFailed(item.name, "Import cancelled");
+          }
+          return this.performCopy(item, storagePath);
+        })(),
         (e: unknown) => {
           this.profiler.end("item_copy");
           if (e instanceof ImportError) return e;

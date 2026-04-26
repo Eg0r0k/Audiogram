@@ -1,14 +1,11 @@
 <template>
   <Item class="px-2">
-    <ItemMedia v-if="icon">
+    <ItemMedia v-if="$slots.icon">
       <div
         class="size-8 rounded-lg flex items-center justify-center"
         :class="iconClass"
       >
-        <Icon
-          :icon="icon"
-          class="size-6"
-        />
+        <slot name="icon" />
       </div>
     </ItemMedia>
     <ItemContent>
@@ -25,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
+import { computed } from "vue";
 import {
   Item,
   ItemActions,
@@ -34,14 +31,12 @@ import {
   ItemSubtitle,
   ItemTitle,
 } from "@/components/ui/item";
-import { computed } from "vue";
 
 defineOptions({
   inheritAttrs: false,
 });
 
 const props = defineProps<{
-  icon?: string;
   iconClass?: string;
   title: string;
   value?: string | number | null;

@@ -2,13 +2,14 @@ import { defineStore } from "pinia";
 import { computed, ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import { i18n } from "@/app/i18n";
-import { type TrackEntity, TrackSource } from "@/db/entities";
+import { TrackSource } from "@/db/entities";
 import { StorageError, StorageErrorCode } from "@/db/errors/storage.errors";
 import { trackRepository } from "@/db/repositories";
 import { QueueItemId } from "@/types/ids";
 import { type Track, isEphemeralTrack, type PlayerTrack } from "@/modules/player/types";
 import { isSameQueueSource, type QueueItem, type QueueSource } from "../types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
+import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
 import { fisherYatesShuffle } from "@/lib/shuffle";
 import { unique, unwrapResult } from "@/queries/shared";
 
@@ -47,32 +48,6 @@ interface PersistedQueueSnapshot {
   originalQueueOrder: QueueItemId[];
   currentIndex: number;
   isShuffled: boolean;
-}
-
-function mapTrackEntityToPlayerTrack(entity: TrackEntity): Track {
-  return {
-    kind: "library",
-    id: entity.id,
-    title: entity.title,
-    artist: entity.artistName ?? "Unknown Artist",
-    artistIds: entity.artistIds,
-    albumId: entity.albumId,
-    albumName: entity.albumTitle ?? "Unknown Album",
-    storagePath: entity.storagePath,
-    source: entity.source,
-    state: entity.state,
-    duration: entity.duration,
-    isLiked: !!entity.likedAt,
-    playCount: entity.playCount,
-    addedAt: entity.addedAt,
-    trackNo: entity.trackNo,
-    diskNo: entity.diskNo,
-    lyricsPath: entity.lyricsPath,
-    integratedLufs: entity.integratedLufs,
-    truePeakDbtp: entity.truePeakDbtp,
-    replayGainDb: entity.replayGainDb,
-    replayPeak: entity.replayPeak,
-  };
 }
 
 export const useQueueStore = defineStore("queue", () => {

@@ -1,15 +1,8 @@
 <template>
   <div
     ref="rootRef"
-    class="flex flex-col h-full bg-background "
+    class="flex flex-col h-full min-h-0 bg-background"
   >
-    <RightPanelHeader
-      class="bg-card"
-      :show-close="true"
-      :title="t('queue.title')"
-      @close="rightPanel.close()"
-    />
-
     <template v-if="!queueStore.isEmpty">
       <div
         v-if="currentQueueItem"
@@ -106,8 +99,6 @@ import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import QueueDragOverlay from "./QueueDragOverlay.vue";
-import RightPanelHeader from "@/modules/right-panel/components/RightPanelHeader.vue";
-import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import QueueEmpty from "./QueueEmpty.vue";
 
 const { t } = useI18n();
@@ -116,7 +107,6 @@ const ITEM_HEIGHT = 64;
 const DEBUG_QUEUE_DND = true;
 
 const queueStore = useQueueStore();
-const rightPanel = useRightPanelStore();
 const virtualRef = useTemplateRef("virtualRef");
 const rootRef = useTemplateRef("rootRef");
 

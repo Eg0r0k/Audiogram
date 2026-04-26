@@ -14,6 +14,7 @@ import {
 import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/searchIndex";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { TrackSortKey } from "@/modules/tracks/types";
+import { ArtistId as createArtistId } from "@/types/ids";
 import type { ArtistId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import {
@@ -156,6 +157,25 @@ export const artistQueries = {
       queryFn: () => getArtistAlbumsPaginated(artistId, pageParam),
     }),
 } as const;
+
+export async function createArtistAndSync(
+  queryClient: QueryClient,
+  name = "New artist",
+) {
+  const now = Date.now();
+  const artist: ArtistEntity = {
+    id: createArtistId(crypto.randomUUID()),
+    name,
+    addedAt: now,
+    updatedAt: now,
+  };
+
+  await unwrapResult(artistRepository.create(artist));
+  syncArtistCaches(queryClient, artist);
+  await upsertSearchDocuments([buildArtistDoc(artist)]);
+
+  return artist;
+}
 
 async function syncTrackArtistNames(artistId: ArtistId, nextArtistName: string) {
   const tracks = await unwrapResult(trackRepository.findByArtistId(artistId));

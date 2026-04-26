@@ -19,6 +19,7 @@ import { PluginOption } from "vite";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const host = process.env.TAURI_DEV_HOST;
 const isAnalyze = process.env.VITE_ANALYZE === "true";
+const isDev = process.env.NODE_ENV !== "production";
 const pkg = JSON.parse(
   readFileSync(path.resolve(__dirname, "package.json"), "utf-8"),
 );
@@ -31,7 +32,7 @@ export default defineConfig({
   },
   plugins: [
     vue(),
-    VueDevTools(),
+    isDev && VueDevTools(),
     tailwindcss(),
     Icons({
       compiler: "vue3",

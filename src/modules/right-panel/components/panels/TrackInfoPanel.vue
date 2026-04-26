@@ -13,37 +13,55 @@
         <section class="grid gap-3 p-2 bg-card">
           <div class="grid gap-3 sm:grid-cols-1">
             <DetailField
-              icon="tabler:music"
               :title="$t('track.details.fields.title')"
               :value="track.title"
-            />
+            >
+              <template #icon>
+                <IconMusic class="size-6" />
+              </template>
+            </DetailField>
             <DetailField
-              icon="tabler:microphone-2"
               :title="$t('track.details.fields.artist')"
               :value="track.artist"
-            />
+            >
+              <template #icon>
+                <IconMicrophone2 class="size-6" />
+              </template>
+            </DetailField>
             <DetailField
-              icon="tabler:disc"
               :title="$t('track.details.fields.album')"
               :value="track.albumName"
-            />
+            >
+              <template #icon>
+                <IconDisc class="size-6" />
+              </template>
+            </DetailField>
             <DetailField
-              icon="tabler:clock-hour-4"
               :title="$t('track.details.fields.duration')"
               :value="formattedDuration"
-            />
+            >
+              <template #icon>
+                <IconClockHour4 class="size-6" />
+              </template>
+            </DetailField>
             <DetailField
-              icon="tabler:world"
               :title="$t('track.details.fields.source')"
               :value="sourceLabel"
-            />
+            >
+              <template #icon>
+                <IconWorld class="size-6" />
+              </template>
+            </DetailField>
             <DetailField
               v-if="isLibraryTrack(track)"
-              icon="tabler:folder"
               :title="$t('track.details.fields.storagePath')"
               :value="track.storagePath"
               class="sm:col-span-2"
-            />
+            >
+              <template #icon>
+                <IconFolder class="size-6" />
+              </template>
+            </DetailField>
           </div>
         </section>
 
@@ -53,32 +71,47 @@
         >
           <div class="grid gap-3 sm:grid-cols-1">
             <DetailField
-              icon="tabler:fingerprint"
               :title="$t('track.details.fields.trackId')"
               :value="track.id"
-            />
+            >
+              <template #icon>
+                <IconFingerprint class="size-6" />
+              </template>
+            </DetailField>
             <DetailField
-              icon="tabler:disc"
               :title="$t('track.details.fields.albumId')"
               :value="track.albumId"
-            />
+            >
+              <template #icon>
+                <IconDisc class="size-6" />
+              </template>
+            </DetailField>
             <DetailField
-              icon="tabler:users"
               :title="$t('track.details.fields.artistIds')"
               :value="track.artistIds.join(', ')"
               class="sm:col-span-2"
-            />
+            >
+              <template #icon>
+                <IconUsers class="size-6" />
+              </template>
+            </DetailField>
             <DetailField
-              icon="tabler:circle-check"
               :title="$t('track.details.fields.state')"
               :value="stateLabel"
-            />
+            >
+              <template #icon>
+                <IconCircleCheck class="size-6" />
+              </template>
+            </DetailField>
 
             <DetailField
-              icon="tabler:file-text"
               :title="$t('track.details.fields.lyricsPath')"
               :value="entity?.lyricsPath"
-            />
+            >
+              <template #icon>
+                <IconFileText class="size-6" />
+              </template>
+            </DetailField>
           </div>
 
           <Button
@@ -113,7 +146,17 @@ import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.stor
 import type { RightPanelTrackInfoPayload } from "@/modules/right-panel/types";
 import DetailField from "@/modules/tracks/components/TrackDetailsField.vue";
 import RightPanelHeader from "../RightPanelHeader.vue";
+import IconCircleCheck from "~icons/tabler/circle-check";
+import IconClockHour4 from "~icons/tabler/clock-hour-4";
+import IconDisc from "~icons/tabler/disc";
+import IconFileText from "~icons/tabler/file-text";
+import IconFingerprint from "~icons/tabler/fingerprint";
+import IconFolder from "~icons/tabler/folder";
+import IconMicrophone2 from "~icons/tabler/microphone-2";
+import IconMusic from "~icons/tabler/music";
 import TrashIcon from "~icons/tabler/trash";
+import IconUsers from "~icons/tabler/users";
+import IconWorld from "~icons/tabler/world";
 const props = defineProps<{
   payload: RightPanelTrackInfoPayload;
 }>();

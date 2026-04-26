@@ -6,8 +6,8 @@ import { computed, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { LIBRARY_FILTERS, type LibraryFilter, type LibraryItem } from "../types";
 import { clearAllData } from "@/services/storage-info.service";
-import { deleteAlbumAndSync } from "@/queries/album.queries";
-import { deleteArtistAndSync } from "@/queries/artist.queries";
+import { createAlbumAndSync, deleteAlbumAndSync } from "@/queries/album.queries";
+import { createArtistAndSync, deleteArtistAndSync } from "@/queries/artist.queries";
 import {
   clearLibraryData,
   invalidateLibraryData,
@@ -229,6 +229,17 @@ export const useLibrary = () => {
     router.push(routeLocation.playlist(playlist.id));
   };
 
+  const createArtist = async () => {
+    const artist = await createArtistAndSync(queryClient, t("artist.newArtist"));
+    router.push(routeLocation.artist(artist.id));
+  };
+
+  const createAlbum = async () => {
+    const artist = await createArtistAndSync(queryClient, t("artist.newArtist"));
+    const album = await createAlbumAndSync(queryClient, artist.id, t("album.newAlbum"));
+    router.push(routeLocation.album(album.id));
+  };
+
   const invalidateLibrary = async () => {
     await invalidateLibraryData(queryClient);
   };
@@ -288,6 +299,8 @@ export const useLibrary = () => {
     togglePin: store.togglePin,
     isPinned: store.isPinned,
     createPlaylist,
+    createArtist,
+    createAlbum,
     invalidateLibrary,
     deleteItem,
     clearLibrary,

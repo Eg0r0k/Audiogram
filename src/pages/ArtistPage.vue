@@ -19,12 +19,12 @@
     <template v-else-if="artistData">
       <TrackContextMenu context="artist">
         <VirtualScrollable
-          ref="scrollableRef"
           :items="tracks"
           :get-item-key="getTrackKey"
           :item-height="56"
           :padding-top="16"
           :padding-bottom="16"
+          sticky-offset="72px"
           :loading="isTracksLoading || isFetchingNextTrackPage"
           class="h-full"
           @load-more="handleTrackLoadMore"
@@ -38,7 +38,7 @@
               @edit="showEditDialog = true"
               @delete="openDeleteDialog"
             >
-              <template #actions>
+              <!-- <template #actions>
                 <Button
                   class="text-white"
                   variant="ghost"
@@ -47,9 +47,11 @@
                   <IconPlus class="size-5" />
                   {{ $t("track.addTracks") }}
                 </Button>
-              </template>
+              </template> -->
             </MediaHero>
+          </template>
 
+          <template #sticky>
             <LibrarySortHeader
               :sort-key="sortKey"
               @toggle-title="toggleTitleSort"
@@ -98,7 +100,6 @@ import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import PageErrorState from "@/components/common/PageErrorState.vue";
-import { Button } from "@/components/ui/button";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
@@ -108,7 +109,6 @@ import { useArtistPage } from "@/modules/artists/composables/useArtistPage";
 import { getArtistPageData } from "@/queries/artist.queries";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
-import IconPlus from "~icons/tabler/plus";
 import { useDeleteConfirmDialog } from "@/composables/useDeleteConfirmDialog";
 import { isSameQueueSource } from "@/modules/queue/types";
 import { getSecureRandomIndex } from "@/lib/random";
@@ -129,7 +129,6 @@ const { openDeleteDialog: openGlobalDeleteDialog } = useDeleteConfirmDialog();
 const { openMenu } = useTrackMenu();
 const route = useRoute();
 const sortKey = ref<TrackSortKey | null>(null);
-const scrollableRef = ref<{ scrollToOffset: (offset: number) => void } | null>(null);
 
 const gridStyles = {
   "--index-column-width": "32px",
@@ -183,7 +182,6 @@ function handleTrackLoadMore() {
 
 function setSortKey(nextSortKey: TrackSortKey | null) {
   sortKey.value = nextSortKey;
-  scrollableRef.value?.scrollToOffset(0);
 }
 
 function toggleTitleSort() {

@@ -31,7 +31,15 @@
         <DropdownMenuGroup>
           <DropdownMenuItem @click="handleImportTracks">
             <IconImport class="size-5.5" />
-            {{ $t("import.button") }}
+            {{ $t("common.import.button") }}
+          </DropdownMenuItem>
+          <DropdownMenuItem @click="createArtist">
+            <IconUserPlus class="size-5.5" />
+            {{ $t("common.createArtist") }}
+          </DropdownMenuItem>
+          <DropdownMenuItem @click="createAlbum">
+            <IconAlbum class="size-5.5" />
+            {{ $t("common.createAlbum") }}
           </DropdownMenuItem>
           <DropdownMenuItem @click="createPlaylist">
             <IconPlaylist class="size-5.5" />
@@ -49,7 +57,9 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import IconPlus from "~icons/tabler/plus";
 import IconImport from "~icons/tabler/file-import";
+import IconAlbum from "~icons/tabler/album";
 import IconPlaylist from "~icons/tabler/playlist";
+import IconUserPlus from "~icons/tabler/user-plus";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
 import { requestFiles } from "@/lib/files/requestFiles";
 import { useImport } from "@/composables/useImport";
@@ -58,7 +68,7 @@ defineProps<{
   show: boolean;
 }>();
 
-const { createPlaylist } = useLibrary();
+const { createPlaylist, createArtist, createAlbum } = useLibrary();
 const { importFiles } = useImport();
 
 const ACCEPTED_EXTENSIONS = [".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aac", ".opus"];
