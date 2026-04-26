@@ -11,7 +11,6 @@
   >
     <WindowToolbar class="toolbar" />
     <DropOverlay :show="isDragging" />
-    <ImportProgressSheet />
 
     <div class="content-area">
       <ResizableSidebar>
@@ -41,7 +40,6 @@ import ResizableSidebar from "@/components/layout/sidebar/ResizableSidebar.vue";
 import LibrarySidebar from "@/components/layout/sidebar/LibrarySidebar.vue";
 import DropOverlay from "@/components/DropOverlay.vue";
 import { useImport } from "@/composables/useImport";
-import ImportProgressSheet from "@/components/ImportProgressSheet.vue";
 import { useFileDrop } from "@/composables/useFileDrop";
 import RightPanelHost from "@/modules/right-panel/components/RightPanelHost.vue";
 

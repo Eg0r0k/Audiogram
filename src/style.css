@@ -278,6 +278,10 @@ video {
   --z-toolbar: 9998;
   --z-dropoverlay: 9999;
   --z-fullscreen: 10000;
+  --toolbar-height: 0px;
+}
+
+.is-tauri:not(.is-mobile) {
   --toolbar-height: 26px;
 }
 
@@ -325,7 +329,7 @@ video {
 }
 
 .full-player-leave-active {
-  transition-duration: 180ms;
+  transition-duration: 260ms;
 }
 
 .full-player-enter-from,

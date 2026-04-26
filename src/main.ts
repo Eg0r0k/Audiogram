@@ -9,6 +9,7 @@ import { i18n } from "@/app/i18n";
 import App from "@/app/App.vue";
 import { IS_TAURI } from "./lib/environment/userAgent";
 import { vCopy } from "./directives/copy";
+import { queryClient } from "@/queries/client";
 
 const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate);
@@ -18,17 +19,7 @@ const app = createApp(App);
 app.use(router);
 app.use(pinia);
 app.use(i18n);
-app.use(VueQueryPlugin, {
-  queryClientConfig: {
-    defaultOptions: {
-      queries: {
-        staleTime: 1000 * 60 * 5, // 5 min
-        retry: 2,
-        refetchOnWindowFocus: false,
-      },
-    },
-  },
-});
+app.use(VueQueryPlugin, { queryClient });
 
 // TODO: Fix restore player with set with queue, becouse this stop repitting without queue store.
 if ("serviceWorker" in navigator && !IS_TAURI) {

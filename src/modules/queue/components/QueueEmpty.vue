@@ -1,17 +1,11 @@
 <template>
-  <div class="flex flex-col items-center justify-center  h-full text-center">
-    <div class="size-16 flex items-center justify-center ">
-      <IconPlaylist class="size-8 text-muted-foreground" />
+  <div class="flex flex-col items-center justify-center bg-card  h-full text-center">
+    <div class="size-32 flex items-center justify-center ">
+      <IconPlaylist class="size-32 text-muted-foreground" />
     </div>
-    <h3 class="text-xl font-medium ">
-      {{ $t("common.empty") }}
-    </h3>
-    <p class=" text-muted-foreground max-w-60">
-      {{ $t("player.emptyDescription") }}
-    </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import IconPlaylist from "~icons/tabler/playlist";
+import IconPlaylist from "~icons/audiogram/logo";
 </script>

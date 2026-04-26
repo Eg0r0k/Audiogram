@@ -12,6 +12,7 @@
   </component>
   <WhatsNewDialog />
   <ExternalLinkDialog />
+  <ImportProgressDialog />
   <DeleteConfirmDialog />
   <Toaster
     position="top-center"
@@ -53,6 +54,7 @@ import DeleteConfirmDialog from "@/components/dialogs/DeleteConfirmDialog.vue";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { useNowPlayingTitle } from "@/modules/player/composables/useNowPlayingTitle";
 import { useExternalLinkInterceptor } from "@/composables/useExternalLinkInterceptor";
+import ImportProgressDialog from "@/components/ImportProgressDialog.vue";
 
 const currentRoute = useRoute();
 const { isMobileLayout } = useDeviceLayout();

@@ -23,6 +23,8 @@ export interface ImportState {
   files: ImportFileItem[];
   visibleFileCount: number;
   result: ImportBatchResult | null;
+  isPaused: boolean;
+  isCancelling: boolean;
 }
 
 const ACCEPTED_EXTENSIONS = [".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aac", ".opus"];
@@ -37,7 +39,13 @@ const state = ref<ImportState>({
   files: [],
   visibleFileCount: 0,
   result: null,
+  isPaused: false,
+  isCancelling: false,
 });
+
+let pauseResolver: (() => void) | null = null;
+let activeImportPromise: Promise<void> | null = null;
+let isCancelRequested = false;
 
 export function useImport() {
   const queryClient = useQueryClient();
@@ -47,6 +55,8 @@ export function useImport() {
   const progress = computed(() => state.value.progress);
   const files = computed(() => state.value.files);
   const result = computed(() => state.value.result);
+  const isPaused = computed(() => state.value.isPaused);
+  const isCancelling = computed(() => state.value.isCancelling);
   const total = computed(() => state.value.total);
   const current = computed(() => state.value.current);
   const visibleFileCount = computed(() => state.value.visibleFileCount);
@@ -74,7 +84,12 @@ export function useImport() {
       files: [],
       visibleFileCount: 0,
       result: null,
+      isPaused: false,
+      isCancelling: false,
     };
+    isCancelRequested = false;
+    pauseResolver?.();
+    pauseResolver = null;
   }
 
   async function importFiles(files: File[]) {
@@ -89,12 +104,21 @@ export function useImport() {
 
     _startImport(filtered.map(f => f.name));
 
-    const result = await musicLibraryEngine.importFiles(
-      filtered,
-      (current, total) => _onProgress(current, total),
-    );
+    activeImportPromise = (async () => {
+      const result = await musicLibraryEngine.importFiles(
+        filtered,
+        (current, total) => _onProgress(current, total),
+        {
+          waitIfPaused,
+          isCancelled: () => isCancelRequested,
+        },
+      );
 
-    await _finishImport(result);
+      await _finishImport(result);
+    })();
+
+    await activeImportPromise;
+    activeImportPromise = null;
   }
 
   async function importFromPaths(paths: string[]) {
@@ -102,12 +126,21 @@ export function useImport() {
 
     _startImport(paths.map(p => p.split(/[\\/]/).pop() ?? p));
 
-    const result = await musicLibraryEngine.importFromPaths(
-      paths,
-      (current, total) => _onProgress(current, total),
-    );
+    activeImportPromise = (async () => {
+      const result = await musicLibraryEngine.importFromPaths(
+        paths,
+        (current, total) => _onProgress(current, total),
+        {
+          waitIfPaused,
+          isCancelled: () => isCancelRequested,
+        },
+      );
 
-    await _finishImport(result);
+      await _finishImport(result);
+    })();
+
+    await activeImportPromise;
+    activeImportPromise = null;
   }
 
   function _startImport(fileNames: string[]) {
@@ -122,7 +155,39 @@ export function useImport() {
       files: visibleFiles.map(name => ({ name, status: "pending" })),
       visibleFileCount: visibleFiles.length,
       result: null,
+      isPaused: false,
+      isCancelling: false,
     };
+    isCancelRequested = false;
+    pauseResolver = null;
+  }
+
+  async function waitIfPaused() {
+    if (!state.value.isPaused) return;
+
+    await new Promise<void>((resolve) => {
+      pauseResolver = resolve;
+    });
+  }
+
+  function pauseImport() {
+    if (!state.value.isRunning || state.value.isCancelling) return;
+    state.value.isPaused = true;
+  }
+
+  function resumeImport() {
+    state.value.isPaused = false;
+    pauseResolver?.();
+    pauseResolver = null;
+  }
+
+  async function cancelImport() {
+    if (!state.value.isRunning) return;
+
+    isCancelRequested = true;
+    state.value.isCancelling = true;
+    resumeImport();
+    await activeImportPromise;
   }
 
   function _onProgress(current: number, total: number) {
@@ -151,6 +216,8 @@ export function useImport() {
 
     state.value.result = result;
     state.value.progress = 100;
+    state.value.isPaused = false;
+    state.value.isCancelling = false;
 
     if (result.successful.length > 0) {
       await invalidateLibraryData(queryClient);
@@ -163,6 +230,8 @@ export function useImport() {
     isOpen,
     isRunning,
     progress,
+    isPaused,
+    isCancelling,
     files,
     result,
     total,
@@ -174,6 +243,9 @@ export function useImport() {
     openSheet,
     closeSheet,
     reset,
+    pauseImport,
+    resumeImport,
+    cancelImport,
     importFiles,
     importFromPaths,
   };

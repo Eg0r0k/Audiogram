@@ -6,7 +6,7 @@
     <RightPanelHeader
       class="bg-card"
       :show-close="true"
-      title="Очередь"
+      :title="t('queue.title')"
       @close="rightPanel.close()"
     />
 
@@ -16,7 +16,7 @@
         class="px-4 mt-2 py-2 bg-card"
       >
         <span class="mb-2 block font-medium">
-          Сейчас играет
+          {{ t("queue.nowPlaying") }}
         </span>
 
         <div class="relative ">
@@ -35,7 +35,7 @@
       </div>
       <div class="px-4  pt-4 bg-card">
         <span class=" block font-medium pb-2  ">
-          Следующие в очереди
+          {{ t("queue.upNext") }}
         </span>
       </div>
       <TrackContextMenu context="queue">
@@ -81,7 +81,7 @@
       <TrackDropdown context="queue" />
     </template>
 
-    <!-- <QueueEmpty v-else /> -->
+    <QueueEmpty v-else />
 
     <QueueDragOverlay
       :is-dragging="drag.isDragging.value"
@@ -95,6 +95,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, useTemplateRef, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useElementBounding } from "@vueuse/core";
 import { useQueueStore } from "../store/queue.store";
 import { useDragReorder } from "../composables/useDragReorder";
@@ -107,6 +108,9 @@ import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdo
 import QueueDragOverlay from "./QueueDragOverlay.vue";
 import RightPanelHeader from "@/modules/right-panel/components/RightPanelHeader.vue";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
+import QueueEmpty from "./QueueEmpty.vue";
+
+const { t } = useI18n();
 
 const ITEM_HEIGHT = 64;
 const DEBUG_QUEUE_DND = true;
@@ -164,7 +168,7 @@ function showDropIndicator(index: number): boolean {
 }
 
 function dropIndicatorPosition(): string {
-  return "top-0";
+  return "bottom-0";
 }
 
 function getDropTargetIndex(): number {

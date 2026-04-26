@@ -1,6 +1,18 @@
 {
   "import": {
-    "button": "Import tracks"
+    "button": "Import tracks",
+    "title": "Import {{count}} tracks",
+    "visibleFiles": "Showing first {{visible}} of {{total}} files",
+    "goToLibrary": "Go to library",
+    "status": {
+      "running": "Importing...",
+      "paused": "Import paused",
+      "cancelling": "Cancelling import...",
+      "cancelTitle": "Cancel import?",
+      "cancelDescription": "Import is paused. Already processed tracks will remain in your library.",
+      "continueImport": "Continue import",
+      "confirmCancel": "Cancel import"
+    }
   },
   "error": "Error",
   "save": "Save",
