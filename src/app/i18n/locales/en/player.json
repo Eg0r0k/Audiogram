@@ -38,8 +38,10 @@
   "cover": "Cover",
   "equalizer": "Equalizer",
   "emptyDescription": "For now...",
-  "sleepTimer": "Sleep timer",
+"sleepTimer": "Sleep timer",
   "cancelSleepTimer": "Turn off timer",
   "sleepTimerOff": "Timer is off",
-  "sleepTimerScheduledIn": "Will stop in {time}"
+  "sleepTimerScheduledIn": "Will stop in {time}",
+  "nothingPlaying": "Nothing is playing right now.",
+  "upNextLabel": "Up Next"
 }

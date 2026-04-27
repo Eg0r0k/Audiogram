@@ -1,7 +1,7 @@
 <template>
   <div class="flex h-full min-h-0 flex-col bg-card">
     <RightPanelHeader
-      title="Сейчас играет"
+      :title="$t('player.nowPlaying')"
     />
     <Scrollable class="flex-1">
       <div class="grid gap-4 py-4 px-5 pt-0">
@@ -89,7 +89,7 @@
               <div class="flex items-center justify-between gap-3 px-2">
                 <div>
                   <p class="text-sm font-medium">
-                    Далее
+                    {{ $t('player.upNextLabel') }}
                   </p>
                 </div>
 
@@ -99,7 +99,7 @@
                   class="rounded-full"
                   @click="rightPanel.openQueue()"
                 >
-                  Показать очередь
+                  {{ $t('queue.showQueue') }}
                 </Button>
               </div>
 
@@ -123,7 +123,7 @@
           v-else
           class=" p-2 text-center font-medium text-sm text-muted-foreground"
         >
-          Сейчас ничего не играет.
+          {{ $t('player.nothingPlaying') }}
         </div>
       </div>
     </Scrollable>

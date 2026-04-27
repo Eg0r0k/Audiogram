@@ -6,5 +6,6 @@
   "nowPlaying": "Now Playing",
   "upNext": "Up Next",
   "drag": "Drag to reorder",
-  "clear": "Clear queue"
+  "clear": "Clear queue",
+  "showQueue": "Show queue"
 }

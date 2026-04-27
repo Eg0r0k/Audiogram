@@ -38,8 +38,10 @@
   "cover": "Обложка",
   "equalizer": "Эквалайзер",
   "emptyDescription": "Пока что...",
-  "sleepTimer": "Таймер сна",
+"sleepTimer": "Таймер сна",
   "cancelSleepTimer": "Выключить таймер",
   "sleepTimerOff": "Таймер не активен",
-  "sleepTimerScheduledIn": "Остановится через {time}"
+  "sleepTimerScheduledIn": "Остановится через {time}",
+  "nothingPlaying": "Сейчас ничего не играет.",
+  "upNextLabel": "Далее"
 }

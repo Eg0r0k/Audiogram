@@ -4,7 +4,19 @@
     class="mx-auto w-full max-w-3xl px-4 pb-12 sm:px-6"
   >
     <div
-      v-if="playerStore.lyrics.length > 0"
+      v-if="playerStore.lyricsStatus === 'loading'"
+      class="space-y-5 pt-2 text-center"
+    >
+      <Skeleton
+        v-for="(width, i) in SKELETON_WIDTHS"
+        :key="i"
+        :style="{ width }"
+        class="mx-auto h-5 sm:h-7"
+      />
+    </div>
+
+    <div
+      v-else-if="playerStore.lyrics.length > 0"
       class="space-y-5 text-center"
     >
       <button
@@ -29,10 +41,13 @@
 </template>
 
 <script setup lang="ts">
-import { ComponentPublicInstance, computed, nextTick, watch } from "vue";
+import { type ComponentPublicInstance, computed, nextTick, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { Skeleton } from "@/components/ui/skeleton";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import type { Track } from "@/modules/player/types";
+
+const SKELETON_WIDTHS = ["55%", "72%", "48%", "66%", "38%", "60%", "44%"];
 
 const playerStore = usePlayerStore();
 const { t } = useI18n();
@@ -44,14 +59,9 @@ const track = computed<Track | null>(() => {
 });
 
 const placeholderText = computed(() => {
-  if (playerStore.lyricsStatus === "loading") {
-    return t("player.lyricsLoading");
-  }
-
   if (playerStore.lyricsStatus === "error") {
     return t("player.lyricsLoadFailed");
   }
-
   return t("player.lyricsEmpty");
 });
 
@@ -59,22 +69,13 @@ watch(
   () => playerStore.activeLyricsIndex,
   async (index) => {
     if (index < 0) return;
-
     await nextTick();
-    lineRefs[index]?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
+    lineRefs[index]?.scrollIntoView({ behavior: "smooth", block: "center" });
   },
 );
 
 function setLineRef(element: Element | ComponentPublicInstance | null, index: number) {
-  if (element instanceof HTMLElement) {
-    lineRefs[index] = element;
-  }
-  else {
-    lineRefs[index] = null;
-  }
+  lineRefs[index] = element instanceof HTMLElement ? element : null;
 }
 
 function handleLineClick(time: number) {

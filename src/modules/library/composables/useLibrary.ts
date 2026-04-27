@@ -77,9 +77,21 @@ export const useLibrary = () => {
     to: routeLocation.liked(),
     rounded: false,
   }));
+  const allMusic = computed<LibraryItem> (() => ({
+    id: "all",
+    type: "playlist",
+    title: t("library.allMusic"),
+    image: "/img/media.svg",
+    isPinned: true,
+    isSystem: true,
+    addedAt: 0,
+    updatedAt: 0,
+    to: routeLocation.allMusic(),
+    rounded: false,
+  }));
 
   const allItems = computed<LibraryItem[]>(() => {
-    const items: LibraryItem[] = [likedItem.value];
+    const items: LibraryItem[] = [likedItem.value, allMusic.value];
 
     for (const artist of artists.value) {
       items.push({
@@ -225,7 +237,7 @@ export const useLibrary = () => {
   }, { immediate: true });
 
   const createPlaylist = async () => {
-    const playlist = await createPlaylistAndSync(queryClient);
+    const playlist = await createPlaylistAndSync(queryClient, t("playlist.newPlaylist"));
     router.push(routeLocation.playlist(playlist.id));
   };
 

@@ -34,5 +34,10 @@
     "title": "Title",
     "album": "Album",
     "dateAdded": "Date Added"
+  },
+  "allMusic": {
+    "title": "All Music",
+    "empty": "Your library is empty.",
+    "noTracksFound": "No tracks found for \"{query}\"."
   }
 }
