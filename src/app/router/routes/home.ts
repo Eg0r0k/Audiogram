@@ -11,4 +11,13 @@ export const homeRoutes: RouteRecordRaw[] = [
       depth: 0,
     },
   },
+  {
+    path: "/all",
+    name: ROUTE_NAMES.ALL_MUSIC,
+    component: () => import("@/pages/AllMusicPage.vue"),
+    meta: {
+      titleKey: "nav.allMusic",
+      depth: 1,
+    },
+  },
 ];

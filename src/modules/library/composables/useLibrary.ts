@@ -80,7 +80,7 @@ export const useLibrary = () => {
   const allMusic = computed<LibraryItem> (() => ({
     id: "all",
     type: "playlist",
-    title: t("library.allMusic"),
+    title: t("library.allMusic.title"),
     image: "/img/media.svg",
     isPinned: true,
     isSystem: true,

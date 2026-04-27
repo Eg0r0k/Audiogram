@@ -13,6 +13,7 @@ export const ROUTE_NAMES = {
   SETTINGS_NOTIFICATIONS: "settings-notifications",
   SETTINGS_APPEARANCE: "settings-appearance",
   SETTINGS_ABOUT: "settings-about",
+  ALL_MUSIC: "all-music",
 } as const;
 
 export type AppRouteName = (typeof ROUTE_NAMES)[keyof typeof ROUTE_NAMES];

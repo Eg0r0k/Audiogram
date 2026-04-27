@@ -155,11 +155,11 @@ export const playlistQueries = {
     }),
 } as const;
 
-export async function createPlaylistAndSync(queryClient: QueryClient) {
+export async function createPlaylistAndSync(queryClient: QueryClient, name = "New playlist") {
   const now = Date.now();
   const playlist: PlaylistEntity = {
     id: createPlaylistId(crypto.randomUUID()),
-    name: "New playlist",
+    name,
     trackIds: [],
     addedAt: now,
     updatedAt: now,
