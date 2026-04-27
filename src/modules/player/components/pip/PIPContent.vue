@@ -172,7 +172,8 @@ watch(
 const showCover = computed(() => !!coverUrl.value && !coverLoadFailed.value);
 
 const contentCoverStyle = computed(() => ({
-  background: `linear-gradient(to bottom, ${playerColor.value.hsl}, black)`,
+  background: `linear-gradient(to bottom, ${playerColor.value.hsl}, color-mix(in srgb, ${playerColor.value.hsl} 20%, black))`,
+
 }));
 
 const fallbackIconStyle = computed(() => ({

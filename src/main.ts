@@ -21,7 +21,6 @@ app.use(pinia);
 app.use(i18n);
 app.use(VueQueryPlugin, { queryClient });
 
-// TODO: Fix restore player with set with queue, becouse this stop repitting without queue store.
 if ("serviceWorker" in navigator && !IS_TAURI) {
   navigator.serviceWorker.register("/opfs-sw.js").catch(console.error);
 }

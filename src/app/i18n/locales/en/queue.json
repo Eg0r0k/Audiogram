@@ -5,6 +5,7 @@
   "historyEmpty": "Listening history is empty",
   "nowPlaying": "Now Playing",
   "upNext": "Up Next",
+  "added": "Added to queue",
   "drag": "Drag to reorder",
   "clear": "Clear queue",
   "showQueue": "Show queue"

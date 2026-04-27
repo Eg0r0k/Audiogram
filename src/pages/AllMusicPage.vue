@@ -12,7 +12,7 @@
             <IconArrowLeft class="size-5" />
           </Button>
 
-          <InputGroup class="bg-muted!  min-w-0 flex-1 rounded-full sm:w-[320px]">
+          <InputGroup class="bg-muted!  min-w-0 flex-1 rounded-full">
             <InputGroupAddon tabindex="-1">
               <IconSearch class="ml-1 size-4.5 text-muted-foreground" />
             </InputGroupAddon>
@@ -98,23 +98,23 @@
       <TrackRowLoading :rows="5" />
     </div>
 
-        <div
-          v-else-if="isError"
-          class="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center"
-        >
-          <div>
-            <h2 class="text-2xl font-bold">
-              {{ t('errors.tracksLoadFailed') }}
-            </h2>
-            <p class="text-muted-foreground">
-              {{ errorMessage }}
-            </p>
-          </div>
+    <div
+      v-else-if="isError"
+      class="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center"
+    >
+      <div>
+        <h2 class="text-2xl font-bold">
+          {{ t('errors.tracksLoadFailed') }}
+        </h2>
+        <p class="text-muted-foreground">
+          {{ errorMessage }}
+        </p>
+      </div>
 
-          <Button @click="refetch">
-            {{ t('common.retry') }}
-          </Button>
-        </div>
+      <Button @click="refetch">
+        {{ t('common.retry') }}
+      </Button>
+    </div>
 
     <TrackContextMenu
       v-else
@@ -233,8 +233,8 @@ const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
 
 const emptyLabel = computed(() =>
   normalizedSearchQuery.value
-    ? t('library.allMusic.noTracksFound', { query: normalizedSearchQuery.value })
-    : t('library.allMusic.empty'),
+    ? t("library.allMusic.noTracksFound", { query: normalizedSearchQuery.value })
+    : t("library.allMusic.empty"),
 );
 
 const errorMessage = computed(() =>

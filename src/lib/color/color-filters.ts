@@ -16,7 +16,7 @@ export function isUrineYellow(h: number, s: number, l: number): boolean {
   return h >= 48 && h <= 62 && s >= 0.45 && s <= 0.85 && l >= 0.48 && l <= 0.68;
 }
 
-export function isDusty(h: number, s: number, l: number): boolean {
+export function isDusty(_h: number, s: number, l: number): boolean {
   return s < 0.25 && l > 0.15 && l < 0.85;
 }
 
@@ -28,11 +28,11 @@ export function isSkinLike(h: number, s: number, l: number): boolean {
   return h >= 8 && h <= 32 && s >= 0.15 && s <= 0.60 && l >= 0.42 && l <= 0.85;
 }
 
-export function isNeonUgly(h: number, s: number, l: number): boolean {
+export function isNeonUgly(_h: number, s: number, l: number): boolean {
   return s > 0.85 && l > 0.68;
 }
 
-export function isWashedOut(h: number, s: number, l: number): boolean {
+export function isWashedOut(_h: number, s: number, l: number): boolean {
   return s < 0.18 && l > 0.65 && l < 0.92;
 }
 

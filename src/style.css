@@ -279,6 +279,8 @@ video {
   --z-dropoverlay: 9999;
   --z-fullscreen: 10000;
   --toolbar-height: 0px;
+  --z-mobile-player: 40;
+  --z-mobile-right-panel: 50;
 }
 
 .is-tauri:not(.is-mobile) {
@@ -317,41 +319,3 @@ video {
   opacity: 0.5 !important;
 }
 
-.full-player-enter-active,
-.full-player-leave-active {
-  transition-property: transform, opacity;
-  transition-timing-function: var(--ease-drawer);
-  will-change: transform, opacity;
-}
-
-.full-player-enter-active {
-  transition-duration: 280ms;
-}
-
-.full-player-leave-active {
-  transition-duration: 260ms;
-}
-
-.full-player-enter-from,
-.full-player-leave-to {
-  transform: translateY(100%);
-  opacity: 0;
-}
-
-.full-player-enter-to,
-.full-player-leave-from {
-  transform: translateY(0);
-  opacity: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .full-player-enter-active,
-  .full-player-leave-active {
-    transition-duration: 120ms;
-  }
-
-  .full-player-enter-from,
-  .full-player-leave-to {
-    transform: translateY(0);
-  }
-}

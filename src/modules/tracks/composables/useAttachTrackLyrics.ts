@@ -111,13 +111,12 @@ export function useAttachTrackLyrics() {
 
       track.lyricsPath = nextTrack.lyricsPath;
 
-      if (playerStore.currentTrack?.id === nextTrack.id && "artistId" in playerStore.currentTrack) {
+      if (playerStore.currentTrack?.id === nextTrack.id && playerStore.currentTrack.kind === "library") {
         playerStore.currentTrack = {
           ...playerStore.currentTrack,
           lyricsPath: nextTrack.lyricsPath,
         };
       }
-
       queueStore.syncTrackMetadata(nextTrack);
 
       toast.success(t("player.lyricsAttached"));

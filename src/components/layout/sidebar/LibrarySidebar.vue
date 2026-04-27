@@ -1,5 +1,8 @@
 <template>
-  <div class="relative flex-1 pt-4 h-full flex flex-col min-h-0 overflow-hidden">
+  <div
+    ref="rootRef"
+    class="relative flex-1 pt-4 h-full flex flex-col min-h-0 overflow-hidden"
+  >
     <SidebarHeader />
     <Scrollable
       direction="horizontal"
@@ -80,6 +83,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { computed, useTemplateRef, ref } from "vue";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
+import { useSwipeControl } from "@/composables/useSwipeControl";
 
 const {
   pinnedItems,
@@ -98,6 +102,7 @@ const handleDeleteItem = async (item: LibraryItem) => {
 const { t } = useI18n();
 
 const scrollableRef = useTemplateRef("scrollableRef");
+const rootRef = useTemplateRef<HTMLElement>("rootRef");
 
 const libraryItems = computed(() => [
   ...pinnedItems.value,
@@ -108,6 +113,19 @@ useScrollRestoration(scrollableRef, {
   key: "library-sidebar",
   ready: () => !isLoading.value,
   deps: () => libraryItems.value.length,
+});
+
+useSwipeControl(rootRef, {
+  onSwipeLeft: () => {
+    const idx = availableFilters.value.indexOf(activeFilter.value);
+    const next = availableFilters.value[idx + 1];
+    if (next) setFilter(next);
+  },
+  onSwipeRight: () => {
+    const idx = availableFilters.value.indexOf(activeFilter.value);
+    const prev = availableFilters.value[idx - 1];
+    if (prev) setFilter(prev);
+  },
 });
 
 const filterLabels = computed<Record<LibraryFilter, string>>(() => ({

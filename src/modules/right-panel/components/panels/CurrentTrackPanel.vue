@@ -1,11 +1,21 @@
 <template>
   <div class="flex h-full min-h-0 flex-col bg-card">
-    <RightPanelHeader
-      :title="$t('player.nowPlaying')"
-    />
+    <RightPanelHeader :title="$t('player.nowPlaying')">
+      <template #trailing>
+        <Button
+          v-if="libraryTrack"
+          size="icon"
+          class="rounded-full"
+          variant="ghost"
+          @click.stop="onDotsClick"
+        >
+          <IconDots class="size-6" />
+        </Button>
+      </template>
+    </RightPanelHeader>
     <Scrollable class="flex-1">
       <div class="grid gap-4 py-4 px-5 pt-0">
-        <div class="relative min-w-0 overflow-hidden rounded-2xl bg-muted">
+        <div class="relative min-w-0 overflow-hidden rounded-2xl bg-muted group">
           <NuxtImage
             v-slot="{ imgAttrs, isLoaded, src }"
             :src="coverUrl"
@@ -145,17 +155,26 @@ import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import IconHeart from "~icons/tabler/heart";
 import IconHeartFilled from "~icons/tabler/heart-filled";
+import IconDots from "~icons/tabler/dots";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
 import RightPanelHeader from "../RightPanelHeader.vue";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import { routeLocation } from "@/app/router/route-locations";
+import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 
 const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
 const rightPanel = useRightPanelStore();
 const router = useRouter();
 const { toggleTrackLike } = useToggleTrackLike();
+
+const { openDropdown } = useTrackMenu();
+
+function onDotsClick(event: MouseEvent): void {
+  if (!libraryTrack.value) return;
+  openDropdown(libraryTrack.value, 0, event, { target: "default" });
+}
 
 const currentTrack = computed(() => playerStore.currentTrack);
 const libraryTrack = computed<Track | null>(() => {

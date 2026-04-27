@@ -97,11 +97,9 @@
 import { computed, ref } from "vue";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
-import { useRoute } from "vue-router";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import PageErrorState from "@/components/common/PageErrorState.vue";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
-import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import IconLoader2 from "~icons/tabler/loader-2";
@@ -124,10 +122,8 @@ import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
 const { t } = useI18n();
 const queueStore = useQueueStore();
 const playerStore = usePlayerStore();
-const rightPanelStore = useRightPanelStore();
 const { openDeleteDialog: openGlobalDeleteDialog } = useDeleteConfirmDialog();
 const { openMenu } = useTrackMenu();
-const route = useRoute();
 const sortKey = ref<TrackSortKey | null>(null);
 
 const gridStyles = {
@@ -222,19 +218,6 @@ function toggleAlbumSort() {
 
 function handleContextMenu(track: Track, index: number) {
   openMenu(track, index, { target: "artist" });
-}
-
-function openAddTracksPanel() {
-  if (!artist.value) return;
-
-  rightPanelStore.openAddTracks({
-    entityType: "artist",
-    entityId: artist.value.id,
-    onConfirmed: () => refetch(),
-  }, {
-    scope: { type: "route", routeKey: route.fullPath },
-    depth: 1,
-  });
 }
 
 const errorMessage = computed(() => {

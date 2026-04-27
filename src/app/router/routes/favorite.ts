@@ -8,6 +8,7 @@ export const favoriteRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/FavoritePage.vue"),
     meta: {
       titleKey: "nav.favorite",
+      depth: 1,
     },
   },
 ];

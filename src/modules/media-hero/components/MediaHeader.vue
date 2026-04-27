@@ -11,7 +11,7 @@
         class="rounded-full shrink-0 text-white"
         @click="goBack()"
       >
-        <IconArrowLeft class="size-5" />
+        <IconArrowLeft class="size-6" />
       </Button>
 
       <div class="flex-1 min-w-0">

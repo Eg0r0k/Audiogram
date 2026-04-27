@@ -3,7 +3,7 @@
     ref="rootRef"
     class="flex flex-col w-full mx-auto min-h-0 px-6 pt-4 pb-6 max-w-md"
   >
-    <div class="flex-1 min-h-0 [container-type:size] flex items-start justify-center pb-2">
+    <div class="flex-1 min-h-0 @container-[size] flex items-center justify-center pb-2">
       <div class="aspect-square w-[min(100cqw,100cqh)] rounded-2xl bg-muted overflow-hidden shadow-lg">
         <NuxtImage
           v-slot="{ imgAttrs, isLoaded, src }"
@@ -105,7 +105,7 @@
       <Button
         size="icon-lg"
         variant="ghost"
-        class="rounded-full"
+        class="rounded-full  text-white"
         :disabled="!queueStore.hasPrevious"
         @click.stop="queueStore.previous()"
       >
@@ -118,7 +118,7 @@
       <Button
         size="icon-lg"
         variant="ghost"
-        class="rounded-full"
+        class="rounded-full text-white"
         :disabled="!queueStore.hasNext"
         @click.stop="queueStore.next()"
       >
@@ -135,11 +135,11 @@
       >
         <IconRepeatOnce
           v-if="playerStore.repeatMode === 'one'"
-          class="size-5"
+          class="size-6"
         />
         <IconRepeat
           v-else
-          class="size-5"
+          class="size-6"
         />
       </Button>
       <Button
@@ -148,15 +148,49 @@
         :class="{ 'text-primary': queueStore.isShuffled }"
         @click.stop="queueStore.toggleShuffle()"
       >
-        <IconShuffle class="size-5" />
+        <IconShuffle class="size-6" />
       </Button>
+      <DropdownMenu :modal="false">
+        <DropdownMenuTrigger as-child>
+          <Button
+            size="icon"
+            variant="ghost"
+            @click.stop
+          >
+            <IconMoonStars
+              class="size-6"
+              :class="isSleepTimerActive ? 'text-primary': ''"
+            />
+          </Button>
+          <DropdownMenuContent
 
-      <Button
-        size="icon"
-        variant="ghost"
-      >
-        <IconClocs class="size-5" />
-      </Button>
+            align="end"
+            class="w-52"
+          >
+            <DropdownMenuLabel class="text-xs text-muted-foreground font-medium">
+              {{ statusText }}
+            </DropdownMenuLabel>
+            <DropdownMenuItem
+              v-for="preset in presets"
+              :key="preset.minutes"
+              @click="setTimer(preset.minutes)"
+            >
+              <IconClockHour4 class="size-5" />
+              {{ $t("common.minutesShort", { count: preset.minutes }) }}
+            </DropdownMenuItem>
+            <template v-if="isSleepTimerActive">
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                @click="cancelSleepTimer()"
+              >
+                <IconPlayerStop class="size-5" />
+                {{ $t("player.cancelSleepTimer") }}
+              </DropdownMenuItem>
+            </template>
+          </DropdownMenuContent>
+        </DropdownMenuTrigger>
+      </DropdownMenu>
     </div>
 
     <TrackDropdown />
@@ -172,7 +206,15 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import { formatDuration } from "@/lib/format/time";
 
-import IconClocs from "~icons/tabler/stopwatch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 import IconBack from "~icons/tabler/player-skip-back-filled";
 import IconForvard from "~icons/tabler/player-skip-forward-filled";
 import IconRepeat from "~icons/tabler/repeat";
@@ -181,6 +223,9 @@ import IconRepeatOnce from "~icons/tabler/repeat-once";
 import IconDots from "~icons/tabler/dots";
 import IconLike from "~icons/tabler/heart";
 import IconLikedFilled from "~icons/tabler/heart-filled";
+import IconMoonStars from "~icons/tabler/moon-stars";
+import IconClockHour4 from "~icons/tabler/clock-hour-4";
+import IconPlayerStop from "~icons/tabler/circle-minus";
 
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
 import { Button } from "@/components/ui/button";
@@ -190,6 +235,7 @@ import type { Track } from "@/modules/player/types";
 import { RangeSelector } from "@/modules/player";
 import { usePlayerProgress } from "@/modules/tracks/composables/usePlayerProgress";
 import { useSwipeControl } from "@/composables/useSwipeControl";
+import { useSleepTimer } from "@/modules/player/composables/useSleepTimer";
 
 withDefaults(defineProps<{
   backgroundColor?: string | null;
@@ -212,6 +258,8 @@ useSwipeControl(rootRef, {
   threshold: 50,
   onSwipeDown: () => emit("close"),
 });
+
+const { presets, isActive: isSleepTimerActive, statusText, setTimer, cancel: cancelSleepTimer } = useSleepTimer();
 
 const currentTrack = computed<Track | null>(() => {
   const track = playerStore.currentTrack;

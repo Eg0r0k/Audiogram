@@ -25,7 +25,7 @@
         <div class="relative flex flex-col gap-2">
           <button
             type="button"
-            class="group relative size-48 cursor-pointer overflow-hidden rounded-full border-2 border-dashed border-muted-foreground/25 transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="group relative size-48 cursor-pointer overflow-hidden rounded-lg border-2 border-dashed border-muted-foreground/25 transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             :class="{ 'border-destructive': imageError }"
             :disabled="isSaving"
             @click="handleSelectCover"

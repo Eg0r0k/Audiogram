@@ -49,7 +49,7 @@
                 {{ $t("player.sleepTimer") }}
               </span>
               <span
-                v-if="playerStore.isSleepTimerActive"
+                v-if="isSleepTimerActive"
                 class="ml-auto text-xs text-muted-foreground"
               >
                 {{ remainingText }}
@@ -65,17 +65,17 @@
               <DropdownMenuItem
                 v-for="preset in presets"
                 :key="preset.minutes"
-                @click="handlePreset(preset.minutes)"
+                @click="setTimer(preset.minutes)"
               >
                 <IconClockHour4 class="size-5 " />
                 {{ t("common.minutesShort", { count: preset.minutes }) }}
               </DropdownMenuItem>
 
-              <template v-if="playerStore.isSleepTimerActive">
+              <template v-if="isSleepTimerActive">
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
-                  @click="playerStore.cancelSleepTimer()"
+                  @click="cancelSleepTimer()"
                 >
                   <IconPlayerStop class="size-5" />
                   {{ $t("player.cancelSleepTimer") }}
@@ -165,37 +165,20 @@ import IconPlaylist from "~icons/tabler/playlist";
 
 import PIPContent from "./pip/PIPContent.vue";
 import { useQueryClient, VueQueryPlugin } from "@tanstack/vue-query";
+import { useSleepTimer } from "../composables/useSleepTimer";
 const router = useRouter();
-
-const presets = [
-  { minutes: 5 },
-  { minutes: 10 },
-  { minutes: 30 },
-  { minutes: 45 },
-];
 
 const playbackRatePresets = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
 
 const { t } = useI18n();
 const playerStore = usePlayerStore();
 const rightPanelStore = useRightPanelStore();
+const { presets, isActive: isSleepTimerActive, remainingText, statusText, setTimer, cancel: cancelSleepTimer } = useSleepTimer();
+
 const timeDisplayMode = ref<"total" | "remaining">("total");
 
 const isQueueOpen = computed(() =>
   rightPanelStore.isOpen && rightPanelStore.view === "queue",
-);
-
-const statusText = computed(() => {
-  if (playerStore.sleepTimerRemainingMs > 0) {
-    return t("player.sleepTimerScheduledIn", {
-      time: formatDuration(playerStore.sleepTimerRemainingMs / 1000),
-    });
-  }
-  return t("player.sleepTimerOff");
-});
-
-const remainingText = computed(() =>
-  formatDuration(playerStore.sleepTimerRemainingMs / 1000),
 );
 
 const formattedPlaybackRate = computed(() => formatPlaybackRate(playerStore.playbackRate));
@@ -219,10 +202,6 @@ const handlePipToggle = async () => {
   await pip.toggle(getPipOptions());
 };
 
-const handlePreset = (minutes: number) => {
-  playerStore.setSleepTimer(minutes * 60 * 1000);
-};
-
 const formatPlaybackRate = (rate: number) => `${rate.toFixed(2).replace(/\.00$/, "").replace(/0$/, "")}x`;
 
 const handlePlaybackRateChange = (value: string) => {
@@ -234,13 +213,11 @@ const toggleQueuePanel = () => {
     rightPanelStore.close();
     return;
   }
-
   rightPanelStore.openQueue();
 };
 
 const toggleTimeDisplayMode = () => {
   if (playerStore.isLiveStream) return;
-
   timeDisplayMode.value = timeDisplayMode.value === "total" ? "remaining" : "total";
 };
 

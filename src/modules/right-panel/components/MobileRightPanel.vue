@@ -1,5 +1,5 @@
 <template>
-  <div class="pointer-events-none fixed inset-0 top-(--toolbar-height) z-40">
+  <div class="pointer-events-none fixed inset-0 top-(--toolbar-height)">
     <Transition name="right-panel-backdrop">
       <button
         v-if="rightPanel.isOpen"
