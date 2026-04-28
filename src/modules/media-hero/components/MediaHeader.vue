@@ -1,6 +1,6 @@
 <template>
   <header
-    class="fixed w-full top-0 z-20 transition-all duration-200 ease-standard"
+    class="fixed w-full top-0 z-10 transition-all duration-200 ease-standard"
     :class="isScrolled ? '' : 'bg-transparent'"
     :style="headerStyle"
   >

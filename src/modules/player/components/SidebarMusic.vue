@@ -92,7 +92,7 @@
       </Button>
     </div>
 
-    <TrackDropdown />
+    <TrackDropdown context="current-track" />
   </div>
 </template>
 
@@ -147,6 +147,6 @@ const toggleLike = async () => {
 
 const onDotsClick = (event: MouseEvent) => {
   if (!currentTrack.value) return;
-  openDropdown(currentTrack.value, 0, event, { target: "default" });
+  openDropdown(currentTrack.value, 0, event, { target: "current-track" });
 };
 </script>

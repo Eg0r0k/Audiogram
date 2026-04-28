@@ -1,7 +1,7 @@
 <template>
   <section
     v-if="track"
-    class="mx-auto w-full max-w-3xl px-4 pb-12 sm:px-6"
+    :class="sectionClass"
   >
     <div
       v-if="playerStore.lyricsStatus === 'loading'"
@@ -17,7 +17,7 @@
 
     <div
       v-else-if="playerStore.lyrics.length > 0"
-      class="space-y-5 text-center"
+      :class="linesClass"
     >
       <button
         v-for="(line, index) in playerStore.lyrics"
@@ -49,6 +49,12 @@ import type { Track } from "@/modules/player/types";
 
 const SKELETON_WIDTHS = ["55%", "72%", "48%", "66%", "38%", "60%", "44%"];
 
+const props = withDefaults(defineProps<{
+  variant?: "fullscreen" | "panel";
+}>(), {
+  variant: "fullscreen",
+});
+
 const playerStore = usePlayerStore();
 const { t } = useI18n();
 const lineRefs: Array<HTMLElement | null> = [];
@@ -63,6 +69,18 @@ const placeholderText = computed(() => {
     return t("player.lyricsLoadFailed");
   }
   return t("player.lyricsEmpty");
+});
+
+const sectionClass = computed(() => {
+  if (props.variant === "panel") {
+    return "mx-auto w-full px-2 pb-8";
+  }
+
+  return "mx-auto w-full max-w-3xl px-4 pb-12 sm:px-6";
+});
+
+const linesClass = computed(() => {
+  return props.variant === "panel" ? "space-y-4 text-center" : "space-y-5 text-center";
 });
 
 watch(
@@ -87,11 +105,19 @@ function getLineClass(index: number, text: string): string {
   const isActive = index === playerStore.activeLyricsIndex;
 
   if (isActive) {
+    if (props.variant === "panel") {
+      return "lyrics-line-active block w-full cursor-pointer bg-transparent text-center text-2xl font-semibold leading-tight tracking-tight text-foreground";
+    }
+
     return "lyrics-line-active block w-full cursor-pointer bg-transparent text-center text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-5xl";
   }
 
   if (!text.trim()) {
     return "lyrics-line-inactive block h-6 w-full bg-transparent sm:h-8";
+  }
+
+  if (props.variant === "panel") {
+    return "lyrics-line-inactive block w-full cursor-pointer bg-transparent text-center text-lg leading-relaxed text-muted-foreground/55";
   }
 
   return "lyrics-line-inactive block w-full cursor-pointer bg-transparent text-center text-xl leading-relaxed text-muted-foreground/55 sm:text-2xl";
