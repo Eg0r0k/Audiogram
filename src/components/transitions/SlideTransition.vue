@@ -8,16 +8,24 @@
 
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import { useRoute } from "vue-router";
 
 const props = defineProps<{
   depth?: number;
 }>();
 
+const route = useRoute();
 const transitionName = ref("");
+const hasHash = (fullPath: string) => fullPath.includes("#");
 
 watch(
-  () => props.depth,
-  (newDepth, oldDepth) => {
+  [() => props.depth, () => route.fullPath],
+  ([newDepth, newFullPath], [oldDepth, oldFullPath]) => {
+    if (hasHash(newFullPath) || hasHash(oldFullPath)) {
+      transitionName.value = "";
+      return;
+    }
+
     if (newDepth === undefined || oldDepth === undefined) {
       transitionName.value = "";
       return;
@@ -28,16 +36,10 @@ watch(
       return;
     }
 
-    if (newDepth > oldDepth) {
-      transitionName.value = "slide-left";
-    }
-    else {
-      transitionName.value = "slide-right";
-    }
+    transitionName.value = newDepth > oldDepth ? "slide-left" : "slide-right";
   },
 );
 </script>
-
 <style>
 :root {
   --transition-duration: 0.3s;
