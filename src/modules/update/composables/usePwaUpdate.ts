@@ -27,6 +27,8 @@ export const usePwaUpdate = (channel: UpdateChannel = "stable", notifyOnUpdate: 
   const { needRefresh, updateServiceWorker } = useRegisterSW({
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return;
+
+      registration.update();
       setInterval(() => registration.update(), 60 * 60 * 1000);
     },
   });
