@@ -142,7 +142,6 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
-import { routeLocation } from "@/app/router/route-locations";
 const { t } = useI18n();
 const queueStore = useQueueStore();
 const playerStore = usePlayerStore();
@@ -188,9 +187,6 @@ const {
   hasNextTrackPage,
   isTracksLoading,
   isFetchingNextTrackPage,
-  fetchNextAlbumPage,
-  hasNextAlbumPage,
-  isFetchingNextAlbumPage,
 } = useArtistPage(sortKey);
 
 const showEditDialog = ref(false);
@@ -216,15 +212,6 @@ function toggleTitleSort() {
   }
 
   setSortKey(sortKey.value === "title_asc" ? "title_desc" : null);
-}
-
-function getAlbumRoute(albumId: string) {
-  return routeLocation.album(albumId);
-}
-
-function handleAlbumLoadMore() {
-  if (!hasNextAlbumPage.value || isFetchingNextAlbumPage.value) return;
-  fetchNextAlbumPage();
 }
 
 function toggleDateSort() {
