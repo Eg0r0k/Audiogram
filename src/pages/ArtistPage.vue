@@ -49,6 +49,28 @@
                 </Button>
               </template> -->
             </MediaHero>
+            <section
+              v-if="albums.length > 0"
+              class="p-4"
+            >
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <h2 class="text-xl font-semibold">
+                    {{ $t('album.album') }}
+                  </h2>
+
+                  <p class="text-sm text-muted-foreground">
+                    {{ $t('common.albums', {count: albumCount}) }}
+                  </p>
+                </div>
+              </div>
+              <div class="flex  items-center text-muted-foreground flex-col w-full">
+                <IconLogo class=" size-10 mb-1 " />
+                <span class=" font-medium">
+                  {{ $t('common.comingSoon') }}
+                </span>
+              </div>
+            </section>
           </template>
 
           <template #sticky>
@@ -103,6 +125,8 @@ import { useQueueStore } from "@/modules/queue/store/queue.store";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import IconLoader2 from "~icons/tabler/loader-2";
+import IconLogo from "~icons/audiogram/logo";
+
 import { useArtistPage } from "@/modules/artists/composables/useArtistPage";
 import { getArtistPageData } from "@/queries/artist.queries";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
@@ -118,7 +142,7 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
-
+import { routeLocation } from "@/app/router/route-locations";
 const { t } = useI18n();
 const queueStore = useQueueStore();
 const playerStore = usePlayerStore();
@@ -148,10 +172,12 @@ const gridStyles = {
 
 const {
   artist,
+  albums,
   tracks,
   artistData,
   coverUrl,
   trackCount,
+  albumCount,
   isLoading,
   error,
   isError,
@@ -162,6 +188,9 @@ const {
   hasNextTrackPage,
   isTracksLoading,
   isFetchingNextTrackPage,
+  fetchNextAlbumPage,
+  hasNextAlbumPage,
+  isFetchingNextAlbumPage,
 } = useArtistPage(sortKey);
 
 const showEditDialog = ref(false);
@@ -187,6 +216,15 @@ function toggleTitleSort() {
   }
 
   setSortKey(sortKey.value === "title_asc" ? "title_desc" : null);
+}
+
+function getAlbumRoute(albumId: string) {
+  return routeLocation.album(albumId);
+}
+
+function handleAlbumLoadMore() {
+  if (!hasNextAlbumPage.value || isFetchingNextAlbumPage.value) return;
+  fetchNextAlbumPage();
 }
 
 function toggleDateSort() {

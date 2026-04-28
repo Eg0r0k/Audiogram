@@ -45,6 +45,17 @@ export async function getAlbumByIdOrThrow(albumId: AlbumId) {
   return album;
 }
 
+export async function searchAlbums(query: string, limit = 8) {
+  const normalizedQuery = query.trim();
+
+  if (!normalizedQuery) {
+    const albums = await unwrapResult(albumRepository.findAllSortedByTitle());
+    return albums.slice(0, limit);
+  }
+
+  return unwrapResult(albumRepository.search(normalizedQuery, limit));
+}
+
 export async function getAlbumPageData(albumId: AlbumId, sortKey: TrackSortKey | null = null): Promise<AlbumPageData> {
   const [album, rawTracks] = await Promise.all([
     getAlbumByIdOrThrow(albumId),

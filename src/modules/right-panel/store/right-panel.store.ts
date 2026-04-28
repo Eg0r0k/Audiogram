@@ -60,6 +60,17 @@ export const useRightPanelStore = defineStore("right-panel", () => {
     open("track-info", nextPayload, { ...options, depth: options.depth ?? 1 });
   }
 
+  function openEditTrack(
+    nextPayload: RightPanelPayloadMap["edit-track"],
+    options: OpenRightPanelOptions = {},
+  ): void {
+    open("edit-track", nextPayload, { ...options, depth: options.depth ?? 2 });
+  }
+
+  function openLyrics(options: OpenRightPanelOptions = {}): void {
+    open("lyrics", undefined, { ...options, depth: options.depth ?? 1 });
+  }
+
   function openAddTracks(
     nextPayload: RightPanelPayloadMap["add-tracks"],
     options: OpenRightPanelOptions = {},
@@ -103,7 +114,9 @@ export const useRightPanelStore = defineStore("right-panel", () => {
     returnToView,
     open,
     openQueue,
+    openLyrics,
     openTrackInfo,
+    openEditTrack,
     openAddTracks,
     back,
     close,

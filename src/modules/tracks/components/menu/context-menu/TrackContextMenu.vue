@@ -28,6 +28,7 @@ import type { AlbumId, PlaylistId } from "@/types/ids";
 import { contextMenuTrackComponents, provideTrackMenuComponents } from "../useTrackMenuComponents";
 import { TrackContext } from "../type";
 import DefaultContext from "../contexts/DefaultContext.vue";
+import CurrentTrackContext from "../contexts/CurrentTrackContext.vue";
 import LikedContext from "../contexts/LikedContext.vue";
 import QueueContext from "../contexts/QueueContext.vue";
 import PlaylistContext from "../contexts/PlaylistContext.vue";
@@ -46,6 +47,10 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   context: "default",
+  isPlaylistOwner: false,
+  playlistId: undefined,
+  queueIndex: undefined,
+  albumId: undefined,
 });
 
 const {
@@ -67,14 +72,15 @@ const localOpen = computed({
 });
 
 const contexts: Record<TrackContext, Component> = {
-  default: DefaultContext,
-  search: DefaultContext,
-  liked: LikedContext,
-  artist: DefaultContext,
-  queue: QueueContext,
-  playlist: PlaylistContext,
-  album: DefaultContext,
-  history: DefaultContext,
+  "default": DefaultContext,
+  "current-track": CurrentTrackContext,
+  "search": DefaultContext,
+  "liked": LikedContext,
+  "artist": DefaultContext,
+  "queue": QueueContext,
+  "playlist": PlaylistContext,
+  "album": DefaultContext,
+  "history": DefaultContext,
 };
 
 const contextComponent = computed(() => contexts[props.context]);

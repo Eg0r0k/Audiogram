@@ -6,7 +6,19 @@
       :show-back="rightPanel.depth > 0"
       @back="handleBack"
       @close="rightPanel.close()"
-    />
+    >
+      <template #trailing>
+        <Button
+          v-if="libraryTrack"
+          size="icon"
+          variant="ghost"
+          class="shrink-0 rounded-full"
+          @click="rightPanel.openEditTrack({ track: libraryTrack })"
+        >
+          <IconPencil class="size-6" />
+        </Button>
+      </template>
+    </RightPanelHeader>
 
     <Scrollable class="min-h-0 flex-1">
       <div class="grid gap-6 bg-background">
@@ -124,6 +136,58 @@
             {{ $t('common.delete') }}
           </Button>
         </section>
+
+        <section
+          v-if="isLibraryTrack(track)"
+          class="grid gap-3 p-2 bg-card"
+        >
+          <div class="grid gap-3 sm:grid-cols-1">
+            <DetailField
+              :title="$t('track.details.fields.codec')"
+              :value="entity?.format.codec"
+            >
+              <template #icon>
+                <IconFileMusic class="size-6" />
+              </template>
+            </DetailField>
+
+            <DetailField
+              :title="$t('track.details.fields.bitrate')"
+              :value="formattedBitrate"
+            >
+              <template #icon>
+                <IconWaveSine class="size-6" />
+              </template>
+            </DetailField>
+
+            <DetailField
+              :title="$t('track.details.fields.sampleRate')"
+              :value="formattedSampleRate"
+            >
+              <template #icon>
+                <IconActivityHeartbeat class="size-6" />
+              </template>
+            </DetailField>
+
+            <DetailField
+              :title="$t('track.details.fields.channels')"
+              :value="entity?.format.channels"
+            >
+              <template #icon>
+                <IconCirclesRelation class="size-6" />
+              </template>
+            </DetailField>
+
+            <DetailField
+              :title="$t('track.details.fields.lossless')"
+              :value="losslessLabel"
+            >
+              <template #icon>
+                <IconShieldCheck class="size-6" />
+              </template>
+            </DetailField>
+          </div>
+        </section>
       </div>
     </Scrollable>
   </div>
@@ -147,15 +211,21 @@ import type { RightPanelTrackInfoPayload } from "@/modules/right-panel/types";
 import DetailField from "@/modules/tracks/components/TrackDetailsField.vue";
 import RightPanelHeader from "../RightPanelHeader.vue";
 import IconCircleCheck from "~icons/tabler/circle-check";
+import IconActivityHeartbeat from "~icons/tabler/activity-heartbeat";
 import IconClockHour4 from "~icons/tabler/clock-hour-4";
+import IconCirclesRelation from "~icons/tabler/circles-relation";
 import IconDisc from "~icons/tabler/disc";
+import IconFileMusic from "~icons/tabler/file-music";
 import IconFileText from "~icons/tabler/file-text";
 import IconFingerprint from "~icons/tabler/fingerprint";
 import IconFolder from "~icons/tabler/folder";
 import IconMicrophone2 from "~icons/tabler/microphone-2";
 import IconMusic from "~icons/tabler/music";
+import IconPencil from "~icons/tabler/pencil";
+import IconShieldCheck from "~icons/tabler/shield-check";
 import TrashIcon from "~icons/tabler/trash";
 import IconUsers from "~icons/tabler/users";
+import IconWaveSine from "~icons/tabler/wave-sine";
 import IconWorld from "~icons/tabler/world";
 const props = defineProps<{
   payload: RightPanelTrackInfoPayload;
@@ -221,6 +291,24 @@ const stateLabel = computed(() => {
     default:
       return "—";
   }
+});
+
+const formattedBitrate = computed(() => {
+  const bitrate = entity.value?.format.bitrate;
+  if (!bitrate) return "—";
+  return `${Math.round(bitrate / 1000)} kbps`;
+});
+
+const formattedSampleRate = computed(() => {
+  const sampleRate = entity.value?.format.sampleRate;
+  if (!sampleRate) return "—";
+  return `${(sampleRate / 1000).toFixed(1)} kHz`;
+});
+
+const losslessLabel = computed(() => {
+  const lossless = entity.value?.format.lossless;
+  if (lossless === undefined) return "—";
+  return lossless ? t("common.yes") : t("common.no");
 });
 
 function handleBack(): void {

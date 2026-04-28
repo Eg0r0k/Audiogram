@@ -1,26 +1,29 @@
-import type { TrackEntity } from "@/db/entities";
+import type { ArtistEntity, TrackEntity } from "@/db/entities";
 import {
   albumRepository,
   artistRepository,
   playlistRepository,
   trackRepository,
 } from "@/db/repositories";
-import { buildTrackDocFromDb } from "@/modules/search/buildDocuments";
+import { buildArtistDoc, buildTrackDocFromDb } from "@/modules/search/buildDocuments";
 import {
   removeSearchDocuments,
   searchTracks as searchIndexedTracks,
   upsertSearchDocuments,
 } from "@/modules/search/searchIndex";
 import type { TrackSortKey } from "@/modules/tracks/types";
+import type { SearchDocument } from "@/modules/search/types";
 import { queryKeys } from "@/queries/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { Track } from "@/modules/player/types";
+import { ArtistId as createArtistId } from "@/types/ids";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import {
   removeTracksFromCaches,
   syncPlaylistCaches,
   syncPlaylistTrackRemoval,
+  syncArtistCaches,
   syncTrackLikeCaches,
   syncTrackMetadataCaches,
 } from "./cache";
@@ -30,6 +33,12 @@ import { getAlbumByIdOrThrow } from "./album.queries";
 import { getArtistByIdOrThrow } from "./artist.queries";
 
 const PAGE_SIZE = 50;
+
+export interface TrackMetadataChanges {
+  title: string;
+  artistNames: string[];
+  albumId: AlbumId;
+}
 
 async function loadTrackRelations(tracks: TrackEntity[]): Promise<Track[]> {
   if (tracks.length === 0) {
@@ -72,6 +81,58 @@ async function resolveArtistName(artistIds: ArtistId[]): Promise<string> {
 
   const artists = await unwrapResult(artistRepository.findByIds(artistIds));
   return artists.map(artist => artist.name).join(", ") || "Unknown Artist";
+}
+
+function normalizeArtistNames(names: string[]): string[] {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const name of names) {
+    const trimmed = name.trim().replace(/\s+/g, " ");
+    const key = trimmed.toLowerCase();
+
+    if (!trimmed || seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    normalized.push(trimmed);
+  }
+
+  return normalized;
+}
+
+async function findOrCreateArtists(queryClient: QueryClient, names: string[]) {
+  const artists: ArtistEntity[] = [];
+  const createdDocuments: SearchDocument[] = [];
+  const now = Date.now();
+
+  for (const name of names) {
+    const existing = await unwrapResult(artistRepository.findByName(name));
+
+    if (existing) {
+      artists.push(existing);
+      continue;
+    }
+
+    const artist = {
+      id: createArtistId(crypto.randomUUID()),
+      name,
+      addedAt: now,
+      updatedAt: now,
+    };
+
+    await unwrapResult(artistRepository.create(artist));
+    syncArtistCaches(queryClient, artist);
+    artists.push(artist);
+    createdDocuments.push(buildArtistDoc(artist));
+  }
+
+  if (createdDocuments.length > 0) {
+    await upsertSearchDocuments(createdDocuments);
+  }
+
+  return artists;
 }
 
 async function invalidateTrackRelations(queryClient: QueryClient) {
@@ -417,6 +478,89 @@ export async function attachTrackLyricsAndSync(
   };
 
   syncTrackMetadataCaches(queryClient, nextTrackEntity, nextTrack);
+
+  return nextTrack;
+}
+
+export async function updateTrackMetadataAndSync(
+  queryClient: QueryClient,
+  track: Track,
+  changes: TrackMetadataChanges,
+) {
+  const currentTrack = await unwrapResult(trackRepository.findById(track.id as TrackId));
+
+  if (!currentTrack) {
+    throw new Error("Track not found");
+  }
+
+  const title = changes.title.trim();
+  const artistNames = normalizeArtistNames(changes.artistNames);
+
+  if (!title) {
+    throw new Error("Track title is required");
+  }
+
+  if (artistNames.length === 0) {
+    throw new Error("At least one artist is required");
+  }
+
+  const artists = await findOrCreateArtists(queryClient, artistNames);
+  const album = await getAlbumByIdOrThrow(changes.albumId);
+  const nextArtistIds = artists.map(artist => artist.id);
+  const nextArtistName = artists.map(artist => artist.name).join(", ");
+
+  const nextTrackEntity: TrackEntity = {
+    ...currentTrack,
+    title,
+    artistIds: nextArtistIds,
+    artistName: nextArtistName,
+    albumId: album.id,
+    albumTitle: album.title,
+  };
+
+  await unwrapResult(trackRepository.update(currentTrack.id, {
+    title,
+    artistIds: nextArtistIds,
+    artistName: nextArtistName,
+    albumId: album.id,
+    albumTitle: album.title,
+  }));
+
+  const nextTrack: Track = {
+    ...track,
+    title,
+    artist: nextArtistName,
+    artistIds: nextArtistIds,
+    albumId: album.id,
+    albumName: album.title,
+  };
+
+  syncTrackMetadataCaches(queryClient, nextTrackEntity, nextTrack);
+
+  await upsertSearchDocuments([await buildTrackDocFromDb(nextTrackEntity)]);
+
+  const affectedArtistIds = unique([...currentTrack.artistIds, ...nextArtistIds]);
+  const affectedAlbumIds = unique([currentTrack.albumId, album.id]);
+  await Promise.all([
+    ...affectedArtistIds.flatMap(artistId => [
+      queryClient.invalidateQueries({ queryKey: queryKeys.artists.page(artistId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.artists.tracksPage(artistId) }),
+    ]),
+    queryClient.invalidateQueries({ queryKey: queryKeys.tracks.likedPage() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.tracks.likedPageInfinite() }),
+    ...affectedAlbumIds.flatMap(albumId => [
+      queryClient.invalidateQueries({ queryKey: queryKeys.albums.page(albumId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.albums.tracksPage(albumId) }),
+    ]),
+    queryClient.invalidateQueries({
+      predicate: query =>
+        query.queryKey[0] === "tracks" && query.queryKey[1] === "index",
+    }),
+    queryClient.invalidateQueries({
+      predicate: query =>
+        query.queryKey[0] === "playlists" && query.queryKey[2] === "page",
+    }),
+  ]);
 
   return nextTrack;
 }

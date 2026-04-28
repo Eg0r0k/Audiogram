@@ -12,6 +12,7 @@
     "play": "Play",
     "playNext": "Play next",
     "addToQueue": "Add to queue",
+    "showLyrics": "Show lyrics",
     "addLyrics": "Add lyrics",
     "replaceLyrics": "Replace lyrics",
     "download": "Download",
@@ -69,6 +70,33 @@
       "remoteHls": "Remote HLS stream",
       "ready": "Ready",
       "broken": "Broken"
+    }
+  },
+  "edit": {
+    "title": "Edit track",
+    "fields": {
+      "title": "Title",
+      "artists": "Artists",
+      "album": "Album"
+    },
+    "placeholders": {
+      "title": "Enter track title",
+      "artists": "Find or add an artist",
+      "addArtist": "Add artist",
+      "album": "Find album"
+    },
+    "artistsHelp": "Pick an artist from the list or press Enter to add a new one.",
+    "createArtist": "Create “{name}”",
+    "selectedAlbum": "Selected: {title}",
+    "libraryOnly": "Only library tracks can be edited.",
+    "saved": "Track info saved",
+    "saveFailed": "Failed to save track info",
+    "validation": {
+      "titleRequired": "Enter track title",
+      "titleMaxLength": "Title must be at most {max} characters",
+      "artistsRequired": "Enter at least one artist",
+      "artistMaxLength": "Artist name must be at most {max} characters",
+      "albumRequired": "Select an album"
     }
   },
   "deleted": "Track deleted",

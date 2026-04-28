@@ -15,10 +15,16 @@ export const useMediaSession = () => {
   let lastPositionUpdate = 0;
   let lastReportedPosition = 0;
 
+  let positionInterval: ReturnType<typeof setInterval> | null = null;
+  let seekCommitTimer: ReturnType<typeof setTimeout> | null = null;
+
   const forceNextUpdate = ref(false);
+  const isMediaSessionSeeking = ref(false);
 
   const currentTrack = computed(() => player.currentTrack);
-  const albumId = computed(() => currentTrack.value?.kind === "library" ? currentTrack.value.albumId : null);
+  const albumId = computed(() =>
+    currentTrack.value?.kind === "library" ? currentTrack.value.albumId : null,
+  );
 
   const { url: coverBlobUrl } = useEntityCover("album", albumId);
 
@@ -43,6 +49,10 @@ export const useMediaSession = () => {
   };
 
   const updatePositionState = (force = false) => {
+    if (isMediaSessionSeeking.value && !force) {
+      return;
+    }
+
     if (!player.canSeek || player.duration <= 0) {
       try {
         navigator.mediaSession.setPositionState();
@@ -71,7 +81,7 @@ export const useMediaSession = () => {
       navigator.mediaSession.setPositionState({
         duration: player.duration,
         playbackRate: 1.0,
-        position: position,
+        position,
       });
 
       lastPositionUpdate = now;
@@ -99,6 +109,7 @@ export const useMediaSession = () => {
       "nexttrack",
       queue.hasNext ? () => queue.next() : null,
     );
+
     setActionHandler(
       "previoustrack",
       queue.hasPrevious ? () => queue.previous() : null,
@@ -107,19 +118,38 @@ export const useMediaSession = () => {
     if (player.canSeek) {
       setActionHandler("seekbackward", (details) => {
         const offset = details.seekOffset || 10;
+
         player.seekTo(Math.max(0, player.currentTime - offset));
+
         forceNextUpdate.value = true;
+        updatePositionState(true);
       });
+
       setActionHandler("seekforward", (details) => {
         const offset = details.seekOffset || 10;
+
         player.seekTo(Math.min(player.duration, player.currentTime + offset));
+
         forceNextUpdate.value = true;
+        updatePositionState(true);
       });
+
       setActionHandler("seekto", (details) => {
-        if (details.seekTime !== undefined) {
-          player.seekTo(details.seekTime);
-          forceNextUpdate.value = true;
+        if (details.seekTime === undefined) return;
+
+        isMediaSessionSeeking.value = true;
+
+        if (seekCommitTimer) {
+          clearTimeout(seekCommitTimer);
         }
+
+        player.seekTo(details.seekTime);
+
+        seekCommitTimer = setTimeout(() => {
+          isMediaSessionSeeking.value = false;
+          forceNextUpdate.value = true;
+          updatePositionState(true);
+        }, details.fastSeek ? 300 : 0);
       });
     }
     else {
@@ -153,6 +183,16 @@ export const useMediaSession = () => {
       setActionHandler(action, null);
     }
 
+    if (positionInterval) {
+      clearInterval(positionInterval);
+      positionInterval = null;
+    }
+
+    if (seekCommitTimer) {
+      clearTimeout(seekCommitTimer);
+      seekCommitTimer = null;
+    }
+
     navigator.mediaSession.metadata = null;
   });
 
@@ -161,7 +201,11 @@ export const useMediaSession = () => {
     () => {
       updateMetadata();
       updateAvailableActions();
+
+      lastPositionUpdate = 0;
       lastReportedPosition = 0;
+
+      forceNextUpdate.value = true;
       updatePositionState(true);
     },
     { immediate: true },
@@ -172,6 +216,18 @@ export const useMediaSession = () => {
     (isPlaying) => {
       navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
       updatePositionState(true);
+
+      if (isPlaying) {
+        if (!positionInterval) {
+          positionInterval = setInterval(() => {
+            updatePositionState();
+          }, POSITION_UPDATE_INTERVAL);
+        }
+      }
+      else if (positionInterval) {
+        clearInterval(positionInterval);
+        positionInterval = null;
+      }
     },
     { immediate: true },
   );
@@ -179,10 +235,12 @@ export const useMediaSession = () => {
   watch(
     () => player.duration,
     () => {
+      forceNextUpdate.value = true;
       updatePositionState(true);
       updateAvailableActions();
     },
   );
+
   watch(
     coverBlobUrl,
     () => {
@@ -190,33 +248,17 @@ export const useMediaSession = () => {
     },
   );
 
-  watch(() => player.canSeek, updateAvailableActions);
-
-  watch([() => queue.hasNext, () => queue.hasPrevious], updateAvailableActions);
-
-  let positionInterval: ReturnType<typeof setInterval> | null = null;
-
   watch(
-    () => player.isPlaying,
-    (isPlaying) => {
-      if (isPlaying) {
-        positionInterval = setInterval(() => {
-          updatePositionState();
-        }, POSITION_UPDATE_INTERVAL);
-      }
-      else {
-        if (positionInterval) {
-          clearInterval(positionInterval);
-          positionInterval = null;
-        }
-      }
+    () => player.canSeek,
+    () => {
+      updateAvailableActions();
     },
-    { immediate: true },
   );
 
-  onUnmounted(() => {
-    if (positionInterval) {
-      clearInterval(positionInterval);
-    }
-  });
+  watch(
+    [() => queue.hasNext, () => queue.hasPrevious],
+    () => {
+      updateAvailableActions();
+    },
+  );
 };

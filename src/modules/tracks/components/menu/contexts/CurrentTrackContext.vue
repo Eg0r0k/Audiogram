@@ -1,0 +1,56 @@
+<template>
+  <ShowLyricsItem @show="actions.showLyrics" />
+
+  <component :is="Separator" />
+
+  <LikeItem
+    :is-liked="track.isLiked"
+    @toggle="actions.toggleLike"
+  />
+
+  <DownloadItem @download="actions.download" />
+
+  <LyricsItem
+    :has-lyrics="!!track.lyricsPath"
+    @attach="actions.attachLyrics"
+  />
+
+  <AddToPlaylistSub
+    :playlists="playlists"
+    :is-loading="isLoading"
+    @add="actions.addToPlaylist"
+    @create="handleCreatePlaylist"
+  />
+
+  <component :is="Separator" />
+
+  <NavigationItems
+    :artist-ids="track.artistIds"
+    :album-name="track.albumName"
+    @go-to-artist="actions.goToArtist"
+    @go-to-album="actions.goToAlbum"
+  />
+  <DetailsItem @show="actions.showDetails" />
+</template>
+
+<script setup lang="ts">
+import NavigationItems from "../items/NavigationItems.vue";
+import AddToPlaylistSub from "../items/AddToPlaylistSub.vue";
+import DetailsItem from "../items/DetailsItem.vue";
+import LikeItem from "../items/LikeItem.vue";
+import LyricsItem from "../items/LyricsItem.vue";
+import ShowLyricsItem from "../items/ShowLyricsItem.vue";
+import DownloadItem from "../items/DownloadItem.vue";
+import { useTrackMenuComponents } from "../useTrackMenuComponents";
+import { usePlaylistMenu } from "../composables/usePlaylistMenu";
+import type { ContextActions } from "../type";
+import type { Track } from "@/modules/player/types";
+
+defineProps<{
+  track: Track;
+  actions: ContextActions;
+}>();
+
+const { Separator } = useTrackMenuComponents();
+const { playlists, isLoading, handleCreatePlaylist } = usePlaylistMenu();
+</script>

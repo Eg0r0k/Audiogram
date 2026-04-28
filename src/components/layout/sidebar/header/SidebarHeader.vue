@@ -66,14 +66,14 @@
       class="flex-1"
       @focusin="openSearch"
     >
-      <InputGroup class="dark:bg-background! bg-muted! rounded-full h-10 flex-1">
+      <InputGroup class="dark:bg-background!  bg-muted! rounded-full h-10 flex-1">
         <InputGroupAddon tabindex="-1">
           <IconSearch class="ml-1 size-5" />
         </InputGroupAddon>
         <InputGroupInput
           ref="inputRef"
           v-model="query"
-          class="pl-4!"
+          class="pl-4! text-base!"
           :placeholder="$t('common.search')"
           @keydown.stop
           @keydown.escape="handleClose"

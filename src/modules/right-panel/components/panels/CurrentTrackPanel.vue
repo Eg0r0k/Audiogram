@@ -94,7 +94,6 @@
                 />
               </Button>
             </div>
-
             <div class="flex flex-col min-w-0 gap-1 pt-4">
               <div class="flex items-center justify-between gap-3 px-2">
                 <div>
@@ -125,6 +124,7 @@
                 />
               </TrackContextMenu>
               <TrackDropdown context="queue" />
+              <TrackDropdown context="current-track" />
             </div>
           </div>
         </template>
@@ -173,7 +173,7 @@ const { openDropdown } = useTrackMenu();
 
 function onDotsClick(event: MouseEvent): void {
   if (!libraryTrack.value) return;
-  openDropdown(libraryTrack.value, 0, event, { target: "default" });
+  openDropdown(libraryTrack.value, 0, event, { target: "current-track" });
 }
 
 const currentTrack = computed(() => playerStore.currentTrack);

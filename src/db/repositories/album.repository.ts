@@ -50,6 +50,20 @@ class AlbumRepository extends BaseRepository<AlbumEntity, AlbumId> {
     }
   }
 
+  async search(query: string, limit = 20): Promise<Result<AlbumEntity[], Error>> {
+    try {
+      const normalizedQuery = query.toLowerCase();
+      const albums = await this.table
+        .filter(album => album.title.toLowerCase().includes(normalizedQuery))
+        .limit(limit)
+        .toArray();
+      return ok(albums);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
   async countByArtistId(artistId: ArtistId): Promise<Result<number, Error>> {
     try {
       const count = await this.table

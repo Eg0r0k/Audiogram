@@ -8,6 +8,7 @@ export const queryKeys = {
   artists: {
     all: () => ["artists"] as const,
     detail: (id: ArtistId) => ["artists", id] as const,
+    search: (query: string) => ["artists", "search", query] as const,
     albums: (id: ArtistId) => ["artists", id, "albums"] as const,
     tracks: (id: ArtistId) => ["artists", id, "tracks"] as const,
     page: (id: ArtistId) => ["artists", id, "page"] as const,
@@ -18,6 +19,7 @@ export const queryKeys = {
   albums: {
     all: () => ["albums"] as const,
     detail: (id: AlbumId) => ["albums", id] as const,
+    search: (query: string) => ["albums", "search", query] as const,
     tracks: (id: AlbumId) => ["albums", id, "tracks"] as const,
     cover: (id: AlbumId) => ["covers", "album", id] as const,
     page: (id: AlbumId) => ["albums", id, "page"] as const,

@@ -20,12 +20,15 @@ import SlideTransition from "@/components/transitions/SlideTransition.vue";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import type {
   RightPanelAddTracksPayload,
+  RightPanelEditTrackPayload,
   RightPanelTrackInfoPayload,
   RightPanelView,
 } from "@/modules/right-panel/types";
 import QueuePanel from "./panels/QueuePanel.vue";
 import CurrentTrackPanel from "./panels/CurrentTrackPanel.vue";
+import LyricsPanel from "./panels/LyricsPanel.vue";
 import TrackInfoPanel from "./panels/TrackInfoPanel.vue";
+import EditTrackPanel from "./panels/EditTrackPanel.vue";
 import AddTracksPanel from "@/modules/tracks/components/tracks-sheet/AddTracksPanel.vue";
 
 const { isMobileLayout } = useDeviceLayout();
@@ -51,8 +54,12 @@ const activeComponent = computed(() => {
   switch (effectiveView.value) {
     case "current-track":
       return CurrentTrackPanel;
+    case "lyrics":
+      return LyricsPanel;
     case "track-info":
       return TrackInfoPanel;
+    case "edit-track":
+      return EditTrackPanel;
     case "add-tracks":
       return AddTracksPanel;
     case "queue":
@@ -64,9 +71,12 @@ const activeComponent = computed(() => {
 const activeProps = computed(() => {
   switch (effectiveView.value) {
     case "current-track":
+    case "lyrics":
       return {};
     case "track-info":
       return { payload: rightPanel.payload as RightPanelTrackInfoPayload };
+    case "edit-track":
+      return { payload: rightPanel.payload as RightPanelEditTrackPayload };
     case "add-tracks":
       return { payload: rightPanel.payload as RightPanelAddTracksPayload };
     case "queue":

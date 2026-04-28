@@ -60,6 +60,17 @@ export async function getArtistByIdOrThrow(artistId: ArtistId) {
   return artist;
 }
 
+export async function searchArtists(query: string, limit = 8) {
+  const normalizedQuery = query.trim();
+
+  if (!normalizedQuery) {
+    const artists = await unwrapResult(artistRepository.findAll());
+    return artists.slice(0, limit);
+  }
+
+  return unwrapResult(artistRepository.search(normalizedQuery, limit));
+}
+
 export async function getArtistPageData(artistId: ArtistId, sortKey: TrackSortKey | null = null): Promise<ArtistPageData> {
   const [artist, albums, rawTracks] = await Promise.all([
     getArtistByIdOrThrow(artistId),

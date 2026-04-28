@@ -38,8 +38,12 @@
           >
             <span
               v-if="isCurrentTrack && isPlaying && !isRowHovered"
-              class="size-2 rounded-full bg-primary"
-            />
+              class="playing-pulse-dot"
+            >
+              <span />
+              <span />
+              <span />
+            </span>
 
             <IconPause
               v-else-if="isCurrentTrack && isPlaying && isRowHovered"

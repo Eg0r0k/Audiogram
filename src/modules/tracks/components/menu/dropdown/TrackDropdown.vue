@@ -42,6 +42,7 @@ import {
 import type { TrackContext } from "../type";
 import type { PlaylistId, AlbumId } from "@/types/ids";
 import DefaultContext from "../contexts/DefaultContext.vue";
+import CurrentTrackContext from "../contexts/CurrentTrackContext.vue";
 import LikedContext from "../contexts/LikedContext.vue";
 import PlaylistContext from "../contexts/PlaylistContext.vue";
 import QueueContext from "../contexts/QueueContext.vue";
@@ -53,6 +54,7 @@ interface Props {
   isPlaylistOwner?: boolean;
   playlistId?: PlaylistId;
   albumId?: AlbumId;
+  onNavigate?: () => void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -60,6 +62,7 @@ const props = withDefaults(defineProps<Props>(), {
   playlistId: undefined,
   albumId: undefined,
   isPlaylistOwner: false,
+  onNavigate: undefined,
 });
 const {
   activeTrack,
@@ -86,14 +89,15 @@ const anchorStyle = computed(() => ({
 }));
 
 const contexts: Record<TrackContext, Component> = {
-  default: DefaultContext,
-  search: DefaultContext,
-  liked: LikedContext,
-  artist: DefaultContext,
-  queue: QueueContext,
-  playlist: PlaylistContext,
-  album: DefaultContext,
-  history: DefaultContext,
+  "default": DefaultContext,
+  "current-track": CurrentTrackContext,
+  "search": DefaultContext,
+  "liked": LikedContext,
+  "artist": DefaultContext,
+  "queue": QueueContext,
+  "playlist": PlaylistContext,
+  "album": DefaultContext,
+  "history": DefaultContext,
 };
 
 const contextComponent = computed(() => contexts[props.context]);
@@ -104,6 +108,7 @@ const actions = useTrackContextActions(
   {
     playlistId: toRef(props, "playlistId"),
     queueIndex: activeIndex,
+    onNavigate: props.onNavigate,
   },
 );
 

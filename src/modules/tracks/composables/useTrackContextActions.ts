@@ -32,6 +32,7 @@ export const useTrackContextActions = (
     playlistId?: RefLike<PlaylistId | undefined>;
     queueIndex?: RefLike<number | null>;
     queueItemId?: RefLike<QueueItemId | null>;
+    onNavigate?: () => void;
   } = {},
 ): ContextActions => {
   const router = useRouter();
@@ -78,6 +79,10 @@ export const useTrackContextActions = (
     });
   };
 
+  const showLyrics = () => {
+    rightPanelStore.openLyrics({ depth: 1 });
+  };
+
   const attachLyricsToTrack = async () => {
     if (!track.value) return;
     await attachTrackLyrics(track.value);
@@ -119,11 +124,13 @@ export const useTrackContextActions = (
 
   const goToArtist = (artistId: ArtistId) => {
     router.push(routeLocation.artist(artistId));
+    options.onNavigate?.();
   };
 
   const goToAlbum = () => {
     if (!track.value) return;
     router.push(routeLocation.album(track.value.albumId));
+    options.onNavigate?.();
   };
 
   const download = async () => {
@@ -186,6 +193,7 @@ export const useTrackContextActions = (
     playNext,
     addToQueue,
     showDetails,
+    showLyrics,
     toggleLike,
     attachLyrics: attachLyricsToTrack,
     addToPlaylist,
