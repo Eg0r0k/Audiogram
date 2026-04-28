@@ -14,6 +14,7 @@
   <ExternalLinkDialog />
   <ImportProgressDialog />
   <DeleteConfirmDialog />
+  <NetworkStatusToast />
   <Toaster
     :expand="true"
     position="top-center"
@@ -58,6 +59,7 @@ import { useExternalLinkInterceptor } from "@/composables/useExternalLinkInterce
 import ImportProgressDialog from "@/components/ImportProgressDialog.vue";
 import { usePlayerStore } from "@/modules/player";
 import { useEventListener } from "@vueuse/core";
+import NetworkStatusToast from "@/components/NetworkStatusToast.vue";
 
 const currentRoute = useRoute();
 const { isMobileLayout } = useDeviceLayout();
@@ -139,6 +141,7 @@ if (IS_TAURI) {
 }
 else {
   usePwaUpdate(updateStore.channel, checkUpdatesOnLaunch.value);
+  console.log("Running in PWA mode, using PWA update mechanism");
 }
 
 useChangelogOnStartup();

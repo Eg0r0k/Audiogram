@@ -17,6 +17,7 @@ const DEBOUNCE_MS = 150;
 const TOP_RESULTS_COUNT = 6;
 const MAX_HISTORY_ITEMS = 6;
 const SEARCH_HISTORY_KEY = "audiogram-search-history";
+import { useRouter, useRoute } from "vue-router";
 
 function loadSearchHistory(): string[] {
   if (typeof window === "undefined") return [];
@@ -41,7 +42,6 @@ const query = ref("");
 const activeFilter = ref<SearchFilter>("all");
 const results = shallowRef<GroupedResults>(createEmptyResults());
 const isSearching = ref(false);
-const isSearchOpen = ref(false);
 const recentQueries = ref<string[]>(loadSearchHistory());
 
 let latestSearchId = 0;
@@ -98,6 +98,9 @@ const availableFilters: { label: string; value: SearchFilter }[] = [
 ];
 
 export function useSearch() {
+  const router = useRouter();
+  const route = useRoute();
+  const isSearchOpen = computed(() => route.hash === "#search");
   const saveQueryToHistory = (rawQuery?: string) => {
     const trimmed = (rawQuery ?? query.value).trim();
     if (!trimmed) return;
@@ -121,6 +124,13 @@ export function useSearch() {
     query.value = value;
   };
 
+  const openSearch = () => {
+    router.push({ hash: "#search" });
+  };
+  const closeSearch = () => {
+    router.back();
+  };
+
   return {
     query,
     activeFilter,
@@ -130,9 +140,8 @@ export function useSearch() {
     isSearching: readonly(isSearching),
     isSearchOpen: readonly(isSearchOpen),
     hasQuery: computed(() => query.value.trim().length > 0),
-
-    openSearch() { isSearchOpen.value = true; },
-    closeSearch() { isSearchOpen.value = false; },
+    openSearch,
+    closeSearch,
 
     setFilter(filter: SearchFilter) { activeFilter.value = filter; },
     saveQueryToHistory,

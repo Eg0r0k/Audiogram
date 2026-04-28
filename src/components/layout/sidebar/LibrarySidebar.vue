@@ -62,7 +62,6 @@
         </template>
       </VirtualScrollable>
     </LibraryContextMenu>
-
     <FloatingButton :show="isButtonVisible" />
     <SearchPanel />
   </div>
