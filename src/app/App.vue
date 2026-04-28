@@ -56,10 +56,13 @@ import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.stor
 import { useNowPlayingTitle } from "@/modules/player/composables/useNowPlayingTitle";
 import { useExternalLinkInterceptor } from "@/composables/useExternalLinkInterceptor";
 import ImportProgressDialog from "@/components/ImportProgressDialog.vue";
+import { usePlayerStore } from "@/modules/player";
+import { useEventListener } from "@vueuse/core";
 
 const currentRoute = useRoute();
 const { isMobileLayout } = useDeviceLayout();
 const { init } = useWatchedFolders();
+const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
 const rightPanelStore = useRightPanelStore();
 
@@ -148,6 +151,11 @@ if (IS_TAURI) {
 
 watch(() => currentRoute.fullPath, (fullPath) => {
   rightPanelStore.invalidateRouteScope(fullPath);
+});
+
+const stop = useEventListener(document, "click", () => {
+  playerStore.unlockAudio();
+  stop();
 });
 
 </script>

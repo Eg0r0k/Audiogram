@@ -486,6 +486,11 @@ export const usePlayerStore = defineStore("player", () => {
 
   const getAudioGraph = () => player.value?.graph ?? null;
 
+  const unlockAudio = async () => {
+    const p = player.value ?? await initPlayer();
+    await p.unlockAudio();
+  };
+
   watch(currentTrack, (track) => {
     if (!track || !isLibraryTrack(track)) return;
     statsService.startListening(
@@ -615,6 +620,7 @@ export const usePlayerStore = defineStore("player", () => {
     setSleepTimer,
     cancelSleepTimer,
     clearCurrentTrack,
+    unlockAudio,
   };
 }, {
   persist: {
