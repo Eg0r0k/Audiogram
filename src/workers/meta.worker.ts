@@ -14,9 +14,9 @@ function asFiniteNumber(value: unknown): number | undefined {
 }
 
 function parseArtists(raw: string | string[] | undefined): string[] {
-  if (!raw) return ["Unknown Artist"];
+  if (!raw) return [];
   if (Array.isArray(raw)) return raw;
-  return raw.split(/[,;&|/]\s*/);
+  return raw.split(/[,;&|/]\s*/).map(a => a.trim()).filter(a => a !== "");
 }
 
 function ratioToDbtp(ratio: number | undefined): number | undefined {
@@ -67,7 +67,7 @@ self.onmessage = async (e: MessageEvent<ParseRequest>) => {
     const meta: BaseMetadata = {
       title: metadata.common.title || titleFromFile,
       artists: artists.map(a => a.trim()).filter(Boolean),
-      album: metadata.common.album || "Unknown Album",
+      album: metadata.common.album || "",
       year: metadata.common.year,
       duration: metadata.format.duration || 0,
       trackNo: metadata.common.track.no || undefined,

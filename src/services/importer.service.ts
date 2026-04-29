@@ -26,6 +26,8 @@ import { computeFileFingerprint, computeFileFingerprintFromBlob } from "@/module
 // ═══════════════════════════════════════════════════════
 
 const HEAD_READ_SIZE = 512 * 1024;
+const LARGE_FILE_THRESHOLD = 50 * 1024 * 1024;
+const MAX_METADATA_READ = 2 * 1024 * 1024;
 const WORKER_TIMEOUT = 20_000;
 const WORKER_POOL_SIZE = 8;
 const PROCESS_CONCURRENCY = 16;
@@ -749,9 +751,13 @@ export class MusicLibraryEngine {
     nativeStorage: IFileStorageWithNativeSupport,
   ): Promise<TrackToSave | null> {
     try {
+      const readSize = file.size < LARGE_FILE_THRESHOLD
+        ? Math.min(file.size, MAX_METADATA_READ)
+        : HEAD_READ_SIZE;
+
       const readResult = await nativeStorage.readBytes(
         file.absolutePath,
-        HEAD_READ_SIZE,
+        readSize,
       );
       if (readResult.isErr()) return null;
 
@@ -761,6 +767,27 @@ export class MusicLibraryEngine {
         webkitRelativePath: "",
       } as File;
       const meta = normalizeMetadata(fileMock, rawMeta);
+
+      if (!meta.duration && file.size < LARGE_FILE_THRESHOLD && file.size > readSize) {
+        const fullReadResult = await nativeStorage.readBytes(
+          file.absolutePath,
+          Math.min(file.size, MAX_METADATA_READ),
+        );
+        if (fullReadResult.isOk()) {
+          const fullMeta = await this.parseMeta(file.name, fullReadResult.value);
+          const normalizedFullMeta = normalizeMetadata(fileMock, fullMeta);
+          if (normalizedFullMeta.duration > 0) {
+            return {
+              trackId: TrackId(crypto.randomUUID()),
+              fileName: file.name,
+              storagePath: file.absolutePath,
+              fingerprint,
+              source: TrackSource.LOCAL_EXTERNAL,
+              meta: normalizedFullMeta,
+            };
+          }
+        }
+      }
 
       return {
         trackId: TrackId(crypto.randomUUID()),
@@ -934,21 +961,28 @@ export class MusicLibraryEngine {
   private async batchPreResolveEntities(
     metas: BaseMetadata[],
   ): Promise<void> {
-    const allArtistNames = metas.flatMap(m => m.artists);
-    const artistNames = [...new Set(allArtistNames)];
+    // Only process artists that actually exist in metadata
+    const allArtistNames = metas
+      .flatMap(m => m.artists)
+      .filter(a => a && a.trim() !== "");
 
-    const existingArtists = await db.artists
-      .where("name")
-      .anyOf(artistNames)
-      .toArray();
+    const uniqueArtistNames = [...new Set(allArtistNames)];
 
-    for (const artist of existingArtists) {
-      this.sessionCache.artists.set(artist.name, artist.id);
-    }
+    // Only fetch/create artists if there are actual artist names
+    if (uniqueArtistNames.length > 0) {
+      const existingArtists = await db.artists
+        .where("name")
+        .anyOf(uniqueArtistNames)
+        .toArray();
 
-    for (const name of artistNames) {
-      if (!this.sessionCache.artists.has(name)) {
-        this.sessionCache.artists.set(name, ArtistId(crypto.randomUUID()));
+      for (const artist of existingArtists) {
+        this.sessionCache.artists.set(artist.name, artist.id);
+      }
+
+      for (const name of uniqueArtistNames) {
+        if (!this.sessionCache.artists.has(name)) {
+          this.sessionCache.artists.set(name, ArtistId(crypto.randomUUID()));
+        }
       }
     }
 
@@ -958,26 +992,35 @@ export class MusicLibraryEngine {
       ),
     ];
 
-    const existingAlbums = await db.albums
-      .where("artistId")
-      .anyOf(uniqueArtistIds)
-      .toArray();
+    // Only process albums if there are actual artist IDs
+    if (uniqueArtistIds.length > 0) {
+      const existingAlbums = await db.albums
+        .where("artistId")
+        .anyOf(uniqueArtistIds)
+        .toArray();
 
-    for (const album of existingAlbums) {
-      const key = `${album.artistId}_${album.title}`;
-      this.sessionCache.albums.set(key, { id: album.id, isNew: false });
-    }
+      for (const album of existingAlbums) {
+        const key = `${album.artistId}_${album.title}`;
+        this.sessionCache.albums.set(key, { id: album.id, isNew: false });
+      }
 
-    for (const meta of metas) {
-      const firstArtistId = this.sessionCache.artists.get(meta.artists[0]);
-      if (!firstArtistId) continue;
-      const key = `${firstArtistId}_${meta.album}`;
+      // Only create albums if there's an actual album name
+      for (const meta of metas) {
+        if (!meta.album || meta.album.trim() === "" || meta.album === "Unknown Album") {
+          continue;
+        }
 
-      if (!this.sessionCache.albums.has(key)) {
-        this.sessionCache.albums.set(key, {
-          id: AlbumId(crypto.randomUUID()),
-          isNew: true,
-        });
+        const firstArtistId = this.sessionCache.artists.get(meta.artists[0]);
+        if (!firstArtistId) continue;
+
+        const key = `${firstArtistId}_${meta.album}`;
+
+        if (!this.sessionCache.albums.has(key)) {
+          this.sessionCache.albums.set(key, {
+            id: AlbumId(crypto.randomUUID()),
+            isNew: true,
+          });
+        }
       }
     }
   }
@@ -1085,50 +1128,74 @@ export class MusicLibraryEngine {
         const existingCoverOwnerIds = new Set(existingCovers.map(cover => cover.ownerId));
 
         for (const item of items) {
+          // Get artist IDs only if there are actual artist names
           const artistIds = item.meta.artists
+            .filter(a => a && a.trim() !== "")
             .map(name => this.sessionCache.artists.get(name))
             .filter((id): id is ArtistId => !!id);
-          const firstArtistId = artistIds[0]!;
-          const albumData = this.sessionCache.albums.get(
-            `${firstArtistId}_${item.meta.album}`,
-          )!;
+          const firstArtistId = artistIds[0] ?? null;
 
-          for (const artistId of artistIds) {
-            if (!artistsToAdd.has(artistId)) {
-              if (!existingArtistIds.has(artistId)) {
-                const artistName = item.meta.artists.find(a => this.sessionCache.artists.get(a) === artistId) ?? "Unknown Artist";
-                artistsToAdd.set(artistId, {
-                  id: artistId,
-                  name: artistName,
-                });
+          // Only get album if there's an actual album name
+          const hasAlbum = item.meta.album && item.meta.album.trim() !== "" && item.meta.album !== "Unknown Album";
+          let albumId: AlbumId = AlbumId("");
+
+          if (hasAlbum && firstArtistId) {
+            const albumData = this.sessionCache.albums.get(`${firstArtistId}_${item.meta.album}`);
+            if (albumData) {
+              albumId = albumData.id;
+
+              if (albumData.isNew && !albumsToAdd.has(albumData.id)) {
+                if (!existingAlbumIds.has(albumData.id)) {
+                  albumsToAdd.set(albumData.id, {
+                    id: albumData.id,
+                    title: item.meta.album,
+                    artistId: firstArtistId,
+                    year: item.meta.year,
+                  });
+                }
               }
             }
           }
 
-          if (albumData.isNew && !albumsToAdd.has(albumData.id)) {
-            if (!existingAlbumIds.has(albumData.id)) {
-              albumsToAdd.set(albumData.id, {
-                id: albumData.id,
-                title: item.meta.album,
-                artistId: firstArtistId,
-                year: item.meta.year,
-              });
+          // Only add artists if there are actual artist names
+          if (artistIds.length > 0) {
+            for (const artistId of artistIds) {
+              if (!artistsToAdd.has(artistId)) {
+                if (!existingArtistIds.has(artistId)) {
+                  const artistName = item.meta.artists.find(a => this.sessionCache.artists.get(a) === artistId);
+                  if (artistName) {
+                    artistsToAdd.set(artistId, {
+                      id: artistId,
+                      name: artistName,
+                    });
+                  }
+                }
+              }
             }
           }
 
-          if (albumData.isNew && item.meta.pictureBlob) {
-            const coverKey = `album_${albumData.id}`;
+          // Skip if no artist at all
+          if (!firstArtistId) {
+            continue;
+          }
 
-            if (!coversToAdd.has(coverKey) && !existingCoverOwnerIds.has(albumData.id)) {
-              coversToAdd.set(coverKey, {
-                id: crypto.randomUUID(),
-                ownerType: "album",
-                ownerId: albumData.id,
-                blob: item.meta.pictureBlob,
-                mimeType: item.meta.pictureBlob.type || "image/jpeg",
-                addedAt: now,
-                updatedAt: now,
-              });
+          // Add cover if album has one
+          if (albumId && hasAlbum) {
+            const firstArtistIdForAlbum = firstArtistId!;
+            const albumData = this.sessionCache.albums.get(`${firstArtistIdForAlbum}_${item.meta.album}`);
+            if (albumData?.isNew && item.meta.pictureBlob) {
+              const coverKey = `album_${albumData.id}`;
+              if (!coversToAdd.has(coverKey) && !existingCoverOwnerIds.has(albumData.id)) {
+                coversToAdd.set(coverKey, {
+                  id: crypto.randomUUID(),
+                  ownerType: "album",
+                  ownerId: albumData.id,
+                  blob: item.meta.pictureBlob,
+                  mimeType: item.meta.pictureBlob.type || "image/jpeg",
+                  addedAt: now,
+                  updatedAt: now,
+                });
+              }
             }
           }
 
@@ -1136,9 +1203,9 @@ export class MusicLibraryEngine {
             id: item.trackId,
             title: item.meta.title,
             artistName: item.meta.artists.join(", "),
-            albumTitle: item.meta.album,
+            albumTitle: item.meta.album || "",
             artistIds,
-            albumId: albumData.id,
+            albumId,
             tagIds: [],
             source: item.source,
             state: TrackState.READY,

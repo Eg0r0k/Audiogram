@@ -55,7 +55,7 @@ const props = defineProps<{
 
 const { t } = useI18n();
 
-const canTogglePin = computed(() => props.item.type !== "liked" && !!props.togglePin);
+const canTogglePin = computed(() => props.item.type !== "liked" && props.item.type !== "allMedia" && !!props.togglePin);
 
 const pinOnLabel = computed(() => {
   switch (props.item.type) {

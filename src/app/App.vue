@@ -60,6 +60,8 @@ import ImportProgressDialog from "@/components/ImportProgressDialog.vue";
 import { usePlayerStore } from "@/modules/player";
 import { useEventListener } from "@vueuse/core";
 import NetworkStatusToast from "@/components/NetworkStatusToast.vue";
+import { toast } from "vue-sonner";
+import { useI18n } from "vue-i18n";
 
 const currentRoute = useRoute();
 const { isMobileLayout } = useDeviceLayout();
@@ -145,6 +147,49 @@ else {
 }
 
 useChangelogOnStartup();
+
+// Update toasts
+const { t } = useI18n();
+let updateToastId: string | number | undefined;
+
+watch(
+  () => updateStore.status,
+  (status, prevStatus) => {
+    if (status === "available" && prevStatus !== "available") {
+      const version = updateStore.updateInfo?.version;
+      updateToastId = toast(t("update.updateToVersion", { version }), {
+        action: {
+          label: t("update.installUpdate"),
+          onClick: () => updateStore.install(),
+        },
+        cancel: {
+          label: t("update.dismiss"),
+          onClick: () => updateStore.dismiss(),
+        },
+      });
+    }
+    else if (status === "downloading") {
+      if (updateToastId) toast.dismiss(updateToastId);
+      updateToastId = toast(t("update.downloading"), {
+        duration: Infinity,
+      });
+    }
+    else if (status === "installing") {
+      if (updateToastId) toast.dismiss(updateToastId);
+      updateToastId = toast(t("update.installing"), {
+        duration: Infinity,
+      });
+    }
+    else if (status === "error") {
+      if (updateToastId) toast.dismiss(updateToastId);
+      const message = updateStore.error?.message ?? "Unknown error";
+      toast.error(t("update.updateError", { message }));
+    }
+    else if (status === "up-to-date") {
+      if (updateToastId) toast.dismiss(updateToastId);
+    }
+  },
+);
 
 // Tray
 

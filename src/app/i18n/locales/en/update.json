@@ -1,4 +1,12 @@
 {
   "updaterError": "Updater error",
-  "notesPreview": "Notes preview"
+  "notesPreview": "Notes preview",
+  "updateAvailable": "Update available",
+  "updateToVersion": "Version {version} is available",
+  "installUpdate": "Install",
+  "dismiss": "Dismiss",
+  "downloading": "Downloading update...",
+  "installing": "Installing update...",
+  "updateReady": "Update ready to install",
+  "updateError": "Update failed: {message}"
 }

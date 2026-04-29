@@ -41,7 +41,7 @@ export const useLibrary = () => {
   const navigateHomeIfViewingItem = (item: LibraryItem) => {
     const currentRoute = router.currentRoute.value;
 
-    if (item.type === "liked") return;
+    if (item.type === "liked" || item.type === "allMedia") return;
     if (currentRoute.name !== libraryItemRouteNames[item.type]) return;
     if (currentRoute.params.id !== item.id) return;
 
@@ -79,7 +79,7 @@ export const useLibrary = () => {
   }));
   const allMusic = computed<LibraryItem> (() => ({
     id: "all",
-    type: "playlist",
+    type: "allMedia",
     title: t("library.allMusic.title"),
     image: "/img/media.svg",
     isPinned: true,
@@ -257,7 +257,7 @@ export const useLibrary = () => {
   };
 
   const deleteItem = async (item: LibraryItem) => {
-    if (item.type === "liked") return;
+    if (item.type === "liked" || item.type === "allMedia") return;
 
     const deleteHandler = async () => {
       switch (item.type) {

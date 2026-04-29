@@ -16,6 +16,12 @@ pinia.use(piniaPluginPersistedstate);
 
 const app = createApp(App);
 
+if (!import.meta.env.DEV) {
+  document.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+  });
+}
+
 app.use(router);
 app.use(pinia);
 app.use(i18n);

@@ -87,12 +87,16 @@
 
       <div class="var1-col min-w-0 truncate text-sm text-muted-foreground">
         <span
+          v-if="track.albumName"
           role="link"
           tabindex="0"
           class="cursor-pointer pl-2 hover:text-foreground hover:underline"
           @click.stop="handleAlbumClick"
           @keydown.enter.stop="handleAlbumClick"
         >
+          {{ track.albumName }}
+        </span>
+        <span v-else class="pl-2">
           {{ track.albumName }}
         </span>
       </div>
@@ -236,7 +240,9 @@ function handleArtistClick(index: number) {
 }
 
 function handleAlbumClick() {
-  router.push(routeLocation.album(props.track.albumId));
+  if (props.track.albumId) {
+    router.push(routeLocation.album(props.track.albumId));
+  }
 }
 
 function formatRelativeTime(value?: number): string {

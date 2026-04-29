@@ -2,10 +2,10 @@ import { BaseMetadata } from "@/workers/types";
 
 export const normalizeMetadata = (file: File, raw: BaseMetadata) => {
   const artists = (raw.artists?.length ?? 0) > 0
-    ? raw.artists
-    : [extractArtistFromPath(file) || "Unknown Artist"];
+    ? raw.artists.filter((a): a is string => !!a && a.trim() !== "")
+    : [extractArtistFromPath(file)].filter((a): a is string => !!a && a.trim() !== "");
   const title = sanitizeString(raw.title) || "Unknown Title";
-  const album = sanitizeString(raw.album) || "Unknown Album";
+  const album = sanitizeString(raw.album) || "";
 
   return {
     ...raw,

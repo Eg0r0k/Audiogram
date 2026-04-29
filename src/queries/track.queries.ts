@@ -56,24 +56,6 @@ async function loadTrackRelations(tracks: TrackEntity[]): Promise<Track[]> {
   return mapTracks(tracks, artists, albums);
 }
 
-async function getTracksSortedByAlbum(searchTrackIds?: Set<TrackId>, desc = false): Promise<Track[]> {
-  const albums = await unwrapResult(albumRepository.findAllSortedByTitle(desc));
-
-  const trackGroups = await Promise.all(
-    albums.map(async (album) => {
-      const tracks = await unwrapResult(trackRepository.findByAlbumId(album.id));
-
-      if (!searchTrackIds) {
-        return tracks;
-      }
-
-      return tracks.filter(track => searchTrackIds.has(track.id));
-    }),
-  );
-
-  return loadTrackRelations(trackGroups.flat());
-}
-
 async function resolveArtistName(artistIds: ArtistId[]): Promise<string> {
   if (artistIds.length === 0) {
     return "Unknown Artist";
@@ -177,21 +159,8 @@ export async function getTracksIndexPageData(
 ): Promise<TracksIndexPageData> {
   const normalizedSearchQuery = searchQuery.trim();
 
-  const isAlbumSort = sortKey === "album_asc" || sortKey === "album_desc";
-  const isAlbumSortDesc = sortKey === "album_desc";
-
   if (normalizedSearchQuery.length > 0) {
     const searchResult = await searchIndexedTracks(normalizedSearchQuery, 0, undefined);
-
-    if (isAlbumSort) {
-      const searchTrackIds = new Set(searchResult.tracks.map(track => track.id as TrackId));
-
-      return {
-        tracks: await getTracksSortedByAlbum(searchTrackIds, isAlbumSortDesc),
-        total: searchResult.total,
-        totalDuration: searchResult.totalDuration,
-      };
-    }
 
     // Search matches come from the worker index. We re-apply ordering through Dexie
     // so the visible list still follows an indexed database sort instead of in-memory sorting.
@@ -203,20 +172,6 @@ export async function getTracksIndexPageData(
       tracks: await loadTrackRelations(rawTracks),
       total: searchResult.total,
       totalDuration: searchResult.totalDuration,
-    };
-  }
-
-  if (isAlbumSort) {
-    const [tracks, total, totalDuration] = await Promise.all([
-      getTracksSortedByAlbum(undefined, isAlbumSortDesc),
-      unwrapResult(trackRepository.countAll()),
-      unwrapResult(trackRepository.sumDurationAll()),
-    ]);
-
-    return {
-      tracks,
-      total,
-      totalDuration,
     };
   }
 

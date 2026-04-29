@@ -23,6 +23,14 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   exists: vi.fn(),
 }));
 
+vi.mock("@/workers/meta.worker?worker", () => ({
+  default: class MockWorker {
+    addEventListener() {}
+    postMessage() {}
+    terminate() {}
+  },
+}));
+
 beforeEach(() => {
   setActivePinia(createPinia());
 });

@@ -20,7 +20,6 @@ import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import {
   removeAlbumCaches,
   removeArtistCaches,
-  removeTracksFromCaches,
   syncArtistCaches,
   updateCoverCache,
 } from "./cache";
@@ -295,6 +294,33 @@ export async function deleteArtistAndSync(
 
   const albums = await unwrapResult(albumRepository.findByArtistId(artistEntity.id));
   const rawTracks = await unwrapResult(trackRepository.findByArtistId(artistEntity.id));
+  const albumTracks = (await Promise.all(
+    albums.map(album => unwrapResult(trackRepository.findByAlbumId(album.id))),
+  )).flat();
+  const affectedTracks = [...new Map(
+    [...rawTracks, ...albumTracks].map(track => [track.id, track]),
+  ).values()];
+  const remainingArtistIds = unique(
+    affectedTracks.flatMap(track => track.artistIds.filter(id => id !== artistEntity.id)),
+  );
+  const remainingArtists = await unwrapResult(artistRepository.findByIds(remainingArtistIds));
+  const remainingArtistNameById = new Map(remainingArtists.map(artist => [artist.id, artist.name]));
+  const deletedAlbumIds = new Set(albums.map(album => album.id));
+
+  for (const track of affectedTracks) {
+    const nextArtistIds = track.artistIds.filter(id => id !== artistEntity.id);
+    const nextArtistName = nextArtistIds
+      .map(id => remainingArtistNameById.get(id))
+      .filter(Boolean)
+      .join(", ") || undefined;
+    const nextAlbumTitle = deletedAlbumIds.has(track.albumId) ? undefined : track.albumTitle;
+
+    await unwrapResult(trackRepository.update(track.id, {
+      artistIds: nextArtistIds,
+      artistName: nextArtistName,
+      albumTitle: nextAlbumTitle,
+    }));
+  }
 
   for (const album of albums) {
     await unwrapResult(coverRepository.deleteAlbumCover(album.id));
@@ -304,15 +330,33 @@ export async function deleteArtistAndSync(
   }
 
   await unwrapResult(coverRepository.deleteArtistCover(artistEntity.id));
-  await unwrapResult(trackRepository.deleteByArtistId(artistEntity.id));
   await unwrapResult(artistRepository.delete(artistEntity.id));
   await removeSearchDocuments([
     `artist:${artistEntity.id}`,
     ...albums.map(album => `album:${album.id}`),
-    ...rawTracks.map(track => `track:${track.id}`),
   ]);
+  const updatedTracks = await unwrapResult(trackRepository.findByIds(affectedTracks.map(track => track.id)));
+  await upsertSearchDocuments(await Promise.all(updatedTracks.map(track => buildTrackDocFromDb(track))));
 
   removeArtistCaches(queryClient, artistEntity.id);
-  removeTracksFromCaches(queryClient, rawTracks.map(track => track.id));
   queryClient.removeQueries({ queryKey: queryKeys.covers.detail("artist", artistEntity.id), exact: true });
+
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.tracks.all() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.tracks.likedPage() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.tracks.likedPageInfinite() }),
+    ...albums.flatMap(album => [
+      queryClient.invalidateQueries({ queryKey: queryKeys.albums.page(album.id) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.albums.tracksPage(album.id) }),
+    ]),
+    queryClient.invalidateQueries({
+      predicate: query =>
+        query.queryKey[0] === "tracks" && query.queryKey[1] === "index",
+    }),
+    queryClient.invalidateQueries({
+      predicate: query =>
+        query.queryKey[0] === "playlists" && query.queryKey[2] === "page",
+    }),
+  ]);
 }

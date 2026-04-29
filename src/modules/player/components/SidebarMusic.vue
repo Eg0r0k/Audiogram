@@ -36,7 +36,10 @@
           gradient-color="var(--card)"
           gradient-length="20px"
         >
-          <span class="text-sm group-hover:underline font-medium">{{ currentTrack?.title }}</span>
+          <span
+            v-copy="currentTrack?.title"
+            class="text-sm group-hover:underline font-medium cursor-pointer"
+          >{{ currentTrack?.title }}</span>
         </MarqueeBlock>
         <MarqueeBlock
           class="group"

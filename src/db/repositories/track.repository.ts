@@ -15,23 +15,23 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     switch (sortKey) {
       case "date_added_asc":
         return this.table.orderBy("addedAt");
+      case "date_added_desc":
+        return this.table.orderBy("addedAt").reverse();
       case "title_asc":
         return this.table.orderBy("title");
       case "title_desc":
         return this.table.orderBy("title").reverse();
-      case "artist_asc":
-        return this.table.orderBy("artistName");
-      case "album_asc":
-        return this.table.orderBy("albumTitle");
-      case "album_desc":
-        return this.table.orderBy("albumTitle").reverse();
       case "duration_asc":
         return this.table.orderBy("duration");
       case "duration_desc":
         return this.table.orderBy("duration").reverse();
       case "plays_desc":
         return this.table.orderBy("playCount").reverse();
-      case "date_added_desc":
+      case "artist_asc":
+        return this.table.orderBy("artistName").reverse();
+      case "album_asc":
+      case "album_desc":
+        return this.table.orderBy("albumTitle");
       default:
         return this.table.orderBy("addedAt").reverse();
     }
@@ -194,6 +194,11 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   async findAllSorted(sortKey: TrackSortKey): Promise<Result<TrackEntity[], Error>> {
     try {
       const tracks = await this.getSortedCollection(sortKey).toArray();
+
+      if (sortKey === "album_desc") {
+        return ok(tracks.reverse());
+      }
+
       return ok(tracks);
     }
     catch (error) {
@@ -208,11 +213,15 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
       }
 
       const idSet = new Set(ids);
-      const tracks = await this.getSortedCollection(sortKey)
+      const sorted = await this.getSortedCollection(sortKey)
         .filter(track => idSet.has(track.id))
         .toArray();
 
-      return ok(tracks);
+      if (sortKey === "album_desc") {
+        return ok(sorted.reverse());
+      }
+
+      return ok(sorted);
     }
     catch (error) {
       return err(error as Error);

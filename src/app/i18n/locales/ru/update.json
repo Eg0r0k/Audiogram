@@ -1,4 +1,12 @@
 {
   "updaterError": "Ошибка обновления",
-  "notesPreview": "Предпросмотр изменений"
+  "notesPreview": "Предпросмотр изменений",
+  "updateAvailable": "Доступно обновление",
+  "updateToVersion": "Версия {version} доступна",
+  "installUpdate": "Установить",
+  "dismiss": "Закрыть",
+  "downloading": "Загрузка обновления...",
+  "installing": "Установка обновления...",
+  "updateReady": "Обновление готово к установке",
+  "updateError": "Ошибка обновления: {message}"
 }

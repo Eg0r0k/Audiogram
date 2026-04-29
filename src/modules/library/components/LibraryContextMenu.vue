@@ -47,6 +47,7 @@ const contexts: Record<LibraryItem["type"], Component> = {
   album: DefaultContext,
   playlist: DefaultContext,
   liked: FavoriteContext,
+  allMedia: FavoriteContext,
 };
 
 const contextComponent = computed(() =>
@@ -66,6 +67,7 @@ const contextProps = computed(() => {
         onDelete: handleDelete,
       };
     case "liked":
+    case "allMedia":
       return {
         item: activeItem.value,
         addToQueue: handleAddToQueue,
@@ -93,7 +95,7 @@ useEventListener(guardRef, "contextmenu", (e: MouseEvent) => {
 }, { capture: true });
 
 const handleTogglePin = () => {
-  if (!activeItem.value || activeItem.value.type === "liked") return;
+  if (!activeItem.value || activeItem.value.type === "liked" || activeItem.value.type === "allMedia") return;
   togglePin(activeItem.value.type, activeItem.value.id);
 };
 
@@ -111,7 +113,7 @@ const emit = defineEmits<{
 }>();
 
 const handleDelete = () => {
-  if (!activeItem.value || activeItem.value.type === "liked") return;
+  if (!activeItem.value || activeItem.value.type === "liked" || activeItem.value.type === "allMedia") return;
   emit("delete", activeItem.value);
 };
 </script>

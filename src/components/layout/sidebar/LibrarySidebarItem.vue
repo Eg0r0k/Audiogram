@@ -64,6 +64,8 @@ const isCurrentPlaybackSource = computed(() => {
       return source.type === "playlist" && source.playlistId === props.item.id;
     case "liked":
       return source.type === "liked";
+    case "allMedia":
+      return source.type === "allMedia";
     default:
       return false;
   }

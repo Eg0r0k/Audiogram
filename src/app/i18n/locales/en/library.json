@@ -17,7 +17,8 @@
     "artist": "Artist",
     "album": "Album",
     "playlist": "Playlist",
-    "liked": "Liked Songs"
+    "liked": "Liked Songs",
+    "allMedia": "All Music"
   },
   "contextMenu": {
     "pinAlbum": "Pin album",

@@ -9,6 +9,7 @@ export type QueueSource
     | { type: "history" }
     | { type: "manual" }
     | { type: "liked" }
+    | { type: "allMedia" }
     | { type: "external" }
     | { type: "unknown" };
 
@@ -31,6 +32,7 @@ export function isSameQueueSource(left: QueueSource, right: QueueSource): boolea
     case "artist":
       return "artistId" in right && left.artistId === right.artistId;
     case "liked":
+    case "allMedia":
     case "history":
     case "search":
     case "manual":

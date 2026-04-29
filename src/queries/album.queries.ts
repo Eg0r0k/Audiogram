@@ -15,7 +15,6 @@ import type { AlbumId, ArtistId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import {
   removeAlbumCaches,
-  removeTracksFromCaches,
   syncAlbumCaches,
   updateCoverCache,
 } from "./cache";
@@ -236,16 +235,38 @@ export async function deleteAlbumAndSync(
 
   const rawTracks = await unwrapResult(trackRepository.findByAlbumId(albumEntity.id));
 
+  for (const track of rawTracks) {
+    await unwrapResult(trackRepository.update(track.id, {
+      albumTitle: undefined,
+    }));
+  }
+
   await unwrapResult(coverRepository.deleteAlbumCover(albumEntity.id));
-  await unwrapResult(trackRepository.deleteByAlbumId(albumEntity.id));
   await unwrapResult(albumRepository.delete(albumEntity.id));
   await removeSearchDocuments([
     `album:${albumEntity.id}`,
-    ...rawTracks.map(track => `track:${track.id}`),
   ]);
+  const updatedTracks = await unwrapResult(trackRepository.findByIds(rawTracks.map(track => track.id)));
+  await upsertSearchDocuments(await Promise.all(updatedTracks.map(track => buildTrackDocFromDb(track))));
 
   removeAlbumCaches(queryClient, albumEntity.id, albumEntity.artistId);
-  removeTracksFromCaches(queryClient, rawTracks.map(track => track.id));
 
   queryClient.removeQueries({ queryKey: queryKeys.albums.cover(albumEntity.id), exact: true });
+
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.tracks.all() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.tracks.likedPage() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.tracks.likedPageInfinite() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.artists.page(albumEntity.artistId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.artists.tracksPage(albumEntity.artistId) }),
+    queryClient.invalidateQueries({
+      predicate: query =>
+        query.queryKey[0] === "tracks" && query.queryKey[1] === "index",
+    }),
+    queryClient.invalidateQueries({
+      predicate: query =>
+        query.queryKey[0] === "playlists" && query.queryKey[2] === "page",
+    }),
+  ]);
 }

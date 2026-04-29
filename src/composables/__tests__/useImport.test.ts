@@ -173,4 +173,30 @@ describe("useImport", () => {
     expect(importer.isPaused.value).toBe(false);
     expect(importer.current.value).toBe(1);
   });
+
+  it("returns from cancellation immediately when the engine has not reached a pause point yet", async () => {
+    const engineGate = createDeferred();
+
+    vi.mocked(musicLibraryEngine.importFiles).mockImplementation(async (_files, onProgress) => {
+      onProgress?.(0, 1);
+      await engineGate.promise;
+      onProgress?.(1, 1);
+      return createResult({ total: 1 });
+    });
+
+    const importer = useImport();
+    const importPromise = importer.importFiles([createFile("early.mp3")]);
+    await flushPromises();
+
+    await importer.cancelImport();
+
+    expect(importer.isRunning.value).toBe(false);
+    expect(importer.isCancelling.value).toBe(false);
+
+    engineGate.resolve();
+    await importPromise;
+
+    expect(importer.current.value).toBe(0);
+    expect(importer.progress.value).toBe(0);
+  });
 });

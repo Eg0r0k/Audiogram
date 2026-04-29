@@ -87,7 +87,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          VITE_GITHUB_REPO: Eg0r0k/AudioGram
+          VITE_GITHUB_REPO: Eg0r0k/audiogram
           VITE_UPDATE_CHANNEL: ${{ needs.meta.outputs.channel }}
         with:
           tagName: ${{ github.ref_name }}
@@ -121,7 +121,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CHANNEL: ${{ needs.meta.outputs.channel }}
           VERSION: ${{ steps.version.outputs.value }}
-          REPO: Eg0r0k/AudioGram
+          REPO: Eg0r0k/audiogram
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
