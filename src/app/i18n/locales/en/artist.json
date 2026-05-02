@@ -1,5 +1,8 @@
 {
   "newArtist": "New artist",
   "deleteFailed": "Failed to delete artist",
-  "tracks": "Tracks"
+  "tracks": "Tracks",
+  "pinArtist": "Pin artist",
+  "unpinArtist": "Unpin artist",
+  "deleteArtist": "Delete artist"
 }

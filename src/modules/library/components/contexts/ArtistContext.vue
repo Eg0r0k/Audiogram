@@ -8,7 +8,7 @@
       v-else
       class="size-5 "
     />
-    {{ item.isPinned ? 'Unpin artist' : 'Pin artist' }}
+    {{ item.isPinned ? $t("artist.unpinArtist") : $t("artist.pinArtist") }}
   </ContextMenuItem>
 
   <ContextMenuItem
@@ -16,7 +16,7 @@
     @select="props.onDelete"
   >
     <IconTrash class="size-5 " />
-    Delete artist
+    {{ $t("artist.deleteArtist") }}
   </ContextMenuItem>
 </template>
 <script setup lang="ts">

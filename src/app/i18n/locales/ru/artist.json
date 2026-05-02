@@ -1,5 +1,8 @@
 {
   "newArtist": "Новый артист",
   "deleteFailed": "Не удалось удалить артиста",
-  "tracks": "Треки"
+  "tracks": "Треки",
+  "pinArtist": "Закрепить артиста",
+  "unpinArtist": "Открепить артиста",
+  "deleteArtist": "Удалить артиста"
 }
