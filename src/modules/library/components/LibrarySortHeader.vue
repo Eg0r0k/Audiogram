@@ -12,7 +12,7 @@
         class="first-col justify-start gap-2 truncate px-2 font-medium"
         @click="$emit('toggle-title')"
       >
-        <span class="truncate"> {{ t("library.sortColumn.title") }} </span>
+        <span class="truncate"> {{ $t("library.sortColumn.title") }} </span>
         <IconChevronDown
           v-if="sortKey === 'title_asc'"
           class="size-3 rotate-180 text-green-400"
@@ -22,13 +22,12 @@
           class="size-3 text-green-400"
         />
       </Button>
-
       <Button
         variant="ghost"
         class="var1-col justify-start gap-2 truncate px-2 font-medium"
         @click="$emit('toggle-album')"
       >
-        <span class="truncate"> {{ t("library.sortColumn.album") }} </span>
+        <span class="truncate"> {{ $t("library.sortColumn.album") }} </span>
         <IconChevronDown
           v-if="sortKey === 'album_asc'"
           class="size-3 rotate-180 text-green-400"
@@ -44,7 +43,7 @@
         class="var2-col justify-start truncate px-2 font-medium"
         @click="$emit('toggle-date')"
       >
-        <span class="truncate"> {{ t("library.sortColumn.dateAdded") }} </span>
+        <span class="truncate"> {{ $t("library.sortColumn.dateAdded") }} </span>
         <IconChevronDown
           v-if="sortKey === 'date_added_asc'"
           class="size-3 rotate-180 text-green-400"
@@ -55,36 +54,31 @@
         />
       </Button>
 
-      <div class="last-col flex justify-end">
-        <Button
-          variant="ghost"
-          class="font-medium"
-          @click="$emit('toggle-duration')"
-        >
-          <IconClock class="size-5" />
-          <IconChevronDown
-            v-if="sortKey === 'duration_asc'"
-            class="ml-1 size-3 rotate-180 text-green-400"
-          />
-          <IconChevronDown
-            v-else-if="sortKey === 'duration_desc'"
-            class="ml-1 size-3 text-green-400"
-          />
-        </Button>
-      </div>
+      <Button
+        class=" last-col"
+        variant="ghost"
+        @click="$emit('toggle-duration')"
+      >
+        <IconClock class="size-5" />
+        <IconChevronDown
+          v-if="sortKey === 'duration_asc'"
+          class="ml-1 size-3 rotate-180 text-green-400"
+        />
+        <IconChevronDown
+          v-else-if="sortKey === 'duration_desc'"
+          class="ml-1 size-3 text-green-400"
+        />
+      </Button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import IconChevronDown from "~icons/tabler/chevron-down";
 import IconClock from "~icons/tabler/clock-hour-4";
 import IconHashtag from "~icons/tabler/hash";
-
-const { t } = useI18n();
 
 defineProps<{
   sortKey: TrackSortKey | null;

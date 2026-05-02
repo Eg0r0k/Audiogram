@@ -29,10 +29,28 @@
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
           <Button
+            class=" relative"
             size="icon-sm"
             variant="ghost"
           >
             <IconCategory class="size-4.5" />
+
+            <AnimatePresence>
+              <motion.div
+                v-if="playerStore.playbackRate !== 1"
+                key="rate-badge"
+                class="absolute top-0 -right-1 border-card border-2 bg-foreground text-card rounded-full h-3.5 flex items-center justify-center border-full"
+                :initial="{ opacity: 0, scale: 0.5 }"
+                :animate="{ opacity: 1, scale: 1 }"
+                :exit="{ opacity: 0, scale: 0.5 }"
+                :transition="{ duration: 0.10 }"
+                layout
+              >
+                <span class="text-[8px] font-bold leading-none px-0.5 whitespace-nowrap">
+                  {{ formatPlaybackRate(playerStore.playbackRate) }}
+                </span>
+              </motion.div>
+            </AnimatePresence>
           </Button>
         </DropdownMenuTrigger>
 
@@ -128,6 +146,7 @@
 </template>
 
 <script setup lang="ts">
+import { AnimatePresence, motion } from "motion-v";
 import { App, computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePlayerStore } from "@/modules/player/store/player.store";

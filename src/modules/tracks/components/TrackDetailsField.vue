@@ -1,5 +1,8 @@
 <template>
-  <Item class="px-2">
+  <Item
+    class="px-2"
+    @click="emit('click')"
+  >
     <ItemMedia v-if="$slots.icon">
       <div
         class="size-8 rounded-lg flex items-center justify-center"
@@ -35,6 +38,10 @@ import {
 defineOptions({
   inheritAttrs: false,
 });
+
+const emit = defineEmits<{
+  (e: "click"): void;
+}>();
 
 const props = defineProps<{
   iconClass?: string;

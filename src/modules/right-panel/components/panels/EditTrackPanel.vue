@@ -1,6 +1,6 @@
 <!-- eslint-disable vuejs-accessibility/label-has-for -->
 <template>
-  <div class="flex h-full min-h-0 flex-col bg-card">
+  <div class="relative flex h-full w-full flex-col overflow-hidden! bg-card">
     <RightPanelHeader
       :title="$t('track.edit.title')"
       :description="track?.title"
@@ -9,7 +9,7 @@
       @close="rightPanel.close()"
     />
 
-    <Scrollable class="min-h-0 flex-1">
+    <Scrollable class="min-h-0 flex-1 ">
       <form
         v-if="track"
         class="grid gap-5 px-5 pb-8 pt-2"
@@ -185,17 +185,17 @@
         {{ $t('track.edit.libraryOnly') }}
       </p>
     </Scrollable>
-
-    <div class="flex shrink-0 gap-2 border-t border-border p-4">
+    <FloatingActionButton
+      :show="hasChanges"
+    >
       <Button
-        variant="link"
-        class="flex-1"
+        class="size-12 rounded-full shadow-lg"
         :disabled="!track || isPending || !meta.valid || !hasChanges"
         @click="onSubmit"
       >
-        {{ $t('common.save') }}
+        <IconSave class="size-6" />
       </Button>
-    </div>
+    </FloatingActionButton>
   </div>
 </template>
 
@@ -226,6 +226,8 @@ import RightPanelHeader from "../RightPanelHeader.vue";
 import IconDisc from "~icons/tabler/disc";
 import IconPlus from "~icons/tabler/plus";
 import IconX from "~icons/tabler/x";
+import IconSave from "~icons/tabler/device-floppy";
+import FloatingActionButton from "@/components/common/FloatingActionButton.vue";
 
 const MAX_TITLE_LENGTH = 120;
 const MAX_ARTISTS_LENGTH = 240;

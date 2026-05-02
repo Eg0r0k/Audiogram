@@ -34,3 +34,16 @@ export const formatTotalDuration = (
 
   return `${t("common.hoursShort", { count: hours })} ${t("common.minutesShort", { count: minutes })}`;
 };
+
+export const formatRelativeTime = (value?: number, locale?: string): string => {
+  if (!value) return "-";
+  const diffSeconds = Math.round((value - Date.now()) / 1000);
+  const absSeconds = Math.abs(diffSeconds);
+  const formatter = new Intl.RelativeTimeFormat(locale || navigator.language, { numeric: "auto" });
+  if (absSeconds < 60) return formatter.format(diffSeconds, "second");
+  const diffMinutes = Math.round(diffSeconds / 60);
+  if (Math.abs(diffMinutes) < 60) return formatter.format(diffMinutes, "minute");
+  const diffHours = Math.round(diffMinutes / 60);
+  if (absSeconds < 86_400) return formatter.format(diffHours, "hour");
+  return formatter.format(Math.round(diffHours / 24), "day");
+};

@@ -8,25 +8,49 @@
       @close="rightPanel.close()"
     >
       <template #trailing>
-        <Button
-          v-if="libraryTrack"
-          size="icon"
-          variant="ghost"
-          class="shrink-0 rounded-full"
-          @click="rightPanel.openEditTrack({ track: libraryTrack })"
-        >
-          <IconPencil class="size-6" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              size="icon"
+              class="rounded-full"
+              variant="ghost"
+            >
+              <IconDots class="size-6" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="left"
+            align="start"
+          >
+            <DropdownMenuItem
+              v-if="libraryTrack"
+              @click="openEdit"
+            >
+              <IconPencil class="size-5" />
+              {{ $t('common.edit') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              v-if="libraryTrack"
+              variant="destructive"
+
+              @click="handleDelete"
+            >
+              <TrashIcon class="size-5" />
+              {{ $t('common.delete') }}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </template>
     </RightPanelHeader>
 
     <Scrollable class="min-h-0 flex-1">
-      <div class="grid gap-6 bg-background">
+      <div class="grid gap-6 dark:bg-background bg-muted ">
         <section class="grid gap-3 p-2 bg-card">
           <div class="grid gap-3 sm:grid-cols-1">
             <DetailField
               :title="$t('track.details.fields.title')"
               :value="track.title"
+              @click="openEdit"
             >
               <template #icon>
                 <IconMusic class="size-6" />
@@ -35,6 +59,7 @@
             <DetailField
               :title="$t('track.details.fields.artist')"
               :value="track.artist"
+              @click="openEdit"
             >
               <template #icon>
                 <IconMicrophone2 class="size-6" />
@@ -43,6 +68,7 @@
             <DetailField
               :title="$t('track.details.fields.album')"
               :value="track.albumName"
+              @click="openEdit"
             >
               <template #icon>
                 <IconDisc class="size-6" />
@@ -76,7 +102,57 @@
             </DetailField>
           </div>
         </section>
+        <section
+          v-if="isLibraryTrack(track)"
+          class="grid gap-3 p-2 bg-card"
+        >
+          <div class="grid gap-3 sm:grid-cols-1">
+            <DetailField
+              :title="$t('track.details.fields.codec')"
+              :value="entity?.format.codec"
+            >
+              <template #icon>
+                <IconFileMusic class="size-6" />
+              </template>
+            </DetailField>
 
+            <DetailField
+              :title="$t('track.details.fields.bitrate')"
+              :value="formattedBitrate"
+            >
+              <template #icon>
+                <IconWaveSine class="size-6" />
+              </template>
+            </DetailField>
+
+            <DetailField
+              :title="$t('track.details.fields.sampleRate')"
+              :value="formattedSampleRate"
+            >
+              <template #icon>
+                <IconActivityHeartbeat class="size-6" />
+              </template>
+            </DetailField>
+
+            <DetailField
+              :title="$t('track.details.fields.channels')"
+              :value="entity?.format.channels"
+            >
+              <template #icon>
+                <IconCirclesRelation class="size-6" />
+              </template>
+            </DetailField>
+
+            <DetailField
+              :title="$t('track.details.fields.lossless')"
+              :value="losslessLabel"
+            >
+              <template #icon>
+                <IconShieldCheck class="size-6" />
+              </template>
+            </DetailField>
+          </div>
+        </section>
         <section
           v-if="isLibraryTrack(track)"
           class="grid gap-3 p-2 bg-card"
@@ -136,58 +212,6 @@
             {{ $t('common.delete') }}
           </Button>
         </section>
-
-        <section
-          v-if="isLibraryTrack(track)"
-          class="grid gap-3 p-2 bg-card"
-        >
-          <div class="grid gap-3 sm:grid-cols-1">
-            <DetailField
-              :title="$t('track.details.fields.codec')"
-              :value="entity?.format.codec"
-            >
-              <template #icon>
-                <IconFileMusic class="size-6" />
-              </template>
-            </DetailField>
-
-            <DetailField
-              :title="$t('track.details.fields.bitrate')"
-              :value="formattedBitrate"
-            >
-              <template #icon>
-                <IconWaveSine class="size-6" />
-              </template>
-            </DetailField>
-
-            <DetailField
-              :title="$t('track.details.fields.sampleRate')"
-              :value="formattedSampleRate"
-            >
-              <template #icon>
-                <IconActivityHeartbeat class="size-6" />
-              </template>
-            </DetailField>
-
-            <DetailField
-              :title="$t('track.details.fields.channels')"
-              :value="entity?.format.channels"
-            >
-              <template #icon>
-                <IconCirclesRelation class="size-6" />
-              </template>
-            </DetailField>
-
-            <DetailField
-              :title="$t('track.details.fields.lossless')"
-              :value="losslessLabel"
-            >
-              <template #icon>
-                <IconShieldCheck class="size-6" />
-              </template>
-            </DetailField>
-          </div>
-        </section>
       </div>
     </Scrollable>
   </div>
@@ -222,11 +246,16 @@ import IconFolder from "~icons/tabler/folder";
 import IconMicrophone2 from "~icons/tabler/microphone-2";
 import IconMusic from "~icons/tabler/music";
 import IconPencil from "~icons/tabler/pencil";
+import IconDots from "~icons/tabler/dots";
 import IconShieldCheck from "~icons/tabler/shield-check";
 import TrashIcon from "~icons/tabler/trash";
 import IconUsers from "~icons/tabler/users";
 import IconWaveSine from "~icons/tabler/wave-sine";
 import IconWorld from "~icons/tabler/world";
+import DropdownMenu from "@/components/ui/dropdown-menu/DropdownMenu.vue";
+import DropdownMenuTrigger from "@/components/ui/dropdown-menu/DropdownMenuTrigger.vue";
+import DropdownMenuContent from "@/components/ui/dropdown-menu/DropdownMenuContent.vue";
+import DropdownMenuItem from "@/components/ui/dropdown-menu/DropdownMenuItem.vue";
 const props = defineProps<{
   payload: RightPanelTrackInfoPayload;
 }>();
@@ -262,6 +291,13 @@ const formattedDuration = computed(() => {
 
   return track.value.duration ? formatDuration(track.value.duration) : "—";
 });
+
+function openEdit() {
+  console.log("openEdit", libraryTrack.value);
+  if (!libraryTrack.value) return;
+  console.log("Opening edit panel for track", libraryTrack.value);
+  rightPanel.openEditTrack({ track: libraryTrack.value });
+}
 
 const sourceLabel = computed(() => {
   if (!isLibraryTrack(track.value)) {

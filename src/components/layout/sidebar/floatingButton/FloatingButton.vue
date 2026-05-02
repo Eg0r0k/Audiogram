@@ -1,27 +1,12 @@
 <template>
-  <Motion
-    :initial="{ opacity: 0, scale: 0.5, y: 100 }"
-    :animate="{
-      opacity: show ? 1 : 0,
-      scale: show ? 1 : 0.7,
-      y: show ? 0 : 80,
-      pointerEvents: show ? 'auto' : 'none'
-    }"
-    :transition="{
-      type: 'spring',
-      stiffness: 300,
-      damping: 25
-    }"
-    class="absolute bottom-4 right-4 z-50"
-  >
+  <FloatingActionButton :show="show">
     <DropdownMenu :modal="false">
       <DropdownMenuTrigger as-child>
-        <Button
-          class="size-12 rounded-full shadow-lg"
-        >
+        <Button class="size-12 rounded-full shadow-lg">
           <IconPlus class="size-6" />
         </Button>
       </DropdownMenuTrigger>
+
       <DropdownMenuContent
         :side-offset="10"
         class="bg-popover/50 backdrop-blur-[50px]"
@@ -33,14 +18,17 @@
             <IconImport class="size-5.5" />
             {{ $t("common.import.button") }}
           </DropdownMenuItem>
+
           <DropdownMenuItem @click="createArtist">
             <IconUserPlus class="size-5.5" />
             {{ $t("common.createArtist") }}
           </DropdownMenuItem>
+
           <DropdownMenuItem @click="createAlbum">
             <IconAlbum class="size-5.5" />
             {{ $t("common.createAlbum") }}
           </DropdownMenuItem>
+
           <DropdownMenuItem @click="createPlaylist">
             <IconPlaylist class="size-5.5" />
             {{ $t("track.contextMenu.createPlaylist") }}
@@ -48,11 +36,10 @@
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
-  </Motion>
+  </FloatingActionButton>
 </template>
 
 <script setup lang="ts">
-import { Motion } from "motion-v";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import IconPlus from "~icons/tabler/plus";
@@ -63,6 +50,7 @@ import IconUserPlus from "~icons/tabler/user-plus";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
 import { requestFiles } from "@/lib/files/requestFiles";
 import { useImport } from "@/composables/useImport";
+import FloatingActionButton from "@/components/common/FloatingActionButton.vue";
 
 defineProps<{
   show: boolean;

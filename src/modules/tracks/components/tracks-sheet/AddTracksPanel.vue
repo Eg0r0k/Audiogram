@@ -1,5 +1,5 @@
 <template>
-  <div class="relative flex h-full w-full flex-col gap-0 overflow-hidden border-none bg-card p-0">
+  <div class="relative flex h-full w-full flex-col overflow-hidden bg-card">
     <RightPanelHeader
       :title="title"
       :description="null"
@@ -8,7 +8,7 @@
       @close="closePanel"
     />
 
-    <div class=" bg-card px-4 mb-3">
+    <div class=" bg-card px-4">
       <div class="flex items-center gap-3">
         <InputGroup class="flex-1 rounded-full">
           <InputGroupInput
