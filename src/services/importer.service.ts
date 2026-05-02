@@ -1174,11 +1174,6 @@ export class MusicLibraryEngine {
             }
           }
 
-          // Skip if no artist at all
-          if (!firstArtistId) {
-            continue;
-          }
-
           // Add cover if album has one
           if (albumId && hasAlbum) {
             const firstArtistIdForAlbum = firstArtistId!;
