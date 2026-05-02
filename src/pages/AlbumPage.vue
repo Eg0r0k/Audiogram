@@ -21,71 +21,89 @@
         context="album"
         :album-id="album?.id"
       >
-        <VirtualScrollable
-          :items="tracks"
-          :get-item-key="getTrackKey"
-          :item-height="56"
-          :load-more-offset="120"
-          :padding-top="16"
-          :padding-bottom="16"
-          sticky-offset="72px"
-          :loading="isTracksLoading || isFetchingNextPage"
+        <!--
+          tracksListRef wraps VirtualScrollable so we have a stable DOM element
+          to attach drag-selection listeners to. We can't use a ref inside the
+          #default slot because it renders many times (once per visible row).
+        -->
+        <div
+          ref="tracksListRef"
           class="h-full"
-          @load-more="handleLoadMore"
         >
-          <template #before>
-            <MediaHero
-              :data="albumData"
-              :has-tracks="tracks.length > 0"
-              @play="handlePlayAll"
-              @shuffle="handleShuffle"
-              @edit="showEditDialog = true"
-              @delete="openDeleteDialog"
-              @add-to-queue="handleAddToQueue"
-              @share="handleShare"
-            >
-              <template #actions>
-                <Button
-                  class=" text-white"
-                  variant="ghost"
-                  @click="openAddTracksPanel"
-                >
-                  <IconPlus class="size-5" />
-                  {{ $t("track.addTracks") }}
-                </Button>
-              </template>
-            </MediaHero>
-          </template>
+          <VirtualScrollable
+            :items="tracks"
+            :get-item-key="getTrackKey"
+            :item-height="56"
+            :load-more-offset="120"
+            :padding-top="16"
+            :padding-bottom="16"
+            sticky-offset="72px"
+            :loading="isTracksLoading || isFetchingNextPage"
+            class="h-full"
+            @load-more="handleLoadMore"
+          >
+            <template #before>
+              <MediaHero
+                :data="albumData"
+                :has-tracks="tracks.length > 0"
+                @play="handlePlayAll"
+                @shuffle="handleShuffle"
+                @edit="showEditDialog = true"
+                @delete="openDeleteDialog"
+                @add-to-queue="handleAddToQueue"
+                @share="handleShare"
+              >
+                <template #actions>
+                  <Button
+                    class="text-white"
+                    variant="ghost"
+                    @click="openAddTracksPanel"
+                  >
+                    <IconPlus class="size-5" />
+                    {{ $t("track.addTracks") }}
+                  </Button>
+                </template>
+              </MediaHero>
+            </template>
 
-          <template #sticky>
-            <LibrarySortHeader
-              :sort-key="sortKey"
-              @toggle-title="toggleTitleSort"
-              @toggle-album="toggleAlbumSort"
-              @toggle-date="toggleDateSort"
-              @toggle-duration="toggleDurationSort"
-            />
-          </template>
-
-          <template #default="{ item, index }">
-            <div class="px-4">
-              <TrackExpanded
-                :track="item"
-                :index="index + 1"
-                :is-active="currentTrackId === item.id"
-                menu-target="album"
-                @play="handlePlayTrack(index)"
-                @contextmenu="handleContextMenu(item, index)"
+            <template #sticky>
+              <TrackSelectionBar
+                v-if="isSelecting"
+                key="selection"
+                :selected-count="selectedCount"
+                can-delete
+                @cancel="clearSelection"
+                @select-all="selectAll"
               />
-            </div>
-          </template>
+              <LibrarySortHeader
+                v-else
+                v-model:sort-key="sortKey"
+              />
+            </template>
 
-          <template #loader>
-            <div class="flex items-center px-4 flex-col w-full">
-              <TrackRowLoading />
-            </div>
-          </template>
-        </VirtualScrollable>
+            <template #default="{ item, index }">
+              <div class="px-4">
+                <TrackExpanded
+                  :track="item"
+                  :index="index + 1"
+                  :is-active="currentTrackId === item.id"
+                  :is-selected="isSelected(item.id)"
+                  :is-selecting="isSelecting"
+                  menu-target="album"
+                  @play="handlePlayTrack(index)"
+                  @select="(track, event) => handleTrackSelect(track, event)"
+                  @contextmenu="handleContextMenu(item, index)"
+                />
+              </div>
+            </template>
+
+            <template #loader>
+              <div class="flex items-center px-4 flex-col w-full">
+                <TrackRowLoading />
+              </div>
+            </template>
+          </VirtualScrollable>
+        </div>
       </TrackContextMenu>
 
       <TrackDropdown
@@ -104,10 +122,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, useTemplateRef, onUnmounted, watch } from "vue";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
+import { onKeyStroke } from "@vueuse/core";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import PageErrorState from "@/components/common/PageErrorState.vue";
 import { Button } from "@/components/ui/button";
@@ -131,6 +150,8 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
+import TrackSelectionBar from "@/modules/tracks/components/TrackSelectionBar.vue";
+import { useTrackSelection } from "@/modules/tracks/composables/useTrackSelection";
 
 interface AlbumChanges {
   title?: string;
@@ -158,13 +179,12 @@ const gridStyles = {
   "--var2-max-width": "2fr",
   "--last-min-width": "80px",
   "--last-max-width": "1fr",
-
   "--grid-template-columns": `
-    [index] var(--index-column-width) 
-    [first] minmax(var(--first-min-width), var(--first-max-width)) 
-    [var1] minmax(var(--var1-min-width), var(--var1-max-width)) 
-    [var2] minmax(var(--var2-min-width), var(--var2-max-width)) 
-    [last] minmax(var(--last-min-width), var(--last-max-width))
+    [index] var(--index-column-width)
+    [first] minmax(var(--first-min-width), var(--first-max-width))
+    [var1]  minmax(var(--var1-min-width), var(--var1-max-width))
+    [var2]  minmax(var(--var2-min-width), var(--var2-max-width))
+    [last]  minmax(var(--last-min-width), var(--last-max-width))
   `,
 };
 
@@ -186,74 +206,55 @@ const {
   isFetchingNextPage,
 } = useAlbumPage(sortKey);
 
+// ── Selection ──────────────────────────────────────────────────────────────────
+
+const tracksListRef = useTemplateRef<HTMLElement>("tracksListRef");
+let removeDragListeners: (() => void) | null = null;
+
+const {
+  isSelecting,
+  selectedCount,
+  isSelected,
+  clearSelection,
+  selectAll,
+  handleTrackSelect,
+  attachDragListeners,
+} = useTrackSelection(tracks);
+
+// A stable wrapper div around VirtualScrollable — safe to ref once, unlike
+// the #default slot which renders once per visible row.
+
+watch(
+  () => tracksListRef.value,
+  (el, _, onCleanup) => {
+    removeDragListeners?.();
+    removeDragListeners = null;
+
+    if (!el) return;
+
+    removeDragListeners = attachDragListeners(el);
+
+    onCleanup(() => {
+      removeDragListeners?.();
+      removeDragListeners = null;
+    });
+  },
+  { immediate: true, flush: "post" },
+);
+
+onUnmounted(() => {
+  removeDragListeners?.();
+});
+
+// ESC cancels selection
+onKeyStroke("Escape", () => {
+  if (isSelecting.value) clearSelection();
+});
+
+// ── Misc state ─────────────────────────────────────────────────────────────────
+
 const showEditDialog = ref(false);
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
-
-function getTrackKey(index: number) {
-  return tracks.value[index]?.id ?? index;
-}
-
-function openAddTracksPanel() {
-  if (!album.value) return;
-
-  rightPanelStore.openAddTracks({
-    entityType: "album",
-    entityId: album.value.id,
-    onConfirmed: () => refetch(),
-  }, {
-    scope: { type: "route", routeKey: route.fullPath },
-    depth: 1,
-  });
-}
-
-function handleLoadMore() {
-  if (!hasNextPage.value || isFetchingNextPage.value) return;
-  fetchNextPage();
-}
-
-function setSortKey(nextSortKey: TrackSortKey | null) {
-  sortKey.value = nextSortKey;
-}
-
-function toggleTitleSort() {
-  if (sortKey.value !== "title_asc" && sortKey.value !== "title_desc") {
-    setSortKey("title_asc");
-    return;
-  }
-
-  setSortKey(sortKey.value === "title_asc" ? "title_desc" : null);
-}
-
-function toggleDateSort() {
-  if (sortKey.value !== "date_added_asc" && sortKey.value !== "date_added_desc") {
-    setSortKey("date_added_asc");
-    return;
-  }
-
-  setSortKey(sortKey.value === "date_added_asc" ? "date_added_desc" : null);
-}
-
-function toggleDurationSort() {
-  if (sortKey.value !== "duration_asc" && sortKey.value !== "duration_desc") {
-    setSortKey("duration_asc");
-    return;
-  }
-
-  setSortKey(sortKey.value === "duration_asc" ? "duration_desc" : null);
-}
-
-function toggleAlbumSort() {
-  if (sortKey.value !== "album_asc" && sortKey.value !== "album_desc") {
-    setSortKey("album_asc");
-    return;
-  }
-
-  setSortKey(sortKey.value === "album_asc" ? "album_desc" : null);
-}
-
-function handleContextMenu(track: Track, index: number) {
-  openMenu(track, index, { target: "album" });
-}
 
 const errorMessage = computed(() => {
   if (!error.value) return t("errors.unknown");
@@ -261,22 +262,44 @@ const errorMessage = computed(() => {
   return t("errors.loadFailed");
 });
 
+function getTrackKey(index: number) {
+  return tracks.value[index]?.id ?? index;
+}
+
+// ── Panel / navigation ─────────────────────────────────────────────────────────
+
+function openAddTracksPanel() {
+  if (!album.value) return;
+  rightPanelStore.openAddTracks(
+    { entityType: "album", entityId: album.value.id, onConfirmed: () => refetch() },
+    { scope: { type: "route", routeKey: route.fullPath }, depth: 1 },
+  );
+}
+
+function handleLoadMore() {
+  if (!hasNextPage.value || isFetchingNextPage.value) return;
+  fetchNextPage();
+}
+
+// ── Context menu ───────────────────────────────────────────────────────────────
+
+function handleContextMenu(track: Track, index: number) {
+  openMenu(track, index, { target: "album" });
+}
+
+// ── Playback ───────────────────────────────────────────────────────────────────
+
 function handlePlayAll() {
   if (!album.value) return;
-
   getAlbumPageData(album.value.id, sortKey.value).then((data) => {
-    if (data && data.tracks.length > 0) {
-      queueStore.setQueue(data.tracks, 0, {
-        type: "album",
-        albumId: album.value!.id,
-      });
+    if (data?.tracks.length) {
+      queueStore.setQueue(data.tracks, 0, { type: "album", albumId: album.value!.id });
     }
   });
 }
 
 async function handlePlayTrack(index: number) {
   if (!album.value) return;
-
   const selectedTrack = tracks.value[index];
   if (!selectedTrack) return;
 
@@ -286,13 +309,10 @@ async function handlePlayTrack(index: number) {
   }
 
   const data = await getAlbumPageData(album.value.id, sortKey.value);
-  const fullIndex = data.tracks.findIndex(track => track.id === selectedTrack.id);
+  const fullIndex = data.tracks.findIndex(t => t.id === selectedTrack.id);
   if (fullIndex === -1) return;
 
-  await queueStore.setQueue(data.tracks, fullIndex, {
-    type: "album",
-    albumId: album.value.id,
-  });
+  await queueStore.setQueue(data.tracks, fullIndex, { type: "album", albumId: album.value.id });
 }
 
 function handleAddToQueue() {
@@ -337,11 +357,7 @@ async function handleSave(changes: AlbumChanges) {
 
 async function handleShuffle() {
   if (tracks.value.length === 0 || !album.value) return;
-
-  const source = {
-    type: "album",
-    albumId: album.value.id,
-  } as const;
+  const source = { type: "album", albumId: album.value.id } as const;
 
   if (queueStore.currentItem && isSameQueueSource(queueStore.currentItem.source, source)) {
     queueStore.toggleShuffle();

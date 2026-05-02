@@ -53,11 +53,7 @@
 
           <template #sticky>
             <LibrarySortHeader
-              :sort-key="sortKey"
-              @toggle-title="toggleTitleSort"
-              @toggle-album="toggleAlbumSort"
-              @toggle-date="toggleDateSort"
-              @toggle-duration="toggleDurationSort"
+              v-model:sort-key="sortKey"
             />
           </template>
 
@@ -184,46 +180,6 @@ function openAddTracksPanel() {
 function handleLoadMore() {
   if (!hasNextPage.value || isFetchingNextPage.value) return;
   fetchNextPage();
-}
-
-function setSortKey(nextSortKey: TrackSortKey | null) {
-  sortKey.value = nextSortKey;
-}
-
-function toggleTitleSort() {
-  if (sortKey.value !== "title_asc" && sortKey.value !== "title_desc") {
-    setSortKey("title_asc");
-    return;
-  }
-
-  setSortKey(sortKey.value === "title_asc" ? "title_desc" : null);
-}
-
-function toggleDateSort() {
-  if (sortKey.value !== "date_added_asc" && sortKey.value !== "date_added_desc") {
-    setSortKey("date_added_asc");
-    return;
-  }
-
-  setSortKey(sortKey.value === "date_added_asc" ? "date_added_desc" : null);
-}
-
-function toggleDurationSort() {
-  if (sortKey.value !== "duration_asc" && sortKey.value !== "duration_desc") {
-    setSortKey("duration_asc");
-    return;
-  }
-
-  setSortKey(sortKey.value === "duration_asc" ? "duration_desc" : null);
-}
-
-function toggleAlbumSort() {
-  if (sortKey.value !== "album_asc" && sortKey.value !== "album_desc") {
-    setSortKey("album_asc");
-    return;
-  }
-
-  setSortKey(sortKey.value === "album_asc" ? "album_desc" : null);
 }
 
 function handleContextMenu(track: Track, index: number) {

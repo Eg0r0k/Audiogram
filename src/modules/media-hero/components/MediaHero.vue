@@ -31,7 +31,7 @@
           />
         </div>
 
-        <div class="flex min-w-0 w-full flex-col items-center text-white @lg:items-start">
+        <div class="flex select-none min-w-0 w-full flex-col items-center text-white @lg:items-start">
           <span class="mb-1 text-xs font-medium opacity-90 @sm:text-sm">
             {{ typeLabel }}
           </span>

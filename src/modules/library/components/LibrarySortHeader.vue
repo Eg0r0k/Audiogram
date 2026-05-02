@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="library-sort-header-container border-b border-border/40 px-4 sm:px-6"
-  >
+  <div class="library-sort-header-container border-b border-border/40 px-4 sm:px-6">
     <div class="library-sort-header">
       <div class="index-col flex items-center pl-3">
         <IconHashtag class="size-4" />
@@ -10,9 +8,9 @@
       <Button
         variant="ghost"
         class="first-col justify-start gap-2 truncate px-2 font-medium"
-        @click="$emit('toggle-title')"
+        @click="toggle('title')"
       >
-        <span class="truncate"> {{ $t("library.sortColumn.title") }} </span>
+        <span class="truncate">{{ $t('library.sortColumn.title') }}</span>
         <IconChevronDown
           v-if="sortKey === 'title_asc'"
           class="size-3 rotate-180 text-green-400"
@@ -22,12 +20,13 @@
           class="size-3 text-green-400"
         />
       </Button>
+
       <Button
         variant="ghost"
         class="var1-col justify-start gap-2 truncate px-2 font-medium"
-        @click="$emit('toggle-album')"
+        @click="toggle('album')"
       >
-        <span class="truncate"> {{ $t("library.sortColumn.album") }} </span>
+        <span class="truncate">{{ $t('library.sortColumn.album') }}</span>
         <IconChevronDown
           v-if="sortKey === 'album_asc'"
           class="size-3 rotate-180 text-green-400"
@@ -41,9 +40,9 @@
       <Button
         variant="ghost"
         class="var2-col justify-start truncate px-2 font-medium"
-        @click="$emit('toggle-date')"
+        @click="toggle('dateAdded')"
       >
-        <span class="truncate"> {{ $t("library.sortColumn.dateAdded") }} </span>
+        <span class="truncate">{{ $t('library.sortColumn.dateAdded') }}</span>
         <IconChevronDown
           v-if="sortKey === 'date_added_asc'"
           class="size-3 rotate-180 text-green-400"
@@ -55,9 +54,9 @@
       </Button>
 
       <Button
-        class=" last-col"
+        class="last-col"
         variant="ghost"
-        @click="$emit('toggle-duration')"
+        @click="toggle('duration')"
       >
         <IconClock class="size-5" />
         <IconChevronDown
@@ -79,11 +78,19 @@ import type { TrackSortKey } from "@/modules/tracks/types";
 import IconChevronDown from "~icons/tabler/chevron-down";
 import IconClock from "~icons/tabler/clock-hour-4";
 import IconHashtag from "~icons/tabler/hash";
+import { getNextTrackSortKey, TrackSortField } from "../lib/trackSort";
 
-defineProps<{
+const props = defineProps<{
   sortKey: TrackSortKey | null;
 }>();
-defineEmits(["toggle-title", "toggle-album", "toggle-date", "toggle-duration"]);
+
+const emit = defineEmits<{
+  "update:sortKey": [value: TrackSortKey | null];
+}>();
+
+function toggle(field: TrackSortField) {
+  emit("update:sortKey", getNextTrackSortKey(props.sortKey, field));
+}
 </script>
 
 <style scoped>

@@ -125,11 +125,7 @@
         :style="gridStyles"
       >
         <LibrarySortHeader
-          :sort-key="sortKey"
-          @toggle-title="toggleTitleSort"
-          @toggle-album="toggleAlbumSort"
-          @toggle-date="toggleDateSort"
-          @toggle-duration="toggleDurationSort"
+          v-model:sort-key="sortKey"
         />
 
         <VirtualScrollable
@@ -243,42 +239,6 @@ const errorMessage = computed(() =>
 
 function getTrackKey(index: number) {
   return tracks.value[index]?.id ?? index;
-}
-
-function toggleTitleSort() {
-  if (sortKey.value !== "title_asc" && sortKey.value !== "title_desc") {
-    sortKey.value = "title_asc";
-    return;
-  }
-
-  sortKey.value = sortKey.value === "title_asc" ? "title_desc" : null;
-}
-
-function toggleDateSort() {
-  if (sortKey.value !== "date_added_asc" && sortKey.value !== "date_added_desc") {
-    sortKey.value = "date_added_asc";
-    return;
-  }
-
-  sortKey.value = sortKey.value === "date_added_asc" ? "date_added_desc" : null;
-}
-
-function toggleDurationSort() {
-  if (sortKey.value !== "duration_asc" && sortKey.value !== "duration_desc") {
-    sortKey.value = "duration_asc";
-    return;
-  }
-
-  sortKey.value = sortKey.value === "duration_asc" ? "duration_desc" : null;
-}
-
-function toggleAlbumSort() {
-  if (sortKey.value !== "album_asc" && sortKey.value !== "album_desc") {
-    sortKey.value = "album_asc";
-    return;
-  }
-
-  sortKey.value = sortKey.value === "album_asc" ? "album_desc" : null;
 }
 
 function handleContextMenu(track: Track, index: number) {
