@@ -392,6 +392,84 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
       return err(error as Error);
     }
   }
+
+  async findByAlbumIdPaginated(
+    albumId: AlbumId,
+    offset: number,
+    limit: number,
+  ): Promise<Result<TrackEntity[], Error>> {
+    try {
+      const tracks = await this.table
+        .where("albumId")
+        .equals(albumId)
+        .offset(offset)
+        .limit(limit)
+        .sortBy("trackNo");
+      return ok(tracks);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async findByArtistIdPaginated(
+    artistId: ArtistId,
+    offset: number,
+    limit: number,
+  ): Promise<Result<TrackEntity[], Error>> {
+    try {
+      const tracks = await this.table
+        .where("artistIds")
+        .equals(artistId)
+        .offset(offset)
+        .limit(limit)
+        .toArray();
+      return ok(tracks);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async findByStoragePath(path: string): Promise<Result<TrackEntity | undefined, Error>> {
+    try {
+      const track = await this.table.where("storagePath").equals(path).first();
+      return ok(track);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async existsByFingerprint(fingerprint: string): Promise<Result<boolean, Error>> {
+    try {
+      const count = await this.table.where("fingerprint").equals(fingerprint).count();
+      return ok(count > 0);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async getAllFingerprints(): Promise<Result<Set<string>, Error>> {
+    try {
+      const tracks = await this.table.where("fingerprint").above("").toArray();
+      return ok(new Set(tracks.map(t => t.fingerprint).filter((fp): fp is string => !!fp)));
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async findByStoragePathPrefix(prefix: string): Promise<Result<TrackEntity[], Error>> {
+    try {
+      const tracks = await this.table.where("storagePath").startsWith(prefix).toArray();
+      return ok(tracks);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
 }
 
 export const trackRepository = new TrackRepository();

@@ -102,6 +102,16 @@ class CoverRepository {
     return this.upsertOwnerCover("artist", artistId, blob);
   }
 
+  async createMany(covers: CoverEntity[]): Promise<Result<void, Error>> {
+    try {
+      await db.covers.bulkAdd(covers);
+      return ok(undefined);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
   async deleteByOwner(
     ownerType: CoverOwnerType,
     ownerId: string,

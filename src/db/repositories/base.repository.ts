@@ -64,4 +64,55 @@ export abstract class BaseRepository<TEntity, TId> {
       return err(error as Error);
     }
   }
+
+  async createMany(entities: TEntity[]): Promise<Result<TId[], Error>> {
+    try {
+      const ids = await this.table.bulkAdd(entities, { allKeys: true });
+      return ok(ids as TId[]);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async upsert(entity: TEntity): Promise<Result<TId, Error>> {
+    try {
+      return ok((await this.table.put(entity)) as TId);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async upsertMany(entities: TEntity[]): Promise<Result<TId[], Error>> {
+    try {
+      const ids = await this.table.bulkPut(entities, { allKeys: true });
+      return ok(ids as TId[]);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async updateMany(
+    updates: { key: TId; changes: UpdateSpec<TEntity> }[],
+  ): Promise<Result<number, Error>> {
+    try {
+      const count = await this.table.bulkUpdate(updates);
+      return ok(count);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
+
+  async deleteMany(ids: TId[]): Promise<Result<void, Error>> {
+    try {
+      await this.table.bulkDelete(ids);
+      return ok(undefined);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  }
 }

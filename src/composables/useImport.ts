@@ -4,7 +4,7 @@ import { musicLibraryEngine } from "@/services/importer.service";
 import { invalidateLibraryData } from "@/queries/library.queries";
 import { filterFilesByExtension } from "@/lib/files/filterFiles";
 import { IS_TAURI } from "@/lib/environment/userAgent";
-import type { ImportBatchResult } from "@/services/importer.service";
+import { ImportBatchResult } from "@/services/types";
 
 export type ImportFileStatus = "pending" | "ok" | "error" | "skipped";
 
@@ -43,10 +43,11 @@ const state = ref<ImportState>({
   isCancelling: false,
 });
 
-let pauseResolver: (() => void) | null = null;
 let activeImportPromise: Promise<void> | null = null;
 let isCancelRequested = false;
 let activeImportId = 0;
+let pausePromise: Promise<void> | null = null;
+let pauseResolver: (() => void) | null = null;
 
 export function useImport() {
   const queryClient = useQueryClient();
@@ -92,6 +93,7 @@ export function useImport() {
     activeImportId++;
     pauseResolver?.();
     pauseResolver = null;
+    pausePromise = null;
   }
 
   async function importFiles(files: File[]) {
@@ -110,10 +112,7 @@ export function useImport() {
       const result = await musicLibraryEngine.importFiles(
         filtered,
         (current, total) => _onProgress(importId, current, total),
-        {
-          waitIfPaused,
-          isCancelled: () => isCancelRequested,
-        },
+        { waitIfPaused, isCancelled: () => isCancelRequested },
       );
 
       await _finishImport(importId, result);
@@ -135,10 +134,7 @@ export function useImport() {
       const result = await musicLibraryEngine.importFromPaths(
         paths,
         (current, total) => _onProgress(importId, current, total),
-        {
-          waitIfPaused,
-          isCancelled: () => isCancelRequested,
-        },
+        { waitIfPaused, isCancelled: () => isCancelRequested },
       );
 
       await _finishImport(importId, result);
@@ -175,22 +171,23 @@ export function useImport() {
   }
 
   async function waitIfPaused() {
-    if (!state.value.isPaused) return;
-
-    await new Promise<void>((resolve) => {
-      pauseResolver = resolve;
-    });
+    if (pausePromise) {
+      await pausePromise;
+    }
   }
-
   function pauseImport() {
     if (!state.value.isRunning || state.value.isCancelling) return;
     state.value.isPaused = true;
+    pausePromise = new Promise<void>((resolve) => {
+      pauseResolver = resolve;
+    });
   }
 
   function resumeImport() {
     state.value.isPaused = false;
     pauseResolver?.();
     pauseResolver = null;
+    pausePromise = null;
   }
 
   async function cancelImport() {

@@ -1,25 +1,27 @@
 import pLimit from "p-limit";
-import { ResultAsync } from "neverthrow";
 import { open } from "@tauri-apps/plugin-dialog";
 import { stat } from "@tauri-apps/plugin-fs";
-
-import MetaWorker from "@/workers/meta.worker?worker";
-import { db } from "@/db/index";
-import type { BaseMetadata, ParseResponse } from "@/workers/types";
-import { normalizeMetadata } from "@/lib/metadata";
-import { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { storageService } from "@/db/storage";
 import {
   hasNativeSupport,
-  type IFileStorageWithNativeSupport,
+  IFileStorageWithNativeSupport,
 } from "@/db/storage/IFileStorage";
-import { TrackSource, TrackState } from "@/db/entities";
-import type { StorageError } from "@/db/errors/storage.errors";
-import { isValidImportItem } from "@/lib/environment/mimeSupport";
 import { TimeProfiler } from "@/lib/profiler";
+import { WorkerPool } from "./worker-pool";
+import { ImportBatchResult, ImportControl, ImportError, ImportErrorCode, ImportItem, ImportSuccess, TrackToSave } from "./types";
+import { EntityResolver } from "./entity-resolver";
+import { ResultAsync } from "neverthrow";
+import { isValidImportItem } from "@/lib/environment/mimeSupport";
+import { AlbumId, ArtistId, TrackId } from "@/types/ids";
+import { normalizeMetadata } from "@/lib/metadata";
 import { ScannedFile, SyncResult, WatchedFolder } from "@/modules/watched-folders/types";
-import { scanFolder } from "@/modules/watched-folders/services/folder-scanner";
+import { StorageError } from "@/db/errors/storage.errors";
 import { computeFileFingerprint, computeFileFingerprintFromBlob } from "@/modules/watched-folders/services/file-fingerprint";
+import { AlbumEntity, ArtistEntity, TrackEntity, TrackSource, TrackState } from "@/db/entities";
+import { unitOfWork } from "@/db/unit-of-work";
+import { albumRepository, artistRepository, coverRepository, trackRepository } from "@/db/repositories";
+import { scanFolder } from "@/modules/watched-folders/services/folder-scanner";
+import { unwrapResult } from "@/queries/shared";
 
 // ═══════════════════════════════════════════════════════
 // CONSTANTS
@@ -28,151 +30,16 @@ import { computeFileFingerprint, computeFileFingerprintFromBlob } from "@/module
 const HEAD_READ_SIZE = 512 * 1024;
 const LARGE_FILE_THRESHOLD = 50 * 1024 * 1024;
 const MAX_METADATA_READ = 2 * 1024 * 1024;
-const WORKER_TIMEOUT = 20_000;
-const WORKER_POOL_SIZE = 8;
 const PROCESS_CONCURRENCY = 16;
 const DB_BATCH_SIZE = 50;
 const PIPELINE_BATCH_SIZE = 60;
 const FINGERPRINT_CONCURRENCY = 16;
 
-// ═══════════════════════════════════════════════════════
-// ERRORS
-// ═══════════════════════════════════════════════════════
-
-export enum ImportErrorCode {
-  PARSE_FAILED = "PARSE_FAILED",
-  STORAGE_FAILED = "STORAGE_FAILED",
-  DATABASE_FAILED = "DATABASE_FAILED",
-  WORKER_TIMEOUT = "WORKER_TIMEOUT",
-  FILE_TOO_LARGE = "FILE_TOO_LARGE",
-  UNSUPPORTED_FORMAT = "UNSUPPORTED_FORMAT",
-  NATIVE_IMPORT_UNAVAILABLE = "NATIVE_IMPORT_UNAVAILABLE",
-  READ_FAILED = "READ_FAILED",
-}
-
-export class ImportError extends Error {
-  constructor(
-    public readonly code: ImportErrorCode,
-    message: string,
-    public readonly fileName?: string,
-    public readonly cause?: unknown,
-  ) {
-    super(message);
-    this.name = "ImportError";
-  }
-
-  static parseFailed(fileName: string, cause?: unknown): ImportError {
-    return new ImportError(ImportErrorCode.PARSE_FAILED, `Parse failed: ${fileName}`, fileName, cause);
-  }
-
-  static storageFailed(fileName: string, cause?: unknown): ImportError {
-    return new ImportError(ImportErrorCode.STORAGE_FAILED, `Storage failed: ${fileName}`, fileName, cause);
-  }
-
-  static databaseFailed(fileName: string, cause?: unknown): ImportError {
-    return new ImportError(ImportErrorCode.DATABASE_FAILED, `DB failed: ${fileName}`, fileName, cause);
-  }
-
-  static workerTimeout(fileName: string): ImportError {
-    return new ImportError(ImportErrorCode.WORKER_TIMEOUT, `Timeout: ${fileName}`, fileName);
-  }
-
-  static unsupportedFormat(fileName: string, format: string): ImportError {
-    return new ImportError(ImportErrorCode.UNSUPPORTED_FORMAT, `Unsupported: ${format}: ${fileName}`, fileName);
-  }
-
-  static readFailed(fileName: string, cause?: unknown): ImportError {
-    return new ImportError(ImportErrorCode.READ_FAILED, `Read failed: ${fileName}`, fileName, cause);
-  }
-
-  static nativeImportUnavailable(fileName: string): ImportError {
-    return new ImportError(ImportErrorCode.NATIVE_IMPORT_UNAVAILABLE, `Native import unavailable: ${fileName}`, fileName);
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════
-
-export interface ImportSuccess {
-  trackId: TrackId;
-  fileName: string;
-  title: string;
-  artist: string;
-  album: string;
-  storagePath?: string;
-  fingerprint?: string;
-  source?: TrackSource;
-  meta?: BaseMetadata;
-}
-
-export interface ImportBatchResult {
-  successful: ImportSuccess[];
-  failed: Array<{ fileName: string; error: ImportError }>;
-  skipped: number;
-  total: number;
-  timings?: Record<string, number>;
-}
-
-export interface ImportControl {
-  waitIfPaused?: () => Promise<void>;
-  isCancelled?: () => boolean;
-}
-
-interface ImportItem {
-  type: "native" | "web";
-  name: string;
-  ext: string;
-  file?: File;
-  path?: string;
-  fileSize: number;
-  fingerprint?: string;
-}
-
-interface TrackToSave {
-  trackId: TrackId;
-  fileName: string;
-  storagePath: string;
-  fingerprint: string;
-  source: TrackSource;
-  meta: BaseMetadata;
-}
-
-interface PendingWorkerRequest {
-  resolve: (meta: BaseMetadata) => void;
-  reject: (error: Error) => void;
-  timeoutId: ReturnType<typeof setTimeout>;
-}
-
-interface SessionCache {
-  artists: Map<string, ArtistId>;
-  albums: Map<string, { id: AlbumId; isNew: boolean }>;
-}
-
-// ═══════════════════════════════════════════════════════
-// MUSIC LIBRARY ENGINE
-// ═══════════════════════════════════════════════════════
-
 export class MusicLibraryEngine {
-  private workerPool: Worker[] = [];
-  private workerIndex = 0;
-  private pendingRequests = new Map<string, PendingWorkerRequest>();
-  private limit = pLimit(PROCESS_CONCURRENCY);
-  private fpLimit = pLimit(FINGERPRINT_CONCURRENCY);
-  private sessionCache: SessionCache = {
-    artists: new Map(),
-    albums: new Map(),
-  };
-
-  private profiler = new TimeProfiler();
-
-  constructor() {
-    this.initWorkerPool();
-  }
-
-  // ═══════════════════════════════════════════════════════
-  // PUBLIC — LIBRARY IMPORT (copies into internal storage)
-  // ═══════════════════════════════════════════════════════
+  private readonly workerPool = new WorkerPool();
+  private readonly processLimit = pLimit(PROCESS_CONCURRENCY);
+  private readonly fpLimit = pLimit(FINGERPRINT_CONCURRENCY);
+  private readonly profiler = new TimeProfiler();
 
   get isNativeImportAvailable(): boolean {
     return hasNativeSupport(storageService);
@@ -182,13 +49,7 @@ export class MusicLibraryEngine {
     const result = await open({
       multiple: true,
       title: "Выберите аудио файлы",
-      filters: [{
-        name: "Audio",
-        extensions: [
-          "mp3", "flac", "wav", "ogg",
-          "m4a", "aac", "opus", "wma", "alac",
-        ],
-      }],
+      filters: [{ name: "Audio", extensions: ["mp3", "flac", "wav", "ogg", "m4a", "aac", "opus", "wma", "alac"] }],
     });
     if (!result) return null;
     return Array.isArray(result) ? result : [result];
@@ -200,26 +61,20 @@ export class MusicLibraryEngine {
     control?: ImportControl,
   ): Promise<ImportBatchResult> {
     if (!hasNativeSupport(storageService)) {
-      return this.createEmptyFailResult(paths, "Native support missing");
+      return this.emptyFailResult(paths, "Native support missing");
     }
 
-    this.profiler.start("0_warmup");
     await storageService.warmup(["tracks", "lyrics"]);
-    this.profiler.end("0_warmup");
 
-    const items: ImportItem[] = paths.map((path) => {
-      const name = path.split(/[\\/]/).pop() ?? "unknown";
+    const items: ImportItem[] = paths.map(path => ({
+      type: "native" as const,
+      name: path.split(/[\\/]/).pop() ?? "unknown",
+      ext: path.split(".").pop()?.toLowerCase() ?? "",
+      path,
+      fileSize: 0,
+    }));
 
-      return {
-        type: "native" as const,
-        name,
-        ext: name.split(".").pop()?.toLowerCase() ?? "",
-        path,
-        fileSize: 0,
-      };
-    });
-
-    return this.runImportPipeline(items, onProgress, "Native Import", control);
+    return this.runPipeline(items, onProgress, control);
   }
 
   async importFiles(
@@ -235,41 +90,25 @@ export class MusicLibraryEngine {
       fileSize: file.size,
     }));
 
-    return this.runImportPipeline(items, onProgress, "Web Import", control);
+    return this.runPipeline(items, onProgress, control);
   }
-
-  // ═══════════════════════════════════════════════════════
-  // PUBLIC — WATCHED FOLDERS (external refs, no copy)
-  // ═══════════════════════════════════════════════════════
 
   async syncFolder(
     folder: WatchedFolder,
     onProgress?: (current: number, total: number) => void,
     excludedPaths?: string[],
   ): Promise<SyncResult> {
-    const result: SyncResult = {
-      folderId: folder.id,
-      added: 0,
-      removed: 0,
-      failed: 0,
-      errors: [],
-    };
-
+    const result: SyncResult = { folderId: folder.id, added: 0, removed: 0, failed: 0, errors: [] };
     if (!hasNativeSupport(storageService)) return result;
-    const nativeStorage = storageService as IFileStorageWithNativeSupport;
 
-    // ── 1. Scan filesystem ──────────────────────────────
+    const nativeStorage = storageService as IFileStorageWithNativeSupport;
     const excludeSet = new Set(excludedPaths ?? []);
+
     const scanned = await scanFolder(folder.path, undefined, excludeSet);
     const scannedPaths = new Set(scanned.map(f => f.absolutePath));
 
-    // ── 2. Load existing tracks for this folder ─────────
-    let existingTracks = await db.tracks
-      .where("storagePath")
-      .startsWith(folder.path + "/")
-      .toArray();
-
-    if (excludedPaths && excludedPaths.length > 0) {
+    let existingTracks = await unwrapResult(trackRepository.findByStoragePathPrefix(folder.path + "/"));
+    if (excludedPaths?.length) {
       existingTracks = existingTracks.filter(
         t => !excludedPaths.some(ep => t.storagePath.startsWith(ep + "/")),
       );
@@ -277,83 +116,68 @@ export class MusicLibraryEngine {
 
     const existingPaths = new Set(existingTracks.map(t => t.storagePath));
     const newFiles = scanned.filter(f => !existingPaths.has(f.absolutePath));
-    const removedTracks = existingTracks.filter(
-      t => !scannedPaths.has(t.storagePath),
-    );
+    const removedTracks = existingTracks.filter(t => !scannedPaths.has(t.storagePath));
 
     const totalWork = newFiles.length + removedTracks.length;
     let processed = 0;
     onProgress?.(0, totalWork);
 
+    // Own fingerprint registry — not shared with any concurrent import
     const knownFingerprints = await this.loadKnownFingerprints();
     const filesToImport: Array<{ file: ScannedFile; fingerprint: string }> = [];
 
     for (const file of newFiles) {
       try {
         const fp = await computeFileFingerprint(file.absolutePath, file.size);
-        if (knownFingerprints.has(fp)) {
-          processed++;
-          onProgress?.(processed, totalWork);
-          continue;
+        if (!knownFingerprints.has(fp)) {
+          knownFingerprints.add(fp);
+          filesToImport.push({ file, fingerprint: fp });
         }
-        knownFingerprints.add(fp);
-        filesToImport.push({ file, fingerprint: fp });
       }
       catch {
         result.failed++;
-        processed++;
-        onProgress?.(processed, totalWork);
+      }
+      processed++;
+      onProgress?.(processed, totalWork);
+    }
+
+    const allParsed: TrackToSave[] = [];
+    const parseResults = await Promise.all(
+      filesToImport.map(({ file, fingerprint }) =>
+        this.processLimit(() => this.parseExternalFile(file, fingerprint, nativeStorage)),
+      ),
+    );
+    for (const r of parseResults) {
+      if (r !== null) {
+        allParsed.push(r);
+      }
+      else {
+        result.failed++;
       }
     }
 
-    // ── 4. Parse metadata ───────────────────────────────
-    const allParsed: TrackToSave[] = [];
-
-    const parseResults = await Promise.all(
-      filesToImport.map(({ file, fingerprint }) =>
-        this.limit(() =>
-          this.parseExternalFile(file, fingerprint, nativeStorage),
-        ),
-      ),
-    );
-
-    for (const r of parseResults) {
-      if (r !== null) allParsed.push(r);
-      else result.failed++;
-    }
-
-    const failedParseCount = filesToImport.length - allParsed.length;
-    processed += failedParseCount;
-    onProgress?.(processed, totalWork);
-
-    // ── 5. Resolve entities & save ──────────────────────
     if (allParsed.length > 0) {
-      this.clearSessionCache();
-      await this.batchPreResolveEntities(allParsed.map(p => p.meta));
+      // Own EntityResolver — no shared state with concurrent imports
+      const resolver = new EntityResolver();
+      await resolver.resolve(allParsed.map(p => p.meta));
 
       for (let i = 0; i < allParsed.length; i += DB_BATCH_SIZE) {
         const batch = allParsed.slice(i, i + DB_BATCH_SIZE);
-
         try {
-          const saved = await this.saveBatchToDatabase(batch);
+          const saved = await this.persistBatch(batch, resolver);
           result.added += saved.length;
         }
         catch (e) {
           result.failed += batch.length;
-          result.errors.push({
-            path: folder.path,
-            message: `DB batch failed: ${String(e)}`,
-          });
+          result.errors.push({ path: folder.path, message: `DB batch failed: ${String(e)}` });
         }
-
         processed += batch.length;
         onProgress?.(processed, totalWork);
       }
     }
 
-    // ── 6. Remove deleted tracks ────────────────────────
     if (removedTracks.length > 0) {
-      await db.tracks.bulkDelete(removedTracks.map(t => t.id));
+      await trackRepository.deleteMany(removedTracks.map(t => t.id));
       result.removed = removedTracks.length;
       processed += removedTracks.length;
       onProgress?.(processed, totalWork);
@@ -366,26 +190,20 @@ export class MusicLibraryEngine {
     if (!hasNativeSupport(storageService)) return false;
     const nativeStorage = storageService as IFileStorageWithNativeSupport;
 
-    const existsByPath = await db.tracks
-      .where("storagePath")
-      .equals(file.absolutePath)
-      .count();
-    if (existsByPath > 0) return false;
-
     const fp = await computeFileFingerprint(file.absolutePath, file.size);
-    const existsByFp = await db.tracks
-      .where("fingerprint")
-      .equals(fp)
-      .count();
-    if (existsByFp > 0) return false;
+    const [existsByPath, existsByFp] = await Promise.all([
+      unwrapResult(trackRepository.findByStoragePath(file.absolutePath)),
+      unwrapResult(trackRepository.existsByFingerprint(fp)),
+    ]);
+    if (existsByPath || existsByFp) return false;
 
     const trackToSave = await this.parseExternalFile(file, fp, nativeStorage);
     if (!trackToSave) return false;
 
     try {
-      this.clearSessionCache();
-      await this.batchPreResolveEntities([trackToSave.meta]);
-      await this.saveBatchToDatabase([trackToSave]);
+      const resolver = new EntityResolver();
+      await resolver.resolve([trackToSave.meta]);
+      await this.persistBatch([trackToSave], resolver);
       return true;
     }
     catch {
@@ -394,57 +212,47 @@ export class MusicLibraryEngine {
   }
 
   async removeSingleFile(absolutePath: string): Promise<boolean> {
-    const track = await db.tracks
-      .where("storagePath")
-      .equals(absolutePath)
-      .first();
+    const track = await unwrapResult(trackRepository.findByStoragePath(absolutePath));
     if (!track) return false;
-    await db.tracks.delete(track.id);
+    await trackRepository.delete(track.id);
     return true;
   }
 
   async cleanupOrphanedFiles(): Promise<number> {
     if (!hasNativeSupport(storageService)) return 0;
-
     const nativeStorage = storageService as IFileStorageWithNativeSupport;
 
     const listResult = await nativeStorage.listFiles("tracks");
     if (listResult.isErr()) return 0;
 
     const storedPaths = new Set(listResult.value);
-    const dbTracks = await db.tracks.toArray();
-    const dbPaths = new Set(dbTracks.map(t => t.storagePath));
+    const allTracks = await unwrapResult(trackRepository.findAll());
+    const dbPaths = new Set(allTracks.map(t => t.storagePath));
 
     let removed = 0;
     for (const storedPath of storedPaths) {
-      const fullPath = storedPath.startsWith("tracks/") ? storedPath : `tracks/${storedPath}`;
-      if (!dbPaths.has(fullPath)) {
-        await nativeStorage.deleteFile(fullPath);
+      const full = storedPath.startsWith("tracks/") ? storedPath : `tracks/${storedPath}`;
+      if (!dbPaths.has(full)) {
+        await nativeStorage.deleteFile(full);
         removed++;
       }
     }
-
     return removed;
   }
 
   dispose(): void {
-    for (const worker of this.workerPool) worker.terminate();
-    this.workerPool = [];
-    this.pendingRequests.clear();
+    this.workerPool.dispose();
   }
 
-  // ═══════════════════════════════════════════════════════
-  // IMPORT PIPELINE (internal storage — copies files)
-  // ═══════════════════════════════════════════════════════
-
-  private async runImportPipeline(
+  /**
+   * Pipeline
+   */
+  private async runPipeline(
     items: ImportItem[],
     onProgress: ((c: number, t: number) => void) | undefined,
-    label: string,
     control?: ImportControl,
   ): Promise<ImportBatchResult> {
     this.profiler.reset();
-    this.clearSessionCache();
 
     const total = items.length;
     let processed = 0;
@@ -454,110 +262,61 @@ export class MusicLibraryEngine {
 
     onProgress?.(0, total);
 
-    await control?.waitIfPaused?.();
-    if (control?.isCancelled?.()) {
-      return {
-        successful,
-        failed,
-        skipped,
-        total,
-        timings: this.profiler.getTimings(),
-      };
+    if (await this.isCancelled(control)) {
+      return { successful, failed, skipped, total };
     }
 
-    this.profiler.start("0_loadKnownFingerprints");
     const knownFingerprints = await this.loadKnownFingerprints();
-    this.profiler.end("0_loadKnownFingerprints");
 
-    await control?.waitIfPaused?.();
-    if (control?.isCancelled?.()) {
-      return {
-        successful,
-        failed,
-        skipped,
-        total,
-        timings: this.profiler.getTimings(),
-      };
-    }
-
-    this.profiler.start("1_splitBatches");
     const batches: ImportItem[][] = [];
     for (let i = 0; i < items.length; i += PIPELINE_BATCH_SIZE) {
       batches.push(items.slice(i, i + PIPELINE_BATCH_SIZE));
     }
-    this.profiler.end("1_splitBatches");
 
-    this.profiler.start("2_processBatches");
-    for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
-      await control?.waitIfPaused?.();
-      if (control?.isCancelled?.()) break;
+    for (const batch of batches) {
+      if (await this.isCancelled(control)) break;
 
-      const batch = batches[batchIdx];
-      this.profiler.start(`2_batch_${batchIdx}`);
-
-      const batchResult = await this.processBatchHorizontal(
-        batch,
-        knownFingerprints,
-        (p) => {
-          onProgress?.(processed + p, total);
-        },
-        control,
-      );
+      const batchResult = await this.processBatch(batch, knownFingerprints, control);
 
       skipped += batchResult.skipped;
       failed.push(...batchResult.failed);
       processed += batchResult.processed;
+      onProgress?.(processed, total);
 
-      if (batchResult.tracksToSave.length > 0) {
-        await control?.waitIfPaused?.();
-        if (control?.isCancelled?.()) break;
+      if (batchResult.tracksToSave.length === 0) continue;
 
-        this.profiler.start(`2_batch_${batchIdx}_entityResolution`);
-        await this.batchPreResolveEntities(batchResult.tracksToSave.map(item => item.meta));
-        this.profiler.end(`2_batch_${batchIdx}_entityResolution`);
+      if (await this.isCancelled(control)) break;
 
-        this.profiler.start(`2_batch_${batchIdx}_database`);
-        for (let i = 0; i < batchResult.tracksToSave.length; i += DB_BATCH_SIZE) {
-          await control?.waitIfPaused?.();
-          if (control?.isCancelled?.()) break;
+      // Own resolver per batch — safe from concurrent runs
+      const resolver = new EntityResolver();
+      await resolver.resolve(batchResult.tracksToSave.map(t => t.meta));
 
-          const dbBatch = batchResult.tracksToSave.slice(i, i + DB_BATCH_SIZE);
-          const dbResult = await this.saveBatchToDatabaseSafe(dbBatch);
-          dbResult.match(
-            (saved) => {
-              successful.push(...saved);
-            },
-            (error) => {
-              for (const item of dbBatch) {
-                failed.push({ fileName: item.fileName, error });
-              }
-            },
-          );
-          await new Promise(resolve => setTimeout(resolve, 0));
-        }
-        this.profiler.end(`2_batch_${batchIdx}_database`);
+      for (let i = 0; i < batchResult.tracksToSave.length; i += DB_BATCH_SIZE) {
+        if (await this.isCancelled(control)) break;
+
+        const dbBatch = batchResult.tracksToSave.slice(i, i + DB_BATCH_SIZE);
+        const dbResult = await ResultAsync.fromPromise(
+          this.persistBatch(dbBatch, resolver),
+          e => ImportError.databaseFailed("batch", e),
+        );
+
+        dbResult.match(
+          saved => successful.push(...saved),
+          error => dbBatch.forEach(item => failed.push({ fileName: item.fileName, error })),
+        );
+
+        await new Promise(resolve => setTimeout(resolve, 0));
       }
-
-      this.profiler.end(`2_batch_${batchIdx}`);
-      await new Promise(resolve => setTimeout(resolve, 0));
     }
-    this.profiler.end("2_processBatches");
 
-    this.profiler.printReport(label);
+    this.profiler.printReport("Import");
 
-    return {
-      successful,
-      failed,
-      skipped,
-      total,
-      timings: this.profiler.getTimings(),
-    };
+    return { successful, failed, skipped, total, timings: this.profiler.getTimings() };
   }
 
-  private async processBatchHorizontal(
+  private async processBatch(
     items: ImportItem[],
     knownFingerprints: Set<string>,
-    onItemProgress: (completed: number) => void,
     control?: ImportControl,
   ): Promise<{
     tracksToSave: TrackToSave[];
@@ -570,179 +329,109 @@ export class MusicLibraryEngine {
     let skipped = 0;
     let processed = 0;
 
-    this.profiler.start("batch_validation");
+    // 1. Validate formats
     const validated: ImportItem[] = [];
     for (const item of items) {
-      await control?.waitIfPaused?.();
-      if (control?.isCancelled?.()) break;
-
       if (!isValidImportItem(item.name, item.file?.type)) {
-        failed.push({
-          fileName: item.name,
-          error: ImportError.unsupportedFormat(item.name, item.ext),
-        });
+        failed.push({ fileName: item.name, error: ImportError.unsupportedFormat(item.name, item.ext) });
         processed++;
-        onItemProgress(processed);
-        continue;
-      }
-      validated.push(item);
-    }
-    this.profiler.end("batch_validation");
-
-    if (validated.length === 0) {
-      return { tracksToSave, failed, skipped, processed };
-    }
-
-    await control?.waitIfPaused?.();
-    if (control?.isCancelled?.()) {
-      return { tracksToSave, failed, skipped, processed };
-    }
-
-    this.profiler.start("batch_fingerprint");
-    const fingerprinted: ImportItem[] = [];
-    const fpResults = await Promise.all(
-      validated.map(item =>
-        this.fpLimit(async () => {
-          const fp = await this.computeItemFingerprint(item);
-          return { item, fp };
-        }),
-      ),
-    );
-
-    for (const { item, fp } of fpResults) {
-      await control?.waitIfPaused?.();
-      if (control?.isCancelled?.()) break;
-
-      if (fp && knownFingerprints.has(fp)) {
-        skipped++;
-        processed++;
-        onItemProgress(processed);
-        continue;
-      }
-
-      if (fp) {
-        knownFingerprints.add(fp);
-        item.fingerprint = fp;
-      }
-      fingerprinted.push(item);
-    }
-    this.profiler.end("batch_fingerprint");
-
-    // Deduplicate within batch (in case two identical files passed initial check)
-    const batchDedup = new Map<string, ImportItem>();
-    for (const item of fingerprinted) {
-      if (item.fingerprint) {
-        if (!batchDedup.has(item.fingerprint)) {
-          batchDedup.set(item.fingerprint, item);
-        }
-        else {
-          skipped++;
-          processed++;
-        }
       }
       else {
-        batchDedup.set(item.name, item);
+        validated.push(item);
       }
     }
-    const dedupedItems = Array.from(batchDedup.values());
 
-    if (dedupedItems.length === 0) {
-      return { tracksToSave, failed, skipped, processed };
+    if (validated.length === 0) return { tracksToSave, failed, skipped, processed };
+
+    // 2. Fingerprint in parallel
+    const fpResults = await Promise.all(
+      validated.map(item =>
+        this.fpLimit(() => this.computeFingerprint(item).then(fp => ({ item, fp }))),
+      ),
+    );
+
+    const toProcess: ImportItem[] = [];
+    const seenInBatch = new Map<string, ImportItem>();
+
+    for (const { item, fp } of fpResults) {
+      if (fp !== null) {
+        // Skip globally known
+        if (knownFingerprints.has(fp)) {
+          skipped++;
+          processed++;
+          continue;
+        }
+        // Dedupe within batch
+        if (seenInBatch.has(fp)) {
+          skipped++;
+          processed++;
+          continue;
+        }
+
+        knownFingerprints.add(fp);
+        seenInBatch.set(fp, item);
+        item.fingerprint = fp;
+      }
+      // Files with no fingerprint (fp === null): process without dedup guarantee
+      toProcess.push(item);
     }
 
-    await control?.waitIfPaused?.();
-    if (control?.isCancelled?.()) {
-      return { tracksToSave, failed, skipped, processed };
-    }
+    if (toProcess.length === 0) return { tracksToSave, failed, skipped, processed };
 
-    this.profiler.start("batch_process");
+    // 3. Parse + copy in parallel
     const processResults = await Promise.all(
-      dedupedItems.map(item =>
-        this.limit(async () => {
-          await control?.waitIfPaused?.();
-          if (control?.isCancelled?.()) return null;
-          return this.processInternalItem(item, control);
+      toProcess.map(item =>
+        this.processLimit(async () => {
+          if (await this.isCancelled(control)) return null;
+          return this.processItem(item, control);
         }),
       ),
     );
-    this.profiler.end("batch_process");
 
     for (const r of processResults) {
-      await control?.waitIfPaused?.();
-      if (control?.isCancelled?.()) break;
       if (r === null) continue;
-
       r.match(
-        (data) => {
-          tracksToSave.push(data);
-        },
-        (error) => {
-          failed.push({ fileName: error.fileName || "unknown", error });
-        },
+        data => tracksToSave.push(data),
+        error => failed.push({ fileName: error.fileName ?? "unknown", error }),
       );
       processed++;
-      onItemProgress(processed);
     }
 
     return { tracksToSave, failed, skipped, processed };
   }
 
-  // ═══════════════════════════════════════════════════════
-  // ITEM PROCESSING
-  // ═══════════════════════════════════════════════════════
-
-  /** Internal import: parse metadata first, then save to DB, then copy file */
-  private processInternalItem(
+  private processItem(
     item: ImportItem,
     control?: ImportControl,
   ): ResultAsync<TrackToSave, ImportError> {
     const trackId = TrackId(crypto.randomUUID());
     const storagePath = `tracks/${trackId}.${item.ext}`;
 
-    this.profiler.start("item_parse");
-
     return ResultAsync.fromPromise(
-      this.performParse(item),
-      (e: unknown) => {
-        this.profiler.end("item_parse");
-        if (e instanceof ImportError) return e;
-        return ImportError.parseFailed(item.name, e);
-      },
-    ).andThen((meta) => {
-      this.profiler.end("item_parse");
-      this.profiler.start("item_copy");
+      this.readItemBytes(item),
+      (e): ImportError => e instanceof ImportError ? e : ImportError.readFailed(item.name, e),
+    )
+      .andThen(data =>
+        ResultAsync.fromPromise(
+          this.workerPool.parse(item.name, data),
+          (e): ImportError => e instanceof ImportError ? e : ImportError.parseFailed(item.name, e),
+        ),
+      )
+      .andThen((rawMeta) => {
+        const fileMock = item.file ?? ({ name: item.name, webkitRelativePath: "" } as File);
+        const meta = normalizeMetadata(fileMock, rawMeta);
 
-      const fileMock = item.file
-        || ({ name: item.name, webkitRelativePath: "" } as File);
-      const normalizedMeta = normalizeMetadata(fileMock, meta);
-
-      const fingerprint = item.fingerprint ?? "";
-
-      return ResultAsync.fromPromise(
-        (async () => {
-          await control?.waitIfPaused?.();
-          if (control?.isCancelled?.()) {
-            throw ImportError.readFailed(item.name, "Import cancelled");
-          }
-          return this.performCopy(item, storagePath);
-        })(),
-        (e: unknown) => {
-          this.profiler.end("item_copy");
-          if (e instanceof ImportError) return e;
-          return ImportError.storageFailed(item.name, e);
-        },
-      ).map(() => {
-        this.profiler.end("item_copy");
-        return {
-          trackId,
-          fileName: item.name,
-          storagePath,
-          fingerprint,
-          source: TrackSource.LOCAL_INTERNAL,
-          meta: normalizedMeta,
-        };
+        return ResultAsync.fromPromise(
+          (async () => {
+            if (await this.isCancelled(control)) {
+              throw ImportError.readFailed(item.name, "Import cancelled");
+            }
+            await this.copyItem(item, storagePath);
+            return { trackId, fileName: item.name, storagePath, fingerprint: item.fingerprint ?? "", source: TrackSource.LOCAL_INTERNAL, meta };
+          })(),
+          (e): ImportError => e instanceof ImportError ? e : ImportError.storageFailed(item.name, e),
+        );
       });
-    });
   }
 
   private async parseExternalFile(
@@ -755,62 +444,212 @@ export class MusicLibraryEngine {
         ? Math.min(file.size, MAX_METADATA_READ)
         : HEAD_READ_SIZE;
 
-      const readResult = await nativeStorage.readBytes(
-        file.absolutePath,
-        readSize,
-      );
+      const readResult = await nativeStorage.readBytes(file.absolutePath, readSize);
       if (readResult.isErr()) return null;
 
-      const rawMeta = await this.parseMeta(file.name, readResult.value);
-      const fileMock = {
-        name: file.name,
-        webkitRelativePath: "",
-      } as File;
+      const rawMeta = await this.workerPool.parse(file.name, readResult.value);
+      const fileMock = { name: file.name, webkitRelativePath: "" } as File;
       const meta = normalizeMetadata(fileMock, rawMeta);
 
-      if (!meta.duration && file.size < LARGE_FILE_THRESHOLD && file.size > readSize) {
-        const fullReadResult = await nativeStorage.readBytes(
-          file.absolutePath,
-          Math.min(file.size, MAX_METADATA_READ),
-        );
-        if (fullReadResult.isOk()) {
-          const fullMeta = await this.parseMeta(file.name, fullReadResult.value);
-          const normalizedFullMeta = normalizeMetadata(fileMock, fullMeta);
-          if (normalizedFullMeta.duration > 0) {
-            return {
-              trackId: TrackId(crypto.randomUUID()),
-              fileName: file.name,
-              storagePath: file.absolutePath,
-              fingerprint,
-              source: TrackSource.LOCAL_EXTERNAL,
-              meta: normalizedFullMeta,
-            };
-          }
-        }
-      }
-
-      return {
-        trackId: TrackId(crypto.randomUUID()),
-        fileName: file.name,
-        storagePath: file.absolutePath,
-        fingerprint,
-        source: TrackSource.LOCAL_EXTERNAL,
-        meta,
-      };
+      return { trackId: TrackId(crypto.randomUUID()), fileName: file.name, storagePath: file.absolutePath, fingerprint, source: TrackSource.LOCAL_EXTERNAL, meta };
     }
     catch {
       return null;
     }
   }
 
-  // ═══════════════════════════════════════════════════════
-  // FILE OPERATIONS (internal import only)
-  // ═══════════════════════════════════════════════════════
+  private async persistBatch(
+    items: TrackToSave[],
+    resolver: EntityResolver,
+  ): Promise<ImportSuccess[]> {
+    const now = Date.now();
 
-  private async performCopy(
-    item: ImportItem,
-    targetPath: string,
-  ): Promise<string> {
+    // ── Prepare all data BEFORE the transaction ────────────────────
+    // This keeps the transaction short and prevents long locks on IndexedDB
+
+    const artistsToCreate = new Map<ArtistId, ArtistEntity>();
+    const albumsToCreate = new Map<AlbumId, AlbumEntity>();
+    const coversToCreate: Array<{ ownerId: AlbumId; blob: Blob; mimeType: string }> = [];
+    const tracksToCreate: TrackEntity[] = [];
+    const results: ImportSuccess[] = [];
+
+    // Check which artists/albums already exist
+    const allArtistIds = [...new Set(items.flatMap(item => resolver.getArtistIds(item.meta)))];
+    const allAlbumIds = [...new Set(
+      items.map((item) => {
+        const firstId = resolver.getArtistIds(item.meta)[0];
+        if (!firstId || !item.meta.album) return null;
+        return resolver.getAlbumEntry(firstId, item.meta.album)?.id ?? null;
+      }).filter((id): id is AlbumId => id !== null),
+    )];
+
+    // Single batch read each — outside transaction
+    const [artistResults, albumResults] = await Promise.all([
+      allArtistIds.length > 0
+        ? unwrapResult(artistRepository.findByIds(allArtistIds))
+        : Promise.resolve([] as ArtistEntity[]),
+      allAlbumIds.length > 0
+        ? unwrapResult(albumRepository.findByIds(allAlbumIds))
+        : Promise.resolve([] as AlbumEntity[]),
+    ]);
+
+    const existingArtistIdSet = new Set(artistResults.map(a => a.id));
+    const existingAlbumIdSet = new Set(albumResults.map(a => a.id));
+
+    // Build entities to insert
+    for (const item of items) {
+      const artistIds = resolver.getArtistIds(item.meta);
+      const firstArtistId = artistIds[0] ?? null;
+
+      const hasAlbum = !!item.meta.album?.trim() && item.meta.album !== "Unknown Album";
+      let albumId: AlbumId = AlbumId("");
+
+      if (hasAlbum && firstArtistId) {
+        const entry = resolver.getAlbumEntry(firstArtistId, item.meta.album);
+        if (entry) {
+          albumId = entry.id;
+
+          if (entry.isNew && !existingAlbumIdSet.has(entry.id) && !albumsToCreate.has(entry.id)) {
+            albumsToCreate.set(entry.id, {
+              id: entry.id,
+              title: item.meta.album,
+              artistId: firstArtistId,
+              year: item.meta.year,
+              addedAt: now,
+              updatedAt: now,
+            });
+
+            if (item.meta.pictureBlob) {
+              coversToCreate.push({
+                ownerId: entry.id,
+                blob: item.meta.pictureBlob,
+                mimeType: item.meta.pictureBlob.type || "image/jpeg",
+              });
+            }
+          }
+        }
+      }
+
+      for (const artistId of artistIds) {
+        if (!existingArtistIdSet.has(artistId) && !artistsToCreate.has(artistId)) {
+          const name = item.meta.artists.find(a => resolver.getArtistId(a) === artistId);
+          if (name) {
+            artistsToCreate.set(artistId, { id: artistId, name, addedAt: now, updatedAt: now });
+          }
+        }
+      }
+
+      tracksToCreate.push({
+        id: item.trackId,
+        title: item.meta.title,
+        artistName: item.meta.artists.join(", "),
+        albumTitle: item.meta.album || "",
+        artistIds,
+        albumId,
+        tagIds: [],
+        source: item.source,
+        state: TrackState.READY,
+        storagePath: item.storagePath,
+        duration: item.meta.duration,
+        format: item.meta.format,
+        trackNo: item.meta.trackNo,
+        diskNo: item.meta.diskNo,
+        playCount: 0,
+        addedAt: now,
+        fingerprint: item.fingerprint,
+        integratedLufs: item.meta.integratedLufs,
+        truePeakDbtp: item.meta.truePeakDbtp,
+        replayGainDb: item.meta.replayGainDb,
+        replayPeak: item.meta.replayPeak,
+      });
+
+      results.push({
+        trackId: item.trackId,
+        fileName: item.fileName,
+        title: item.meta.title,
+        artist: item.meta.artists.join(", "),
+        album: item.meta.album,
+      });
+    }
+
+    // ── Transaction: pure writes only, no reads ───────────────────
+    const uowResult = await unitOfWork.run(async () => {
+      if (artistsToCreate.size > 0) {
+        await artistRepository.createMany([...artistsToCreate.values()]);
+      }
+      if (albumsToCreate.size > 0) {
+        await albumRepository.createMany([...albumsToCreate.values()]);
+      }
+      if (coversToCreate.length > 0) {
+        await coverRepository.createMany(
+          coversToCreate.map(c => ({
+            id: crypto.randomUUID(),
+            ownerType: "album" as const,
+            ownerId: c.ownerId,
+            blob: c.blob,
+            mimeType: c.mimeType,
+            addedAt: now,
+            updatedAt: now,
+          })),
+        );
+      }
+      if (tracksToCreate.length > 0) {
+        await trackRepository.createMany(tracksToCreate);
+      }
+    });
+
+    if (uowResult.isErr()) throw uowResult.error;
+
+    return results;
+  }
+
+  // FingerPrint
+
+  private async loadKnownFingerprints(): Promise<Set<string>> {
+    return unwrapResult(trackRepository.getAllFingerprints());
+  }
+
+  private async computeFingerprint(item: ImportItem): Promise<string | null> {
+    try {
+      if (item.type === "native" && item.path && hasNativeSupport(storageService)) {
+        if (item.fileSize <= 0) {
+          try {
+            item.fileSize = (await stat(item.path)).size;
+          }
+          catch { /* ok */ }
+        }
+        return await computeFileFingerprint(item.path, item.fileSize);
+      }
+      if (item.type === "web" && item.file) {
+        return await computeFileFingerprintFromBlob(item.file);
+      }
+      return null;
+    }
+    catch {
+      return null;
+    }
+  }
+
+  // Files I/O
+
+  private async readItemBytes(item: ImportItem): Promise<Uint8Array> {
+    if (item.type === "native" && hasNativeSupport(storageService) && item.path) {
+      const res = await storageService.readBytes(item.path, HEAD_READ_SIZE);
+      if (res.isErr()) throw ImportError.readFailed(item.name, res.error);
+      return res.value;
+    }
+    if (item.type === "web" && item.file) {
+      try {
+        return new Uint8Array(await item.file.arrayBuffer());
+      }
+      catch (e) {
+        throw ImportError.readFailed(item.name, e);
+      }
+    }
+    throw ImportError.nativeImportUnavailable(item.name);
+  }
+
+  private async copyItem(item: ImportItem, targetPath: string): Promise<void> {
     let result: ResultAsync<string, StorageError>;
 
     if (item.type === "native" && hasNativeSupport(storageService) && item.path) {
@@ -825,466 +664,25 @@ export class MusicLibraryEngine {
 
     const res = await result;
     if (res.isErr()) throw ImportError.storageFailed(item.name, res.error);
-    return res.value;
   }
 
-  private async performParse(item: ImportItem): Promise<BaseMetadata> {
-    let data: Uint8Array;
-
-    if (item.type === "native" && hasNativeSupport(storageService) && item.path) {
-      const res = await storageService.readBytes(item.path, HEAD_READ_SIZE);
-      if (res.isErr()) throw ImportError.readFailed(item.name, res.error);
-      data = res.value;
-    }
-    else if (item.type === "web" && item.file) {
-      try {
-        const buffer = await item.file.arrayBuffer();
-        data = new Uint8Array(buffer);
-      }
-      catch (e) {
-        throw ImportError.readFailed(item.name, e);
-      }
-    }
-    else {
-      throw ImportError.nativeImportUnavailable(item.name);
-    }
-
-    return this.parseMeta(item.name, data);
+  // Helpers
+  private async isCancelled(control?: ImportControl): Promise<boolean> {
+    await control?.waitIfPaused?.();
+    return control?.isCancelled?.() ?? false;
   }
 
-  // ═══════════════════════════════════════════════════════
-  // WORKER POOL
-  // ═══════════════════════════════════════════════════════
-
-  private initWorkerPool(): void {
-    for (let i = 0; i < WORKER_POOL_SIZE; i++) {
-      const worker = new MetaWorker();
-      worker.addEventListener("message", this.handleWorkerMessage.bind(this));
-      this.workerPool.push(worker);
-    }
-  }
-
-  private getNextWorker(): Worker {
-    const worker = this.workerPool[this.workerIndex];
-    this.workerIndex = (this.workerIndex + 1) % this.workerPool.length;
-    return worker;
-  }
-
-  private handleWorkerMessage(e: MessageEvent<ParseResponse>): void {
-    const pending = this.pendingRequests.get(e.data.fileId);
-    if (!pending) return;
-
-    clearTimeout(pending.timeoutId);
-    this.pendingRequests.delete(e.data.fileId);
-
-    if (e.data.success) {
-      pending.resolve(e.data.meta);
-    }
-    else pending.reject(new Error(e.data.error || "Worker error"));
-  }
-
-  private parseMeta(
-    fileName: string,
-    data: Uint8Array,
-  ): Promise<BaseMetadata> {
-    return new Promise((resolve, reject) => {
-      const id = crypto.randomUUID();
-      const timeoutId = setTimeout(() => {
-        this.pendingRequests.delete(id);
-        reject(ImportError.workerTimeout(fileName));
-      }, WORKER_TIMEOUT);
-
-      this.pendingRequests.set(id, { resolve, reject, timeoutId });
-      this.getNextWorker().postMessage(
-        { fileId: id, fileData: data, fileName },
-        [data.buffer],
-      );
-    });
-  }
-
-  // ═══════════════════════════════════════════════════════
-  // FINGERPRINT
-  // ═══════════════════════════════════════════════════════
-
-  private async loadKnownFingerprints(): Promise<Set<string>> {
-    const tracks = await db.tracks
-      .where("fingerprint")
-      .above("")
-      .toArray();
-
-    const set = new Set<string>();
-    for (const t of tracks) {
-      if (t.fingerprint) set.add(t.fingerprint);
-    }
-    return set;
-  }
-
-  private async computeItemFingerprint(
-    item: ImportItem,
-  ): Promise<string | null> {
-    try {
-      if (item.type === "native" && item.path && hasNativeSupport(storageService)) {
-        let fileSize = item.fileSize;
-
-        if (fileSize <= 0) {
-          try {
-            const fileStat = await stat(item.path);
-            fileSize = fileStat.size;
-            item.fileSize = fileSize;
-          }
-          catch {
-            fileSize = 0;
-          }
-        }
-
-        return await computeFileFingerprint(item.path, fileSize);
-      }
-      if (item.type === "web" && item.file) {
-        return await computeFileFingerprintFromBlob(item.file);
-      }
-      return null;
-    }
-    catch {
-      return null;
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════
-  // ENTITY RESOLUTION
-  // ═══════════════════════════════════════════════════════
-
-  private clearSessionCache(): void {
-    this.sessionCache.artists.clear();
-    this.sessionCache.albums.clear();
-  }
-
-  private async batchPreResolveEntities(
-    metas: BaseMetadata[],
-  ): Promise<void> {
-    // Only process artists that actually exist in metadata
-    const allArtistNames = metas
-      .flatMap(m => m.artists)
-      .filter(a => a && a.trim() !== "");
-
-    const uniqueArtistNames = [...new Set(allArtistNames)];
-
-    // Only fetch/create artists if there are actual artist names
-    if (uniqueArtistNames.length > 0) {
-      const existingArtists = await db.artists
-        .where("name")
-        .anyOf(uniqueArtistNames)
-        .toArray();
-
-      for (const artist of existingArtists) {
-        this.sessionCache.artists.set(artist.name, artist.id);
-      }
-
-      for (const name of uniqueArtistNames) {
-        if (!this.sessionCache.artists.has(name)) {
-          this.sessionCache.artists.set(name, ArtistId(crypto.randomUUID()));
-        }
-      }
-    }
-
-    const uniqueArtistIds = [
-      ...new Set(
-        metas.flatMap(m => m.artists.map(artistName => this.sessionCache.artists.get(artistName)).filter((id): id is ArtistId => !!id)),
-      ),
-    ];
-
-    // Only process albums if there are actual artist IDs
-    if (uniqueArtistIds.length > 0) {
-      const existingAlbums = await db.albums
-        .where("artistId")
-        .anyOf(uniqueArtistIds)
-        .toArray();
-
-      for (const album of existingAlbums) {
-        const key = `${album.artistId}_${album.title}`;
-        this.sessionCache.albums.set(key, { id: album.id, isNew: false });
-      }
-
-      // Only create albums if there's an actual album name
-      for (const meta of metas) {
-        if (!meta.album || meta.album.trim() === "" || meta.album === "Unknown Album") {
-          continue;
-        }
-
-        const firstArtistId = this.sessionCache.artists.get(meta.artists[0]);
-        if (!firstArtistId) continue;
-
-        const key = `${firstArtistId}_${meta.album}`;
-
-        if (!this.sessionCache.albums.has(key)) {
-          this.sessionCache.albums.set(key, {
-            id: AlbumId(crypto.randomUUID()),
-            isNew: true,
-          });
-        }
-      }
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════
-  // DATABASE
-  // ═══════════════════════════════════════════════════════
-
-  /** Wrapped version for the import pipeline (returns ResultAsync) */
-  private saveBatchToDatabaseSafe(
-    items: TrackToSave[],
-  ): ResultAsync<ImportSuccess[], ImportError> {
-    return ResultAsync.fromPromise(
-      this.saveBatchToDatabase(items),
-      error => ImportError.databaseFailed("batch", error),
-    );
-  }
-
-  /** Core save — used by both import pipeline and watched-folder sync */
-  private async saveBatchToDatabase(
-    items: TrackToSave[],
-  ): Promise<ImportSuccess[]> {
-    const now = Date.now();
-
-    return db.transaction(
-      "rw",
-      db.artists,
-      db.albums,
-      db.tracks,
-      db.covers,
-      async () => {
-        const results: ImportSuccess[] = [];
-        const tracksToAdd = [];
-
-        const artistsToAdd = new Map<
-          ArtistId,
-          { id: ArtistId; name: string }
-        >();
-
-        const albumsToAdd = new Map<
-          AlbumId,
-          {
-            id: AlbumId;
-            title: string;
-            artistId: ArtistId;
-            year?: number;
-          }
-        >();
-
-        const coversToAdd = new Map<
-          string,
-          {
-            id: string;
-            ownerType: "album";
-            ownerId: string;
-            blob: Blob;
-            mimeType: string;
-            addedAt: number;
-            updatedAt: number;
-          }
-        >();
-
-        const artistIds = Array.from(new Set(
-          items.flatMap(item => item.meta.artists.map(artistName => this.sessionCache.artists.get(artistName)).filter((id): id is ArtistId => !!id)),
-        ));
-        const existingArtists = await db.artists.bulkGet(artistIds);
-        const existingArtistIds = new Set(
-          existingArtists
-            .filter((artist): artist is NonNullable<typeof artist> => !!artist)
-            .map(artist => artist.id),
-        );
-
-        const albumIds = Array.from(new Set(
-          items
-            .map((item) => {
-              const firstArtistId = item.meta.artists[0] ? this.sessionCache.artists.get(item.meta.artists[0]) : null;
-              if (!firstArtistId) return null;
-              return this.sessionCache.albums.get(`${firstArtistId}_${item.meta.album}`)?.id ?? null;
-            })
-            .filter((id): id is AlbumId => !!id),
-        ));
-        const existingAlbums = await db.albums.bulkGet(albumIds);
-        const existingAlbumIds = new Set(
-          existingAlbums
-            .filter((album): album is NonNullable<typeof album> => !!album)
-            .map(album => album.id),
-        );
-
-        const newAlbumIds = Array.from(new Set(
-          items
-            .map((item) => {
-              const firstArtistId = item.meta.artists[0] ? this.sessionCache.artists.get(item.meta.artists[0]) : null;
-              if (!firstArtistId) return null;
-              const album = this.sessionCache.albums.get(`${firstArtistId}_${item.meta.album}`);
-              return album?.isNew ? album.id : null;
-            })
-            .filter((id): id is AlbumId => !!id),
-        ));
-        const existingCovers = newAlbumIds.length > 0
-          ? await db.covers
-              .where("[ownerType+ownerId]")
-              .anyOf(newAlbumIds.map(id => ["album", id] as const))
-              .toArray()
-          : [];
-        const existingCoverOwnerIds = new Set(existingCovers.map(cover => cover.ownerId));
-
-        for (const item of items) {
-          // Get artist IDs only if there are actual artist names
-          const artistIds = item.meta.artists
-            .filter(a => a && a.trim() !== "")
-            .map(name => this.sessionCache.artists.get(name))
-            .filter((id): id is ArtistId => !!id);
-          const firstArtistId = artistIds[0] ?? null;
-
-          // Only get album if there's an actual album name
-          const hasAlbum = item.meta.album && item.meta.album.trim() !== "" && item.meta.album !== "Unknown Album";
-          let albumId: AlbumId = AlbumId("");
-
-          if (hasAlbum && firstArtistId) {
-            const albumData = this.sessionCache.albums.get(`${firstArtistId}_${item.meta.album}`);
-            if (albumData) {
-              albumId = albumData.id;
-
-              if (albumData.isNew && !albumsToAdd.has(albumData.id)) {
-                if (!existingAlbumIds.has(albumData.id)) {
-                  albumsToAdd.set(albumData.id, {
-                    id: albumData.id,
-                    title: item.meta.album,
-                    artistId: firstArtistId,
-                    year: item.meta.year,
-                  });
-                }
-              }
-            }
-          }
-
-          // Only add artists if there are actual artist names
-          if (artistIds.length > 0) {
-            for (const artistId of artistIds) {
-              if (!artistsToAdd.has(artistId)) {
-                if (!existingArtistIds.has(artistId)) {
-                  const artistName = item.meta.artists.find(a => this.sessionCache.artists.get(a) === artistId);
-                  if (artistName) {
-                    artistsToAdd.set(artistId, {
-                      id: artistId,
-                      name: artistName,
-                    });
-                  }
-                }
-              }
-            }
-          }
-
-          // Add cover if album has one
-          if (albumId && hasAlbum) {
-            const firstArtistIdForAlbum = firstArtistId!;
-            const albumData = this.sessionCache.albums.get(`${firstArtistIdForAlbum}_${item.meta.album}`);
-            if (albumData?.isNew && item.meta.pictureBlob) {
-              const coverKey = `album_${albumData.id}`;
-              if (!coversToAdd.has(coverKey) && !existingCoverOwnerIds.has(albumData.id)) {
-                coversToAdd.set(coverKey, {
-                  id: crypto.randomUUID(),
-                  ownerType: "album",
-                  ownerId: albumData.id,
-                  blob: item.meta.pictureBlob,
-                  mimeType: item.meta.pictureBlob.type || "image/jpeg",
-                  addedAt: now,
-                  updatedAt: now,
-                });
-              }
-            }
-          }
-
-          tracksToAdd.push({
-            id: item.trackId,
-            title: item.meta.title,
-            artistName: item.meta.artists.join(", "),
-            albumTitle: item.meta.album || "",
-            artistIds,
-            albumId,
-            tagIds: [],
-            source: item.source,
-            state: TrackState.READY,
-            storagePath: item.storagePath,
-            duration: item.meta.duration,
-            format: item.meta.format,
-            trackNo: item.meta.trackNo,
-            diskNo: item.meta.diskNo,
-            playCount: 0,
-            addedAt: now,
-            fingerprint: item.fingerprint,
-            integratedLufs: item.meta.integratedLufs,
-            truePeakDbtp: item.meta.truePeakDbtp,
-            replayGainDb: item.meta.replayGainDb,
-            replayPeak: item.meta.replayPeak,
-          });
-
-          results.push({
-            trackId: item.trackId,
-            fileName: item.fileName,
-            title: item.meta.title,
-            artist: item.meta.artists.join(", "),
-            album: item.meta.album,
-          });
-        }
-
-        if (artistsToAdd.size > 0) {
-          await db.artists.bulkAdd(
-            [...artistsToAdd.values()].map(a => ({
-              ...a,
-              addedAt: now,
-              updatedAt: now,
-            })),
-          );
-        }
-
-        if (albumsToAdd.size > 0) {
-          await db.albums.bulkAdd(
-            [...albumsToAdd.values()].map(a => ({
-              ...a,
-              addedAt: now,
-              updatedAt: now,
-            })),
-          );
-        }
-
-        if (coversToAdd.size > 0) {
-          await db.covers.bulkAdd([...coversToAdd.values()]);
-        }
-
-        if (tracksToAdd.length > 0) {
-          await db.tracks.bulkAdd(tracksToAdd);
-        }
-
-        return results;
-      },
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════
-  // HELPERS
-  // ═══════════════════════════════════════════════════════
-
-  private createEmptyFailResult(
-    paths: string[],
-    error: string,
-  ): ImportBatchResult {
+  private emptyFailResult(paths: string[], message: string): ImportBatchResult {
     return {
       successful: [],
       failed: paths.map(p => ({
         fileName: p.split(/[\\/]/).pop() ?? "unknown",
-        error: new ImportError(
-          ImportErrorCode.NATIVE_IMPORT_UNAVAILABLE,
-          error,
-        ),
+        error: new ImportError(ImportErrorCode.NATIVE_IMPORT_UNAVAILABLE, message),
       })),
       skipped: 0,
       total: paths.length,
     };
   }
 }
-
-// ═══════════════════════════════════════════════════════
-// SINGLETON + BACKWARD-COMPATIBLE ALIASES
-// ═══════════════════════════════════════════════════════
 
 export const musicLibraryEngine = new MusicLibraryEngine();

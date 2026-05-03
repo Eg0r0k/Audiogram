@@ -20,7 +20,7 @@ export async function getLibrarySummary(): Promise<LibrarySummaryData> {
   const [albumsWithCounts, artistsWithCounts] = await Promise.all([
     Promise.all(
       albums.map(async (album) => {
-        const trackCountResult = await albumRepository.countTracksByAlbumId(album.id);
+        const trackCountResult = await trackRepository.countByAlbumId(album.id);
         return {
           ...album,
           trackCount: trackCountResult.isOk() ? trackCountResult.value : 0,
@@ -29,7 +29,7 @@ export async function getLibrarySummary(): Promise<LibrarySummaryData> {
     ),
     Promise.all(
       artists.map(async (artist) => {
-        const trackCountResult = await artistRepository.countTracksByArtistId(artist.id);
+        const trackCountResult = await trackRepository.countByArtistId(artist.id);
         return {
           ...artist,
           trackCount: trackCountResult.isOk() ? trackCountResult.value : 0,
