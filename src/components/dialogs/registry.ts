@@ -1,24 +1,48 @@
-import type { SidebarFolderEntity } from "@/db/entities";
-import type { LibraryItem } from "@/modules/library/types";
+import type { ComponentInstance } from "vue";
 import DeleteConfirmDialog from "./DeleteConfirmDialog.vue";
 import DeleteTrackDialog, { type DeleteTrackConfirmation } from "./DeleteTrackDialog.vue";
 import DeleteTracksDialog from "./DeleteTracksDialog.vue";
 import MoveToFolderDialog from "./MoveToFolderDialog.vue";
+import ExternalLinkDialog from "./ExternalLinkDialog.vue";
+import CancelImportDialog from "./CancelImportDialog.vue";
+import EditEntityDialog from "./EditEntityDialog.vue";
+import EditAvatarDialog from "./EditAvatarDialog.vue";
 import ResetSettingsDialog from "@/pages/settings/components/ResetSettingsDialog.vue";
 import ClearAllDataDialog from "@/pages/settings/components/ClearAllDataDialog.vue";
 import ClearHistoryDialog from "@/pages/settings/components/stats/ClearHistoryDialog.vue";
-import ExternalLinkDialog from "./ExternalLinkDialog.vue";
-import EditEntityDialog from "./EditEntityDialog.vue";
-import EditAvatarDialog from "./EditAvatarDialog.vue";
-import CancelImportDialog from "./CancelImportDialog.vue";
 import LibraryFolderNameDialog from "@/components/layout/sidebar/LibraryFolderNameDialog.vue";
 import UnsavedChangesDialog from "@/modules/tracks/components/edit/UnsavedChangesDialog.vue";
 import RemoveWatchedFolderDialog from "@/modules/watched-folders/components/RemoveWatchedFolderDialog.vue";
-import type { DeleteConfirmData, DeleteConfirmResult } from "./deleteConfirm";
-import type { EditEntityDialogProps } from "./editEntityDialog";
+import type { DeleteConfirmResult } from "./deleteConfirm";
+
+/**
+ * What each summoned dialog resolves with. Props are not declared here: they
+ * are derived from the component itself (see {@link DialogMap}), so renaming
+ * a prop in the SFC breaks every call site at type-check.
+ */
+interface DialogResults {
+  deleteConfirm: DeleteConfirmResult;
+  deleteTrack: DeleteTrackConfirmation;
+  deleteTracks: boolean;
+  moveToFolder: string;
+  resetSettings: boolean;
+  /** `clear` runs inside; resolves only once it succeeded. */
+  clearAllData: true;
+  clearHistory: true;
+  externalLink: true;
+  cancelImport: true;
+  folderName: string;
+  unsavedChanges: true;
+  removeWatchedFolder: true;
+  /** `save` runs inside; resolves only once it succeeded. */
+  editEntity: true;
+  /** Cropper over a picked image; resolves with the cropped blob. */
+  editAvatar: Blob;
+}
 
 // The only place that binds a dialog key to a component. Domain code summons
-// by key (ARCHITECTURE.md §6) and never imports the .vue itself.
+// by key (ARCHITECTURE.md §6) and never imports the .vue itself. `satisfies`
+// keeps this list and DialogResults in lockstep in both directions.
 export const DIALOGS = {
   deleteConfirm: DeleteConfirmDialog,
   deleteTrack: DeleteTrackDialog,
@@ -34,33 +58,16 @@ export const DIALOGS = {
   removeWatchedFolder: RemoveWatchedFolderDialog,
   editEntity: EditEntityDialog,
   editAvatar: EditAvatarDialog,
-} as const;
+} as const satisfies Record<keyof DialogResults, unknown>;
 
-export interface ClearAllDataStats {
-  tracksCount: number;
-  albumsCount: number;
-  artistsCount: number;
-  totalUsed: string;
-}
+export type DialogKey = keyof DialogResults;
 
-export interface DialogMap {
-  deleteConfirm: { props: { data: DeleteConfirmData }; result: DeleteConfirmResult };
-  deleteTrack: { props: { trackTitle: string }; result: DeleteTrackConfirmation };
-  deleteTracks: { props: { count: number }; result: boolean };
-  moveToFolder: { props: { item: LibraryItem; folders: SidebarFolderEntity[] }; result: string };
-  resetSettings: { props: Record<string, never>; result: boolean };
-  /** `clear` runs inside the dialog; it resolves only once the action succeeded. */
-  clearAllData: { props: { stats: ClearAllDataStats; clear: () => Promise<void> }; result: true };
-  clearHistory: { props: { clear: () => Promise<void> }; result: true };
-  externalLink: { props: { url: string }; result: true };
-  cancelImport: { props: Record<string, never>; result: true };
-  folderName: { props: { initialName: string; title: string }; result: string };
-  unsavedChanges: { props: Record<string, never>; result: true };
-  removeWatchedFolder: { props: { name: string }; result: true };
-  /** `save` runs inside; resolves only once it succeeded. */
-  editEntity: { props: EditEntityDialogProps; result: true };
-  /** Cropper over a picked image; resolves with the cropped blob. */
-  editAvatar: { props: { imageSrc: string }; result: Blob };
-}
+/** A summoned component's own props; the host supplies `open` and its update. */
+export type DialogProps<C> = Omit<ComponentInstance<C>["$props"], "open" | "onUpdate:open">;
 
-export type DialogKey = keyof DialogMap;
+export type DialogMap = {
+  [K in DialogKey]: {
+    props: DialogProps<(typeof DIALOGS)[K]>;
+    result: DialogResults[K];
+  };
+};
