@@ -32,6 +32,8 @@
       <Button
         size="icon-sm"
         :variant="row.label === 1 ? 'default' : 'ghost'"
+        aria-label="Нравится"
+        title="Нравится"
         @click="$emit('rate', 1)"
       >
         <IconThumbUp class="size-4" />
@@ -39,6 +41,8 @@
       <Button
         size="icon-sm"
         :variant="row.label === -1 ? 'default' : 'ghost'"
+        aria-label="Не нравится"
+        title="Не нравится"
         @click="$emit('rate', -1)"
       >
         <IconThumbDown class="size-4" />
@@ -46,6 +50,8 @@
       <Button
         size="icon-sm"
         variant="ghost"
+        aria-label="Послушать"
+        title="Послушать"
         @click="$emit('play')"
       >
         <IconPlayerPlay class="size-4" />

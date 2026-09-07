@@ -28,37 +28,46 @@
     </div>
 
     <div class="grid grid-cols-3 gap-2 text-xs">
-      <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- label wraps its input -->
-      <label class="flex flex-col gap-1">limit
+      <label
+        for="stand-limit"
+        class="flex flex-col gap-1"
+      >limit
         <input
+          id="stand-limit"
           type="number"
           min="1"
           max="50"
           class="rounded border bg-transparent px-1"
           :value="params.limit"
-          @change="setParam('limit', $event, 8)"
+          @change="setParam('limit', $event)"
         >
       </label>
-      <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- label wraps its input -->
-      <label class="flex flex-col gap-1">recentWindow
+      <label
+        for="stand-recent-window"
+        class="flex flex-col gap-1"
+      >recentWindow
         <input
+          id="stand-recent-window"
           type="number"
           min="0"
           max="100"
           class="rounded border bg-transparent px-1"
           :value="params.recentWindow"
-          @change="setParam('recentWindow', $event, 5)"
+          @change="setParam('recentWindow', $event)"
         >
       </label>
-      <!-- eslint-disable-next-line vuejs-accessibility/label-has-for -- label wraps its input -->
-      <label class="flex flex-col gap-1">maxPerArtist
+      <label
+        for="stand-max-per-artist"
+        class="flex flex-col gap-1"
+      >maxPerArtist
         <input
+          id="stand-max-per-artist"
           type="number"
           min="0"
           max="20"
           class="rounded border bg-transparent px-1"
           :value="params.maxPerArtist"
-          @change="setParam('maxPerArtist', $event, 2)"
+          @change="setParam('maxPerArtist', $event)"
         >
       </label>
     </div>
@@ -124,8 +133,16 @@ const setWeight = (key: SignalKey, value: number) => {
   if (Number.isFinite(value)) emit("update:weight", key, Math.max(-1, Math.min(1, value)));
 };
 
-const setParam = (key: keyof ScoringParams, e: Event, fallback: number) => {
+const PARAM_RANGES: Record<keyof ScoringParams, [number, number]> = {
+  limit: [1, 50],
+  recentWindow: [0, 100],
+  maxPerArtist: [0, 20],
+};
+
+const setParam = (key: keyof ScoringParams, e: Event) => {
   const v = (e.target as HTMLInputElement).valueAsNumber;
-  emit("update:param", key, Number.isFinite(v) ? v : fallback);
+  if (!Number.isFinite(v)) return;
+  const [min, max] = PARAM_RANGES[key];
+  emit("update:param", key, Math.round(Math.max(min, Math.min(max, v))));
 };
 </script>
