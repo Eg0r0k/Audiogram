@@ -68,17 +68,18 @@ export const createTuner = (opts: TunerOptions): Tuner => {
   };
 
   const randomStep = () => {
+    if (candidates.length >= randomSamples) {
+      candidates.sort((a, b) => b.objective - a.objective);
+      phase = candidates.length > 0 ? "refine" : "done";
+      current = candidates[0] ?? null;
+      return;
+    }
     const w = { ...best.weights };
     for (const k of freeKeys) w[k] = rnd() * 2 - 1;
     const c = evaluate(withFrozen(w));
     candidates.push(c);
     consider(c);
     done++;
-    if (candidates.length >= randomSamples) {
-      candidates.sort((a, b) => b.objective - a.objective);
-      phase = candidates.length > 0 ? "refine" : "done";
-      current = candidates[0] ?? null;
-    }
   };
 
   const refineStep = () => {

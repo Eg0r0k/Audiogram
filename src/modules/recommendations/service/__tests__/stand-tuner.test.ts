@@ -47,4 +47,12 @@ describe("createTuner", () => {
     while (!tuner.step(50)) { /* drain */ }
     expect(tuner.best.weights.audioSimilarity).toBe(0);
   });
+
+  it("honors randomSamples: 0", () => {
+    const tuner = createTuner({ ...opts, randomSamples: 0 });
+    const done = tuner.step(10);
+    expect(done).toBe(true);
+    expect(tuner.done).toBe(0);
+    expect(tuner.best.weights).toEqual(ZERO_WEIGHTS);
+  });
 });
