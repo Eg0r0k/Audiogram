@@ -96,8 +96,8 @@ import MediaContextMenu from "./menu/context-menu/MediaContextMenu.vue";
 import MediaHeroMeta from "./MediaHeroMeta.vue";
 import MediaHeroActions from "./MediaHeroActions.vue";
 import type { QueueSource } from "@/modules/queue/types";
-import type { MediaData } from "../types";
-import { isAlbum, isArtist, isLiked, isPlaylist } from "../types";
+import type { MediaData } from "@/types/media-data";
+import { isAlbum, isArtist, isLiked, isPlaylist } from "@/types/media-data";
 
 const props = withDefaults(defineProps<{
   data: MediaData;

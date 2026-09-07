@@ -2,7 +2,7 @@ import { computed, type Ref } from "vue";
 import { useInfiniteQuery, useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { formatTotalDuration } from "@/lib/format/time";
-import type { LikedData } from "@/modules/media-hero/types";
+import type { LikedData } from "@/types/media-data";
 import { queryKeys } from "@/queries/query-keys";
 import { getLikedTracksPaginated, trackQueries } from "@/queries/track.queries";
 import type { TrackSortKey } from "@/modules/tracks/types";

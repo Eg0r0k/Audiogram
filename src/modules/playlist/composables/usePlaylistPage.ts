@@ -6,7 +6,7 @@ import { formatTotalDuration } from "@/lib/format/time";
 import { getLogger } from "@/lib/logger";
 import { useI18n } from "vue-i18n";
 import { usePlaylistCover } from "@/modules/covers/composables/usePlaylistCover";
-import type { PlaylistData } from "@/modules/media-hero/types";
+import type { PlaylistData } from "@/types/media-data";
 import { queryKeys } from "@/queries/query-keys";
 import {
   deletePlaylistAndSync,

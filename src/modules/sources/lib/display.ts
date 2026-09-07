@@ -1,6 +1,6 @@
 import { TrackSource, TrackState } from "@/db/entities";
 import type { Track } from "@/modules/player/types";
-import type { AlbumData, ArtistData, PlaylistData } from "@/modules/media-hero/types";
+import type { AlbumData, ArtistData, PlaylistData } from "@/types/media-data";
 import type { PlaylistId } from "@/types/ids";
 import { AlbumId } from "@/types/ids";
 import { parseTrackRef, type SourceKind } from "@/types/track-ref";
