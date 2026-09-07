@@ -6,6 +6,8 @@ import { StorageErrorCode } from "@/db/errors/storage.errors";
 import { usePlayerStore } from "./store/player.store";
 import { useLyricsStore } from "./store/lyrics.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
+import { registerPlaybackPort } from "@/modules/queue/lib/playback-port";
+import { createPlayerPlaybackPort } from "./lib/queue-playback-port";
 import { playbackStalledEvent, trackSkippedEvent } from "@/modules/queue/lib/queue-events";
 import { isLibraryTrack } from "./types";
 import { trackChangedEvent, trackEndedEvent } from "./lib/player-events";
@@ -23,6 +25,8 @@ import { getLogger } from "@/lib/logger";
  * lazily inside handlers so registration itself instantiates nothing.
  */
 export function initPlayerLifecycle(): void {
+  registerPlaybackPort(createPlayerPlaybackPort());
+
   useEventBus(trackChangedEvent).on((track) => {
     useLyricsStore().loadFor(track)
       .catch(error => getLogger().error(`[Lyrics] Loading lyrics failed: ${String(error)}`));
