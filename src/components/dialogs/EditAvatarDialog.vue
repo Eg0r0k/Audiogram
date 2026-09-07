@@ -1,12 +1,21 @@
 <template>
   <Dialog
     :open="open"
-    @update:open="handleOpenChange"
+    @update:open="value => emit('update:open', value)"
   >
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
         <DialogTitle>{{ $t("dialogs.editAvatar.title") }}</DialogTitle>
       </DialogHeader>
+
+      <Alert
+        v-if="errorMessage"
+        variant="destructive"
+        class="py-2"
+      >
+        <IconAlertCircle class="size-4" />
+        <AlertTitle>{{ errorMessage }}</AlertTitle>
+      </Alert>
 
       <div class="h-[400px] w-full rounded-md overflow-hidden relative">
         <template v-if="currentImageSrc">
@@ -37,7 +46,7 @@
         <Button
           variant="destructive-link"
           :disabled="isSaving"
-          @click="handleClose"
+          @click="dismiss"
         >
           {{ $t("common.cancel") }}
         </Button>
@@ -69,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onUnmounted, ref, shallowRef, watch } from "vue";
+import { computed, defineAsyncComponent, onUnmounted, ref, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 import type Cropper from "cropperjs";
 
@@ -81,6 +90,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { useSummonedDialog } from "@/components/dialogs/summon";
+import IconAlertCircle from "~icons/tabler/alert-circle";
 import IconLoader2 from "~icons/tabler/loader-2";
 import IconPhoto from "~icons/tabler/photo";
 import { requestFiles } from "@/lib/files/requestFiles";
@@ -131,6 +143,8 @@ const VueCropper = defineAsyncComponent({
   delay: 200,
 });
 
+// Summoned fresh per crop: `imageSrc` is the picked file, the result is the
+// cropped blob. Errors about a file re-picked in here stay in here.
 const props = defineProps<{
   open: boolean;
   imageSrc: string;
@@ -138,9 +152,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "update:open": [value: boolean];
-  "save": [blob: Blob];
-  "error": [message: string];
 }>();
+
+const { resolve, dismiss } = useSummonedDialog<Blob>();
+const errorMessage = ref<string | null>(null);
 
 const cropperRef = shallowRef<VueCropperComponent | null>(null);
 
@@ -153,39 +168,19 @@ const currentImageSrc = computed(() => localImageSrc.value ?? props.imageSrc);
 
 const acceptString = Object.values(IMAGE_MIME_TYPES).join(",");
 
-watch(
-  () => props.imageSrc,
-  (newSrc) => {
-    if (newSrc && props.open) {
-      localImageSrc.value = null;
-      isReady.value = false;
-
-      if (cropperRef.value) {
-        cropperRef.value.replace(newSrc);
-      }
-    }
-  },
-);
-
-watch(
-  () => props.open,
-  (isOpen) => {
-    if (isOpen) {
-      localImageSrc.value = null;
-      isReady.value = false;
-      isSaving.value = false;
-    }
-  },
-);
+const showError = (message: string): void => {
+  errorMessage.value = message;
+};
 
 const handleSelectFile = async (): Promise<void> => {
+  errorMessage.value = null;
   const filesResult = await requestFiles({
     accept: acceptString,
     multiple: false,
   }).catch((error: unknown) => {
     if (isFileSelectionError(error) && !isUserCancellation(error)) {
       getLogger().error(`[EditAvatar] File selection failed: ${String(error)}`);
-      emit("error", t("dialogs.editAvatar.errors.loadFailed"));
+      showError(t("dialogs.editAvatar.errors.loadFailed"));
     }
     return null;
   });
@@ -195,12 +190,12 @@ const handleSelectFile = async (): Promise<void> => {
   const file = filesResult[0];
 
   if (!isValidImageFile(file.name, file.type)) {
-    emit("error", t("dialogs.editAvatar.errors.invalidFormat"));
+    showError(t("dialogs.editAvatar.errors.invalidFormat"));
     return;
   }
 
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    emit("error", t("dialogs.editAvatar.errors.fileTooLarge", {
+    showError(t("dialogs.editAvatar.errors.fileTooLarge", {
       maxSize: MAX_FILE_SIZE_MB,
       fileSize: formatBytes(file.size),
     }));
@@ -225,7 +220,7 @@ const handleSelectFile = async (): Promise<void> => {
   };
 
   reader.onerror = (): void => {
-    emit("error", t("dialogs.editAvatar.errors.readFailed"));
+    showError(t("dialogs.editAvatar.errors.readFailed"));
   };
 
   reader.readAsDataURL(file);
@@ -246,39 +241,23 @@ const handleSave = (): void => {
 
   if (!canvas) {
     isSaving.value = false;
-    emit("error", t("dialogs.editAvatar.errors.cropFailed"));
+    showError(t("dialogs.editAvatar.errors.cropFailed"));
     return;
   }
 
   canvas.toBlob(
     (blob: Blob | null): void => {
       if (blob) {
-        emit("save", blob);
-        handleClose();
+        resolve(blob);
       }
       else {
-        emit("error", t("dialogs.editAvatar.errors.createFailed"));
+        showError(t("dialogs.editAvatar.errors.createFailed"));
       }
       isSaving.value = false;
     },
     currentMimeType.value,
     0.9,
   );
-};
-
-const handleClose = (): void => {
-  emit("update:open", false);
-};
-
-const handleOpenChange = (val: boolean): void => {
-  if (!val) {
-    setTimeout(() => {
-      localImageSrc.value = null;
-      isReady.value = false;
-      isSaving.value = false;
-    }, 300);
-  }
-  emit("update:open", val);
 };
 
 onUnmounted(() => {

@@ -8,11 +8,14 @@ import ResetSettingsDialog from "@/pages/settings/components/ResetSettingsDialog
 import ClearAllDataDialog from "@/pages/settings/components/ClearAllDataDialog.vue";
 import ClearHistoryDialog from "@/pages/settings/components/stats/ClearHistoryDialog.vue";
 import ExternalLinkDialog from "./ExternalLinkDialog.vue";
+import EditEntityDialog from "./EditEntityDialog.vue";
+import EditAvatarDialog from "./EditAvatarDialog.vue";
 import CancelImportDialog from "./CancelImportDialog.vue";
 import LibraryFolderNameDialog from "@/components/layout/sidebar/LibraryFolderNameDialog.vue";
 import UnsavedChangesDialog from "@/modules/tracks/components/edit/UnsavedChangesDialog.vue";
 import RemoveWatchedFolderDialog from "@/modules/watched-folders/components/RemoveWatchedFolderDialog.vue";
 import type { DeleteConfirmData, DeleteConfirmResult } from "./deleteConfirm";
+import type { EditEntityDialogProps } from "./editEntityDialog";
 
 // The only place that binds a dialog key to a component. Domain code summons
 // by key (ARCHITECTURE.md §6) and never imports the .vue itself.
@@ -29,6 +32,8 @@ export const DIALOGS = {
   folderName: LibraryFolderNameDialog,
   unsavedChanges: UnsavedChangesDialog,
   removeWatchedFolder: RemoveWatchedFolderDialog,
+  editEntity: EditEntityDialog,
+  editAvatar: EditAvatarDialog,
 } as const;
 
 export interface ClearAllDataStats {
@@ -52,6 +57,10 @@ export interface DialogMap {
   folderName: { props: { initialName: string; title: string }; result: string };
   unsavedChanges: { props: Record<string, never>; result: true };
   removeWatchedFolder: { props: { name: string }; result: true };
+  /** `save` runs inside; resolves only once it succeeded. */
+  editEntity: { props: EditEntityDialogProps; result: true };
+  /** Cropper over a picked image; resolves with the cropped blob. */
+  editAvatar: { props: { imageSrc: string }; result: Blob };
 }
 
 export type DialogKey = keyof DialogMap;

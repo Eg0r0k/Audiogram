@@ -41,7 +41,7 @@
               :is-library-entity="!!playlist"
               @play="handlePlayAll"
               @shuffle="handleShuffle"
-              @edit="showEditDialog = true"
+              @edit="openEditDialog"
               @delete="openDeleteDialog"
               @add-to-queue="handleAddToQueue"
               @share="handleShare"
@@ -109,18 +109,11 @@
         :is-playlist-owner="playlistData?.isOwner ?? true"
       />
     </template>
-
-    <EditPlaylistDialog
-      v-model:open="showEditDialog"
-      :playlist="playlist"
-      :current-cover-url="coverUrl"
-      @save="handleSave"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, useTemplateRef } from "vue";
+import { computed, ref, useTemplateRef } from "vue";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
@@ -134,12 +127,11 @@ import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.stor
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import IconLoader2 from "~icons/tabler/loader-2";
-import type { PlaylistChanges } from "@/modules/playlist/composables/usePlaylistPage";
 import { usePlaylistPage } from "@/modules/playlist/composables/usePlaylistPage";
-import EditPlaylistDialog from "@/modules/playlist/components/dialogs/EditPlaylistDialog.vue";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 import { summonDialog } from "@/components/dialogs/summonDialog";
+import { useEditPlaylistDialog } from "@/modules/playlist/composables/useEditPlaylistDialog";
 import IconPlus from "~icons/tabler/plus";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
@@ -177,7 +169,7 @@ const {
   isFetchingNextPage,
 } = usePlaylistPage(sortKey);
 
-const showEditDialog = ref(false);
+const editPlaylist = useEditPlaylistDialog();
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
 
 function getTrackKey(index: number) {
@@ -259,16 +251,18 @@ async function handleDelete(deleteTracks: boolean) {
   }
 }
 
-async function handleSave(changes: PlaylistChanges) {
-  try {
-    await updatePlaylist(changes);
-    showEditDialog.value = false;
-  }
-  catch (e) {
-    const message = e instanceof Error ? e.message : t("playlist.updateFailed");
-    toast.error(message);
-  }
-}
+const openEditDialog = () => {
+  if (!playlist.value) return;
+  editPlaylist(playlist.value, coverUrl.value, async (changes) => {
+    try {
+      await updatePlaylist(changes);
+    }
+    catch (e) {
+      toast.error(e instanceof Error ? e.message : t("playlist.updateFailed"));
+      throw e;
+    }
+  }).catch(() => undefined);
+};
 
 const scrollableRef = useTemplateRef("scrollableRef");
 // Declared after the page state it reads: the hook evaluates `ready`

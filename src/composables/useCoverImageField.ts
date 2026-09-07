@@ -23,9 +23,6 @@ export function useCoverImageField() {
   const coverBlob = ref<Blob | null>(null);
   const isCoverRemoved = ref(false);
 
-  const isCropperOpen = ref(false);
-  const selectedImageSrc = ref("");
-
   const acceptString = Object.values(IMAGE_MIME_TYPES).join(",");
 
   const previewUrl = computed<string | null>(() => {
@@ -104,14 +101,10 @@ export function useCoverImageField() {
     newCoverBlobUrl.value = null;
     coverBlob.value = null;
     isCoverRemoved.value = false;
-    isCropperOpen.value = false;
-    selectedImageSrc.value = "";
   }
 
   return {
     originalCoverUrl,
-    isCropperOpen,
-    selectedImageSrc,
     previewUrl,
     hasChanged,
     selectFile,

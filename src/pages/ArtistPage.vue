@@ -36,7 +36,7 @@
               :is-library-entity="!!artist"
               @play="handlePlayAll"
               @shuffle="handleShuffle"
-              @edit="showEditDialog = true"
+              @edit="openEditDialog"
               @delete="openDeleteDialog"
             >
               <template #actions>
@@ -141,12 +141,6 @@
       </TrackContextMenu>
 
       <TrackDropdown context="artist" />
-      <EditArtistDialog
-        v-model:open="showEditDialog"
-        :artist="artist"
-        :current-cover-url="coverUrl"
-        @save="handleSave"
-      />
     </template>
   </div>
 </template>
@@ -170,8 +164,7 @@ import { getArtistPageData } from "@/queries/artist.queries";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 import { summonDialog } from "@/components/dialogs/summonDialog";
-import EditArtistDialog from "@/modules/artists/components/dialogs/EditArtistDialog.vue";
-import type { ArtistChanges } from "@/modules/artists/composables/useArtistPage";
+import { useEditArtistDialog } from "@/modules/artists/composables/useEditArtistDialog";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
@@ -225,7 +218,7 @@ const {
   isFetchingNextTrackPage,
 } = useArtistPage(sortKey);
 
-const showEditDialog = ref(false);
+const editArtist = useEditArtistDialog();
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
 
 const albumItems = computed<LibraryItem[]>(() => albums.value.map(album => ({
@@ -314,16 +307,18 @@ async function handleDelete(deleteTracks: boolean) {
   }
 }
 
-async function handleSave(changes: ArtistChanges) {
-  try {
-    await updateArtist(changes);
-    showEditDialog.value = false;
-  }
-  catch (e) {
-    const message = e instanceof Error ? e.message : t("errors.loadFailed");
-    toast.error(message);
-  }
-}
+const openEditDialog = () => {
+  if (!artist.value) return;
+  editArtist(artist.value, coverUrl.value, async (changes) => {
+    try {
+      await updateArtist(changes);
+    }
+    catch (e) {
+      toast.error(e instanceof Error ? e.message : t("errors.loadFailed"));
+      throw e;
+    }
+  }).catch(() => undefined);
+};
 
 const openAddTracksPanel = () => {
   if (!artist.value) return;

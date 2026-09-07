@@ -2,7 +2,7 @@
 <template>
   <Dialog
     :open="open"
-    @update:open="handleOpenChange"
+    @update:open="value => emit('update:open', value)"
   >
     <DialogContent class="w-full max-w-[95vw] sm:max-w-lg">
       <DialogHeader>
@@ -113,7 +113,7 @@
           variant="destructive-link"
           class="w-full sm:w-auto"
           :disabled="isSaving"
-          @click="handleClose"
+          @click="dismiss"
         >
           {{ $t("common.cancel") }}
         </Button>
@@ -129,17 +129,10 @@
       </DialogFooter>
     </DialogContent>
   </Dialog>
-
-  <EditAvatarDialog
-    v-model:open="cover.isCropperOpen.value"
-    :image-src="cover.selectedImageSrc.value"
-    @save="handleCroppedImage"
-    @error="handleCropperError"
-  />
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 import { useForm } from "vee-validate";
 import type { InferOutput } from "valibot";
 import { maxLength, minLength, object, optional, pipe, string } from "valibot";
@@ -157,33 +150,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
-import EditAvatarDialog from "@/components/dialogs/EditAvatarDialog.vue";
+import { summonDialog } from "@/components/dialogs/summonDialog";
+import { useSummonedDialog } from "@/components/dialogs/summon";
 import { useCoverImageField, type CoverSelectionErrorType } from "@/composables/useCoverImageField";
-import type { EditEntityCoverErrorMessages, EditEntityFieldConfig, EditEntitySubmitPayload } from "./editEntityDialog";
+import type { EditEntityDialogProps } from "./editEntityDialog";
 
 import IconPhoto from "~icons/tabler/photo";
 import IconTrash from "~icons/tabler/trash";
 import IconAlertCircle from "~icons/tabler/alert-circle";
 
-const CLOSE_CLEANUP_DELAY_MS = 300;
-
-const props = defineProps<{
-  open: boolean;
-  hasEntity: boolean;
-  title: string;
-  coverAlt: string;
-  currentCoverUrl?: string | null;
-  primaryField: EditEntityFieldConfig;
-  secondaryField: EditEntityFieldConfig;
-  initialPrimary: string;
-  initialSecondary: string;
-  coverErrorMessages: EditEntityCoverErrorMessages;
-}>();
+// Summoned fresh per edit; `save` runs in here so the form stays open
+// (locked) while it works and keeps the user's input if it fails.
+const props = defineProps<EditEntityDialogProps & { open: boolean }>();
 
 const emit = defineEmits<{
   "update:open": [value: boolean];
-  "submit": [payload: EditEntitySubmitPayload];
 }>();
+
+const { resolve, dismiss } = useSummonedDialog<true>();
 
 const entityFormSchema = object({
   primary: pipe(
@@ -212,21 +196,11 @@ const isSaving = ref(false);
 const imageError = ref<string | null>(null);
 
 const hasChanges = computed((): boolean => {
-  if (!props.hasEntity) return false;
-
   const primaryChanged = primary.value.trim() !== props.initialPrimary;
   const secondaryChanged = (secondary.value?.trim() ?? "") !== props.initialSecondary;
 
   return primaryChanged || secondaryChanged || cover.hasChanged.value;
 });
-
-watch(
-  () => [props.open, props.initialPrimary, props.initialSecondary, props.currentCoverUrl] as const,
-  ([isOpen]) => {
-    if (isOpen && props.hasEntity) initializeForm();
-  },
-  { immediate: true },
-);
 
 function resetFormState(): void {
   resetForm();
@@ -257,10 +231,12 @@ async function handleSelectCover(): Promise<void> {
 
   const result = await cover.selectFile();
 
-  result.match(
-    (dataUrl) => {
-      cover.selectedImageSrc.value = dataUrl;
-      cover.isCropperOpen.value = true;
+  await result.match(
+    async (dataUrl) => {
+      const blob = await summonDialog("editAvatar", { imageSrc: dataUrl }, { key: "edit-avatar" });
+      if (!blob) return;
+      cover.applyCropped(blob);
+      imageError.value = null;
     },
     (type) => {
       if (type !== "CANCELLED") imageError.value = coverErrorMessage(type);
@@ -268,43 +244,29 @@ async function handleSelectCover(): Promise<void> {
   );
 }
 
-function handleCroppedImage(blob: Blob): void {
-  cover.applyCropped(blob);
-  imageError.value = null;
-}
-
-function handleCropperError(error: string): void {
-  imageError.value = error;
-}
-
 function handleRemoveCover(): void {
   cover.remove();
   imageError.value = null;
 }
 
-const onSubmit = handleSubmit((values) => {
-  if (!props.hasEntity || !hasChanges.value || isSaving.value) return;
+const onSubmit = handleSubmit(async (values) => {
+  if (!hasChanges.value || isSaving.value) return;
 
   isSaving.value = true;
-  emit("submit", {
-    primary: values.primary,
-    secondary: values.secondary ?? "",
-    cover: cover.getChange(),
-  });
+  try {
+    await props.save({
+      primary: values.primary,
+      secondary: values.secondary ?? "",
+      cover: cover.getChange(),
+    });
+    resolve(true);
+  }
+  catch {
+    // The caller reported the failure; keep the form and its input.
+    isSaving.value = false;
+  }
 });
 
-function handleClose(): void {
-  emit("update:open", false);
-}
-
-function handleOpenChange(value: boolean): void {
-  if (!value) {
-    setTimeout(() => {
-      cover.cleanupBlobUrls();
-      resetFormState();
-    }, CLOSE_CLEANUP_DELAY_MS);
-  }
-
-  emit("update:open", value);
-}
+initializeForm();
+onBeforeUnmount(() => cover.cleanupBlobUrls());
 </script>

@@ -48,7 +48,7 @@ interface SummonedDialogInstance {
   id: number;
   key: string | undefined;
   component: Component;
-  props: Record<string, unknown>;
+  props: object;
   controller: SummonedDialogController<unknown>;
   promise: Promise<unknown>;
 }
@@ -74,7 +74,7 @@ export interface SummonDialogOptions {
  */
 export const summonComponent = <TResult = void>(
   component: Component,
-  props: Record<string, unknown> = {},
+  props: object = {},
   options: SummonDialogOptions = {},
 ): Promise<TResult | undefined> => {
   const existing = options.key
