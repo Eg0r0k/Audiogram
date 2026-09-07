@@ -53,7 +53,7 @@
             </MediaHero>
             <section
               v-if="albums.length > 0"
-              class="p-4"
+              class="mx-auto max-w-page p-4"
             >
               <div class="flex items-center justify-between gap-4">
                 <div>
@@ -93,7 +93,7 @@
 
             <section
               v-if="playlistItems.length > 0"
-              class="px-4 pb-4"
+              class="mx-auto max-w-page px-4 pb-4"
             >
               <h2 class="text-xl font-semibold">
                 {{ $t('media.type.playlist') }}

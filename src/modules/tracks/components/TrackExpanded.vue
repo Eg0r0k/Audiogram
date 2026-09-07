@@ -1,5 +1,5 @@
 <template>
-  <div class="track-expanded-container">
+  <div class="track-expanded-container mx-auto max-w-page">
     <div
       v-ripple
       role="button"

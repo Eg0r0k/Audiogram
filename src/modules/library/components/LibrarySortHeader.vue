@@ -109,6 +109,8 @@ function toggle(field: TrackSortField) {
 }
 
 .library-sort-header {
+  max-width: var(--container-page);
+  margin-inline: auto;
   display: grid;
   grid-template-columns: var(--grid-template-columns);
   align-items: center;

@@ -1,6 +1,6 @@
 <template>
   <div class="flex min-h-0 flex-1 flex-col bg-background">
-    <div class=" px-4  pb-2">
+    <div class="mx-auto w-full max-w-page px-4 pb-2">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex  w-full  pt-4 gap-3 flex-row sm:items-center">
           <Button

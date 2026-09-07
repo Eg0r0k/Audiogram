@@ -1,102 +1,94 @@
 <template>
-  <Scrollable
-    direction="vertical"
-    class="flex-1"
-  >
-    <div class="pb-8">
-      <SettingsHeader :title="$t('settings.index.title')" />
+  <SettingsScreen :title="$t('settings.index.title')">
+    <SettingsGroup>
+      <SettingsLink
+        :to="routeLocation.settingsGeneral()"
+        :icon="IconSettings"
+        :title="$t('settings.index.general')"
+      />
+      <SettingsLink
+        :to="routeLocation.settingsAppearance()"
+        :icon="IconPalette"
+        :title="$t('settings.index.appearance')"
+      />
+      <SettingsLink
+        :to="routeLocation.settingsLanguage()"
+        :icon="IconLanguage"
+        :title="$t('settings.index.language')"
+        :subtitle="language"
+      />
+    </SettingsGroup>
 
-      <SettingsGroup>
-        <SettingsLink
-          :to="routeLocation.settingsGeneral()"
-          :icon="IconSettings"
-          :title="$t('settings.index.general')"
-        />
-        <SettingsLink
-          :to="routeLocation.settingsAppearance()"
-          :icon="IconPalette"
-          :title="$t('settings.index.appearance')"
-        />
-        <SettingsLink
-          :to="routeLocation.settingsLanguage()"
-          :icon="IconLanguage"
-          :title="$t('settings.index.language')"
-          :subtitle="language"
-        />
-      </SettingsGroup>
+    <SettingsGroup class=" mt-3">
+      <SettingsLink
+        :to="routeLocation.settingsAudio()"
+        :icon="IconHeadphones"
+        :title="$t('settings.index.audio')"
+      />
+      <SettingsLink
+        :to="routeLocation.settingsStorage()"
+        :icon="IconDatabase"
+        :title="$t('settings.index.storage')"
+      />
+      <SettingsLink
+        :to="routeLocation.settingsStats()"
+        :icon="IconChartBar"
+        :title="$t('settings.index.stats')"
+      />
+      <SettingsLink
+        v-if="platformCaps.hasNativeProxy"
+        :to="routeLocation.settingsProxy()"
+        :icon="IconWorld"
+        :title="$t('settings.index.proxy')"
+      />
+      <SettingsLink
+        v-if="platformCaps.canProxyStream"
+        :to="routeLocation.settingsSources()"
+        :icon="IconServer"
+        :title="$t('settings.index.sources')"
+      />
+    <!-- <SettingsLink
+      :to="routeLocation.settingsNotifications()"
+      :icon="IconBell"
+      :title="$t('settings.index.notifications')"
+    /> -->
+    </SettingsGroup>
 
-      <SettingsGroup class=" mt-3">
-        <SettingsLink
-          :to="routeLocation.settingsAudio()"
-          :icon="IconHeadphones"
-          :title="$t('settings.index.audio')"
-        />
-        <SettingsLink
-          :to="routeLocation.settingsStorage()"
-          :icon="IconDatabase"
-          :title="$t('settings.index.storage')"
-        />
-        <SettingsLink
-          :to="routeLocation.settingsStats()"
-          :icon="IconChartBar"
-          :title="$t('settings.index.stats')"
-        />
-        <SettingsLink
-          v-if="platformCaps.hasNativeProxy"
-          :to="routeLocation.settingsProxy()"
-          :icon="IconWorld"
-          :title="$t('settings.index.proxy')"
-        />
-        <SettingsLink
-          v-if="platformCaps.canProxyStream"
-          :to="routeLocation.settingsSources()"
-          :icon="IconServer"
-          :title="$t('settings.index.sources')"
-        />
-        <!-- <SettingsLink
-          :to="routeLocation.settingsNotifications()"
-          :icon="IconBell"
-          :title="$t('settings.index.notifications')"
-        /> -->
-      </SettingsGroup>
+    <SettingsGroup class="mt-3">
+      <SettingsLink
+        :to="routeLocation.settingsAbout()"
+        :icon="IconInfo"
+        :title="$t('settings.index.about')"
+      />
+    </SettingsGroup>
 
-      <SettingsGroup class="mt-3">
-        <SettingsLink
-          :to="routeLocation.settingsAbout()"
-          :icon="IconInfo"
-          :title="$t('settings.index.about')"
-        />
-      </SettingsGroup>
-
-      <SettingsGroup class="mt-3">
-        <div class="px-4 py-3">
-          <div class="mb-1 text-primary font-medium">
-            {{ $t("settings.index.resetAll") }}
-          </div>
-          <div class="text-sm text-muted-foreground">
-            {{ $t("settings.index.resetAllDescription") }}
-          </div>
+    <SettingsGroup class="mt-3">
+      <div class="px-4 py-3">
+        <div class="mb-1 text-primary font-medium">
+          {{ $t("settings.index.resetAll") }}
         </div>
+        <div class="text-sm text-muted-foreground">
+          {{ $t("settings.index.resetAllDescription") }}
+        </div>
+      </div>
 
-        <Button
-          class="w-full h-14 justify-start  "
-          size="xl"
-          variant="ghost-primary"
-          @click="handleResetAllSettings"
-        >
-          <IconRefresh class="size-6" />
-          {{ $t("settings.index.resetAllAction") }}
-        </Button>
-      </SettingsGroup>
-    </div>
-  </Scrollable>
+      <Button
+        class="w-full h-14 justify-start  "
+        size="xl"
+        variant="ghost-primary"
+        @click="handleResetAllSettings"
+      >
+        <IconRefresh class="size-6" />
+        {{ $t("settings.index.resetAllAction") }}
+      </Button>
+    </SettingsGroup>
+  </SettingsScreen>
 </template>
 
 <script setup lang="ts">
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
-import { Scrollable } from "@/components/ui/scrollable";
 import IconSettings from "~icons/tabler/settings";
 import IconPalette from "~icons/tabler/palette";
 import IconLanguage from "~icons/tabler/language";
@@ -110,7 +102,7 @@ import IconRefresh from "~icons/tabler/refresh";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsLink from "@/modules/settings/components/SettingsLink.vue";
 import { useGeneralSettings } from "@/modules/settings/store/general";
-import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
+import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
 import { useSettingsStore } from "@/modules/settings/store";
 import { useAudioSettingsStore } from "@/modules/settings/store/audio";
 import { useTheme } from "@/modules/settings/composables/useTheme";

@@ -1,24 +1,16 @@
 <template>
-  <Scrollable
-    direction="vertical"
-    class="flex-1"
-  >
-    <div class="pb-8">
-      <SettingsHeader :title="$t('settings.index.audio')" />
+  <SettingsScreen :title="$t('settings.index.audio')">
+    <EqualizerSection />
 
-      <EqualizerSection />
+    <FadeSection />
 
-      <FadeSection />
-
-      <NormalizationSection />
-    </div>
-  </Scrollable>
+    <NormalizationSection />
+  </SettingsScreen>
 </template>
 
 <script setup lang="ts">
-import { Scrollable } from "@/components/ui/scrollable";
 
-import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
+import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
 
 import EqualizerSection from "./components/audio/EqualizerSection.vue";
 import FadeSection from "./components/audio/FadeSection.vue";

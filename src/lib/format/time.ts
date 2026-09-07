@@ -66,15 +66,17 @@ export function parseTimeToSeconds(input: string): number | null {
   return null;
 }
 
-export const formatCalendarTooltip = (
-  isoDate: string,
-  seconds: number,
+// One Intl formatter per calendar: constructing it per cell costs ~20ms for a
+// year of days, which is what made the heatmap lag on every re-render.
+export const createCalendarTooltipFormatter = (
   locale: string,
   t: (key: string, params?: Record<string, unknown>) => string,
-): string => {
-  // isoDate — локальный ключ "YYYY-MM-DD"; T00:00:00 парсится как локальная полночь.
-  const date = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" })
-    .format(new Date(`${isoDate}T00:00:00`));
-  const minutes = Math.round(seconds / 60);
-  return `${date}: ${t("common.minutesShort", { count: minutes })}`;
+): ((isoDate: string, seconds: number) => string) => {
+  const dateFormat = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" });
+  return (isoDate, seconds) => {
+    // isoDate — локальный ключ "YYYY-MM-DD"; T00:00:00 парсится как локальная полночь.
+    const date = dateFormat.format(new Date(`${isoDate}T00:00:00`));
+    const minutes = Math.round(seconds / 60);
+    return `${date}: ${t("common.minutesShort", { count: minutes })}`;
+  };
 };

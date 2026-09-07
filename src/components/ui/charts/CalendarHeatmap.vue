@@ -8,51 +8,73 @@
       :hide-thumb="true"
       direction="horizontal"
     >
-      <svg
-        :width="svgWidth"
-        :height="svgHeight"
-        class="block"
-        role="img"
-        :aria-label="t('common.heatmapAria')"
+      <TooltipProvider
+        :delay-duration="150"
+        disable-hoverable-content
       >
-        <text
-          v-for="m in monthLabels"
-          :key="m.weekIndex"
-          :x="dayLabelWidth + m.weekIndex * pitch"
-          y="11"
-          class="fill-muted-foreground capitalize text-[11px]"
-        >{{ m.label }}</text>
-
-        <text
-          v-for="label in dayLabels"
-          :key="label.text"
-          x="0"
-          :y="monthLabelHeight + label.dayOfWeek * pitch + cellSize / 2 + 4"
-          class="fill-muted-foreground text-[11px]"
-        >{{ label.text }}</text>
-
-        <g :transform="`translate(${dayLabelWidth}, ${monthLabelHeight})`">
-          <g
-            v-for="(week, weekIndex) in weeks"
-            :key="weekIndex"
-            :transform="`translate(${weekIndex * pitch}, 0)`"
+        <Tooltip
+          :open="isTooltipOpen"
+          @update:open="tooltipOpen = $event"
+        >
+          <TooltipTrigger
+            as-child
+            :reference="hoveredRect ?? undefined"
           >
-            <rect
-              v-for="cell in week"
-              :key="cell.date"
-              class="heatmap-cell"
-              :y="cell.dayOfWeek * pitch"
-              :width="cellSize"
-              :height="cellSize"
-              rx="3"
-              :fill="cell.seconds > 0 ? 'var(--primary)' : 'var(--border)'"
-              :fill-opacity="cell.seconds > 0 ? levelFor(cell.seconds, maxSeconds) : 1"
+            <svg
+              :width="svgWidth"
+              :height="svgHeight"
+              class="block"
+              role="img"
+              :aria-label="t('common.heatmapAria')"
+              @pointermove="onPointerMove"
+              @pointerleave="onPointerLeave"
             >
-              <title>{{ formatTooltip(cell) }}</title>
-            </rect>
-          </g>
-        </g>
-      </svg>
+              <text
+                v-for="m in monthLabels"
+                :key="m.weekIndex"
+                :x="dayLabelWidth + m.weekIndex * pitch"
+                y="11"
+                class="fill-muted-foreground capitalize text-[11px]"
+              >{{ m.label }}</text>
+
+              <text
+                v-for="label in dayLabels"
+                :key="label.text"
+                x="0"
+                :y="monthLabelHeight + label.dayOfWeek * pitch + cellSize / 2 + 4"
+                class="fill-muted-foreground text-[11px]"
+              >{{ label.text }}</text>
+
+              <g :transform="`translate(${dayLabelWidth}, ${monthLabelHeight})`">
+                <g
+                  v-for="(week, weekIndex) in weeks"
+                  :key="weekIndex"
+                  :transform="`translate(${weekIndex * pitch}, 0)`"
+                >
+                  <rect
+                    v-for="cell in week"
+                    :key="cell.date"
+                    class="heatmap-cell"
+                    :data-date="cell.date"
+                    :y="cell.dayOfWeek * pitch"
+                    :width="cellSize"
+                    :height="cellSize"
+                    rx="3"
+                    :fill="cell.seconds > 0 ? 'var(--primary)' : 'var(--border)'"
+                    :fill-opacity="cell.seconds > 0 ? levelFor(cell.seconds, maxSeconds) : 1"
+                  />
+                </g>
+              </g>
+            </svg>
+          </TooltipTrigger>
+          <TooltipContent
+            side="top"
+            class="tabular-nums"
+          >
+            {{ hoveredTooltip }}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </Scrollable>
 
     <div class="flex items-center justify-end gap-1.5 text-xs text-muted-foreground">
@@ -73,11 +95,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, ref, shallowRef, watch } from "vue";
 import { useElementBounding } from "@vueuse/core";
 import { Scrollable } from "@/components/ui/scrollable";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { DailyActivityPoint } from "@/db/repositories/stats.repository";
-import { formatCalendarTooltip } from "@/lib/format/time";
+import { createCalendarTooltipFormatter } from "@/lib/format/time";
 import { useI18n } from "vue-i18n";
 import {
   HEAT_LEVELS,
@@ -86,7 +109,6 @@ import {
   MIN_WEEK_PITCH,
   toCells,
   visibleWeeks,
-  type HeatmapCell,
 } from "./calendar-heatmap";
 
 const { t, locale } = useI18n();
@@ -147,8 +169,34 @@ const dayLabels = computed(() => [
 const svgWidth = computed(() => dayLabelWidth + weeks.value.length * pitch.value);
 const svgHeight = computed(() => monthLabelHeight + 7 * pitch.value - gap.value);
 
-const formatTooltip = (cell: HeatmapCell): string =>
-  formatCalendarTooltip(cell.date, cell.seconds, locale.value, t);
+const tooltips = computed(() => {
+  const format = createCalendarTooltipFormatter(locale.value, t);
+  return new Map(props.data.map(point => [point.date, format(point.date, point.seconds)]));
+});
+
+// One Tooltip for the whole grid: the SVG is the trigger (so reka-ui keeps its
+// open delay and leave handling) and the hovered rect is only the anchor.
+// The 2–4px gaps between cells keep the last cell, otherwise every sweep
+// across the grid closes and re-opens the tooltip.
+const hoveredRect = shallowRef<Element | null>(null);
+const hoveredDate = ref<string | null>(null);
+const tooltipOpen = ref(false);
+const isTooltipOpen = computed(() => tooltipOpen.value && hoveredDate.value !== null);
+const hoveredTooltip = computed(() =>
+  hoveredDate.value === null ? "" : tooltips.value.get(hoveredDate.value) ?? "",
+);
+
+const onPointerMove = (event: PointerEvent) => {
+  const rect = (event.target as Element | null)?.closest("rect[data-date]");
+  if (!rect) return;
+  hoveredRect.value = rect;
+  hoveredDate.value = rect.getAttribute("data-date");
+};
+
+const onPointerLeave = () => {
+  hoveredRect.value = null;
+  hoveredDate.value = null;
+};
 </script>
 
 <style scoped>

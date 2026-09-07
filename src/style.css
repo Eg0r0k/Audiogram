@@ -13,6 +13,9 @@
 @theme inline {
   --ease-standard: var(--ease-standard);
   --ease-bounce: var(--ease-bounce);
+  --container-settings: 46rem;
+  --container-settings-wide: 100rem;
+  --container-page: 96rem;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

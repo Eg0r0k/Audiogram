@@ -1,57 +1,47 @@
 <template>
-  <Scrollable
-    direction="vertical"
-    class="flex-1"
-  >
-    <div class="pb-8">
-      <SettingsHeader
-        class="bg-background"
-        :title="$t('settings.stats.title')"
-      />
-
-      <template v-if="hasHistory">
-        <SettingsGroup>
-          <StatsPeriodSwitcher v-model="period" />
-        </SettingsGroup>
-        <StatsSummary :since="since" />
-        <StatsStreakSection />
-        <StatsTopTracks :since="since" />
-        <StatsTopArtists :since="since" />
-
-        <StatsCompletionRow :since="since" />
-        <StatsHourlyRow :since="since" />
-
-        <StatsRecords :since="since" />
-        <StatsTopGenres :since="since" />
-
-        <SettingsGroup class="mt-3">
-          <div class="px-4 py-3">
-            <div class="mb-1 text-primary font-medium">
-              {{ $t("settings.stats.clear") }}
-            </div>
-            <div class="text-sm text-muted-foreground">
-              {{ $t("settings.stats.clearDesc") }}
-            </div>
-          </div>
-          <Button
-            class="w-full h-14 justify-start"
-            size="xl"
-            variant="ghost-primary"
-            @click="handleClearHistory"
-          >
-            <IconTrash class="size-6" />
-            {{ $t("settings.stats.clear") }}
-          </Button>
-        </SettingsGroup>
-      </template>
-
-      <SettingsGroup v-else>
-        <p class="px-4 py-8 text-center text-sm text-muted-foreground">
-          {{ $t("settings.stats.empty") }}
-        </p>
+  <SettingsScreen :title="$t('settings.stats.title')">
+    <template v-if="hasHistory">
+      <SettingsGroup>
+        <StatsPeriodSwitcher v-model="period" />
       </SettingsGroup>
-    </div>
-  </Scrollable>
+      <StatsSummary :since="since" />
+      <StatsStreakSection />
+      <StatsTopTracks :since="since" />
+      <StatsTopArtists :since="since" />
+
+      <StatsCompletionRow :since="since" />
+      <StatsHourlyRow :since="since" />
+
+      <StatsRecords :since="since" />
+      <StatsTopGenres :since="since" />
+
+      <SettingsGroup class="mt-3">
+        <div class="px-4 py-3">
+          <div class="mb-1 text-primary font-medium">
+            {{ $t("settings.stats.clear") }}
+          </div>
+          <div class="text-sm text-muted-foreground">
+            {{ $t("settings.stats.clearDesc") }}
+          </div>
+        </div>
+        <Button
+          class="w-full h-14 justify-start"
+          size="xl"
+          variant="ghost-primary"
+          @click="handleClearHistory"
+        >
+          <IconTrash class="size-6" />
+          {{ $t("settings.stats.clear") }}
+        </Button>
+      </SettingsGroup>
+    </template>
+
+    <SettingsGroup v-else>
+      <p class="px-4 py-8 text-center text-sm text-muted-foreground">
+        {{ $t("settings.stats.empty") }}
+      </p>
+    </SettingsGroup>
+  </SettingsScreen>
 </template>
 
 <script setup lang="ts">
@@ -59,10 +49,9 @@ import { computed, ref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
-import { Scrollable } from "@/components/ui/scrollable";
 import { Button } from "@/components/ui/button";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
-import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
+import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
 import IconTrash from "~icons/tabler/trash";
 import StatsPeriodSwitcher from "./components/stats/StatsPeriodSwitcher.vue";
 import StatsSummary from "./components/stats/StatsSummary.vue";
