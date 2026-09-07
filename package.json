@@ -17,7 +17,8 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:bench": "vitest bench --run"
+    "test:bench": "vitest bench --run",
+    "test:perf": "vitest run --config vitest.perf.config.ts"
   },
   "dependencies": {
     "@noble/hashes": "^2.0.1",
