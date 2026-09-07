@@ -1,4 +1,4 @@
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import { TrackSource } from "@/db/entities";
 import { storageService } from "@/db/storage";
 
@@ -46,7 +46,7 @@ export async function resolveTrackUrl(
   source: TrackSource,
   storagePath: string,
 ): Promise<string | null> {
-  if (source === TrackSource.LOCAL_EXTERNAL && !IS_TAURI) {
+  if (source === TrackSource.LOCAL_EXTERNAL && !platformCaps.hasFs) {
     return null;
   }
   const result = await storageService.getAudioUrl(storagePath);

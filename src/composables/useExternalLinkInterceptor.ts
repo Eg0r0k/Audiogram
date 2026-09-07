@@ -1,4 +1,4 @@
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { onMounted, onUnmounted } from "vue";
 
@@ -15,7 +15,7 @@ const isExternalLink = (url: string): boolean => {
 // plugin-shell's `open` spawns desktop opener programs (xdg-open/start) and
 // has no Android intent path; plugin-opener works on desktop and mobile.
 export const openExternal = async (url: string) => {
-  if (IS_TAURI) {
+  if (platformCaps.hasNativeOpener) {
     await openUrl(url);
     return;
   }

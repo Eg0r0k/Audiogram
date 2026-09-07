@@ -168,6 +168,28 @@ export default withVueTs(
     },
   },
 
+  // ARCHITECTURE.md §4: features gate on platformCaps.hasX, never on the raw
+  // platform flag. The exceptions are the capability table itself, the Tauri
+  // bridge and its event wrappers, and the root CSS class.
+  {
+    files: ["src/**/*.{ts,vue}"],
+    ignores: [
+      "src/lib/environment/**",
+      "src/app/tauri-commands.ts",
+      "src/composables/tauri/**",
+      "src/composables/useSetupRootClasses.ts",
+    ],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [{
+          group: ["**/environment/userAgent"],
+          importNames: ["IS_TAURI"],
+          message: "Gate on platformCaps.hasX (src/lib/environment/platformCaps.ts), not on IS_TAURI.",
+        }],
+      }],
+    },
+  },
+
   // Module layering (ARCHITECTURE.md §3). M1: domain code (everything in a
   // module except `components/`) never imports a .vue. M2: core modules never
   // import feature modules. Only .ts files are targeted, so UI stays free to

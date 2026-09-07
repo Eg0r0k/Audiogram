@@ -52,7 +52,7 @@ import { useGlobalHotKeys } from "@/modules/hotkeys";
 import { useMediaSession } from "@/modules/player/composables/useMediaSession";
 import { useDiscordPresence } from "@/modules/player/composables/useDiscordPresence";
 import { useTaskbarThumbbar } from "@/modules/player/composables/useTaskbarThumbbar";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import { useAppUpdates } from "@/modules/update/composables/useAppUpdates";
 import { useChangelogOnStartup } from "@/modules/update/composables/useChangelogOnStartup";
 import WhatsNewDialog from "@/modules/update/components/WhatsNewDialog.vue";
@@ -119,7 +119,7 @@ const { init: initGeneral } = useGeneralSettings();
 onMounted(async () => {
   initGeneral().catch(error => log.error(`[App] General settings init failed: ${String(error)}`));
 
-  if (IS_TAURI) {
+  if (platformCaps.hasGlobalShortcuts) {
     const [{ useTauriGlobalShortcuts }] = await Promise.all([
       import("@/modules/hotkeys/composables/useTauriGlobalShortcuts"),
     ]);
@@ -162,11 +162,9 @@ useAnalysisQueueLifecycle();
 useAppUpdates();
 useChangelogOnStartup();
 
-if (IS_TAURI) {
-  useTrayBehavior();
-  useProxySync();
-  useNdSourceSync();
-}
+if (platformCaps.hasNativeWindow) useTrayBehavior();
+if (platformCaps.hasNativeProxy) useProxySync();
+if (platformCaps.canProxyStream) useNdSourceSync();
 
 watch(() => currentRoute.fullPath, (fullPath) => {
   rightPanelStore.invalidateRouteScope(fullPath);

@@ -12,7 +12,7 @@ import { appLogDir } from "@tauri-apps/api/path";
 import { readDir, readTextFile, remove, stat, writeTextFile } from "@tauri-apps/plugin-fs";
 import { save } from "@tauri-apps/plugin-dialog";
 import { ResultAsync, errAsync, okAsync, safeTry } from "neverthrow";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import { formatISODate, formatISOTimestamp } from "@/lib/format/time";
 
 const MAX_LOG_AGE_DAYS = 7;
@@ -64,7 +64,7 @@ export function getLogger(): AppLogger {
 }
 
 export async function initLogging(): Promise<AppLogger> {
-  if (!IS_TAURI) {
+  if (!platformCaps.hasNativeLog) {
     _logger = createWebLogger();
     return _logger;
   }
@@ -86,7 +86,7 @@ export function disposeLogging(): void {
 }
 
 export function tail(): ResultAsync<string, LogError> {
-  if (!IS_TAURI) {
+  if (!platformCaps.hasNativeLog) {
     const lines = _webBuffer.slice(-TAIL_LINES).join("\n");
     return okAsync(lines);
   }
@@ -94,7 +94,7 @@ export function tail(): ResultAsync<string, LogError> {
 }
 
 export function exportLogs(): ResultAsync<ExportSuccess, LogError> {
-  return IS_TAURI ? exportTauri() : exportWeb();
+  return platformCaps.hasNativeLog ? exportTauri() : exportWeb();
 }
 
 function exportTauri(): ResultAsync<ExportSuccess, LogError> {

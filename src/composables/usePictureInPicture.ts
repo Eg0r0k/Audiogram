@@ -1,5 +1,5 @@
 import vRipple from "@/directives/ripple";
-import { IS_MOBILE, IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import type { App, Component } from "vue";
 import { createApp, ref, shallowRef } from "vue";
 import { getLogger } from "@/lib/logger";
@@ -13,7 +13,7 @@ export interface PipOptions {
 }
 
 export const usePictureInPicture = () => {
-  const PIP_SUPPORTED = !IS_MOBILE && !IS_TAURI && typeof window !== "undefined" && "documentPictureInPicture" in window;
+  const PIP_SUPPORTED = platformCaps.hasDocumentPip;
   const pipWindow = shallowRef<Window | null>(null);
   const pipApp = shallowRef<App | null>(null);
   const isPipOpen = ref(false);

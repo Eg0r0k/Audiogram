@@ -1,4 +1,4 @@
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import { filterFilesByExtension } from "@/lib/files/filterFiles";
 import { getFilesFromEvent } from "@/lib/files/getFilesFromEvent";
 import { ref, onMounted } from "vue";
@@ -168,7 +168,7 @@ export function useFileDrop(options?: UseFileDropOptions) {
   };
 
   onMounted(async () => {
-    if (IS_TAURI) {
+    if (platformCaps.hasFs) {
       setupTauri();
     }
     else {

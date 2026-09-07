@@ -49,6 +49,9 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 vi.mock("@/lib/environment/userAgent", () => ({
+  IS_TAURI: true,
+  IS_MOBILE: false,
+  IS_WINDOWS: false,
   get IS_ANDROID() {
     return mocks.isAndroid;
   },

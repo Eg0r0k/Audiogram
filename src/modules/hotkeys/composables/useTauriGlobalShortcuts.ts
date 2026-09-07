@@ -1,4 +1,4 @@
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { tryOnScopeDispose } from "@vueuse/core";
@@ -8,7 +8,7 @@ const guarded = (label: string, action: () => Promise<unknown>) => () => {
 };
 
 export const useTauriGlobalShortcuts = () => {
-  if (!IS_TAURI) return;
+  if (!platformCaps.hasGlobalShortcuts) return;
 
   let cleanup: (() => Promise<void>) | null = null;
 

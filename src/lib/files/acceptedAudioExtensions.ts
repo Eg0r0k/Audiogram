@@ -1,4 +1,4 @@
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 
 /**
  * Import accept-list, shared by drag-and-drop and the file picker.
@@ -15,5 +15,5 @@ export const ACCEPTED_AUDIO_EXTENSIONS: readonly string[] = [
   ".m4a",
   ".aac",
   ".opus",
-  ...(IS_TAURI ? [".ape"] : []),
+  ...(platformCaps.hasMediaServer ? [".ape"] : []),
 ];

@@ -18,7 +18,7 @@ const INVALIDATE_DEBOUNCE_MS = 400;
 /**
  * Keeps the Rust-side proxy state in sync with the persisted proxy settings.
  * Runs once immediately (applying the stored proxy on launch) and on every
- * later change. Desktop-only — call from App setup behind `IS_TAURI`.
+ * later change. Desktop-only — call from App setup behind `platformCaps.hasNativeProxy`.
  */
 export const useProxySync = () => {
   const { proxyUrl } = useProxySettings();

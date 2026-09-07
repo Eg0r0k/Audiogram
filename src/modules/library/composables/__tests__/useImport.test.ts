@@ -17,6 +17,8 @@ vi.mock("@/queries/library.queries", () => ({
 
 vi.mock("@/lib/environment/userAgent", () => ({
   IS_TAURI: false,
+  IS_MOBILE: false,
+  IS_WINDOWS: false,
 }));
 
 vi.mock("@/services/importer.service", () => ({

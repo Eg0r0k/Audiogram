@@ -1,4 +1,4 @@
-import { IS_TAURI } from "../environment/userAgent";
+import { platformCaps } from "../environment/platformCaps";
 import { isValidImportItem } from "../environment/mimeSupport";
 import { EVENTS, listenEvent } from "@/app/tauri-commands";
 
@@ -10,7 +10,7 @@ export interface OpenedFile {
 export async function listenForOpenedFiles(
   callback: (files: OpenedFile[]) => void,
 ): Promise<() => void> {
-  if (!IS_TAURI) return () => {};
+  if (!platformCaps.hasFs) return () => {};
 
   const unlisten = await listenEvent(EVENTS.filesOpened, (event) => {
     const files = event.payload

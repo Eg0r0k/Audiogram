@@ -94,7 +94,7 @@
           <ItemActions />
         </Item>
 
-        <Item v-if="IS_TAURI">
+        <Item v-if="platformCaps.hasFs">
           <ItemMedia>
             <CloudDownIcon class="size-6 mr-3" />
           </ItemMedia>
@@ -126,7 +126,7 @@
 
         <!-- Live queue state next to the cache it fills (M4: visible batch
              progress). Renders nothing while no download is active. -->
-        <ActiveDownloads v-if="IS_TAURI" />
+        <ActiveDownloads v-if="platformCaps.hasFs" />
 
         <Item>
           <ItemMedia>
@@ -223,7 +223,7 @@
         </Button>
       </SettingsGroup>
       <WatchedFoldersSection
-        v-if="IS_TAURI"
+        v-if="platformCaps.hasFs"
       />
       <ClearAllDataDialog
         v-model:open="isClearAllOpen"
@@ -270,7 +270,7 @@ import FolderIcon from "~icons/tabler/folder";
 import ClockIcon from "~icons/tabler/clock";
 
 import { Button } from "@/components/ui/button";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import ActiveDownloads from "@/modules/downloads/components/ActiveDownloads.vue";
 import WatchedFoldersSection from "@/modules/watched-folders/components/WatchedFoldersSection.vue";
 import { getLogger } from "@/lib/logger";

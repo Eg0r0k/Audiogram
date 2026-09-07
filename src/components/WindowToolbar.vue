@@ -1,6 +1,6 @@
 <template>
   <nav
-    v-if="IS_TAURI && !IS_MOBILE"
+    v-if="platformCaps.hasNativeWindow"
     data-tauri-drag-region
     role="toolbar"
     :aria-label="$t('common.window.titlebar')"
@@ -101,7 +101,7 @@
 import type { Window } from "@tauri-apps/api/window";
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { IS_MOBILE, IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import IconChevronLeft from "~icons/tabler/chevron-left";
 import IconChevronRight from "~icons/tabler/chevron-right";
 
@@ -135,7 +135,7 @@ const toggleMaximize = async () => {
 };
 
 onMounted(async () => {
-  if (!IS_TAURI) return;
+  if (!platformCaps.hasNativeWindow) return;
   const { getCurrentWindow } = await import("@tauri-apps/api/window");
   appWindow.value = getCurrentWindow();
   isMaximized.value = await appWindow.value.isMaximized();

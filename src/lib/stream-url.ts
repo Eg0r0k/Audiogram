@@ -1,5 +1,5 @@
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 
 //
 // URL helpers for the loopback media server — the transport for all audio
@@ -32,7 +32,7 @@ let imageBase: string | null = null;
  * would need one).
  */
 export const initMediaServerBase = async (): Promise<void> => {
-  if (!IS_TAURI) return;
+  if (!platformCaps.hasMediaServer) return;
   [serverBase, imageBase] = await Promise.all([
     invokeCommand(COMMANDS.mediaServerBase),
     invokeCommand(COMMANDS.imageServerBase),

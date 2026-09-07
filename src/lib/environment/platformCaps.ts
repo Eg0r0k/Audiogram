@@ -7,6 +7,20 @@ import { IS_MOBILE, IS_TAURI, IS_WINDOWS } from "./userAgent";
 export const platformCaps = {
   /** Native filesystem: managed storage, offline copies, watched folders. */
   hasFs: IS_TAURI,
+  /** Loopback media server: local file streaming, `.ape` transcoding. */
+  hasMediaServer: IS_TAURI,
+  /** Rust-side HTTP proxy setting shared by the Innertube and stream clients. */
+  hasNativeProxy: IS_TAURI,
+  /** plugin-log transport: log files on disk, tail and export. */
+  hasNativeLog: IS_TAURI,
+  /** plugin-opener for external links (desktop and Android intents). */
+  hasNativeOpener: IS_TAURI,
+  /** Global media hotkeys (plugin-global-shortcut, desktop only). */
+  hasGlobalShortcuts: IS_TAURI && !IS_MOBILE,
+  /** Launch at OS startup (plugin-autostart, desktop only). */
+  hasAutostart: IS_TAURI && !IS_MOBILE,
+  /** Browser document Picture-in-Picture window (web desktop only). */
+  hasDocumentPip: !IS_TAURI && !IS_MOBILE && typeof window !== "undefined" && "documentPictureInPicture" in window,
   /** Spawning helper processes (yt-dlp). */
   canShellSpawn: IS_TAURI && !IS_MOBILE,
   /** Proxying remote streams/covers through the Rust `stream://` layer. */
