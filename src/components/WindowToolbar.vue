@@ -106,6 +106,7 @@ import IconChevronLeft from "~icons/tabler/chevron-left";
 import IconChevronRight from "~icons/tabler/chevron-right";
 
 import useTauriEvent from "@/composables/tauri/useTauriEvent";
+import { EVENTS } from "@/app/tauri-commands";
 
 const router = useRouter();
 const canGoBack = true;
@@ -139,7 +140,7 @@ onMounted(async () => {
   appWindow.value = getCurrentWindow();
   isMaximized.value = await appWindow.value.isMaximized();
 
-  useTauriEvent("tauri://resize", () => {
+  useTauriEvent(EVENTS.windowResize, () => {
     appWindow.value?.isMaximized()
       .then((maximized) => {
         isMaximized.value = maximized;

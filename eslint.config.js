@@ -153,6 +153,21 @@ export default withVueTs(
     },
   },
 
+  // ARCHITECTURE.md §5 (M3): the Rust bridge is reached only through the
+  // typed registry. Type imports (Channel, Event) stay free.
+  {
+    files: ["src/**/*.{ts,vue}"],
+    ignores: ["src/app/tauri-commands.ts"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        paths: [
+          { name: "@tauri-apps/api/core", importNames: ["invoke"], message: "M3: use invokeCommand(COMMANDS.x) from @/app/tauri-commands." },
+          { name: "@tauri-apps/api/event", importNames: ["listen"], message: "M3: use listenEvent(EVENTS.x) from @/app/tauri-commands." },
+        ],
+      }],
+    },
+  },
+
   // Module layering (ARCHITECTURE.md §3). M1: domain code (everything in a
   // module except `components/`) never imports a .vue. M2: core modules never
   // import feature modules. Only .ts files are targeted, so UI stays free to

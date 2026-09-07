@@ -13,7 +13,7 @@ import {
   stat,
 } from "@tauri-apps/plugin-fs";
 import { appDataDir } from "@tauri-apps/api/path";
-import { invoke } from "@tauri-apps/api/core";
+import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 
 import type { IFileStorageWithNativeSupport } from "./IFileStorage";
 import { getLogger } from "@/lib/logger";
@@ -75,7 +75,7 @@ export class TauriStorage implements IFileStorageWithNativeSupport {
       // direction, which turns a 250 MB import into minutes on a phone.
       if (sourceAbsPath.startsWith("content://")) {
         try {
-          await invoke("import_local_file", { source: sourceAbsPath, targetRel: target });
+          await invokeCommand(COMMANDS.importLocalFile, { source: sourceAbsPath, targetRel: target });
         }
         catch {
           await this.copyStreaming(sourceAbsPath, target);

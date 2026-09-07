@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { okAsync, ResultAsync } from "neverthrow";
 import { IS_TAURI } from "@/lib/environment/userAgent";
 import { subsonicAuthParams, type NdConfig } from "@/modules/sources/navidrome/api/subsonic";
@@ -20,7 +20,7 @@ export const applyNdConfig = (config: NdConfig | null): ResultAsync<void, Source
     : null;
 
   return ResultAsync.fromPromise(
-    invoke<void>("nd_set_config", { config: payload }),
+    invokeCommand(COMMANDS.ndSetConfig, { config: payload }),
     (): SourceError => ({ kind: "UNKNOWN", message: "Failed to apply Navidrome config" }),
   );
 };
