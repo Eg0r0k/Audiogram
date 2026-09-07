@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { buildSessions, buildCoOccurrenceMatrix } from "@/modules/recommendations/service/session-builder.service";
+import { buildSessions, buildCoOccurrenceMatrix, groupSessions, toTrackSessions, toArtistSessions, buildCoOccurrence } from "@/modules/recommendations/service/session-builder.service";
 import type { TrackId } from "@/types/ids";
 
 const tid = (s: string) => s as TrackId;
@@ -175,5 +175,53 @@ describe("buildCoOccurrenceMatrix", () => {
     ]);
     expect(matrix.get(tid("A"))?.has(tid("C"))).toBeFalsy();
     expect(matrix.get(tid("B"))?.has(tid("D"))).toBeFalsy();
+  });
+});
+
+// ── groupSessions ──────────────────────────────────────────────────────────
+
+describe("groupSessions", () => {
+  it("splits by gap, drops skipped and singletons, keeps events", () => {
+    const t0 = 1_000_000;
+    const events = [
+      makeEvent(tid("B"), t0 + 2 * MINUTE),
+      makeEvent(tid("A"), t0),
+      makeEvent(tid("S"), t0 + 3 * MINUTE, { skipped: true }),
+      makeEvent(tid("C"), t0 + 2 * MINUTE + OVER_GAP),
+      makeEvent(tid("D"), t0 + 3 * MINUTE + OVER_GAP),
+      makeEvent(tid("E"), t0 + 3 * MINUTE + 2 * OVER_GAP),
+    ];
+    const groups = groupSessions(events);
+    expect(groups.map(g => g.map(e => e.trackId))).toEqual([["A", "B"], ["C", "D"]]);
+  });
+});
+
+// ── toTrackSessions / toArtistSessions ──────────────────────────────────────
+
+describe("toTrackSessions / toArtistSessions", () => {
+  it("deduplicates consecutive ids", () => {
+    const a1 = { ...makeEvent(tid("A"), 0), artistId: "x" as any };
+    const a2 = { ...makeEvent(tid("A"), MINUTE), artistId: "x" as any };
+    const b = { ...makeEvent(tid("B"), 2 * MINUTE), artistId: "y" as any };
+    expect(toTrackSessions([[a1, a2, b]])).toEqual([["A", "B"]]);
+    expect(toArtistSessions([[a1, a2, b]])).toEqual([["x", "y"]]);
+  });
+});
+
+// ── buildCoOccurrence ───────────────────────────────────────────────────────
+
+describe("buildCoOccurrence", () => {
+  it("counts raw pairs and per-id session counts", () => {
+    const co = buildCoOccurrence([["A", "B", "C"], ["A", "B"], ["A"]]);
+    expect(co.raw.get("A")?.get("B")).toBe(2);
+    expect(co.raw.get("B")?.get("A")).toBe(2);
+    expect(co.raw.get("A")?.get("C")).toBe(1);
+    expect(co.sessionCounts.get("A")).toBe(3);
+    expect(co.sessionCounts.get("C")).toBe(1);
+  });
+
+  it("buildCoOccurrenceMatrix still returns cosine-normalized values", () => {
+    const m = buildCoOccurrenceMatrix([["A", "B", "C"], ["A", "B"], ["A"]] as any);
+    expect(m.get("A" as any)?.get("B" as any)).toBeCloseTo(2 / Math.sqrt(3 * 2), 6);
   });
 });
