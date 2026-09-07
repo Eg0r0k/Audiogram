@@ -5,6 +5,8 @@ import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
 import { trackRepository } from "@/db/repositories";
 import type { EphemeralTrack } from "@/modules/player/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
+import { registerPlaybackPort } from "@/modules/queue/lib/playback-port";
+import { createPlayerPlaybackPort } from "@/modules/player/lib/queue-playback-port";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { ImportBatchResult } from "@/services/types";
 import { useEphemeralImport } from "../useEphemeralImport";
@@ -67,6 +69,7 @@ function batchResult(trackId: string): ImportBatchResult {
 
 describe("useEphemeralImport", () => {
   beforeEach(() => {
+    registerPlaybackPort(createPlayerPlaybackPort());
     setActivePinia(createPinia());
     vi.clearAllMocks();
   });

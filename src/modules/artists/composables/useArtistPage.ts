@@ -2,7 +2,7 @@ import { computed, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
 import { ArtistId } from "@/types/ids";
-import type { ArtistData } from "@/modules/media-hero/types";
+import type { ArtistData } from "@/types/media-data";
 import { queryKeys } from "@/queries/query-keys";
 import { getLogger } from "@/lib/logger";
 import { useEntityCover } from "@/modules/covers/composables/useEntityCover";

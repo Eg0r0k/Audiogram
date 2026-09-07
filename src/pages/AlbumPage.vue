@@ -127,9 +127,7 @@ import { getAlbumPageData } from "@/queries/album.queries";
 import EditAlbumDialog from "@/modules/albums/components/dialogs/EditAlbumDialog.vue";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
-import DeleteConfirmDialog from "@/components/dialogs/DeleteConfirmDialog.vue";
-import type { DeleteConfirmResult } from "@/components/dialogs/deleteConfirm";
-import { summonDialog } from "@/components/dialogs/summon";
+import { summonDialog } from "@/components/dialogs/summonDialog";
 import IconPlus from "~icons/tabler/plus";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
@@ -231,7 +229,7 @@ const {
 
 async function openDeleteDialog() {
   if (!album.value) return;
-  const result = await summonDialog<DeleteConfirmResult>(DeleteConfirmDialog, {
+  const result = await summonDialog("deleteConfirm", {
     data: {
       type: "album",
       id: album.value.id,

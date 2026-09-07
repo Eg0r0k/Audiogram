@@ -1,5 +1,6 @@
 import { IS_TAURI } from "../environment/userAgent";
 import { isValidImportItem } from "../environment/mimeSupport";
+import { EVENTS, listenEvent } from "@/app/tauri-commands";
 
 export interface OpenedFile {
   path: string;
@@ -11,9 +12,7 @@ export async function listenForOpenedFiles(
 ): Promise<() => void> {
   if (!IS_TAURI) return () => {};
 
-  const { listen } = await import("@tauri-apps/api/event");
-
-  const unlisten = await listen<string[]>("files-opened", (event) => {
+  const unlisten = await listenEvent(EVENTS.filesOpened, (event) => {
     const files = event.payload
       .filter(path => isValidImportItem(path.split(/[/\\]/).pop() ?? ""))
       .map(path => ({

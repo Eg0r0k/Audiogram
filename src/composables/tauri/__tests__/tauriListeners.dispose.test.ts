@@ -43,7 +43,7 @@ describe("tauri listener disposal", () => {
         resolveListen = resolve;
       }));
 
-      const cleanup = useTauriEvent<string>("greet", () => {});
+      const cleanup = useTauriEvent("files-opened", () => {});
 
       // The scope dies while the subscription is still in flight: cleanup
       // finds nothing to unsubscribe.
@@ -59,7 +59,7 @@ describe("tauri listener disposal", () => {
       const stop = vi.fn();
       listenMock.mockResolvedValue(stop);
 
-      const cleanup = useTauriEvent<string>("greet", () => {});
+      const cleanup = useTauriEvent("files-opened", () => {});
       await flush();
       expect(stop).not.toHaveBeenCalled();
 

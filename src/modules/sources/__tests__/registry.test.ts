@@ -26,13 +26,22 @@ vi.mock("@/modules/youtube/provider", () => ({
 
 import { setMediaServerBaseForTests } from "@/lib/stream-url";
 import { sources } from "../registry";
-import { ytSourceProvider } from "../providers/yt.provider";
+import { ytSourceProvider } from "@/modules/youtube/source-provider";
 import { ndSourceProvider } from "../providers/nd.provider";
 
 const BASE = "http://127.0.0.1:4321/tok";
 setMediaServerBaseForTests(BASE);
 
 describe("sources registry", () => {
+  // Runs first: the registration it performs is what the tests below rely on.
+  it("knows nothing about yt until the feature registers its provider", () => {
+    expect(() => sources.get("yt")).toThrow(/No source provider registered/);
+    expect(sources.searchable()).toEqual(["local"]);
+
+    sources.register(ytSourceProvider);
+    expect(sources.get("yt")).toBe(ytSourceProvider);
+  });
+
   it("returns providers by kind and via forTrack on prefixed ids", () => {
     expect(sources.get("yt")).toBe(ytSourceProvider);
     expect(sources.forTrack(ytTrackId("dQw4w9WgXcQ"))).toBe(ytSourceProvider);

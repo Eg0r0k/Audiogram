@@ -229,8 +229,7 @@ import { formatDuration } from "@/lib/format/time";
 import { getLogger } from "@/lib/logger";
 import { getTrackEntityById } from "@/queries/track.queries";
 import { useTrackDeletion } from "@/modules/tracks/composables/useTrackDeletion";
-import DeleteTrackDialog, { type DeleteTrackConfirmation } from "@/components/dialogs/DeleteTrackDialog.vue";
-import { summonDialog } from "@/components/dialogs/summon";
+import { summonDialog } from "@/components/dialogs/summonDialog";
 import { useGeneralSettings } from "@/modules/settings/store/general";
 import { offlineCopyQueries } from "@/queries/offlineCopy.queries";
 import { queryKeys } from "@/queries/query-keys";
@@ -387,8 +386,8 @@ async function handleDelete(): Promise<void> {
   if (!libraryTrack.value || isDeleting.value) return;
 
   if (confirmTrackDeletion.value) {
-    const confirmation = await summonDialog<DeleteTrackConfirmation>(
-      DeleteTrackDialog,
+    const confirmation = await summonDialog(
+      "deleteTrack",
       { trackTitle: libraryTrack.value.title },
       { key: `delete-track:${libraryTrack.value.id}` },
     );

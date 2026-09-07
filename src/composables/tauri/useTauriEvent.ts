@@ -2,6 +2,7 @@ import { IS_TAURI } from "@/lib/environment/userAgent";
 import type { Event } from "@tauri-apps/api/event";
 import { tryOnScopeDispose } from "@vueuse/core";
 import { getLogger } from "@/lib/logger";
+import { listenEvent, type EventMap, type EventName } from "@/app/tauri-commands";
 
 /**
  * Composable for subscribing to Tauri events with automatic cleanup.
@@ -13,7 +14,7 @@ import { getLogger } from "@/lib/logger";
  * Safely returns a no-op function in non-Tauri environments.
  * @template T - Event payload type
  *
- * @param {string} name - Tauri event name to subscribe to
+ * @param {EventName} name - Tauri event name, from EVENTS in @/app/tauri-commands
  * @param {(event: Event<T>) => void} callback - Event handler function
  * @returns {VoidFunction} Cleanup function to manually unsubscribe from the event.
  *
@@ -49,9 +50,9 @@ import { getLogger } from "@/lib/logger";
  *
  */
 
-export default function useTauriEvent<T>(
-  name: string,
-  callback: (event: Event<T>) => void,
+export default function useTauriEvent<N extends EventName>(
+  name: N,
+  callback: (event: Event<EventMap[N]>) => void,
 ) {
   if (!IS_TAURI) {
     return () => {};
@@ -62,8 +63,7 @@ export default function useTauriEvent<T>(
 
   const setup = async () => {
     try {
-      const { listen } = await import("@tauri-apps/api/event");
-      const stop = await listen<T>(name, callback);
+      const stop = await listenEvent(name, callback);
 
       if (isDisposed) {
         stop();

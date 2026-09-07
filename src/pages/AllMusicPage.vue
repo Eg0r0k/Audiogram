@@ -217,7 +217,7 @@ import { getAllTrackIds, getAllTracksForQueue } from "@/queries/track.queries";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback";
 import type { QueueSource } from "@/modules/queue/types";
-import { usePlayerStore } from "@/modules/player";
+import { usePlayerStore } from "@/modules/player/store/player.store";
 import type { Track } from "@/modules/player/types";
 import { useGoBack } from "@/composables/useGoBack";
 import { getLogger } from "@/lib/logger";

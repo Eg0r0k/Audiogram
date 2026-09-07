@@ -11,7 +11,7 @@ import {
   type RepeatMode,
 } from "@/modules/player/types";
 import { isSameQueueSource, type QueueItem, type QueueSource, type QueueState } from "../types";
-import { usePlayerStore } from "@/modules/player/store/player.store";
+import { playback } from "../lib/playback-port";
 import { getLogger } from "@/lib/logger";
 import { createDebouncedLocalStorage } from "@/lib/storage/debounced-storage";
 import { buildPlaybackQueue, getItemsByOrder, moveItem } from "../lib/queue-order";
@@ -231,7 +231,7 @@ export const useQueueStore = defineStore("queue", () => {
     // handed over again so the now-playing UI picks it up.
     const current = currentItem.value;
     if (current && current.track.kind === nextTrack.kind && current.track.id === nextTrack.id) {
-      usePlayerStore().presentTrack(current.track);
+      playback().presentTrack(current.track);
     }
   }
 
@@ -259,7 +259,7 @@ export const useQueueStore = defineStore("queue", () => {
     const current = currentItem.value;
     const currentPatch = current ? patches.get(current.track.id) : undefined;
     if (current && currentPatch && currentPatch.kind === current.track.kind) {
-      usePlayerStore().presentTrack(current.track);
+      playback().presentTrack(current.track);
     }
   }
 
@@ -282,7 +282,7 @@ export const useQueueStore = defineStore("queue", () => {
     });
 
     if (swappedCurrent) {
-      usePlayerStore().presentTrack(libraryTrack);
+      playback().presentTrack(libraryTrack);
     }
   }
 
@@ -328,7 +328,7 @@ export const useQueueStore = defineStore("queue", () => {
 
   function resetPlaybackSelection(): void {
     commit({ currentItemId: null });
-    const player = usePlayerStore();
+    const player = playback();
     player.stop();
     player.clearCurrentTrack();
   }
@@ -344,7 +344,7 @@ export const useQueueStore = defineStore("queue", () => {
     _playbackClaim++;
 
     try {
-      await usePlayerStore().playPlayerTrack(item.track);
+      await playback().playPlayerTrack(item.track);
       _transientFailures = 0;
       return ok(undefined);
     }
@@ -478,7 +478,7 @@ export const useQueueStore = defineStore("queue", () => {
       // Nothing is loaded yet: the player shows the restored entry and loads
       // it on the first play(). A player that is already showing something
       // (an open-with launch that bypassed this queue) keeps it.
-      const player = usePlayerStore();
+      const player = playback();
       const restoredTrack = currentTrack.value;
       if (restoredTrack && !player.currentTrack) player.presentTrack(restoredTrack);
     }
@@ -578,7 +578,7 @@ export const useQueueStore = defineStore("queue", () => {
       // The media is still in the engine: rewind it rather than resolve and
       // load the same track again (a network round trip for a stream).
       _playbackClaim++;
-      if (await usePlayerStore().restartCurrent()) {
+      if (await playback().restartCurrent()) {
         _transientFailures = 0;
         return;
       }
@@ -626,7 +626,7 @@ export const useQueueStore = defineStore("queue", () => {
 
   async function previous(): Promise<void> {
     if (queue.value.length === 0) return;
-    const player = usePlayerStore();
+    const player = playback();
 
     // Restart-at-zero needs a seekable track: on live streams seekTo is a
     // silent no-op and would swallow the button press entirely.
@@ -692,7 +692,7 @@ export const useQueueStore = defineStore("queue", () => {
         Math.max(oldIndex - removedBeforeCurrent, 0),
         queue.value.length - 1,
       );
-      const player = usePlayerStore();
+      const player = playback();
       // Removing what is playing hands playback to the successor (which may
       // be unplayable too: keep going, as next() would). Removing a paused
       // entry only moves the selection — the user did not ask for sound.
@@ -756,7 +756,7 @@ export const useQueueStore = defineStore("queue", () => {
 
   function clear(): void {
     commit(EMPTY_STATE);
-    const player = usePlayerStore();
+    const player = playback();
     player.stop();
     player.clearCurrentTrack();
   }

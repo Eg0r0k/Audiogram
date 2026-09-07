@@ -3,8 +3,7 @@ import type { ComputedRef, Ref } from "vue";
 import { useQueryClient } from "@tanstack/vue-query";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
-import DeleteTracksDialog from "@/components/dialogs/DeleteTracksDialog.vue";
-import { summonDialog } from "@/components/dialogs/summon";
+import { summonDialog } from "@/components/dialogs/summonDialog";
 import { getLogger } from "@/lib/logger";
 import type { Track } from "@/modules/player/types";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
@@ -107,7 +106,7 @@ export const useBulkTrackActions = (options: UseBulkTrackActionsOptions) => {
   const deleteSelected = async () => {
     const count = options.selectedIds.value.size;
     if (busy.value || count === 0) return;
-    const confirmed = await summonDialog<boolean>(DeleteTracksDialog, { count }, { key: "delete-tracks" });
+    const confirmed = await summonDialog("deleteTracks", { count }, { key: "delete-tracks" });
     if (!confirmed) return;
 
     await run("delete", async () => {

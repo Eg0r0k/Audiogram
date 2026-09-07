@@ -23,6 +23,10 @@ import { invalidateStatsQueries } from "@/queries/stats.queries";
 import { onAllDataCleared } from "@/services/storage-info.service";
 import { resetSearchIndex } from "@/modules/search/service/searchIndex";
 import { openDatabase } from "@/db";
+import { sources } from "@/modules/sources/registry";
+import { ytSourceProvider } from "@/modules/youtube/source-provider";
+import { registerAutoplaySource } from "@/modules/queue/lib/queue-autoplay";
+import { getRecommendations } from "@/modules/recommendations/service/recommender.service";
 
 await initLogging();
 
@@ -42,6 +46,11 @@ const dbOpen = await openDatabase();
 if (dbOpen.isErr()) {
   getLogger().error(`[DB] open failed (${dbOpen.error.code}): ${dbOpen.error.message}`);
 }
+
+// Feature → core registrations (ARCHITECTURE.md §3), before any store can
+// ask the registry: persisted stores resolve sources on first use.
+sources.register(ytSourceProvider);
+registerAutoplaySource(getRecommendations);
 
 const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate);

@@ -1,5 +1,6 @@
 import { errAsync, okAsync, ResultAsync } from "neverthrow";
-import { Channel, invoke } from "@tauri-apps/api/core";
+import { Channel } from "@tauri-apps/api/core";
+import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { ndCoverUrl, ndSongStreamUrl } from "@/lib/stream-url";
 import { parseTrackRef } from "@/types/track-ref";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
@@ -35,7 +36,7 @@ const ndIdOf = (id: TrackId | AlbumId | ArtistId | PlaylistId): string | null =>
 const MAX_ALBUM_PAGE = 500;
 
 /**
- * `invoke("nd_download")` rejects with plain strings built on the Rust side
+ * `invokeCommand(COMMANDS.ndDownload)` rejects with plain strings built on the Rust side
  * (never carrying upstream URLs). A manager-initiated cancel rejects with
  * the literal string "cancelled" (nd.rs) — mapped onto kind "CANCELLED"
  * here, at the only boundary that still sees the raw string.
@@ -184,7 +185,7 @@ export const ndSourceProvider: SourceProvider = {
     if (!songId) return errAsync({ kind: "PARSE", message: `Not a Navidrome track id: ${id}` });
     if (!this.isAvailable) return unavailable<void>();
     return ResultAsync.fromPromise(
-      invoke<void>("nd_prefetch", { songId }),
+      invokeCommand(COMMANDS.ndPrefetch, { songId }),
       mapNdDownloadError,
     );
   },
@@ -204,7 +205,7 @@ export const ndSourceProvider: SourceProvider = {
           const channel = new Channel<DownloadEvent>();
           if (onProgress) channel.onmessage = onProgress;
           return ResultAsync.fromPromise(
-            invoke<{ path: string; ext: string }>("nd_download", {
+            invokeCommand(COMMANDS.ndDownload, {
               songId,
               suffix: payload.song?.suffix ?? null,
               onProgress: channel,
@@ -220,7 +221,7 @@ export const ndSourceProvider: SourceProvider = {
     const songId = ndIdOf(id);
     if (!songId) return errAsync({ kind: "PARSE", message: `Not a Navidrome track id: ${id}` });
     return ResultAsync.fromPromise(
-      invoke<void>("nd_download_cancel", { songId }),
+      invokeCommand(COMMANDS.ndDownloadCancel, { songId }),
       mapNdDownloadError,
     );
   },

@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { db } from "@/db";
 import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
@@ -13,7 +13,7 @@ export const onAllDataCleared = allDataCleared.on;
 async function calculateFolderSize(folder: string): Promise<number> {
   if (IS_TAURI) {
     try {
-      return await invoke<number>("app_data_folder_size", { folder });
+      return await invokeCommand(COMMANDS.appDataFolderSize, { folder });
     }
     catch {
       // Fall back to the generic storage API if the native helper is unavailable.

@@ -1,8 +1,8 @@
-import { invoke } from "@tauri-apps/api/core";
 import { onUnmounted, watch } from "vue";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { getLogger } from "@/lib/logger";
 import { usePlayerStore } from "../store/player.store";
+import { clearDiscordActivity, setDiscordActivity } from "../api/discordApi";
 import {
   createDiscordActivityPayload,
   getDiscordPositionBucket,
@@ -25,21 +25,21 @@ export const useDiscordPresence = () => {
   let lastSignature = "";
   let retryAfter = 0;
 
-  const invokeDiscord = async (command: string, args?: Record<string, unknown>) => {
+  const invokeDiscord = async (label: string, call: () => Promise<void>) => {
     try {
-      await invoke(command, args);
+      await call();
       retryAfter = 0;
     }
     catch (err) {
       retryAfter = Date.now() + RETRY_DELAY_MS;
-      console.warn(`[DiscordPresence] ${command} failed:`, err);
+      console.warn(`[DiscordPresence] ${label} failed:`, err);
     }
   };
 
   const clearActivity = () => {
     if (lastSignature === "clear") return;
     lastSignature = "clear";
-    invokeDiscord("discord_clear_activity").catch(() => {});
+    invokeDiscord("clear", clearDiscordActivity).catch(() => {});
   };
 
   const syncActivity = () => {
@@ -61,7 +61,7 @@ export const useDiscordPresence = () => {
     if (signature === lastSignature) return;
 
     lastSignature = signature;
-    invokeDiscord("discord_set_activity", { payload }).catch(() => {});
+    invokeDiscord("set", () => setDiscordActivity(payload)).catch(() => {});
   };
 
   // Multi-source form on purpose: Vue compares the sources one by one, so

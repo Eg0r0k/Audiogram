@@ -2,7 +2,7 @@ import { computed, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useMutation, useQuery, useQueryClient, useInfiniteQuery, skipToken } from "@tanstack/vue-query";
 import { AlbumId } from "@/types/ids";
-import type { AlbumData } from "@/modules/media-hero/types";
+import type { AlbumData } from "@/types/media-data";
 import { queryKeys } from "@/queries/query-keys";
 import { formatTotalDuration } from "@/lib/format/time";
 import { getLogger } from "@/lib/logger";

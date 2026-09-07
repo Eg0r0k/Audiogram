@@ -8,6 +8,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { trackRepository } from "@/db/repositories";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
 import { getRecommendations } from "@/modules/recommendations/service/recommender.service";
+import { registerAutoplaySource } from "../lib/queue-autoplay";
+import { registerPlaybackPort } from "../lib/playback-port";
+import { createPlayerPlaybackPort } from "@/modules/player/lib/queue-playback-port";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import type { Track } from "@/modules/player/types";
 import { setMediaServerBaseForTests } from "@/lib/stream-url";
@@ -115,6 +118,8 @@ describe("queue.store", () => {
     vi.clearAllMocks();
     vi.mocked(trackRepository.findByIds).mockResolvedValue(ok([]));
     vi.mocked(getRecommendations).mockResolvedValue([]);
+    registerAutoplaySource(getRecommendations);
+    registerPlaybackPort(createPlayerPlaybackPort());
   });
 
   describe("initial state", () => {

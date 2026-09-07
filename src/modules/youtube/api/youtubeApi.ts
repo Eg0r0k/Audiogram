@@ -1,4 +1,5 @@
-import { Channel, invoke } from "@tauri-apps/api/core";
+import { Channel } from "@tauri-apps/api/core";
+import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { ResultAsync } from "neverthrow";
 import type {
   YoutubeError,
@@ -42,7 +43,7 @@ export const searchYoutube = (
   query: string,
 ): ResultAsync<YtSearchResult[], YoutubeError> =>
   ResultAsync.fromPromise(
-    invoke<{ items: YtSearchResult[] }>("yt_search", { query }).then(page => page.items),
+    invokeCommand(COMMANDS.ytSearch, { query }).then(page => page.items),
     e => toYoutubeError(e, "SEARCH_FAILED"),
   );
 
@@ -50,7 +51,7 @@ export const resolveYoutube = (
   id: string,
 ): ResultAsync<string, YoutubeError> =>
   ResultAsync.fromPromise(
-    invoke<string>("yt_resolve", { id }),
+    invokeCommand(COMMANDS.ytResolve, { id }),
     e => toYoutubeError(e, "DOWNLOAD_FAILED"),
   );
 
@@ -59,7 +60,7 @@ export const prefetchYoutube = (
   id: string,
 ): ResultAsync<void, YoutubeError> =>
   ResultAsync.fromPromise(
-    invoke<void>("yt_prefetch", { id }),
+    invokeCommand(COMMANDS.ytPrefetch, { id }),
     e => toYoutubeError(e, "NETWORK"),
   );
 
@@ -72,14 +73,14 @@ export const downloadYoutube = (
   if (onEvent) channel.onmessage = onEvent;
 
   return ResultAsync.fromPromise(
-    invoke<YtDownloadResult>("yt_download", { id, meta: meta ?? null, onProgress: channel }),
+    invokeCommand(COMMANDS.ytDownload, { id, meta: meta ?? null, onProgress: channel }),
     e => toYoutubeError(e, "DOWNLOAD_FAILED"),
   );
 };
 
 export const cancelYoutubeDownload = (id: string): ResultAsync<void, YoutubeError> =>
   ResultAsync.fromPromise(
-    invoke<void>("yt_download_cancel", { id }),
+    invokeCommand(COMMANDS.ytDownloadCancel, { id }),
     e => toYoutubeError(e, "DOWNLOAD_FAILED"),
   );
 
@@ -87,7 +88,7 @@ export const searchYoutubeVideosPage = (
   query: string,
 ): ResultAsync<YtPage<YtSearchResult>, YoutubeError> =>
   ResultAsync.fromPromise(
-    invoke<YtPage<YtSearchResult>>("yt_search", { query }),
+    invokeCommand(COMMANDS.ytSearch, { query }),
     e => toYoutubeError(e, "SEARCH_FAILED"),
   );
 
@@ -95,7 +96,7 @@ export const continueYoutubeVideos = (
   continuation: string,
 ): ResultAsync<YtPage<YtSearchResult>, YoutubeError> =>
   ResultAsync.fromPromise(
-    invoke<YtPage<YtSearchResult>>("yt_search_continue", { continuation }),
+    invokeCommand(COMMANDS.ytSearchContinue, { continuation }),
     e => toYoutubeError(e, "SEARCH_FAILED"),
   );
 
@@ -105,7 +106,7 @@ export const getYoutubeMusicDetails = (
   id: string,
 ): ResultAsync<YtMusicTrack, YoutubeError> =>
   ResultAsync.fromPromise(
-    invoke<YtMusicTrack>("yt_music_details", { id }),
+    invokeCommand(COMMANDS.ytMusicDetails, { id }),
     e => toYoutubeError(e, "SEARCH_FAILED"),
   );
 
@@ -114,7 +115,7 @@ export const searchYoutubeMusic = (
   kind: YtMusicSearchKind,
 ): ResultAsync<YtPage<YtMusicEntity>, YoutubeError> =>
   ResultAsync.fromPromise(
-    invoke<YtPage<YtMusicEntity>>("yt_music_search", { query, kind }),
+    invokeCommand(COMMANDS.ytMusicSearch, { query, kind }),
     e => toYoutubeError(e, "SEARCH_FAILED"),
   );
 
@@ -123,7 +124,7 @@ export const continueYoutubeMusic = (
   kind: YtMusicSearchKind,
 ): ResultAsync<YtPage<YtMusicEntity>, YoutubeError> =>
   ResultAsync.fromPromise(
-    invoke<YtPage<YtMusicEntity>>("yt_continue", { continuation, kind }),
+    invokeCommand(COMMANDS.ytContinue, { continuation, kind }),
     e => toYoutubeError(e, "SEARCH_FAILED"),
   );
 
@@ -131,7 +132,7 @@ export const getYoutubePlaylist = (
   id: string,
 ): ResultAsync<YtPlaylistDetail, YoutubeError> =>
   ResultAsync.fromPromise(
-    invoke<YtPlaylistDetail>("yt_music_playlist", { id }),
+    invokeCommand(COMMANDS.ytMusicPlaylist, { id }),
     e => toYoutubeError(e, "SEARCH_FAILED"),
   );
 
@@ -139,7 +140,7 @@ export const getYoutubeAlbum = (
   id: string,
 ): ResultAsync<YtAlbumDetail, YoutubeError> =>
   ResultAsync.fromPromise(
-    invoke<YtAlbumDetail>("yt_music_album", { id }),
+    invokeCommand(COMMANDS.ytMusicAlbum, { id }),
     e => toYoutubeError(e, "SEARCH_FAILED"),
   );
 
@@ -147,6 +148,6 @@ export const getYoutubeArtist = (
   id: string,
 ): ResultAsync<YtArtistDetail, YoutubeError> =>
   ResultAsync.fromPromise(
-    invoke<YtArtistDetail>("yt_music_artist", { id }),
+    invokeCommand(COMMANDS.ytMusicArtist, { id }),
     e => toYoutubeError(e, "SEARCH_FAILED"),
   );

@@ -169,9 +169,7 @@ import { useArtistPage } from "@/modules/artists/composables/useArtistPage";
 import { getArtistPageData } from "@/queries/artist.queries";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
-import DeleteConfirmDialog from "@/components/dialogs/DeleteConfirmDialog.vue";
-import type { DeleteConfirmResult } from "@/components/dialogs/deleteConfirm";
-import { summonDialog } from "@/components/dialogs/summon";
+import { summonDialog } from "@/components/dialogs/summonDialog";
 import EditArtistDialog from "@/modules/artists/components/dialogs/EditArtistDialog.vue";
 import type { ArtistChanges } from "@/modules/artists/composables/useArtistPage";
 import type { TrackSortKey } from "@/modules/tracks/types";
@@ -296,7 +294,7 @@ const {
 async function openDeleteDialog() {
   if (!artist.value) return;
 
-  const result = await summonDialog<DeleteConfirmResult>(DeleteConfirmDialog, {
+  const result = await summonDialog("deleteConfirm", {
     data: {
       type: "artist",
       id: artist.value.id,

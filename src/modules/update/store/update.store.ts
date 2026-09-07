@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { EVENTS, listenEvent } from "@/app/tauri-commands";
 import { computed, ref } from "vue";
 import { useChangelogStore } from "./changelog.store";
 import type { DownloadProgress, PwaUpdateHandlers, UpdateChannel, UpdateError, UpdateInfo, UpdateStatus } from "../types";
@@ -127,7 +128,6 @@ export const useUpdateStore = defineStore("update", () => {
       return;
     }
 
-    const { listen } = await import("@tauri-apps/api/event");
     const changelogStore = useChangelogStore();
     const versionToInstall = updateInfo.value?.version ?? null;
 
@@ -136,8 +136,8 @@ export const useUpdateStore = defineStore("update", () => {
     status.value = "downloading";
     downloadProgress.value = { chunkLength: 0, contentLength: null };
 
-    const unlistenProgress = await listen<DownloadProgress>(
-      "update://download-progress",
+    const unlistenProgress = await listenEvent(
+      EVENTS.updateDownloadProgress,
       ({ payload }) => {
         if (status.value !== "downloading") return;
         downloadProgress.value = {
@@ -147,7 +147,7 @@ export const useUpdateStore = defineStore("update", () => {
       },
     );
 
-    const unlistenInstallStarted = await listen("update://install-started", () => {
+    const unlistenInstallStarted = await listenEvent(EVENTS.updateInstallStarted, () => {
       status.value = "installing";
       unlistenProgress();
     });

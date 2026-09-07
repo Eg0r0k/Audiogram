@@ -12,7 +12,7 @@ vi.mock("@/modules/youtube/provider", () => ({
   youtubeProvider: { isAvailable: true },
 }));
 
-import { ytSourceProvider } from "../yt.provider";
+import { ytSourceProvider } from "../source-provider";
 
 const details = (): YtMusicTrack => ({
   id: "v1",

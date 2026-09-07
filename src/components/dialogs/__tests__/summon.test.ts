@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from "@testing-library/vue";
 import {
   DialogSummonHost,
   dismissAllSummonedDialogs,
-  summonDialog,
+  summonComponent,
   useSummonedDialog,
 } from "../summon";
 
@@ -45,7 +45,7 @@ const NestingDialog = defineComponent({
   setup(props) {
     const { resolve } = useSummonedDialog<string>();
     const openNested = async () => {
-      const nested = await summonDialog<string>(StubDialog, { label: "inner" });
+      const nested = await summonComponent<string>(StubDialog, { label: "inner" });
       resolve(`outer got: ${nested ?? "nothing"}`);
     };
     return () => props.open
@@ -61,7 +61,7 @@ const settleRemovals = async () => {
   await nextTick();
 };
 
-describe("summonDialog", () => {
+describe("summonComponent", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -75,7 +75,7 @@ describe("summonDialog", () => {
   it("mounts the summoned component in the host with its props", async () => {
     render(DialogSummonHost);
 
-    const promise = summonDialog<string>(StubDialog, { label: "a" });
+    const promise = summonComponent<string>(StubDialog, { label: "a" });
     await nextTick();
 
     expect(screen.getByTestId("dialog-a")).toBeInTheDocument();
@@ -91,7 +91,7 @@ describe("summonDialog", () => {
 
   it("resolves with the dialog's value and unmounts after the exit delay", async () => {
     render(DialogSummonHost);
-    const promise = summonDialog<string>(StubDialog, { label: "a" });
+    const promise = summonComponent<string>(StubDialog, { label: "a" });
     await nextTick();
 
     await fireEvent.click(screen.getByTestId("ok-a"));
@@ -105,7 +105,7 @@ describe("summonDialog", () => {
 
   it("resolves undefined when the dialog closes itself via update:open", async () => {
     render(DialogSummonHost);
-    const promise = summonDialog<string>(StubDialog, { label: "a" });
+    const promise = summonComponent<string>(StubDialog, { label: "a" });
     await nextTick();
 
     await fireEvent.click(screen.getByTestId("close-a"));
@@ -114,7 +114,7 @@ describe("summonDialog", () => {
 
   it("ignores settles after the first one", async () => {
     render(DialogSummonHost);
-    const promise = summonDialog<string>(StubDialog, { label: "a" });
+    const promise = summonComponent<string>(StubDialog, { label: "a" });
     await nextTick();
 
     await fireEvent.click(screen.getByTestId("ok-a"));
@@ -125,8 +125,8 @@ describe("summonDialog", () => {
   it("dedupes by key while open and allows the key again after settling", async () => {
     render(DialogSummonHost);
 
-    const first = summonDialog<string>(StubDialog, { label: "a" }, { key: "same" });
-    const second = summonDialog<string>(StubDialog, { label: "b" }, { key: "same" });
+    const first = summonComponent<string>(StubDialog, { label: "a" }, { key: "same" });
+    const second = summonComponent<string>(StubDialog, { label: "b" }, { key: "same" });
     await nextTick();
 
     expect(first).toBe(second);
@@ -136,7 +136,7 @@ describe("summonDialog", () => {
     await fireEvent.click(screen.getByTestId("ok-a"));
     await settleRemovals();
 
-    const third = summonDialog<string>(StubDialog, { label: "c" }, { key: "same" });
+    const third = summonComponent<string>(StubDialog, { label: "c" }, { key: "same" });
     await nextTick();
     expect(third).not.toBe(first);
     expect(screen.getByTestId("dialog-c")).toBeInTheDocument();
@@ -145,7 +145,7 @@ describe("summonDialog", () => {
 
   it("stacks a dialog summoned from inside another dialog (modal in modal)", async () => {
     render(DialogSummonHost);
-    const outer = summonDialog<string>(NestingDialog);
+    const outer = summonComponent<string>(NestingDialog);
     await nextTick();
 
     await fireEvent.click(screen.getByTestId("open-inner"));
@@ -164,8 +164,8 @@ describe("summonDialog", () => {
 
   it("dismissAllSummonedDialogs settles every open dialog with undefined", async () => {
     render(DialogSummonHost);
-    const first = summonDialog<string>(StubDialog, { label: "a" });
-    const second = summonDialog<string>(StubDialog, { label: "b" });
+    const first = summonComponent<string>(StubDialog, { label: "a" });
+    const second = summonComponent<string>(StubDialog, { label: "b" });
     await nextTick();
 
     dismissAllSummonedDialogs();

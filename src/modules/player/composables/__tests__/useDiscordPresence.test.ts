@@ -136,7 +136,7 @@ describe("useDiscordPresence", () => {
 
     player.playbackState = { kind: "paused" };
     await nextTick();
-    expect(invokeMock).toHaveBeenLastCalledWith("discord_clear_activity", undefined);
+    expect(invokeMock).toHaveBeenLastCalledWith("discord_clear_activity");
 
     player.playbackState = { kind: "playing" };
     await nextTick();

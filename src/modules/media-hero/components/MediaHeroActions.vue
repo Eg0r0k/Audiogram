@@ -52,7 +52,7 @@ import type { QueueSource } from "@/modules/queue/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { getLogger } from "@/lib/logger";
 import { usePlaybackState } from "@/modules/player/composables/usePlaybackState";
-import type { MediaType } from "@/modules/media-hero/types";
+import type { MediaType } from "@/types/media-data";
 import { Button } from "@/components/ui/button";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 

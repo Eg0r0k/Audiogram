@@ -24,10 +24,8 @@ import {
   createPlaylistAndSync,
   deletePlaylistAndSync,
 } from "@/queries/playlist.queries";
-import DeleteConfirmDialog from "@/components/dialogs/DeleteConfirmDialog.vue";
-import MoveToFolderDialog from "@/components/dialogs/MoveToFolderDialog.vue";
-import { summonDialog } from "@/components/dialogs/summon";
-import type { DeleteConfirmData, DeleteConfirmResult } from "@/components/dialogs/deleteConfirm";
+import { summonDialog } from "@/components/dialogs/summonDialog";
+import type { DeleteConfirmData } from "@/components/dialogs/deleteConfirm";
 import { sourceKindOf } from "@/modules/sources/lib/display";
 import type { AlbumId, ArtistId, PlaylistId, SidebarFolderId } from "@/types/ids";
 import { SidebarFolderId as createSidebarFolderId } from "@/types/ids";
@@ -344,7 +342,7 @@ export const useLibrary = () => {
   const moveToFolder = async (item: LibraryItem) => {
     if (item.type !== "artist" && item.type !== "album" && item.type !== "playlist") return;
 
-    const folderId = await summonDialog<string>(MoveToFolderDialog, {
+    const folderId = await summonDialog("moveToFolder", {
       item,
       folders: folders.value,
     }, { key: `move-to-folder:${item.type}:${item.id}` });
@@ -359,7 +357,7 @@ export const useLibrary = () => {
   const deleteItem = async (item: LibraryItem) => {
     if (item.type !== "artist" && item.type !== "album" && item.type !== "playlist") return;
 
-    const result = await summonDialog<DeleteConfirmResult>(DeleteConfirmDialog, {
+    const result = await summonDialog("deleteConfirm", {
       data: {
         type: item.type,
         id: item.id as AlbumId | ArtistId | PlaylistId,

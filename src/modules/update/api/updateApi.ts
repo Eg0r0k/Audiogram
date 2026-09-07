@@ -1,6 +1,6 @@
 import { ResultAsync } from "neverthrow";
 import type { UpdateError, UpdateErrorKind, UpdateInfo } from "../types";
-import { invoke } from "@tauri-apps/api/core";
+import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { IS_MOBILE } from "@/lib/environment/userAgent";
 import { checkUpdateAndroid, installUpdateAndroid } from "./androidUpdateApi";
 
@@ -22,7 +22,7 @@ export const installUpdate = (): ResultAsync<void, UpdateError> =>
   IS_MOBILE
     ? installUpdateAndroid()
     : ResultAsync.fromPromise(
-        invoke<void>("install_update"),
+        invokeCommand(COMMANDS.installUpdate),
         e => toUpdateError(e, "INSTALL_FAILED"),
       );
 
@@ -30,6 +30,6 @@ export const checkUpdate = (): ResultAsync<UpdateInfo | null, UpdateError> =>
   IS_MOBILE
     ? checkUpdateAndroid()
     : ResultAsync.fromPromise(
-        invoke<UpdateInfo | null>("check_update"),
+        invokeCommand(COMMANDS.checkUpdate),
         e => toUpdateError(e, "NETWORK"),
       );

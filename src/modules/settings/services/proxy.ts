@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { ResultAsync, okAsync } from "neverthrow";
 import { IS_TAURI } from "@/lib/environment/userAgent";
 
@@ -29,7 +29,7 @@ export const applyProxy = (url: string | null): ResultAsync<void, ProxyError> =>
   if (!IS_TAURI) return okAsync(undefined);
 
   return ResultAsync.fromPromise(
-    invoke<void>("set_proxy", { url }),
+    invokeCommand(COMMANDS.setProxy, { url }),
     toError("Failed to apply proxy"),
   );
 };
@@ -47,7 +47,7 @@ export const checkProxyConnection = (url: string): ResultAsync<number, ProxyErro
   }
 
   return ResultAsync.fromPromise(
-    invoke<number>("proxy_check", { url }),
+    invokeCommand(COMMANDS.proxyCheck, { url }),
     toError("Proxy connection failed"),
   );
 };

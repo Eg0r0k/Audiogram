@@ -8,6 +8,14 @@ import stylistic from "@stylistic/eslint-plugin";
 import importX from "eslint-plugin-import-x";
 import sonarjs from "eslint-plugin-sonarjs";
 
+// ARCHITECTURE.md §3. A module is core once three or more modules need its
+// domain code; everything else is a feature.
+const CORE_MODULES = ["sources", "tracks", "queue", "player", "covers", "library", "settings", "downloads", "right-panel", "search"];
+const FEATURE_MODULES = ["albums", "artists", "playlist", "favorite", "media-hero", "watched-folders", "update", "recommendations", "hotkeys", "youtube"];
+
+// Files that still break M1/M2. This list only shrinks.
+const KNOWN_LAYER_VIOLATIONS = [];
+
 export default withVueTs(
   {
     ignores: [
@@ -144,6 +152,57 @@ export default withVueTs(
       }],
     },
   },
+
+  // ARCHITECTURE.md §5 (M3): the Rust bridge is reached only through the
+  // typed registry. Type imports (Channel, Event) stay free.
+  {
+    files: ["src/**/*.{ts,vue}"],
+    ignores: ["src/app/tauri-commands.ts"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        paths: [
+          { name: "@tauri-apps/api/core", importNames: ["invoke"], message: "M3: use invokeCommand(COMMANDS.x) from @/app/tauri-commands." },
+          { name: "@tauri-apps/api/event", importNames: ["listen"], message: "M3: use listenEvent(EVENTS.x) from @/app/tauri-commands." },
+        ],
+      }],
+    },
+  },
+
+  // Module layering (ARCHITECTURE.md §3). M1: domain code (everything in a
+  // module except `components/`) never imports a .vue. M2: core modules never
+  // import feature modules. Only .ts files are targeted, so UI stays free to
+  // import anything. Type-only imports are not layer crossings and are
+  // filtered by the rule itself.
+  {
+    files: ["src/modules/**/*.ts"],
+    rules: {
+      "import-x/no-restricted-paths": ["error", {
+        basePath: import.meta.dirname,
+        zones: [
+          {
+            target: `./src/modules/{${CORE_MODULES.join(",")}}/**/*.ts`,
+            from: `./src/modules/{${FEATURE_MODULES.join(",")}}/**/*`,
+            message: "M2: core modules do not import feature modules. Register the feature at bootstrap instead (ARCHITECTURE.md §3).",
+          },
+          {
+            target: "./src/modules/*/!(components)/**/*.ts",
+            from: "./src/**/*.vue",
+            message: "M1: domain code does not import .vue. Dialogs: summonDialog(key) from @/components/dialogs/summonDialog.",
+          },
+          {
+            target: "./src/modules/*/*.ts",
+            from: "./src/**/*.vue",
+            message: "M1: domain code does not import .vue.",
+          },
+        ],
+      }],
+    },
+  },
+  // ESLint rejects an empty `files` array, so the block exists only while
+  // the list does.
+  ...(KNOWN_LAYER_VIOLATIONS.length
+    ? [{ files: KNOWN_LAYER_VIOLATIONS, rules: { "import-x/no-restricted-paths": "off" } }]
+    : []),
 
   {
     rules: {

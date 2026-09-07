@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { watch } from "vue";
 import { useI18n } from "vue-i18n";
 import useTauriEvent from "@/composables/tauri/useTauriEvent";
@@ -8,6 +7,10 @@ import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import { usePlayerStore } from "../store/player.store";
 import { isLibraryTrack } from "../types";
+import { COMMANDS, EVENTS } from "@/app/tauri-commands";
+import { setThumbbarState, type ThumbbarState } from "../api/thumbbarApi";
+
+export type { ThumbbarAction, ThumbbarState } from "../api/thumbbarApi";
 
 /**
  * Windows taskbar thumbnail toolbar — the Like / Prev / Play-Pause / Next row
@@ -17,27 +20,8 @@ import { isLibraryTrack } from "../types";
  * does for the notification controls.
  */
 
-export type ThumbbarAction = "like" | "previous" | "play-pause" | "next";
-
-export interface ThumbbarState {
-  hasTrack: boolean;
-  playing: boolean;
-  liked: boolean;
-  canLike: boolean;
-  hasPrevious: boolean;
-  hasNext: boolean;
-  tooltips: {
-    like: string;
-    unlike: string;
-    previous: string;
-    play: string;
-    pause: string;
-    next: string;
-  };
-}
-
-export const THUMBBAR_ACTION_EVENT = "thumbbar-action";
-export const THUMBBAR_SET_STATE_COMMAND = "thumbbar_set_state";
+export const THUMBBAR_ACTION_EVENT = EVENTS.thumbbarAction;
+export const THUMBBAR_SET_STATE_COMMAND = COMMANDS.thumbbarSetState;
 
 export const useTaskbarThumbbar = () => {
   if (!platformCaps.hasTaskbarThumbbar) return;
@@ -74,14 +58,14 @@ export const useTaskbarThumbbar = () => {
     const signature = JSON.stringify(state);
     if (signature === lastSignature) return;
     lastSignature = signature;
-    invoke(THUMBBAR_SET_STATE_COMMAND, { state }).catch((err) => {
+    setThumbbarState(state).catch((err) => {
       console.warn("[TaskbarThumbbar] set state failed:", err);
     });
   };
 
   watch(buildState, sync, { immediate: true });
 
-  useTauriEvent<ThumbbarAction>(THUMBBAR_ACTION_EVENT, ({ payload }) => {
+  useTauriEvent(THUMBBAR_ACTION_EVENT, ({ payload }) => {
     switch (payload) {
       case "play-pause":
         player.togglePlay().catch(error => getLogger().error(`[Player] Toggling playback from the taskbar thumbbar failed: ${String(error)}`));

@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { IS_TAURI } from "@/lib/environment/userAgent";
 
 //
@@ -34,8 +34,8 @@ let imageBase: string | null = null;
 export const initMediaServerBase = async (): Promise<void> => {
   if (!IS_TAURI) return;
   [serverBase, imageBase] = await Promise.all([
-    invoke<string>("media_server_base"),
-    invoke<string>("image_server_base"),
+    invokeCommand(COMMANDS.mediaServerBase),
+    invokeCommand(COMMANDS.imageServerBase),
   ]);
 };
 
