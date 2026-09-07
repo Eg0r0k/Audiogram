@@ -14,10 +14,7 @@ const CORE_MODULES = ["sources", "tracks", "queue", "player", "covers", "library
 const FEATURE_MODULES = ["albums", "artists", "playlist", "favorite", "media-hero", "watched-folders", "update", "recommendations", "hotkeys", "youtube"];
 
 // Files that still break M1/M2. This list only shrinks.
-const KNOWN_LAYER_VIOLATIONS = [
-  "src/modules/sources/providers/yt.provider.ts",
-  "src/modules/queue/lib/queue-autoplay.ts",
-];
+const KNOWN_LAYER_VIOLATIONS = [];
 
 export default withVueTs(
   {
@@ -186,10 +183,11 @@ export default withVueTs(
       }],
     },
   },
-  {
-    files: KNOWN_LAYER_VIOLATIONS,
-    rules: { "import-x/no-restricted-paths": "off" },
-  },
+  // ESLint rejects an empty `files` array, so the block exists only while
+  // the list does.
+  ...(KNOWN_LAYER_VIOLATIONS.length
+    ? [{ files: KNOWN_LAYER_VIOLATIONS, rules: { "import-x/no-restricted-paths": "off" } }]
+    : []),
 
   {
     rules: {

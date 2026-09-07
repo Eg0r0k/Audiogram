@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { errAsync, okAsync } from "neverthrow";
 import { ytTrackId } from "@/types/track-ref";
 import { TrackId } from "@/types/ids";
-import { ytSourceProvider } from "../providers/yt.provider";
+import { ytSourceProvider } from "../source-provider";
 import { youtubeProvider } from "@/modules/youtube/provider";
 
 vi.mock("@/modules/youtube/provider", () => ({

@@ -3,7 +3,7 @@ import { okAsync } from "neverthrow";
 import { ytAlbumId, ytArtistId, ytPlaylistId } from "@/types/track-ref";
 import { AlbumId, PlaylistId } from "@/types/ids";
 import { youtubeProvider } from "@/modules/youtube/provider";
-import { ytSourceProvider } from "../yt.provider";
+import { ytSourceProvider } from "../source-provider";
 
 vi.mock("@/modules/youtube/provider", () => ({
   youtubeProvider: {

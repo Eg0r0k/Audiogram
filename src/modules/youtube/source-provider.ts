@@ -1,11 +1,11 @@
 import type { ResultAsync } from "neverthrow";
 import { errAsync, okAsync } from "neverthrow";
 import { ytStreamUrl } from "@/lib/stream-url";
-import { youtubeProvider } from "@/modules/youtube/provider";
-import { getYoutubeMusicDetails } from "@/modules/youtube/api/youtubeApi";
-import { ytMusicTrackToDto } from "@/modules/youtube/lib/playable";
-import { ytErrorToSource as mapError } from "@/modules/youtube/lib/errors";
-import { proxiedThumbnail } from "@/modules/youtube/lib/thumbnail";
+import { youtubeProvider } from "./provider";
+import { getYoutubeMusicDetails } from "./api/youtubeApi";
+import { ytMusicTrackToDto } from "./lib/playable";
+import { ytErrorToSource as mapError } from "./lib/errors";
+import { proxiedThumbnail } from "./lib/thumbnail";
 import { THUMB_SIZE_FULL } from "@/lib/media/cover-sizes";
 import { parseTrackRef, ytAlbumId, ytArtistId, ytPlaylistId } from "@/types/track-ref";
 import { getLogger } from "@/lib/logger";
@@ -14,7 +14,7 @@ import type {
   YtMusicEntity,
   YtMusicPlaylist,
   YtMusicSearchKind,
-} from "@/modules/youtube/types";
+} from "./types";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 import type {
   SourceAlbumDTO,
@@ -24,7 +24,7 @@ import type {
   SourceSearchHit,
   SourceSearchScope,
   SourceTrackDTO,
-} from "../types";
+} from "@/modules/sources/types";
 
 const unsupported = <T>(what: string): ResultAsync<T, SourceError> =>
   errAsync<T, SourceError>({
