@@ -10,7 +10,8 @@
       />
     </aside>
 
-    <main class="overflow-auto">
+    <main class="flex flex-col gap-4 overflow-auto">
+      <StandHint />
       <p
         v-if="isLoading"
         class="px-3 py-8 text-center text-sm text-muted-foreground"
@@ -41,6 +42,7 @@
         :candidates="candidateCount"
         :tune-uses-agreement="tuneUsesAgreement"
       />
+      <StandLegend />
       <StandControls
         :weights="weights"
         :params="params"
@@ -70,6 +72,8 @@ import StandSourcePicker from "@/modules/recommendations/components/stand/StandS
 import StandCandidateList from "@/modules/recommendations/components/stand/StandCandidateList.vue";
 import StandControls from "@/modules/recommendations/components/stand/StandControls.vue";
 import StandMetrics from "@/modules/recommendations/components/stand/StandMetrics.vue";
+import StandLegend from "@/modules/recommendations/components/stand/StandLegend.vue";
+import StandHint from "@/modules/recommendations/components/stand/StandHint.vue";
 
 const stand = useRecoStand();
 const {

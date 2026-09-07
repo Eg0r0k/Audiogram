@@ -68,18 +68,17 @@ import IconThumbUp from "~icons/tabler/thumb-up";
 import IconThumbDown from "~icons/tabler/thumb-down";
 import IconPlayerPlay from "~icons/tabler/player-play";
 import { SIGNAL_KEYS, type Weights } from "@/modules/recommendations/service/signals";
+import { SIGNAL_COLORS } from "@/modules/recommendations/service/stand-signal-meta";
 import type { StandRow } from "@/modules/recommendations/composables/useRecoStand";
 
 const props = defineProps<{ row: StandRow; weights: Weights }>();
 defineEmits<{ rate: [label: 1 | -1]; play: [] }>();
 
-const COLORS = ["#7c3aed", "#2563eb", "#0891b2", "#059669", "#65a30d", "#ca8a04", "#ea580c", "#dc2626", "#db2777", "#9333ea", "#475569"];
-
 const segments = computed(() => {
-  const parts = SIGNAL_KEYS.map((key, i) => {
+  const parts = SIGNAL_KEYS.map((key) => {
     const signal = props.row.breakdown[key];
     const weight = props.weights[key];
-    return { key, signal, weight, contribution: signal * weight, color: COLORS[i] };
+    return { key, signal, weight, contribution: signal * weight, color: SIGNAL_COLORS[key] };
   });
   const total = parts.reduce((s, p) => s + Math.abs(p.contribution), 0) || 1;
   return parts

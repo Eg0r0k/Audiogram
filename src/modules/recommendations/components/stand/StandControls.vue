@@ -6,7 +6,7 @@
       class="flex flex-col gap-1"
     >
       <div class="flex items-center justify-between text-xs">
-        <span>{{ key }}</span>
+        <span :title="SIGNAL_DESCRIPTIONS[key]">{{ key }}</span>
         <input
           type="number"
           step="0.05"
@@ -116,6 +116,7 @@
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { SIGNAL_KEYS, type SignalKey, type Weights } from "@/modules/recommendations/service/signals";
+import { SIGNAL_DESCRIPTIONS } from "@/modules/recommendations/service/stand-signal-meta";
 import type { ScoringParams } from "@/modules/recommendations/service/scoring";
 
 defineProps<{ weights: Weights; params: ScoringParams; tuning: boolean }>();
