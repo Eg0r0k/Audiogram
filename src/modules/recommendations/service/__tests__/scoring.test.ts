@@ -54,4 +54,20 @@ describe("selectTop", () => {
     expect(rowVector(m, 3).liked).toBeCloseTo(0.6, 5);
     expect(rowVector(m, 3).coOccurrence).toBe(0);
   });
+
+  it("selectTopFast with partial selection (K-bound branch)", () => {
+    const limit = 2;
+    const k = limit * 8;
+    const rowCount = 40;
+    const rows = Array.from({ length: rowCount }, (_, i) => ({
+      id: `T${i}`,
+      artist: i < 4 ? "x" : `artist${i}`,
+      liked: ((i * 37) % rowCount) / rowCount,
+    }));
+    const m = matrix(rows);
+    const scores = scoreMatrix(m, { ...ZERO_WEIGHTS, liked: 1 });
+
+    expect(selectTopFast(m, scores, limit, 1)).toEqual(selectTop(m, scores, limit, 1));
+    expect(selectTopFast(m, scores, limit, 0)).toEqual(selectTop(m, scores, limit, 0));
+  });
 });
