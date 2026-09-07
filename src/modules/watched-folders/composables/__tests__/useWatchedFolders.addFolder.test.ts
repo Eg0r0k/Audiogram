@@ -27,7 +27,7 @@ const storeMock = vi.hoisted(() => {
   };
 });
 
-vi.mock("@/lib/environment/userAgent", () => ({ IS_MOBILE: true }));
+vi.mock("@/lib/environment/userAgent", () => ({ IS_TAURI: true, IS_MOBILE: true, IS_WINDOWS: false }));
 vi.mock("@/lib/android/folderPicker", async (importOriginal) => ({
   // treeUriToPath stays real — the flow test exercises the actual conversion.
   ...(await importOriginal<typeof import("@/lib/android/folderPicker")>()),

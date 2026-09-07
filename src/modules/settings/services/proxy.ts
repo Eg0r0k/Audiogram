@@ -1,6 +1,6 @@
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { ResultAsync, okAsync } from "neverthrow";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 
 export class ProxyError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
@@ -26,7 +26,7 @@ const toError = (message: string) => (cause: unknown) =>
  * Innertube client and the `stream://` client pick it up. A no-op outside Tauri.
  */
 export const applyProxy = (url: string | null): ResultAsync<void, ProxyError> => {
-  if (!IS_TAURI) return okAsync(undefined);
+  if (!platformCaps.hasNativeProxy) return okAsync(undefined);
 
   return ResultAsync.fromPromise(
     invokeCommand(COMMANDS.setProxy, { url }),
@@ -39,7 +39,7 @@ export const applyProxy = (url: string | null): ResultAsync<void, ProxyError> =>
  * round-trip latency in milliseconds.
  */
 export const checkProxyConnection = (url: string): ResultAsync<number, ProxyError> => {
-  if (!IS_TAURI) {
+  if (!platformCaps.hasNativeProxy) {
     return ResultAsync.fromPromise(
       Promise.reject(new ProxyError("Proxy is only available in the desktop app")),
       toError("Proxy is only available in the desktop app"),

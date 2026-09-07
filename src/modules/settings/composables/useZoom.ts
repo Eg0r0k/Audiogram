@@ -1,6 +1,6 @@
 import { watch } from "vue";
 import { useLocalStorage } from "@vueuse/core";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import { getLogger } from "@/lib/logger";
 
 export const ZOOM_LEVELS = [75, 90, 100, 110, 125, 150] as const;
@@ -19,7 +19,7 @@ const zoom = useLocalStorage<ZoomLevel>("zoom-level", DEFAULT_ZOOM);
  * only fallback there.
  */
 async function applyZoom(level: ZoomLevel): Promise<void> {
-  if (IS_TAURI) {
+  if (platformCaps.hasZoom) {
     try {
       const { getCurrentWebview } = await import("@tauri-apps/api/webview");
       await getCurrentWebview().setZoom(level / 100);

@@ -6,7 +6,8 @@ import type { DownloadProgress, PwaUpdateHandlers, UpdateChannel, UpdateError, U
 import { checkUpdate, installUpdate } from "../api/updateApi";
 import { fetchReleaseNotes } from "../api/changelogApi";
 import { normalizeReleaseNotes } from "../lib/releaseNotes";
-import { IS_MOBILE, IS_TAURI } from "@/lib/environment/userAgent";
+import { IS_MOBILE } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 
 export const useUpdateStore = defineStore("update", () => {
   const status = ref<UpdateStatus>("idle");
@@ -70,7 +71,7 @@ export const useUpdateStore = defineStore("update", () => {
   const check = async (): Promise<void> => {
     if (isBusy.value) return;
 
-    if (!IS_TAURI) {
+    if (!platformCaps.hasAppUpdater) {
       await pwaHandlers.value?.check();
       return;
     }
@@ -102,7 +103,7 @@ export const useUpdateStore = defineStore("update", () => {
   const install = async (): Promise<void> => {
     if (status.value !== "available") return;
 
-    if (!IS_TAURI) {
+    if (!platformCaps.hasAppUpdater) {
       error.value = {
         kind: "INSTALL_FAILED",
         message: "Native install is not available in PWA mode",
@@ -174,7 +175,7 @@ export const useUpdateStore = defineStore("update", () => {
    * Prefer this over {@link install} outside of Tauri-only code paths.
    */
   const apply = async (): Promise<void> => {
-    if (IS_TAURI) {
+    if (platformCaps.hasAppUpdater) {
       await install();
       return;
     }

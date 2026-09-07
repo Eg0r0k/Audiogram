@@ -120,6 +120,8 @@ vi.mock("../service/lyrics.service", () => ({
 
 vi.mock("@/lib/environment/userAgent", () => ({
   IS_TAURI: false,
+  IS_MOBILE: false,
+  IS_WINDOWS: false,
 }));
 
 const loggerMock = vi.hoisted(() => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }));

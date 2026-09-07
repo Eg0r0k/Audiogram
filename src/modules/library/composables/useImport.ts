@@ -6,7 +6,7 @@ import { indexImportedTracks } from "@/modules/search/service/searchIndex";
 import { getLogger } from "@/lib/logger";
 import { filterFilesByExtension } from "@/lib/files/filterFiles";
 import { ACCEPTED_AUDIO_EXTENSIONS } from "@/lib/files/acceptedAudioExtensions";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import { requestFiles } from "@/lib/files/requestFiles";
 import { toast } from "vue-sonner";
 import { i18n } from "@/app/i18n";
@@ -147,7 +147,7 @@ export function useImport() {
     if (filtered.length === 0) return;
 
     const firstFile = filtered[0] as File & { path?: string };
-    if (IS_TAURI && firstFile.path) {
+    if (platformCaps.hasFs && firstFile.path) {
       const paths = filtered.map(f => (f as File & { path: string }).path);
       return importFromPaths(paths);
     }
@@ -332,7 +332,7 @@ export function useImport() {
    * web-`File` branch. The web build keeps the HTML input.
    */
   async function pickAndImport(options?: { title?: string }) {
-    if (IS_TAURI && musicLibraryEngine.isNativeImportAvailable) {
+    if (platformCaps.hasFs && musicLibraryEngine.isNativeImportAvailable) {
       const paths = await musicLibraryEngine.pickFiles({
         title: options?.title ?? "Import tracks",
       });

@@ -8,7 +8,7 @@ import "./style.css";
 import { i18n } from "@/app/i18n";
 import App from "@/app/App.vue";
 import { installReducedMotion } from "@/app/reduced-motion";
-import { IS_TAURI } from "./lib/environment/userAgent";
+import { platformCaps } from "./lib/environment/platformCaps";
 import { vCopy } from "./directives/copy";
 import { queryClient } from "@/queries/client";
 import { getLogger, initLogging } from "./lib/logger";
@@ -99,7 +99,7 @@ sweepOrphanedEntities().catch(error =>
 // visited a settings page.
 initZoom();
 
-if ("serviceWorker" in navigator && !IS_TAURI) {
+if ("serviceWorker" in navigator && !platformCaps.hasFs) {
   navigator.serviceWorker.register("/opfs-sw.js").catch(console.error);
 }
 

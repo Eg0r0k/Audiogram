@@ -4,7 +4,7 @@ import { useNavigatorLanguage } from "@vueuse/core";
 import { useSettingsStore } from "../store";
 import type { GeneralSettings, SupportedLanguage } from "../schema";
 import { SUPPORTED_LANGUAGES } from "../schema";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import { TAURI_ONLY_KEYS } from "../schema/general";
 import { DEFAULT_LOCALE, isSupportedLocale, setHtmlLangAttribute } from "@/app/i18n/utils";
 import { autostartService } from "../services/autostart";
@@ -84,12 +84,12 @@ export const useGeneralSettings = () => {
   };
 
   const setCloseToTray = (value: boolean) => {
-    if (!IS_TAURI) return;
+    if (!platformCaps.hasNativeWindow) return;
     store.updateGeneral({ closeToTray: value });
   };
 
   const setLaunchAtStartup = async (value: boolean) => {
-    if (!IS_TAURI) return;
+    if (!platformCaps.hasAutostart) return;
 
     const result = await (value ? autostartService.enable() : autostartService.disable());
 
@@ -106,12 +106,12 @@ export const useGeneralSettings = () => {
   };
 
   const setLaunchMinimized = (value: boolean) => {
-    if (!IS_TAURI) return;
+    if (!platformCaps.hasNativeWindow) return;
     store.updateGeneral({ launchMinimized: value });
   };
 
   const update = (partial: Partial<GeneralSettings>) => {
-    if (!IS_TAURI) {
+    if (!platformCaps.hasNativeWindow) {
       const filtered = { ...partial };
       for (const key of TAURI_ONLY_KEYS) {
         delete filtered[key];
@@ -124,7 +124,7 @@ export const useGeneralSettings = () => {
   };
 
   const syncAutostart = async () => {
-    if (!IS_TAURI) return;
+    if (!platformCaps.hasAutostart) return;
 
     const result = await autostartService.isEnabled();
     result.match(
@@ -158,7 +158,6 @@ export const useGeneralSettings = () => {
     launchMinimized,
 
     // Constants
-    isTauri: IS_TAURI,
     languages: LANGUAGE_OPTIONS,
     supportedLanguages: SUPPORTED_LANGUAGES,
 

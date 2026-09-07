@@ -14,7 +14,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import { routeLocation } from "@/app/router/route-locations";
 import { useAttachTrackLyrics } from "./useAttachTrackLyrics";
 import { useToggleTrackLike } from "./useToggleTrackLike";
@@ -211,7 +211,7 @@ export const useTrackContextActions = (
 
     try {
       const fileBlob = await (async () => {
-        if (IS_TAURI && hasNativeSupport(storageService)) {
+        if (platformCaps.hasFs && hasNativeSupport(storageService)) {
           const isAbsolutePath = /^(?:[a-zA-Z]:[\\/]|\/)/.test(sourcePath);
 
           if (isAbsolutePath) {
@@ -226,7 +226,7 @@ export const useTrackContextActions = (
         return fileResult.value;
       })();
 
-      if (IS_TAURI) {
+      if (platformCaps.hasFs) {
         const targetPath = await save({
           defaultPath: fileName,
           filters: [{

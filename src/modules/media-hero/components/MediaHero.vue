@@ -81,7 +81,7 @@ import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { useImageColor } from "@/composables/useImageColor";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import { getLogger } from "@/lib/logger";
 import { sourceKindOf } from "@/modules/sources/lib/display";
 import {
@@ -143,7 +143,7 @@ const canManage = computed(() => {
 // files, plus local playlists (filtered to their downloadable tracks at
 // enqueue time). Asks the source rather than naming one.
 const canDownloadOffline = computed(() => {
-  if (!IS_TAURI) return false;
+  if (!platformCaps.hasFs) return false;
   const data = props.data;
   if (!isAlbum(data) && !isPlaylist(data)) return false;
 

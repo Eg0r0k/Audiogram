@@ -79,7 +79,7 @@ export type DownloadEvent
 export interface SourceProvider {
   readonly id: SourceKind;
   readonly capabilities: SourceCapabilities;
-  /** Platform + settings gate (IS_TAURI, ND configured, …). */
+  /** Platform + settings gate (platformCaps, ND configured, …). */
   readonly isAvailable: boolean;
 
   /**

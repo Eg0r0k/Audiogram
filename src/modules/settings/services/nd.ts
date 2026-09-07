@@ -1,6 +1,6 @@
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { okAsync, ResultAsync } from "neverthrow";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import { subsonicAuthParams, type NdConfig } from "@/modules/sources/navidrome/api/subsonic";
 import type { SourceError } from "@/modules/sources/types";
 
@@ -11,7 +11,7 @@ import type { SourceError } from "@/modules/sources/types";
  * config change. A no-op outside Tauri. Never log the payload.
  */
 export const applyNdConfig = (config: NdConfig | null): ResultAsync<void, SourceError> => {
-  if (!IS_TAURI) return okAsync(undefined);
+  if (!platformCaps.canProxyStream) return okAsync(undefined);
 
   const payload = config
     ? (({ t, s }) => ({ baseUrl: config.baseUrl, username: config.username, token: t, salt: s }))(

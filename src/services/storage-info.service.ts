@@ -2,7 +2,7 @@ import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { db } from "@/db";
 import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import type { StorageInfo } from "@/types/storage-info";
 import { createEventHook } from "@vueuse/core";
 
@@ -11,7 +11,7 @@ const allDataCleared = createEventHook<void>();
 export const onAllDataCleared = allDataCleared.on;
 
 async function calculateFolderSize(folder: string): Promise<number> {
-  if (IS_TAURI) {
+  if (platformCaps.hasFs) {
     try {
       return await invokeCommand(COMMANDS.appDataFolderSize, { folder });
     }
@@ -51,7 +51,7 @@ async function calculateFolderSizeParallel(folders: string[]): Promise<Map<strin
 const navigatorStorage = navigator.storage as StorageManager | undefined;
 
 async function getQuotaInfo(): Promise<{ total: number; used: number }> {
-  if (!IS_TAURI && navigatorStorage?.estimate) {
+  if (!platformCaps.hasFs && navigatorStorage?.estimate) {
     const estimate = await navigatorStorage.estimate();
     return {
       total: estimate.quota ?? 0,
@@ -70,7 +70,7 @@ async function getStoragePath(): Promise<string> {
 }
 
 async function getDbSize(): Promise<number> {
-  if (!IS_TAURI && navigatorStorage?.estimate) {
+  if (!platformCaps.hasFs && navigatorStorage?.estimate) {
     try {
       const estimate = await navigatorStorage.estimate();
       return estimate.usage ?? 0;
@@ -80,7 +80,7 @@ async function getDbSize(): Promise<number> {
     }
   }
 
-  if (!IS_TAURI) {
+  if (!platformCaps.hasFs) {
     try {
       const tracks = await db.tracks.count();
       const artists = await db.artists.count();

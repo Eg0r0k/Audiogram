@@ -17,7 +17,7 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { ContextMenuItem } from "@/components/ui/context-menu";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import type { LibraryItem } from "@/modules/library/types";
 import IconList from "~icons/tabler/list";
 import IconDownload from "~icons/tabler/download";
@@ -37,7 +37,7 @@ const props = defineProps<{
 const { t } = useI18n();
 
 /** Offline copies are a native-storage feature. */
-const canDownload = computed(() => IS_TAURI);
+const canDownload = computed(() => platformCaps.hasFs);
 
 const downloadLabel = computed(() =>
   props.item.type === "album"

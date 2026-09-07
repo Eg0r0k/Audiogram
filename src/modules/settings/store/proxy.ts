@@ -1,7 +1,7 @@
 import { computed } from "vue";
 import { useSettingsStore } from "../store";
 import { buildProxyUrl, PROXY_PROTOCOLS, type ProxyProtocol, type ProxySettings } from "../schema";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 
 export interface ProtocolOption {
   value: ProxyProtocol;
@@ -52,7 +52,7 @@ export const useProxySettings = () => {
     username,
     password,
     proxyUrl,
-    isSupported: IS_TAURI,
+    isSupported: platformCaps.hasNativeProxy,
     protocolOptions: PROXY_PROTOCOL_OPTIONS,
     setEnabled,
     setProtocol,

@@ -4,7 +4,7 @@ import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 import type { Track } from "@/modules/player/types";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { attachTrackLyricsAndSync } from "@/queries/track.queries";
@@ -47,7 +47,7 @@ function pickLyricsFileFromBrowser(): Promise<File | null> {
 }
 
 async function pickLyricsFile(title: string): Promise<SelectedLyricsFile | null> {
-  if (IS_TAURI && hasNativeSupport(storageService)) {
+  if (platformCaps.hasFs && hasNativeSupport(storageService)) {
     const selected = await open({
       multiple: false,
       title,

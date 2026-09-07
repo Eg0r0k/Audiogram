@@ -1,7 +1,7 @@
 import { computed } from "vue";
 import { useSettingsStore } from "../store";
 import { buildNdConfig, type NdSourceSettings } from "../schema";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 
 /**
  * Reactive accessors for the Navidrome source settings. Like the proxy, the
@@ -34,7 +34,7 @@ export const useNdSourceSettings = () => {
     username,
     password,
     ndConfig,
-    isSupported: IS_TAURI,
+    isSupported: platformCaps.canProxyStream,
     setEnabled,
     setBaseUrl,
     setUsername,

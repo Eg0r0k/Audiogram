@@ -42,13 +42,13 @@
           :title="$t('settings.index.stats')"
         />
         <SettingsLink
-          v-if="isTauri"
+          v-if="platformCaps.hasNativeProxy"
           :to="routeLocation.settingsProxy()"
           :icon="IconWorld"
           :title="$t('settings.index.proxy')"
         />
         <SettingsLink
-          v-if="isTauri"
+          v-if="platformCaps.canProxyStream"
           :to="routeLocation.settingsSources()"
           :icon="IconServer"
           :title="$t('settings.index.sources')"
@@ -118,7 +118,7 @@ import { useAccentColor } from "@/modules/settings/composables/useAccentColor";
 import { useZoom } from "@/modules/settings/composables/useZoom";
 import { routeLocation } from "@/app/router/route-locations";
 import { summonDialog } from "@/components/dialogs/summonDialog";
-import { IS_TAURI } from "@/lib/environment/userAgent";
+import { platformCaps } from "@/lib/environment/platformCaps";
 
 const { language } = useGeneralSettings();
 const { t } = useI18n();
@@ -127,7 +127,6 @@ const audioSettingsStore = useAudioSettingsStore();
 const { changeTheme } = useTheme();
 const { resetAccentColor } = useAccentColor();
 const { resetZoom } = useZoom();
-const isTauri = IS_TAURI;
 
 const handleResetAllSettings = async () => {
   const confirmed = await summonDialog("resetSettings", {}, { key: "reset-settings" });
