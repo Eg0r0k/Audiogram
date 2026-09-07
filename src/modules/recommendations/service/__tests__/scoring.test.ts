@@ -59,6 +59,7 @@ describe("selectTop", () => {
     const limit = 2;
     const k = limit * 8;
     const rowCount = 40;
+    expect(rowCount).toBeGreaterThan(k);
     const rows = Array.from({ length: rowCount }, (_, i) => ({
       id: `T${i}`,
       artist: i < 4 ? "x" : `artist${i}`,
