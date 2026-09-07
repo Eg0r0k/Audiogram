@@ -60,6 +60,12 @@
         :icon="IconInfo"
         :title="$t('settings.index.about')"
       />
+      <SettingsLink
+        v-if="isDev"
+        :to="routeLocation.devRecoStand()"
+        :icon="IconFlask"
+        title="Dev: стенд рекомендаций"
+      />
     </SettingsGroup>
 
     <SettingsGroup class="mt-3">
@@ -99,6 +105,7 @@ import IconServer from "~icons/tabler/server";
 import IconInfo from "~icons/tabler/info-circle";
 import IconWorld from "~icons/tabler/world";
 import IconRefresh from "~icons/tabler/refresh";
+import IconFlask from "~icons/tabler/flask";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsLink from "@/modules/settings/components/SettingsLink.vue";
 import { useGeneralSettings } from "@/modules/settings/store/general";
@@ -119,6 +126,7 @@ const audioSettingsStore = useAudioSettingsStore();
 const { changeTheme } = useTheme();
 const { resetAccentColor } = useAccentColor();
 const { resetZoom } = useZoom();
+const isDev = import.meta.env.DEV;
 
 const handleResetAllSettings = async () => {
   const confirmed = await summonDialog("resetSettings", {}, { key: "reset-settings" });

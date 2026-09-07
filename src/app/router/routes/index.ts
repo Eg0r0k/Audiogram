@@ -6,6 +6,7 @@ import { artistRoutes } from "./artist";
 import { playlistRoutes } from "./playlist";
 import { favoriteRoutes } from "./favorite";
 import { youtubeRoutes } from "./youtube";
+import { devRoutes } from "./dev";
 
 export const routes: RouteRecordRaw[] = [
   ...homeRoutes,
@@ -15,6 +16,7 @@ export const routes: RouteRecordRaw[] = [
   ...playlistRoutes,
   ...favoriteRoutes,
   ...youtubeRoutes,
+  ...(import.meta.env.DEV ? devRoutes : []),
 ];
 
 export {
