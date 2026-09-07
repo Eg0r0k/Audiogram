@@ -52,6 +52,7 @@ const rebuildSourceMatrix = () => {
 
 const buildTransitionCases = async (c: RecommendationContext) => {
   const transitions = sampleTransitions(c.trackSessions, HIT_SAMPLE, HIT_SEED);
+  if (ctx.value !== c) return;
   hitProgress.value = { done: 0, total: transitions.length };
   const out: TransitionCase[] = [];
   for (let i = 0; i < transitions.length; i++) {
@@ -64,13 +65,18 @@ const buildTransitionCases = async (c: RecommendationContext) => {
     const artists = new Set(session.flatMap(t => c.tracks.get(t)?.artistIds ?? []));
     const matrix = collectSignalMatrix(source, candidates, c, { exclude: { tracks: sessionTracks, artists } });
     out.push({ matrix, targetRow: matrix.candidateIds.indexOf(target) });
+    if (ctx.value !== c) return;
     hitProgress.value = { done: i + 1, total: transitions.length };
-    if (i % CHUNK === CHUNK - 1) await yieldToUi();
+    if (i % CHUNK === CHUNK - 1) {
+      await yieldToUi();
+      if (ctx.value !== c) return;
+    }
   }
+  if (ctx.value !== c) return;
   transitionCases.value = out;
 };
 
-const agreementCases = (): AgreementCase[] => {
+const agreementCases = computed<AgreementCase[]>(() => {
   const c = ctx.value;
   if (!c) return [];
   const bySource = new Map<TrackId, FeedbackEntry[]>();
@@ -93,7 +99,7 @@ const agreementCases = (): AgreementCase[] => {
     out.push({ matrix, likedRows, dislikedRows });
   }
   return out;
-};
+});
 
 export const useRecoStand = () => {
   const playerStore = usePlayerStore();
@@ -120,7 +126,7 @@ export const useRecoStand = () => {
 
   const metrics = computed(() => {
     const hit = hitRate(transitionCases.value, weights, params.limit, params.maxPerArtist);
-    const agreement = pairAgreement(agreementCases(), weights);
+    const agreement = pairAgreement(agreementCases.value, weights);
     return { hit, agreement };
   });
 
@@ -203,7 +209,7 @@ export const useRecoStand = () => {
     if (tuneProgress.value) return;
     const tuner = createTuner({
       transitionCases: transitionCases.value,
-      agreementCases: agreementCases(),
+      agreementCases: agreementCases.value,
       limit: params.limit,
       maxPerArtist: params.maxPerArtist,
       frozen: { audioSimilarity: 0 },
