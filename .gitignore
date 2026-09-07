@@ -45,3 +45,6 @@ mcp.json
 # Heap snapshots
 *.heapsnapshot
 *.tsbuildinfo
+
+# Local for now (see AGENTS.md)
+ARCHITECTURE.md
