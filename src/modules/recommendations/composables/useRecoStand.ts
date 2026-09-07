@@ -1,4 +1,4 @@
-import { computed, reactive, ref, shallowRef } from "vue";
+import { computed, reactive, ref, shallowRef, watch } from "vue";
 import type { TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
 import { usePlayerStore } from "@/modules/player/store/player.store";
@@ -32,6 +32,7 @@ const sourceMatrix = shallowRef<SignalMatrix | null>(null);
 const transitionCases = shallowRef<TransitionCase[]>([]);
 const hitProgress = ref({ done: 0, total: 0 });
 const tuneProgress = ref<{ done: number; total: number } | null>(null);
+const tuneUsesAgreement = ref<boolean | null>(null);
 
 const yieldToUi = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
@@ -50,6 +51,8 @@ const rebuildSourceMatrix = () => {
   timings.value = { ...timings.value, signalsMs: now() - t0 };
 };
 
+watch(() => params.recentWindow, rebuildSourceMatrix);
+
 const buildTransitionCases = async (c: RecommendationContext) => {
   const transitions = sampleTransitions(c.trackSessions, HIT_SAMPLE, HIT_SEED);
   if (ctx.value !== c) return;
@@ -62,9 +65,13 @@ const buildTransitionCases = async (c: RecommendationContext) => {
     const played = new Set(session.slice(0, index + 1));
     const candidates = candidateIdsFor(source, c, 0, played);
     const sessionTracks = new Set(session);
-    const artists = new Set(session.flatMap(t => c.tracks.get(t)?.artistIds ?? []));
+    const artists = new Set(session.flatMap((t) => {
+      const a = c.tracks.get(t)?.artistIds[0];
+      return a ? [a] : [];
+    }));
     const matrix = collectSignalMatrix(source, candidates, c, { exclude: { tracks: sessionTracks, artists } });
-    out.push({ matrix, targetRow: matrix.candidateIds.indexOf(target) });
+    const targetRow = matrix.candidateIds.indexOf(target);
+    if (targetRow >= 0) out.push({ matrix, targetRow });
     if (ctx.value !== c) return;
     hitProgress.value = { done: i + 1, total: transitions.length };
     if (i % CHUNK === CHUNK - 1) {
@@ -123,6 +130,7 @@ export const useRecoStand = () => {
 
   const feedbackCount = computed(() => feedback.value.size);
   const feedbackSources = computed(() => new Set([...feedback.value.values()].map(e => e.sourceId)).size);
+  const candidateCount = computed(() => sourceMatrix.value?.candidateIds.length ?? null);
 
   const metrics = computed(() => {
     const hit = hitRate(transitionCases.value, weights, params.limit, params.maxPerArtist);
@@ -137,6 +145,8 @@ export const useRecoStand = () => {
 
   const reload = async () => {
     isLoading.value = true;
+    transitionCases.value = [];
+    hitProgress.value = { done: 0, total: 0 };
     try {
       const t0 = now();
       const [c, fb] = await Promise.all([buildRecommendationContext(), loadFeedback()]);
@@ -215,8 +225,9 @@ export const useRecoStand = () => {
       frozen: { audioSimilarity: 0 },
     });
     tuneProgress.value = { done: 0, total: tuner.total };
+    tuneUsesAgreement.value = tuner.usesAgreement;
     try {
-      while (!tuner.step(25)) {
+      while (!tuner.step(10)) {
         tuneProgress.value = { done: tuner.done, total: tuner.total };
         await yieldToUi();
       }
@@ -224,6 +235,7 @@ export const useRecoStand = () => {
     }
     finally {
       tuneProgress.value = null;
+      tuneUsesAgreement.value = null;
     }
   };
 
@@ -252,7 +264,7 @@ export const useRecoStand = () => {
 
   return {
     ctx, isLoading, sourceId, sourceTrack, weights, params, extraRows, rows, timings,
-    feedbackCount, feedbackSources, metrics, hitProgress, tuneProgress,
+    feedbackCount, feedbackSources, metrics, hitProgress, tuneProgress, tuneUsesAgreement, candidateCount,
     load, reload, setSource, pickCurrent, pickRandomFromHistory, searchTracks,
     rate, play, resetWeights, tune, copyWeightsJson, exportSnapshot,
   };

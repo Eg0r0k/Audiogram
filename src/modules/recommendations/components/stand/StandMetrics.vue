@@ -34,6 +34,7 @@
       class="col-span-2 rounded border p-2 text-muted-foreground"
     >
       подбор весов: {{ tuneProgress.done }} / ≤{{ tuneProgress.total }}
+      · {{ tuneUsesAgreement ? "цель: hit@N + согласие" : "цель: только hit@N (меньше 20 оценённых пар)" }}
     </div>
   </div>
 </template>
@@ -45,6 +46,7 @@ defineProps<{
   metrics: { hit: number; agreement: number | null };
   hitProgress: { done: number; total: number };
   tuneProgress: { done: number; total: number } | null;
+  tuneUsesAgreement: boolean | null;
   timings: StandTimings;
   feedbackCount: number;
   feedbackSources: number;

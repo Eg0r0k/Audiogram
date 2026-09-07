@@ -8,7 +8,7 @@ export interface ScoringParams {
   maxPerArtist: number;
 }
 
-export const DEFAULT_PARAMS: ScoringParams = { limit: 8, recentWindow: 5, maxPerArtist: 2 };
+export const DEFAULT_PARAMS: ScoringParams = { limit: 8, recentWindow: 5, maxPerArtist: 0 };
 
 export const ZERO_WEIGHTS: Weights = Object.fromEntries(SIGNAL_KEYS.map(k => [k, 0])) as Weights;
 
@@ -96,7 +96,11 @@ export const selectTopFast = (
     top.splice(pos, 0, i);
     if (top.length > k) top.pop();
   }
-  return applyArtistCap(m, top, limit, maxPerArtist);
+  const capped = applyArtistCap(m, top, limit, maxPerArtist);
+  if (capped.length < limit && top.length === k && k < scores.length) {
+    return selectTop(m, scores, limit, maxPerArtist);
+  }
+  return capped;
 };
 
 export const rowVector = (m: SignalMatrix, row: number): SignalVector => {

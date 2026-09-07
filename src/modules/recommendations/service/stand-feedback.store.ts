@@ -1,4 +1,5 @@
-import { BaseDirectory, exists, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { appDataDir } from "@tauri-apps/api/path";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { getLogger } from "@/lib/logger";
 import type { TrackId } from "@/types/ids";
@@ -35,6 +36,8 @@ const writeText = async (file: string, lsKey: string, text: string): Promise<voi
     localStorage.setItem(lsKey, text);
     return;
   }
+  const dir = await appDataDir();
+  if (!await exists(dir)) await mkdir(dir, { recursive: true });
   await writeTextFile(file, text, { baseDir: BaseDirectory.AppData });
 };
 

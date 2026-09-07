@@ -5,7 +5,12 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   readTextFile: vi.fn(),
   writeTextFile: vi.fn(),
   exists: vi.fn(),
+  mkdir: vi.fn(),
   BaseDirectory: { AppData: 1 },
+}));
+
+vi.mock("@tauri-apps/api/path", () => ({
+  appDataDir: vi.fn().mockResolvedValue("C:/app"),
 }));
 
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ error: vi.fn() }) }));
@@ -19,12 +24,14 @@ const { loadFeedback, saveFeedback, pairKey, FEEDBACK_FILE } = await import("@/m
 const mockRead = fs.readTextFile as ReturnType<typeof vi.fn>;
 const mockWrite = fs.writeTextFile as ReturnType<typeof vi.fn>;
 const mockExists = fs.exists as ReturnType<typeof vi.fn>;
+const mockMkdir = fs.mkdir as ReturnType<typeof vi.fn>;
 const tid = (s: string) => s as TrackId;
 
 beforeEach(() => {
   vi.clearAllMocks();
   caps.hasFs = true;
   localStorage.clear();
+  mockExists.mockResolvedValue(true);
 });
 
 describe("stand feedback store (tauri)", () => {
@@ -48,6 +55,13 @@ describe("stand feedback store (tauri)", () => {
       JSON.stringify({ version: 1, entries: [{ sourceId: "S", candidateId: "A", label: -1, at: 1 }] }),
       { baseDir: 1 },
     );
+  });
+
+  it("creates the app-data directory before writing when it does not exist yet", async () => {
+    mockExists.mockResolvedValue(false);
+    await saveFeedback([{ sourceId: tid("S"), candidateId: tid("A"), label: -1, at: 1 }]);
+    expect(mockMkdir).toHaveBeenCalledWith("C:/app", { recursive: true });
+    expect(mockMkdir.mock.invocationCallOrder[0]).toBeLessThan(mockWrite.mock.invocationCallOrder[0]);
   });
 
   it("returns an empty map on malformed json", async () => {

@@ -71,4 +71,19 @@ describe("selectTop", () => {
     expect(selectTopFast(m, scores, limit, 1)).toEqual(selectTop(m, scores, limit, 1));
     expect(selectTopFast(m, scores, limit, 0)).toEqual(selectTop(m, scores, limit, 0));
   });
+
+  it("selectTopFast falls back to selectTop when the artist cap starves a truncated partial top", () => {
+    const rows = [
+      ...Array.from({ length: 37 }, (_, i) => ({ id: `T${i}`, artist: "x", liked: 1 })),
+      { id: "T37", artist: "artist37", liked: 0.5 },
+      { id: "T38", artist: "artist38", liked: 0.4 },
+      { id: "T39", artist: "artist39", liked: 0.3 },
+    ];
+    const m = matrix(rows);
+    const scores = scoreMatrix(m, { ...ZERO_WEIGHTS, liked: 1 });
+
+    const expected = selectTop(m, scores, 3, 1);
+    expect(expected).toEqual([0, 37, 38]);
+    expect(selectTopFast(m, scores, 3, 1)).toEqual(expected);
+  });
 });

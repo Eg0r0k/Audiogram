@@ -23,7 +23,7 @@
         :weights="weights"
         :source-id="sourceId"
         :step="params.limit"
-        @rate="rate"
+        @rate="onRate"
         @play="play"
         @more="extraRows += params.limit"
       />
@@ -39,6 +39,7 @@
         :feedback-sources="feedbackSources"
         :limit="params.limit"
         :candidates="candidateCount"
+        :tune-uses-agreement="tuneUsesAgreement"
       />
       <StandControls
         :weights="weights"
@@ -57,11 +58,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { onMounted } from "vue";
 import { toast } from "vue-sonner";
 import { getLogger } from "@/lib/logger";
 import type { SignalKey } from "@/modules/recommendations/service/signals";
 import type { ScoringParams } from "@/modules/recommendations/service/scoring";
+import type { FeedbackLabel } from "@/modules/recommendations/service/stand-feedback.store";
+import type { TrackId } from "@/types/ids";
 import { useRecoStand } from "@/modules/recommendations/composables/useRecoStand";
 import StandSourcePicker from "@/modules/recommendations/components/stand/StandSourcePicker.vue";
 import StandCandidateList from "@/modules/recommendations/components/stand/StandCandidateList.vue";
@@ -71,12 +74,10 @@ import StandMetrics from "@/modules/recommendations/components/stand/StandMetric
 const stand = useRecoStand();
 const {
   isLoading, sourceId, sourceTrack, weights, params, extraRows, rows, timings,
-  feedbackCount, feedbackSources, metrics, hitProgress, tuneProgress,
+  feedbackCount, feedbackSources, metrics, hitProgress, tuneProgress, tuneUsesAgreement, candidateCount,
   load, reload, setSource, pickCurrent, pickRandomFromHistory, searchTracks,
   rate, play, resetWeights, tune, copyWeightsJson, exportSnapshot,
 } = stand;
-
-const candidateCount = computed(() => stand.ctx.value ? stand.ctx.value.tracks.size - 1 - params.recentWindow : null);
 
 const onCopy = async () => {
   await copyWeightsJson();
@@ -85,7 +86,20 @@ const onCopy = async () => {
 
 const onExport = async () => {
   const file = await exportSnapshot();
+  if (!file) {
+    toast.error("Нет данных для снимка");
+    return;
+  }
   toast.success(`Снимок записан: ${file}`);
+};
+
+const onRate = async (id: TrackId, label: FeedbackLabel) => {
+  try {
+    await rate(id, label);
+  }
+  catch (error) {
+    toast.error(`Не удалось сохранить оценку: ${String(error)}`);
+  }
 };
 
 const onUpdateWeight = (key: SignalKey, value: number) => {
