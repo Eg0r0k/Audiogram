@@ -53,7 +53,7 @@ import type { LibraryItem } from "@/modules/library/types";
 import IconFolder from "~icons/tabler/folder";
 import IconFolderOff from "~icons/tabler/folder-off";
 
-// Summoned via summonDialog<string>(MoveToFolderDialog, { item, folders }):
+// Summoned via summonDialog("moveToFolder", { item, folders }):
 // resolves with the picked folder id, or undefined when dismissed.
 defineProps<{
   open: boolean;

@@ -24,7 +24,7 @@ const queue = vi.hoisted(() => ({
 vi.mock("@/queries/track.queries", () => queries);
 vi.mock("@/queries/track-undo", () => undoApi);
 vi.mock("@/queries/playlist.queries", () => playlistQueries);
-vi.mock("@/components/dialogs/summon", () => dialog);
+vi.mock("@/components/dialogs/summonDialog", () => dialog);
 vi.mock("vue-sonner", () => ({ toast }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock("@tanstack/vue-query", () => ({ useQueryClient: () => ({ tag: "qc" }) }));
@@ -140,7 +140,7 @@ describe("useBulkTrackActions", () => {
 
     await actions.deleteSelected();
 
-    expect(dialog.summonDialog).toHaveBeenCalledWith(expect.anything(), { count: 1 }, { key: "delete-tracks" });
+    expect(dialog.summonDialog).toHaveBeenCalledWith("deleteTracks", { count: 1 }, { key: "delete-tracks" });
     expect(undoApi.deleteTracksWithUndo).not.toHaveBeenCalled();
     expect(onDone).not.toHaveBeenCalled();
   });

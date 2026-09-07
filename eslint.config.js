@@ -15,9 +15,6 @@ const FEATURE_MODULES = ["albums", "artists", "playlist", "favorite", "media-her
 
 // Files that still break M1/M2. This list only shrinks.
 const KNOWN_LAYER_VIOLATIONS = [
-  "src/modules/library/composables/useLibrary.ts",
-  "src/modules/tracks/composables/useBulkTrackActions.ts",
-  "src/modules/player/index.ts",
   "src/modules/sources/providers/yt.provider.ts",
   "src/modules/queue/lib/queue-autoplay.ts",
 ];

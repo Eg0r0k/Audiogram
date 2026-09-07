@@ -41,7 +41,7 @@ import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/Trac
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import { useTopTracks } from "@/composables/useStatsQueries";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
-import { usePlayerStore } from "@/modules/player";
+import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { Track } from "@/modules/player/types";
 

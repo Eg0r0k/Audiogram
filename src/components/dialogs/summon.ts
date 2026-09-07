@@ -15,7 +15,7 @@ import {
 /**
  * Imperative dialogs — a local copy of the vue-summon concept (MIT).
  *
- * `await summonDialog(Component, props)` mounts the component under
+ * `await summonComponent(Component, props)` mounts the component under
  * `<DialogSummonHost />` (rendered once in App.vue) and resolves with the
  * value the dialog passes to `resolve(...)`, or with `undefined` when the
  * dialog is dismissed (cancel button, Escape, overlay click). Dismissal is
@@ -67,7 +67,12 @@ export interface SummonDialogOptions {
   key?: string;
 }
 
-export const summonDialog = <TResult = void>(
+/**
+ * Component-level primitive behind `summonDialog` (summonDialog.ts). App code
+ * summons by registry key; this stays exported for the keyed wrapper and for
+ * component tests.
+ */
+export const summonComponent = <TResult = void>(
   component: Component,
   props: Record<string, unknown> = {},
   options: SummonDialogOptions = {},

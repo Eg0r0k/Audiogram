@@ -18,7 +18,7 @@ import { computed } from "vue";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import SlideTransition from "@/components/transitions/SlideTransition.vue";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
-import { usePlayerStore } from "@/modules/player";
+import { usePlayerStore } from "@/modules/player/store/player.store";
 import { isLibraryTrack } from "@/modules/player/types";
 import type {
   RightPanelAddTracksPayload,

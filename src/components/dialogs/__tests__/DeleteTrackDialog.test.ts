@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from "@testing-library/vue";
 import { createI18n } from "vue-i18n";
 import { messages } from "@/app/i18n/messages";
 import DeleteTrackDialog, { type DeleteTrackConfirmation } from "../DeleteTrackDialog.vue";
-import { DialogSummonHost, dismissAllSummonedDialogs, summonDialog } from "../summon";
+import { DialogSummonHost, dismissAllSummonedDialogs, summonComponent } from "../summon";
 
 const renderHost = () => render(DialogSummonHost, {
   global: {
@@ -16,7 +16,7 @@ const renderHost = () => render(DialogSummonHost, {
 });
 
 const summon = () =>
-  summonDialog<DeleteTrackConfirmation>(DeleteTrackDialog, { trackTitle: "I Am a God" });
+  summonComponent<DeleteTrackConfirmation>(DeleteTrackDialog, { trackTitle: "I Am a God" });
 
 describe("DeleteTrackDialog (summoned)", () => {
   afterEach(async () => {

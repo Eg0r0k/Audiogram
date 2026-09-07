@@ -7,7 +7,7 @@ import { VueQueryPlugin } from "@tanstack/vue-query";
 import { messages } from "@/app/i18n/messages";
 import type { PlaylistId } from "@/types/ids";
 import DeleteConfirmDialog from "../DeleteConfirmDialog.vue";
-import { DialogSummonHost, dismissAllSummonedDialogs, summonDialog } from "../summon";
+import { DialogSummonHost, dismissAllSummonedDialogs, summonComponent } from "../summon";
 import type { DeleteConfirmData, DeleteConfirmResult } from "../deleteConfirm";
 
 const DATA: DeleteConfirmData = {
@@ -37,7 +37,7 @@ describe("DeleteConfirmDialog (summoned)", () => {
 
   it("keeps the tracks when the destructive action is confirmed as-is", async () => {
     renderHost();
-    const promise = summonDialog<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });
+    const promise = summonComponent<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });
     await nextTick();
 
     expect(await screen.findByText("My Playlist")).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe("DeleteConfirmDialog (summoned)", () => {
 
   it("reports the opt-in to delete the tracks inside", async () => {
     renderHost();
-    const promise = summonDialog<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });
+    const promise = summonComponent<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });
     await nextTick();
     await screen.findByText("My Playlist");
 
@@ -59,7 +59,7 @@ describe("DeleteConfirmDialog (summoned)", () => {
 
   it("starts the track opt-in on where the container owns its tracks", async () => {
     renderHost();
-    const promise = summonDialog<DeleteConfirmResult>(DeleteConfirmDialog, {
+    const promise = summonComponent<DeleteConfirmResult>(DeleteConfirmDialog, {
       data: { ...DATA, defaultDeleteTracks: true },
     });
     await nextTick();
@@ -71,7 +71,7 @@ describe("DeleteConfirmDialog (summoned)", () => {
 
   it("hides the track opt-in when there are no tracks inside", async () => {
     renderHost();
-    summonDialog<DeleteConfirmResult>(DeleteConfirmDialog, {
+    summonComponent<DeleteConfirmResult>(DeleteConfirmDialog, {
       data: { ...DATA, trackCount: 0 },
     });
     await nextTick();
@@ -82,7 +82,7 @@ describe("DeleteConfirmDialog (summoned)", () => {
 
   it("resolves undefined when cancelled", async () => {
     renderHost();
-    const promise = summonDialog<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });
+    const promise = summonComponent<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });
     await nextTick();
     await screen.findByText("My Playlist");
 

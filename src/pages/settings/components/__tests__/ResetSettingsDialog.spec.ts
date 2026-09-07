@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from "@testing-library/vue";
 import { createI18n } from "vue-i18n";
 import { messages } from "@/app/i18n/messages";
 import ResetSettingsDialog from "@/pages/settings/components/ResetSettingsDialog.vue";
-import { DialogSummonHost, dismissAllSummonedDialogs, summonDialog } from "@/components/dialogs/summon";
+import { DialogSummonHost, dismissAllSummonedDialogs, summonComponent } from "@/components/dialogs/summon";
 
 const renderHost = () => render(DialogSummonHost, {
   global: {
@@ -34,7 +34,7 @@ describe("ResetSettingsDialog (summoned)", () => {
 
   it("disables the reset button while the countdown runs", async () => {
     renderHost();
-    summonDialog<boolean>(ResetSettingsDialog);
+    summonComponent<boolean>(ResetSettingsDialog);
     await nextTick();
     await screen.findByRole("button", { name: /reset/i });
 
@@ -44,7 +44,7 @@ describe("ResetSettingsDialog (summoned)", () => {
 
   it("enables the reset button and resolves true after the countdown", async () => {
     renderHost();
-    const promise = summonDialog<boolean>(ResetSettingsDialog);
+    const promise = summonComponent<boolean>(ResetSettingsDialog);
     await nextTick();
     await screen.findByRole("button", { name: /reset/i });
 
@@ -58,7 +58,7 @@ describe("ResetSettingsDialog (summoned)", () => {
 
   it("resolves undefined when cancelled during the countdown", async () => {
     renderHost();
-    const promise = summonDialog<boolean>(ResetSettingsDialog);
+    const promise = summonComponent<boolean>(ResetSettingsDialog);
     await nextTick();
     await screen.findByRole("button", { name: "Cancel" });
 

@@ -1,5 +1,5 @@
 import { IS_TAURI } from "@/lib/environment/userAgent";
-import { usePlayerStore } from "@/modules/player";
+import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { tryOnScopeDispose } from "@vueuse/core";
 

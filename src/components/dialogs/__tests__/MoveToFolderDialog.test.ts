@@ -6,7 +6,7 @@ import { messages } from "@/app/i18n/messages";
 import type { SidebarFolderEntity } from "@/db/entities";
 import type { LibraryItem } from "@/modules/library/types";
 import MoveToFolderDialog from "../MoveToFolderDialog.vue";
-import { DialogSummonHost, dismissAllSummonedDialogs, summonDialog } from "../summon";
+import { DialogSummonHost, dismissAllSummonedDialogs, summonComponent } from "../summon";
 
 const item: LibraryItem = {
   id: "al1", type: "album", title: "Nevermind", isPinned: false, addedAt: 1, to: "/", rounded: false,
@@ -30,7 +30,7 @@ describe("MoveToFolderDialog (summoned)", () => {
 
   it("resolves with the id of the picked folder", async () => {
     renderHost();
-    const promise = summonDialog<string>(MoveToFolderDialog, {
+    const promise = summonComponent<string>(MoveToFolderDialog, {
       item,
       folders: [folder("f1", "Rock"), folder("f2", "Grunge")],
     });
@@ -43,7 +43,7 @@ describe("MoveToFolderDialog (summoned)", () => {
 
   it("shows the empty hint when there are no folders", async () => {
     renderHost();
-    summonDialog<string>(MoveToFolderDialog, { item, folders: [] });
+    summonComponent<string>(MoveToFolderDialog, { item, folders: [] });
     await nextTick();
 
     expect(await screen.findByText("Create a folder first")).toBeInTheDocument();

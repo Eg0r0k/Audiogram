@@ -27,7 +27,7 @@
 </template>
 <script setup lang="ts">
 import { computed } from "vue";
-import { RangeSelector } from "@/modules/player";
+import RangeSelector from "@/modules/player/components/RangeSelector.vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useDisplayedPlaybackTime } from "@/modules/player/composables/useDisplayedPlaybackTime";
 import { useCurrentTrackChapters } from "@/modules/tracks/composables/useCurrentTrackChapters";

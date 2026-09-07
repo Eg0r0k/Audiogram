@@ -166,7 +166,7 @@ import IconTrash from "~icons/tabler/trash";
 import { parseCueSheet } from "@/lib/cue/parseCueSheet";
 import { formatDuration } from "@/lib/format/time";
 import { object, number, string, pipe, minValue, maxValue, safeParse } from "valibot";
-import { usePlayerStore } from "@/modules/player";
+import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useSaveTrackChapters, useTrackChapters } from "@/modules/tracks/composables/useTrackChapters";
 import type { Track } from "@/modules/player/types";
 import type { TrackChapterMark } from "@/db/entities";

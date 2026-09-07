@@ -65,7 +65,7 @@ import { DialogSummonHost } from "@/components/dialogs/summon";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { useNowPlayingTitle } from "@/modules/player/composables/useNowPlayingTitle";
 import { useExternalLinkInterceptor } from "@/composables/useExternalLinkInterceptor";
-import { usePlayerStore } from "@/modules/player";
+import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useEventListener } from "@vueuse/core";
 import NetworkStatusToast from "@/components/NetworkStatusToast.vue";
 import { useAnalysisQueueLifecycle } from "@/modules/recommendations/composables/useAnalysisQueueLifecycle";
