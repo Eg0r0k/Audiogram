@@ -1,5 +1,8 @@
 <template>
-  <Dialog v-model:open="isOpen">
+  <Dialog
+    :open="open"
+    @update:open="value => emit('update:open', value)"
+  >
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
         <DialogTitle>{{ title }}</DialogTitle>
@@ -32,7 +35,7 @@
           <Button
             type="button"
             variant="destructive-link"
-            @click="isOpen = false"
+            @click="dismiss"
           >
             {{ $t("common.cancel") }}
           </Button>
@@ -51,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useId, watch } from "vue";
+import { useId } from "vue";
 import { useI18n } from "vue-i18n";
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/valibot";
@@ -59,8 +62,11 @@ import { maxLength, minLength, object, pipe, string, transform } from "valibot";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useSummonedDialog } from "@/components/dialogs/summon";
 import { FOLDER_NAME_MAX_LENGTH, normalizeFolderName } from "@/modules/library/lib/folderName";
 
+// Summoned fresh per use, so the field starts from `initialName` with no
+// error left over from a previous attempt.
 const props = defineProps<{
   open: boolean;
   /** What the field starts with: the current name on rename, a default on create. */
@@ -70,18 +76,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "update:open": [open: boolean];
-  /** Fires with the normalized name once it passes the rules. */
-  "submit": [name: string];
 }>();
+
+const { resolve, dismiss } = useSummonedDialog<string>();
 
 const { t } = useI18n();
 const fieldId = useId();
 const errorId = useId();
-
-const isOpen = computed({
-  get: () => props.open,
-  set: value => emit("update:open", value),
-});
 
 // The rules themselves live in folderName.ts; this schema only adds the
 // messages and normalizes before measuring, so "   " is empty and padding
@@ -95,20 +96,14 @@ const schema = object({
   ),
 });
 
-const { errors, meta, defineField, handleSubmit, resetForm } = useForm({
+const { errors, meta, defineField, handleSubmit } = useForm({
   validationSchema: toTypedSchema(schema),
   initialValues: { name: props.initialName },
 });
 
 const [name] = defineField("name");
 
-// Every opening starts from the caller's value with a clean slate — no
-// error left over from the previous attempt.
-watch(() => props.open, (open) => {
-  if (open) resetForm({ values: { name: props.initialName } });
-});
-
 const onSubmit = handleSubmit((values) => {
-  emit("submit", values.name);
+  resolve(values.name);
 });
 </script>

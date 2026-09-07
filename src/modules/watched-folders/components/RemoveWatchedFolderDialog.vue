@@ -3,28 +3,27 @@
     :open="open"
     @update:open="value => emit('update:open', value)"
   >
-    <DialogContent class="sm:max-w-sm">
+    <DialogContent>
       <DialogHeader>
-        <DialogTitle>{{ $t("track.edit.unsavedTitle") }}</DialogTitle>
+        <DialogTitle>{{ $t('watchedFolders.removeDialogTitle') }}</DialogTitle>
         <DialogDescription>
-          {{ $t("track.edit.unsavedDescription") }}
+          {{ $t('watchedFolders.removeDialogDescription', { name }) }}
         </DialogDescription>
       </DialogHeader>
-
-      <DialogFooter class="gap-2">
+      <div class="flex justify-end gap-2 pt-2">
         <Button
           variant="ghost-primary"
           @click="dismiss"
         >
-          {{ $t("common.cancel") }}
+          {{ $t('common.cancel') }}
         </Button>
         <Button
           variant="destructive-link"
           @click="resolve(true)"
         >
-          {{ $t("track.edit.discard") }}
+          {{ $t('common.delete') }}
         </Button>
-      </DialogFooter>
+      </div>
     </DialogContent>
   </Dialog>
 </template>
@@ -34,14 +33,16 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useSummonedDialog } from "@/components/dialogs/summon";
 
-defineProps<{ open: boolean }>();
+defineProps<{
+  open: boolean;
+  name: string;
+}>();
 
 const emit = defineEmits<{
   "update:open": [open: boolean];

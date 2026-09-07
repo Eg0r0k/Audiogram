@@ -216,7 +216,7 @@
           variant="ghost-primary"
           size="xl"
           :disabled="isClearing"
-          @click="isClearAllOpen = true"
+          @click="handleClearAll"
         >
           <TrashIcon class=" size-6" />
           {{ $t('settings.storage.clearAll') }}
@@ -225,26 +225,15 @@
       <WatchedFoldersSection
         v-if="platformCaps.hasFs"
       />
-      <ClearAllDataDialog
-        v-model:open="isClearAllOpen"
-        :stats="{
-          tracksCount: formatted.tracksCount,
-          albumsCount: formatted.albumsCount,
-          artistsCount: formatted.artistsCount,
-          totalUsed: formatted.totalUsed,
-        }"
-        :pending="isClearing"
-        @confirm="handleClearAllConfirm"
-      />
     </div>
   </Scrollable>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import ClearAllDataDialog from "@/pages/settings/components/ClearAllDataDialog.vue";
+import { summonDialog } from "@/components/dialogs/summonDialog";
 
 import {
   Item,
@@ -293,12 +282,17 @@ const handleStoragePathCopied = () => {
   toast.success(t("settings.storage.locationCopied"));
 };
 
-const isClearAllOpen = ref(false);
-
-async function handleClearAllConfirm() {
-  await clearAllData();
-  isClearAllOpen.value = false;
-  toast.success(t("settings.storage.allDataCleared"));
+async function handleClearAll() {
+  const cleared = await summonDialog("clearAllData", {
+    stats: {
+      tracksCount: formatted.value.tracksCount,
+      albumsCount: formatted.value.albumsCount,
+      artistsCount: formatted.value.artistsCount,
+      totalUsed: formatted.value.totalUsed,
+    },
+    clear: clearAllData,
+  }, { key: "clear-all-data" });
+  if (cleared) toast.success(t("settings.storage.allDataCleared"));
 }
 
 onMounted(() => {

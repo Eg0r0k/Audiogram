@@ -144,13 +144,6 @@
     </div>
 
     <SearchPanel />
-
-    <LibraryFolderNameDialog
-      v-model:open="isFolderNameDialogOpen"
-      :initial-name="folderName"
-      :title="folderNameDialogTitle"
-      @submit="submitFolderName"
-    />
   </div>
 </template>
 
@@ -162,7 +155,6 @@ import SlideTransition from "@/components/transitions/SlideTransition.vue";
 import CrossfadeTransition from "@/components/transitions/CrossfadeTransition.vue";
 import { Button } from "@/components/ui/button";
 import FloatingButton from "@/components/layout/sidebar/floatingButton/FloatingButton.vue";
-import LibraryFolderNameDialog from "@/components/layout/sidebar/LibraryFolderNameDialog.vue";
 import LibrarySidebarFolderHeader from "@/components/layout/sidebar/LibrarySidebarFolderHeader.vue";
 import LibrarySidebarItem from "@/components/layout/sidebar/library-item/LibrarySidebarItem.vue";
 import SearchPanel from "@/modules/search/components/SearchPanel.vue";
@@ -207,16 +199,12 @@ const {
   closeFolder,
   deleteSidebarFolder,
   folderDepth,
-  folderName,
-  folderNameDialogTitle,
-  isFolderNameDialogOpen,
   openCreateFolderDialog,
   openFolder,
   openFolderPicker,
   openRenameFolderDialog,
   removeItemFromActiveFolder,
   renameActiveFolder,
-  submitFolderName,
 } = useLibrarySidebarFolders({
   folders,
   createFolder,

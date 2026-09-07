@@ -37,8 +37,7 @@
             class="w-full h-14 justify-start"
             size="xl"
             variant="ghost-primary"
-            :disabled="isClearing"
-            @click="isClearOpen = true"
+            @click="handleClearHistory"
           >
             <IconTrash class="size-6" />
             {{ $t("settings.stats.clear") }}
@@ -52,12 +51,6 @@
         </p>
       </SettingsGroup>
     </div>
-
-    <ClearHistoryDialog
-      v-model:open="isClearOpen"
-      :pending="isClearing"
-      @confirm="handleClearConfirm"
-    />
   </Scrollable>
 </template>
 
@@ -80,7 +73,7 @@ import StatsCompletionRow from "./components/stats/StatsCompletionRow.vue";
 import StatsHourlyRow from "./components/stats/StatsHourlyRow.vue";
 import StatsRecords from "./components/stats/StatsRecords.vue";
 import StatsTopGenres from "./components/stats/StatsTopGenres.vue";
-import ClearHistoryDialog from "./components/stats/ClearHistoryDialog.vue";
+import { summonDialog } from "@/components/dialogs/summonDialog";
 import type { StatsPeriod } from "./components/stats/period";
 import { periodSince } from "./components/stats/period";
 import { statsQueries } from "@/queries/stats.queries";
@@ -100,22 +93,19 @@ const hasHistory = computed(() =>
   || allTime.value.playsCount > 0,
 );
 
-const isClearOpen = ref(false);
-const isClearing = ref(false);
-
-async function handleClearConfirm() {
-  isClearing.value = true;
-  try {
-    await statsService.clearHistory();
-    isClearOpen.value = false;
-    toast.success(t("settings.stats.cleared"));
-  }
-  catch (error) {
-    getLogger().error(`[Stats] Clearing listening history failed: ${String(error)}`);
-    toast.error(t("errors.unknown"));
-  }
-  finally {
-    isClearing.value = false;
-  }
+async function handleClearHistory() {
+  const cleared = await summonDialog("clearHistory", {
+    clear: async () => {
+      try {
+        await statsService.clearHistory();
+      }
+      catch (error) {
+        getLogger().error(`[Stats] Clearing listening history failed: ${String(error)}`);
+        toast.error(t("errors.unknown"));
+        throw error;
+      }
+    },
+  }, { key: "clear-history" });
+  if (cleared) toast.success(t("settings.stats.cleared"));
 }
 </script>

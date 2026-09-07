@@ -3,26 +3,23 @@
     :open="open"
     @update:open="value => emit('update:open', value)"
   >
-    <DialogContent class="sm:max-w-sm">
+    <DialogContent class="sm:max-w-md">
       <DialogHeader>
-        <DialogTitle>{{ $t("track.edit.unsavedTitle") }}</DialogTitle>
-        <DialogDescription>
-          {{ $t("track.edit.unsavedDescription") }}
-        </DialogDescription>
+        <DialogTitle>{{ $t("common.import.status.cancelTitle") }}</DialogTitle>
+        <DialogDescription>{{ $t("common.import.status.cancelDescription") }}</DialogDescription>
       </DialogHeader>
-
-      <DialogFooter class="gap-2">
+      <DialogFooter>
         <Button
           variant="ghost-primary"
           @click="dismiss"
         >
-          {{ $t("common.cancel") }}
+          {{ $t("common.import.status.continueImport") }}
         </Button>
         <Button
           variant="destructive-link"
           @click="resolve(true)"
         >
-          {{ $t("track.edit.discard") }}
+          {{ $t("common.import.status.confirmCancel") }}
         </Button>
       </DialogFooter>
     </DialogContent>

@@ -199,11 +199,6 @@
         <IconSave class="size-6" />
       </Button>
     </FloatingActionButton>
-
-    <UnsavedChangesDialog
-      v-model:open="isUnsavedDialogOpen"
-      @discard="confirmLeave"
-    />
   </div>
 </template>
 
@@ -230,7 +225,7 @@ import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { usePanelUiBack } from "@/modules/right-panel/composables/usePanelUiBack";
 import type { RightPanelEditTrackPayload } from "@/modules/right-panel/types";
-import UnsavedChangesDialog from "@/modules/tracks/components/edit/UnsavedChangesDialog.vue";
+import { summonDialog } from "@/components/dialogs/summonDialog";
 import { useTrackEditDraft, type TrackEditDraft } from "@/modules/tracks/composables/useTrackEditDraft";
 import { updateTrackMetadataAndSync, type TrackMetadataChanges } from "@/queries/track.queries";
 import type { AlbumId } from "@/types/ids";
@@ -312,7 +307,6 @@ const [diskNo] = defineField("diskNo");
 
 const albumId = ref<string | null>(null);
 const newAlbumTitle = ref<string | null>(null);
-const pendingLeave = ref<(() => void) | null>(null);
 
 const track = computed<Track | null>(() => {
   return isLibraryTrack(props.payload.track) ? props.payload.track : null;
@@ -440,13 +434,6 @@ const albumChange = computed<Pick<TrackMetadataChanges, "albumId" | "albumTitle"
   return {};
 });
 
-const isUnsavedDialogOpen = computed<boolean>({
-  get: () => pendingLeave.value !== null,
-  set: (value) => {
-    if (!value) pendingLeave.value = null;
-  },
-});
-
 const requestLeave = (leave: () => void): void => {
   if (!hasChanges.value) {
     clearDraft();
@@ -454,15 +441,13 @@ const requestLeave = (leave: () => void): void => {
     return;
   }
 
-  pendingLeave.value = leave;
-};
-
-const confirmLeave = (): void => {
-  const leave = pendingLeave.value;
-
-  pendingLeave.value = null;
-  clearDraft();
-  leave?.();
+  summonDialog("unsavedChanges", {}, { key: "unsaved-changes" })
+    .then((discard) => {
+      if (!discard) return;
+      clearDraft();
+      leave();
+    })
+    .catch(() => undefined);
 };
 
 const handleBack = (): void => {
