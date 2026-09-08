@@ -1,6 +1,6 @@
 import type { AudioFeaturesEntity } from "@/db/entities";
 
-interface Moments {
+export interface Moments {
   mean: number;
   std: number;
 }
