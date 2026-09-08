@@ -75,10 +75,18 @@ function createRecommendation(track: TrackEntity) {
     score: 1,
     breakdown: {
       audioSimilarity: 1,
-      coOccurrence: 0,
-      completionRate: 1,
-      recencyScore: 0,
-      likedBonus: 0,
+      trackTransition: 0,
+      artistTransition: 0,
+      affinity: 1,
+      explore: 0 as const,
+      recencyPenalty: 0,
+      ranks: {
+        audio: 1,
+        trackTransition: 0.5,
+        artistTransition: 0.5,
+        affinity: 1,
+        explore: 0 as const,
+      },
     },
   };
 }

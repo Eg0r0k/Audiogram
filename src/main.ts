@@ -27,6 +27,7 @@ import { sources } from "@/modules/sources/registry";
 import { ytSourceProvider } from "@/modules/youtube/source-provider";
 import { registerAutoplaySource } from "@/modules/queue/lib/queue-autoplay";
 import { getRecommendations } from "@/modules/recommendations/service/recommender.service";
+import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 
 await initLogging();
 
@@ -51,6 +52,7 @@ if (dbOpen.isErr()) {
 // ask the registry: persisted stores resolve sources on first use.
 sources.register(ytSourceProvider);
 registerAutoplaySource(getRecommendations);
+statsService.onChange(markRecommenderContextDirty);
 
 const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate);

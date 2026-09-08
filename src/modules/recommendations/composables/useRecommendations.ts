@@ -3,11 +3,13 @@ import { useQuery } from "@tanstack/vue-query";
 import { toValue, type MaybeRef } from "vue";
 import type { TrackId } from "@/types/ids";
 import { recommendationsQueries } from "@/queries/recommendations.queries";
+import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 
 const cacheVersion = ref(0);
 
 export function bumpRecommendationsCache(): void {
   cacheVersion.value++;
+  markRecommenderContextDirty();
 }
 
 export function useTrackRecommendations(
@@ -29,7 +31,7 @@ export function useTrackRecommendations(
     isLoading,
     error,
     hasAudioFeatures: computed(() =>
-      (data.value ?? []).some(r => r.breakdown.audioSimilarity > 0),
+      (data.value ?? []).some(r => r.breakdown.audioSimilarity !== null),
     ),
   };
 }

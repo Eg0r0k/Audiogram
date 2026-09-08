@@ -94,3 +94,17 @@ export const buildRecommendationContext = async (): Promise<RecommendationContex
     now,
   );
 };
+
+export const candidateIdsFor = (
+  sourceId: TrackId,
+  ctx: RecommendationContext,
+  recentWindow: number,
+  exclude: Iterable<TrackId>,
+): TrackId[] => {
+  const excluded = new Set<TrackId>(exclude);
+  excluded.add(sourceId);
+  for (const id of ctx.recentlyPlayed.slice(0, Math.max(0, recentWindow))) excluded.add(id);
+  const out: TrackId[] = [];
+  for (const id of ctx.tracks.keys()) if (!excluded.has(id)) out.push(id);
+  return out;
+};

@@ -2,10 +2,9 @@ import { describe, it, expect } from "vitest";
 import type { ListenEventEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
-import { buildRecommendationContextFromData } from "@/modules/recommendations/service/recommendation-context";
+import { buildRecommendationContextFromData, candidateIdsFor } from "@/modules/recommendations/service/recommendation-context";
 import { collectSignalMatrix } from "@/modules/recommendations/service/signals";
 import { scoreMatrix, selectTop, DEFAULT_WEIGHTS } from "@/modules/recommendations/service/scoring";
-import { candidateIdsFor } from "@/modules/recommendations/service/recommender.service";
 
 const TRACKS = 1000;
 const ARTISTS = 200;

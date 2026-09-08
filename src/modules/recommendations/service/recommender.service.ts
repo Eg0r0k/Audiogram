@@ -1,67 +1,73 @@
-import { audioFeaturesRepository } from "@/db/repositories/audioFeatures.repository";
+import type { ListenEventEntity, TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
-import { buildRecommendationContext, type RecommendationContext } from "./recommendation-context";
-import { DEFAULT_PARAMS, DEFAULT_WEIGHTS, scoreMatrix, selectTop, toScoredTracks, type ScoredTrack, type ScoringParams } from "./scoring";
-import { collectSignalMatrix, toVector, type AudioLookup, type Weights } from "./signals";
+import { DEFAULT_MMR_OPTIONS, mmrSelect, type MmrCandidate } from "../lib/rank";
+import { DEFAULT_WEIGHTS, scoreCandidates, type Breakdown, type CandidateInput, type SeedInput } from "../lib/scoring";
+import { getRecommenderContext } from "./recommender-context.service";
 
-export { toVector };
-export type { ScoredTrack };
-
-export interface RecommendOptions {
-  weights?: Weights;
-  params?: Partial<ScoringParams>;
-  ctx?: RecommendationContext;
+export interface ScoredTrack {
+  trackId: TrackId;
+  track: TrackEntity;
+  score: number;
+  breakdown: Breakdown;
 }
 
-export const candidateIdsFor = (
-  sourceId: TrackId,
-  ctx: RecommendationContext,
-  recentWindow: number,
-  exclude: Iterable<TrackId>,
-): TrackId[] => {
-  const excluded = new Set<TrackId>(exclude);
-  excluded.add(sourceId);
-  for (const id of ctx.recentlyPlayed.slice(0, Math.max(0, recentWindow))) excluded.add(id);
-  const out: TrackId[] = [];
-  for (const id of ctx.tracks.keys()) if (!excluded.has(id)) out.push(id);
-  return out;
-};
+/** Tracks played this recently are excluded from candidates alongside the seed. */
+export const RECENT_EXCLUDE = 3;
 
-export const loadAudioLookup = async (
-  sourceId: TrackId,
-  candidateIds: TrackId[],
-): Promise<AudioLookup> => {
-  const [sourceResult, candidatesResult] = await Promise.all([
-    audioFeaturesRepository.findById(sourceId),
-    audioFeaturesRepository.findManyByIds(candidateIds),
-  ]);
-  const source = sourceResult.isOk() && sourceResult.value ? toVector(sourceResult.value) : null;
-  const byId = new Map(
-    (candidatesResult.isOk() ? candidatesResult.value : []).map(f => [f.trackId, toVector(f)]),
-  );
-  return { source, byId };
+/** Unique track ids from the most recently played, newest first. */
+export const recentlyPlayedIds = (events: readonly ListenEventEntity[], count: number): TrackId[] => {
+  const sorted = [...events].sort((a, b) => b.startedAt - a.startedAt);
+  const seen = new Set<TrackId>();
+  const out: TrackId[] = [];
+  for (const e of sorted) {
+    if (seen.has(e.trackId)) continue;
+    seen.add(e.trackId);
+    out.push(e.trackId);
+    if (out.length >= count) break;
+  }
+  return out;
 };
 
 export const getRecommendations = async (
   sourceTrackId: TrackId,
   limit = 8,
   additionalExcludeIds: TrackId[] = [],
-  options: RecommendOptions = {},
 ): Promise<ScoredTrack[]> => {
-  const weights = options.weights ?? DEFAULT_WEIGHTS;
-  const params: ScoringParams = { ...DEFAULT_PARAMS, ...options.params, limit };
-  const ctx = options.ctx ?? await buildRecommendationContext();
-  if (ctx.tracks.size === 0) return [];
+  const ctx = await getRecommenderContext();
+  const seedTrack = ctx.tracks.get(sourceTrackId);
+  if (!seedTrack) return [];
 
-  const candidateIds = candidateIdsFor(sourceTrackId, ctx, params.recentWindow, additionalExcludeIds);
-  if (candidateIds.length === 0) return [];
+  const excluded = new Set<TrackId>(additionalExcludeIds);
+  excluded.add(sourceTrackId);
+  for (const id of recentlyPlayedIds(ctx.events, RECENT_EXCLUDE)) excluded.add(id);
 
-  const audio = weights.audioSimilarity !== 0
-    ? await loadAudioLookup(sourceTrackId, candidateIds)
-    : undefined;
+  const candidates: CandidateInput[] = [];
+  for (const [id, track] of ctx.tracks) {
+    if (excluded.has(id)) continue;
+    candidates.push({ track, features: ctx.features.get(id) ?? null });
+  }
+  if (candidates.length === 0) return [];
 
-  const matrix = collectSignalMatrix(sourceTrackId, candidateIds, ctx, { audio });
-  const scores = scoreMatrix(matrix, weights);
-  const rows = selectTop(matrix, scores, params.limit, params.maxPerArtist);
-  return toScoredTracks(matrix, scores, rows, ctx.tracks);
+  // Task 10 replaces this with `await getActiveWeights()`.
+  const weights = DEFAULT_WEIGHTS;
+  const seed: SeedInput = { track: seedTrack, features: ctx.features.get(sourceTrackId) ?? null };
+  const scored = scoreCandidates(ctx, seed, candidates, weights);
+
+  const mmrCandidates = scored.map(c => ({
+    trackId: c.track.id,
+    artistIds: c.track.artistIds,
+    albumId: c.track.albumId,
+    score: c.score,
+    track: c.track,
+    breakdown: c.breakdown,
+  } satisfies MmrCandidate & { track: TrackEntity; breakdown: Breakdown }));
+
+  const picked = mmrSelect(mmrCandidates, limit, DEFAULT_MMR_OPTIONS);
+
+  return picked.map(p => ({
+    trackId: p.trackId,
+    track: p.track,
+    score: p.score,
+    breakdown: p.breakdown,
+  }));
 };
