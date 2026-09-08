@@ -159,6 +159,74 @@ export default withVueTs(
       }],
     },
   },
+  // stats.aggregate is a pure module (no db.table access) that exports
+  // SESSION_GAP_MS; sessions.ts needs the same session-gap constant the
+  // stats page uses. This is the one named exception to the repositories
+  // ban above, scoped to this single file and single module.
+  {
+    files: ["src/modules/recommendations/lib/sessions.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": ["error", {
+        paths: [
+          {
+            name: "@/db",
+            importNames: ["db"],
+            message: "db.table напрямую — только внутри репозитория.",
+            allowTypeImports: true,
+          },
+        ],
+        patterns: [
+          {
+            group: [
+              "**/db/repositories",
+              "**/db/repositories/**",
+              "@/db/repositories",
+              "@/db/repositories/**",
+            ],
+            message:
+              "Репозитории доступны только из queries/ и services/. "
+              + "Из composables и компонентов ходи через query-функции.",
+            allowTypeImports: true,
+          },
+        ],
+      }],
+    },
+  },
+  // stats.aggregate is a pure module (no db.table access) that exports
+  // SESSION_GAP_MS; sessions.ts needs the same session-gap constant the
+  // stats page uses. This is the one named exception to the repositories
+  // ban above, scoped to this single file. The group must stay one path
+  // segment deep (`/*`, not `/**`) — the `ignore` package treats a `/**`
+  // (or the bare directory) match as excluding the whole directory, which
+  // blocks a later `!` negation from re-including a file inside it.
+  {
+    files: ["src/modules/recommendations/lib/sessions.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": ["error", {
+        paths: [
+          {
+            name: "@/db",
+            importNames: ["db"],
+            message: "db.table напрямую — только внутри репозитория.",
+            allowTypeImports: true,
+          },
+        ],
+        patterns: [
+          {
+            group: [
+              "**/db/repositories/*",
+              "@/db/repositories/*",
+              "!@/db/repositories/stats.aggregate",
+            ],
+            message:
+              "Репозитории доступны только из queries/ и services/. "
+              + "Из composables и компонентов ходи через query-функции.",
+            allowTypeImports: true,
+          },
+        ],
+      }],
+    },
+  },
 
   // Import bans share one core rule, and ESLint does not merge a rule's
   // options across config objects (the last match wins), so the full set is
