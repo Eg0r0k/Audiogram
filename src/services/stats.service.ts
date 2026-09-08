@@ -1,4 +1,5 @@
 ﻿import { db } from "@/db";
+import type { ListenOrigin } from "@/db/entities";
 import { statsRepository } from "@/db/repositories/stats.repository";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { createEventHook } from "@vueuse/core";
@@ -42,6 +43,7 @@ class StatsService {
     albumId: AlbumId;
     startedAt: number;
     trackDuration: number;
+    origin: ListenOrigin;
   } | null = null;
 
   private async _finalizePending(
@@ -87,6 +89,7 @@ class StatsService {
     artistId: ArtistId,
     albumId: AlbumId,
     trackDuration: number,
+    origin: ListenOrigin,
   ): void {
     if (this._pendingEvent) {
       this._finalizePending(0, true).catch(error => getLogger().error(`[Stats] Finalizing pending event failed: ${String(error)}`));
@@ -105,6 +108,7 @@ class StatsService {
       trackDuration,
       completed: false,
       skipped: false,
+      origin,
     }).then(() => this._notifyLater()).catch(error => getLogger().error(`[Stats] Recording listen event for ${trackId} failed: ${String(error)}`));
 
     this._pendingEvent = {
@@ -114,6 +118,7 @@ class StatsService {
       albumId,
       startedAt: now,
       trackDuration,
+      origin,
     };
   }
 

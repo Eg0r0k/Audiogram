@@ -24,6 +24,7 @@ const event = (overrides: Partial<ListenEventEntity> = {}): ListenEventEntity =>
   trackDuration: 200,
   completed: true,
   skipped: false,
+  origin: "user",
   ...overrides,
 });
 

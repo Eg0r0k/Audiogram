@@ -135,3 +135,13 @@ export const upgradeToV14 = async (tx: UpgradeTransaction): Promise<void> => {
   }
   await tx.table("albums").bulkDelete(blankAlbumIds);
 };
+
+/**
+ * v15: every listen recorded so far was a deliberate play — autoplay appends
+ * were not distinguishable before this version, so they default to "user".
+ */
+export const upgradeToV15 = async (tx: UpgradeTransaction): Promise<void> => {
+  await tx.table("listenEvents").toCollection().modify((event) => {
+    if (event.origin === undefined) event.origin = "user";
+  });
+};

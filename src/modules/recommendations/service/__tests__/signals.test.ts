@@ -18,7 +18,7 @@ const makeTrack = (id: string, o: Partial<TrackEntity> = {}): TrackEntity => ({
 });
 const makeEvent = (trackId: string, startedAt: number, o: Partial<ListenEventEntity> = {}): ListenEventEntity => ({
   id: `${trackId}-${startedAt}`, trackId: tid(trackId), artistId: "ar1" as any, albumId: "al" as any,
-  startedAt, secondsListened: 100, trackDuration: 200, completed: true, skipped: false, ...o,
+  startedAt, secondsListened: 100, trackDuration: 200, completed: true, skipped: false, origin: "user", ...o,
 });
 
 const tracks = [

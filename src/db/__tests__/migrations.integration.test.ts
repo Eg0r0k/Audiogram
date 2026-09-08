@@ -92,13 +92,18 @@ describe("v9 → v10 upgrade (integration)", () => {
       addedAt: 3,
     });
     await legacy.table("covers").add({ id: "c-blank", ownerType: "album", ownerId: "al-blank", blob: new Blob(), mimeType: "image/webp", addedAt: 1, updatedAt: 1 });
+    // Pre-v15 listen event, no `origin` — v15 must backfill it to "user".
+    await legacy.table("listenEvents").add({
+      id: "ev1", trackId: "t1", artistId: "ar1", albumId: "al1", startedAt: 1,
+      secondsListened: 100, trackDuration: 200, completed: true, skipped: false,
+    });
     legacy.close();
 
     // The production database class, opened over the seeded v9 data.
     const { db } = await import("@/db");
     await db.open();
 
-    expect(db.verno).toBe(14);
+    expect(db.verno).toBe(15);
 
     const track = await db.tracks.get("t1" as never);
     expect(track).toMatchObject({ id: "t1", pinned: 1, likedAt: 42, playCount: 3 });
@@ -143,6 +148,10 @@ describe("v9 → v10 upgrade (integration)", () => {
     expect(await db.albums.where("[artistId+pinned]").equals(["ar1", 1]).count()).toBe(1);
     expect(await db.artists.where("pinned").equals(1).count()).toBe(1);
     expect(await db.tracks.where("[albumId+pinned]").equals(["al1", 1]).count()).toBe(1);
+    // v15: pre-existing listen events without `origin` are backfilled to "user".
+    expect((await db.listenEvents.get("ev1" as never))?.origin).toBe("user");
+    expect(await db.recommenderModels.count()).toBe(0);
+
     const indexNames = (name: keyof typeof db) => (db[name] as { schema: { indexes: { name: string }[] } }).schema.indexes.map(i => i.name);
     expect(indexNames("tracks")).not.toContain("state");
     expect(indexNames("tracks")).not.toContain("source");

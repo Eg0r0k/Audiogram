@@ -6,7 +6,7 @@ const mockPlayer = {
   listenedSeconds: 0,
   getListenedSeconds: () => mockPlayer.listenedSeconds,
 };
-const mockQueue = { advance: vi.fn(async () => {}) };
+const mockQueue = { advance: vi.fn(async () => {}), currentItem: null as unknown };
 const mockLyrics = { loadFor: vi.fn(async () => {}) };
 
 vi.mock("../store/player.store", () => ({ usePlayerStore: () => mockPlayer }));
@@ -60,6 +60,7 @@ describe("player lifecycle", () => {
     mockPlayer.currentTrack = null;
     mockPlayer.currentTime = 0;
     mockPlayer.listenedSeconds = 0;
+    mockQueue.currentItem = null;
   });
 
   it("wires the next-track prefetch watcher exactly once at init", () => {
@@ -74,6 +75,21 @@ describe("player lifecycle", () => {
       "artist-1",
       "album-1",
       200,
+      "user",
+    );
+  });
+
+  it("attributes the listen to autoplay when the queue's current item says so", () => {
+    mockQueue.currentItem = { id: "q1", track: libraryTrack, source: { type: "autoplay" }, addedAt: 0 };
+
+    trackChangedBus.emit(libraryTrack);
+
+    expect(statsService.startListening).toHaveBeenCalledWith(
+      "track-1",
+      "artist-1",
+      "album-1",
+      200,
+      "autoplay",
     );
   });
 

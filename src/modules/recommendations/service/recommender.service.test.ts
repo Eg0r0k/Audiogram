@@ -16,7 +16,7 @@ const makeTrack = (id: string, o: Partial<TrackEntity> = {}): TrackEntity => ({
 });
 const makeEvent = (trackId: string, startedAt: number, o: Partial<ListenEventEntity> = {}): ListenEventEntity => ({
   id: `${trackId}-${startedAt}`, trackId: tid(trackId), artistId: `ar-${trackId}` as any, albumId: "al" as any,
-  startedAt, secondsListened: 180, trackDuration: 200, completed: true, skipped: false, ...o,
+  startedAt, secondsListened: 180, trackDuration: 200, completed: true, skipped: false, origin: "user", ...o,
 });
 
 vi.mock("@/db/repositories", () => ({

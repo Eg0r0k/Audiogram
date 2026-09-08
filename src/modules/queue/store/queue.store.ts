@@ -515,7 +515,7 @@ export const useQueueStore = defineStore("queue", () => {
     queue: () => queue.value,
     currentIndex: () => currentIndex.value,
     currentItem: () => currentItem.value,
-    append: tracks => addMultipleToQueue(tracks, { type: "recommendation" }),
+    append: tracks => addMultipleToQueue(tracks, { type: "autoplay" }),
   });
   const ensureAutoplayRecommendations = () => autoplay.ensure();
 

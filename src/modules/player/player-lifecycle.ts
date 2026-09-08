@@ -11,6 +11,7 @@ import { createPlayerPlaybackPort } from "./lib/queue-playback-port";
 import { playbackStalledEvent, trackSkippedEvent } from "@/modules/queue/lib/queue-events";
 import { isLibraryTrack } from "./types";
 import { trackChangedEvent, trackEndedEvent } from "./lib/player-events";
+import { resolveListenOrigin } from "./lib/listen-origin";
 import { initNextTrackPrefetch } from "./service/prefetch-next";
 import { statsService } from "@/services/stats.service";
 import { getLogger } from "@/lib/logger";
@@ -32,11 +33,13 @@ export function initPlayerLifecycle(): void {
       .catch(error => getLogger().error(`[Lyrics] Loading lyrics failed: ${String(error)}`));
 
     if (!track || !isLibraryTrack(track)) return;
+    const origin = resolveListenOrigin(useQueueStore().currentItem, track.id);
     statsService.startListening(
       track.id,
       track.artistIds[0],
       track.albumId,
       track.duration,
+      origin,
     );
   });
 

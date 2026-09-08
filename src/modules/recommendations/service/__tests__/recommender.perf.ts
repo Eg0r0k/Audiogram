@@ -40,7 +40,7 @@ const build = () => {
     events.push({
       id: `e${i}`, trackId: track.id, artistId: track.artistIds[0], albumId: track.albumId,
       startedAt: t, secondsListened: 150, trackDuration: 200,
-      completed: rnd() < 0.7, skipped: rnd() < 0.15,
+      completed: rnd() < 0.7, skipped: rnd() < 0.15, origin: "user",
     });
   }
   return { tracks, events, now };
