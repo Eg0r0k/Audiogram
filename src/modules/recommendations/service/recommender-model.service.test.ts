@@ -51,6 +51,36 @@ const makeRow = (o: Partial<RecommenderModelEntity> = {}): RecommenderModelEntit
 
 const emptyCtx = () => buildRecommenderContext({ tracks: [], features: [], events: [], now: Date.now() });
 
+const makeTrack = (id: string) => ({
+  id, title: id, artistName: "Artist", albumTitle: "Album", artistIds: [`ar-${id}`], albumId: "al", tagIds: [],
+  source: "LOCAL_INTERNAL", storagePath: `t/${id}.mp3`, state: "READY", duration: 200,
+  format: { codec: "MP3", bitrate: 320000, sampleRate: 44100, lossless: false, channels: 2 },
+  pinned: 0, playCount: 0, addedAt: 0,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- minimal fixture, full entity typing not needed for this test
+} as any);
+
+/** 5 completed autoplay runs — fewer than `trainWeights`'s 15-positive minimum, so training never saves. */
+const fewExamplesCtx = () => {
+  const tracks = ["seed", "c0"].map(makeTrack);
+  const now = Date.now();
+  const events: unknown[] = [];
+  let t = now - 5 * DAY;
+  for (let i = 0; i < 5; i++) {
+    events.push({
+      id: `u-${i}`, trackId: "seed", artistId: "ar-seed", albumId: "al",
+      startedAt: t, secondsListened: 180, trackDuration: 200, completed: true, skipped: false, origin: "user",
+    });
+    t += 60_000;
+    events.push({
+      id: `a-${i}`, trackId: "c0", artistId: "ar-c0", albumId: "al",
+      startedAt: t, secondsListened: 180, trackDuration: 200, completed: true, skipped: false, origin: "autoplay",
+    });
+    t += 60_000;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- minimal fixture, full entity typing not needed for this test
+  return buildRecommenderContext({ tracks, features: [], events: events as any, now });
+};
+
 // The service holds module-level state (weights cache, in-flight training,
 // last-failed-attempt throttle) — reload it fresh for every test.
 let service: typeof RecommenderModelModule;
@@ -85,6 +115,16 @@ describe("getActiveWeights", () => {
   it("returns DEFAULT_WEIGHTS when the repository errors", async () => {
     mockGet.mockResolvedValue(err(new Error("db")));
     expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
+  });
+
+  it("does not cache a repository error as 'no model' — the next call retries the repository", async () => {
+    mockGet.mockResolvedValueOnce(err(new Error("db")));
+    expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
+    expect(mockGet).toHaveBeenCalledTimes(1);
+
+    mockGet.mockResolvedValueOnce(ok(makeRow({ examples: 200 })));
+    expect(await service.getActiveWeights()).toEqual(learnedWeights);
+    expect(mockGet).toHaveBeenCalledTimes(2);
   });
 
   it("caches: a second call does not hit the repository again", async () => {
@@ -122,6 +162,52 @@ describe("ensureModelFresh", () => {
     mockGet.mockResolvedValue(ok(makeRow({ trainedAt: Date.now() - 25 * 60 * 60 * 1000 })));
     await service.ensureModelFresh();
     expect(mockGetCtx).toHaveBeenCalledTimes(1);
+  });
+
+  it("throttles a following attempt for 24h even with a stale row, when the retrain doesn't save (too few examples) — and retries once the throttle expires", async () => {
+    vi.useFakeTimers();
+    try {
+      const start = Date.now();
+      mockGet.mockResolvedValue(ok(makeRow({ trainedAt: start - 25 * 60 * 60 * 1000 })));
+      mockGetCtx.mockResolvedValue(fewExamplesCtx());
+
+      await service.ensureModelFresh();
+      expect(mockGetCtx).toHaveBeenCalledTimes(1);
+      expect(mockPut).not.toHaveBeenCalled();
+
+      await service.ensureModelFresh();
+      expect(mockGetCtx).toHaveBeenCalledTimes(1);
+
+      vi.setSystemTime(start + 24 * 60 * 60 * 1000 + 1000);
+      await service.ensureModelFresh();
+      expect(mockGetCtx).toHaveBeenCalledTimes(2);
+    }
+    finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("throttles a following attempt for 24h even when the context load itself throws", async () => {
+    vi.useFakeTimers();
+    try {
+      const start = Date.now();
+      mockGet.mockResolvedValue(ok(null));
+      mockGetCtx.mockRejectedValue(new Error("boom"));
+
+      await service.ensureModelFresh();
+      expect(mockGetCtx).toHaveBeenCalledTimes(1);
+
+      await service.ensureModelFresh();
+      expect(mockGetCtx).toHaveBeenCalledTimes(1);
+
+      vi.setSystemTime(start + 24 * 60 * 60 * 1000 + 1000);
+      mockGetCtx.mockResolvedValue(emptyCtx());
+      await service.ensureModelFresh();
+      expect(mockGetCtx).toHaveBeenCalledTimes(2);
+    }
+    finally {
+      vi.useRealTimers();
+    }
   });
 
   it("runs only one training when called concurrently", async () => {
@@ -177,5 +263,12 @@ describe("ensureModelFresh", () => {
     expect(saved.positives).toBe(15);
     expect(saved.negatives).toBe(15);
     expect(saved.weights).toBeTruthy();
+
+    // ensureModelFresh's own loadRow() read the row once; invalidateWeightsCache()
+    // after the save must force the next getActiveWeights() to read again.
+    expect(mockGet).toHaveBeenCalledTimes(1);
+    mockGet.mockResolvedValue(ok(makeRow({ weights: saved.weights, examples: saved.examples })));
+    await service.getActiveWeights();
+    expect(mockGet).toHaveBeenCalledTimes(2);
   });
 });

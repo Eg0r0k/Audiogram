@@ -1,6 +1,9 @@
 import { mmrSelect, type MmrCandidate, type MmrOptions } from "../lib/rank";
+import { makeLcg } from "../lib/random";
 import { scoreRankMatrix, type ComponentWeights } from "../lib/scoring";
 import type { Session } from "../lib/sessions";
+
+export { makeLcg } from "../lib/random";
 
 export interface Transition {
   session: Session;
@@ -23,14 +26,6 @@ export interface AgreementCase {
   likedRows: number[];
   dislikedRows: number[];
 }
-
-export const makeLcg = (seed: number) => {
-  let state = seed >>> 0;
-  return () => {
-    state = (state * 1_664_525 + 1_013_904_223) >>> 0;
-    return state / 0x1_0000_0000;
-  };
-};
 
 export const sampleTransitions = (sessions: readonly Session[], count: number, seed: number): Transition[] => {
   const all: Transition[] = [];

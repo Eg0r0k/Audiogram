@@ -125,7 +125,7 @@ async function handleClearHistory() {
   if (cleared) toast.success(t("settings.stats.cleared"));
 }
 
-async function handleRecommenderEval() {
+const handleRecommenderEval = async () => {
   try {
     const report = await runRecommenderEval();
     getLogger().info(`[Recommendations] Eval report: ${JSON.stringify(report)}`);
@@ -138,5 +138,5 @@ async function handleRecommenderEval() {
     getLogger().error(`[Recommendations] Eval failed: ${String(error)}`);
     toast.error(String(error));
   }
-}
+};
 </script>

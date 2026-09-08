@@ -28,7 +28,7 @@ export const runRecommenderEval = async (): Promise<EvalReport> => {
   const negatives = examples.length - positives;
   const { plays, rate } = autoplaySkipRate(
     ctx.events,
-    ctx.now - SKIP_RATE_WINDOW_DAYS * DAY_MS,
+    Date.now() - SKIP_RATE_WINDOW_DAYS * DAY_MS,
     DEFAULT_AFFINITY_OPTIONS.earlySkipSeconds,
   );
 

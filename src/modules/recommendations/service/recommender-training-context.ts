@@ -1,8 +1,8 @@
 import type { AudioFeaturesEntity, TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
+import { makeLcg } from "../lib/random";
 import type { CandidateInput, ScoringContext } from "../lib/scoring";
 import { buildRecommenderContext, type RecommenderContext } from "./recommender-context.service";
-import { makeLcg } from "./stand-metrics";
 
 /** Fixed so training/eval reports over the same library are reproducible run to run. */
 const SAMPLE_SEED = 42;

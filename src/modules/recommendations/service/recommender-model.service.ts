@@ -13,8 +13,12 @@ const RUN_CHUNK_SIZE = 20;
 let cachedRow: RecommenderModelEntity | null | undefined;
 let loadingRow: Promise<RecommenderModelEntity | null> | null = null;
 let trainingPromise: Promise<void> | null = null;
-/** Throttles retraining attempts that trained but had too few examples to save. */
-let lastFailedAttemptAt = 0;
+/**
+ * Throttles `ensureModelFresh` attempts regardless of the stored row — a
+ * stale row whose retrain doesn't save (no runs, too few examples, a `put`
+ * error) must not retrain again on every call within the same 24h window.
+ */
+let lastAttemptAt = 0;
 
 const loadRow = async (): Promise<RecommenderModelEntity | null> => {
   if (cachedRow !== undefined) return cachedRow;
@@ -23,8 +27,8 @@ const loadRow = async (): Promise<RecommenderModelEntity | null> => {
       .then((result) => {
         if (result.isErr()) {
           getLogger().error(`[Recommendations] Reading the learned model failed: ${String(result.error)}`);
-          cachedRow = null;
-          return cachedRow;
+          // Not cached: a transient read failure should not stick as "no model" forever.
+          return null;
         }
         cachedRow = result.value;
         return cachedRow;
@@ -48,10 +52,7 @@ export const getActiveWeights = async (): Promise<ComponentWeights> => {
 
 const trainOnAllExamples = async (ctx: RecommenderContext): Promise<void> => {
   const runs = [...extractAutoplayRuns(ctx.sessions)].sort((a, b) => a.startedAt - b.startedAt);
-  if (runs.length === 0) {
-    lastFailedAttemptAt = Date.now();
-    return;
-  }
+  if (runs.length === 0) return;
 
   const buildContextAt = buildContextAtFactory(ctx);
   const sampleCandidates = sampleCandidatesFactory(ctx);
@@ -63,10 +64,7 @@ const trainOnAllExamples = async (ctx: RecommenderContext): Promise<void> => {
   }
 
   const weights = trainWeights(examples);
-  if (!weights) {
-    lastFailedAttemptAt = Date.now();
-    return;
-  }
+  if (!weights) return;
 
   const positives = examples.filter(e => e.y === 1).length;
   const negatives = examples.length - positives;
@@ -79,7 +77,6 @@ const trainOnAllExamples = async (ctx: RecommenderContext): Promise<void> => {
   });
   if (putResult.isErr()) {
     getLogger().error(`[Recommendations] Saving the learned model failed: ${String(putResult.error)}`);
-    lastFailedAttemptAt = Date.now();
     return;
   }
   invalidateWeightsCache();
@@ -89,7 +86,10 @@ const runEnsureModelFresh = async (): Promise<void> => {
   const row = await loadRow();
   const now = Date.now();
   if (row && now - row.trainedAt < FRESH_MS) return;
-  if (!row && now - lastFailedAttemptAt < FRESH_MS) return;
+  if (now - lastAttemptAt < FRESH_MS) return;
+  // Recorded before the attempt (including the context load) so a throw
+  // still counts as an attempt and keeps the throttle honest.
+  lastAttemptAt = now;
   const ctx = await getRecommenderContext();
   await trainOnAllExamples(ctx);
 };
