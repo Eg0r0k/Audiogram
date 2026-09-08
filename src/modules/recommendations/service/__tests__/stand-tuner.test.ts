@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { MmrOptions } from "@/modules/recommendations/lib/rank";
 import type { Breakdown, ComponentRanks } from "@/modules/recommendations/lib/scoring";
-import { COMPONENT_KEYS } from "@/modules/recommendations/lib/scoring";
+import { breakdownsToRankMatrix, COMPONENT_KEYS } from "@/modules/recommendations/lib/scoring";
 import type { AgreementCase, TransitionCase } from "@/modules/recommendations/service/stand-metrics";
 import { createTuner, objective, ZERO_WEIGHTS } from "@/modules/recommendations/service/stand-tuner";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
@@ -32,7 +32,7 @@ const makeCase = (seed: number): TransitionCase => {
     if (affinity > breakdowns[best].ranks.affinity) best = r;
   }
   return {
-    breakdowns,
+    ranks: breakdownsToRankMatrix(breakdowns),
     candidates: breakdowns.map((_, i) => ({
       trackId: tid(`c${seed}-${i}`),
       artistIds: [`a${seed}-${i}` as ArtistId],
@@ -81,7 +81,7 @@ describe("createTuner", () => {
 
   it("adds agreement to the objective from enough labeled pairs", () => {
     const agreementCase: AgreementCase = {
-      breakdowns: Array.from({ length: 10 }, (_, i) => bd({ affinity: i / 10 })),
+      ranks: breakdownsToRankMatrix(Array.from({ length: 10 }, (_, i) => bd({ affinity: i / 10 }))),
       likedRows: [5, 6, 7, 8, 9],
       dislikedRows: [0, 1, 2, 3, 4],
     };

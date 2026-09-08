@@ -1,5 +1,5 @@
 import { mmrSelect, type MmrCandidate, type MmrOptions } from "../lib/rank";
-import { scoreBreakdown, type Breakdown, type ComponentWeights } from "../lib/scoring";
+import { scoreRankMatrix, type ComponentWeights } from "../lib/scoring";
 import type { Session } from "../lib/sessions";
 
 export interface Transition {
@@ -10,15 +10,16 @@ export interface Transition {
 /** MMR inputs without the score — the stand rescores every row on each weight change. */
 export type StandCandidate = Omit<MmrCandidate, "score">;
 
+/** Rows of `breakdownsToRankMatrix` — cases are rescored on every weight change. */
 export interface TransitionCase {
-  breakdowns: Breakdown[];
+  ranks: Float32Array;
   candidates: StandCandidate[];
   /** Row of the track actually played next, or −1 when it is not a candidate. */
   targetRow: number;
 }
 
 export interface AgreementCase {
-  breakdowns: Breakdown[];
+  ranks: Float32Array;
   likedRows: number[];
   dislikedRows: number[];
 }
@@ -46,7 +47,7 @@ export const sampleTransitions = (sessions: readonly Session[], count: number, s
 };
 
 /** Indices of the k best scores, best first (insertion into a bounded list). */
-const topRows = (scores: readonly number[], k: number): number[] => {
+const topRows = (scores: ArrayLike<number>, k: number): number[] => {
   if (k <= 0) return [];
   const top: number[] = [];
   for (let i = 0; i < scores.length; i++) {
@@ -62,26 +63,23 @@ const topRows = (scores: readonly number[], k: number): number[] => {
 
 interface ScoredRow extends MmrCandidate { row: number }
 
-const toScoredRows = (c: TransitionCase, scores: readonly number[], rows: readonly number[]): ScoredRow[] =>
+const toScoredRows = (c: TransitionCase, scores: ArrayLike<number>, rows: readonly number[]): ScoredRow[] =>
   rows.map(row => ({ ...c.candidates[row], score: scores[row], row }));
 
 /**
  * Diversified top-N over the pre-filtered head. Keeping only K = limit * 8 rows
- * before MMR is exact unless the diversity rules drop more than 7 * limit rows
- * from the head — acceptable for the hit@N estimate, not for the visible list.
+ * before MMR is exact unless the diversity rules push a row from outside the
+ * head into the picks — acceptable for the hit@N estimate, not for the list
+ * the user sees.
  */
 const selectRows = (
   c: TransitionCase,
-  scores: readonly number[],
+  scores: ArrayLike<number>,
   limit: number,
   mmr: MmrOptions,
 ): number[] => {
-  const n = scores.length;
-  const k = Math.min(n, limit * 8);
-  const picked = mmrSelect(toScoredRows(c, scores, topRows(scores, k)), limit, mmr);
-  if (picked.length >= limit || k >= n) return picked.map(p => p.row);
-  const allRows = Array.from({ length: n }, (_, i) => i);
-  return mmrSelect(toScoredRows(c, scores, allRows), limit, mmr).map(p => p.row);
+  const k = Math.min(scores.length, limit * 8);
+  return mmrSelect(toScoredRows(c, scores, topRows(scores, k)), limit, mmr).map(p => p.row);
 };
 
 export const hitRate = (
@@ -94,7 +92,7 @@ export const hitRate = (
   let hits = 0;
   for (const c of cases) {
     if (c.targetRow < 0) continue;
-    const scores = c.breakdowns.map(b => scoreBreakdown(b, weights));
+    const scores = scoreRankMatrix(c.ranks, weights);
     if (selectRows(c, scores, limit, mmr).includes(c.targetRow)) hits++;
   }
   return hits / cases.length;
@@ -105,7 +103,7 @@ export const pairAgreement = (cases: readonly AgreementCase[], weights: Componen
   let sources = 0;
   for (const c of cases) {
     if (c.likedRows.length === 0 || c.dislikedRows.length === 0) continue;
-    const scores = c.breakdowns.map(b => scoreBreakdown(b, weights));
+    const scores = scoreRankMatrix(c.ranks, weights);
     let wins = 0;
     for (const l of c.likedRows) {
       for (const d of c.dislikedRows) if (scores[l] > scores[d]) wins++;

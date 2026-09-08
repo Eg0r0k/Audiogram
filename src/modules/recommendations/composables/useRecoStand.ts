@@ -7,6 +7,7 @@ import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { TrackId } from "@/types/ids";
 import { DEFAULT_MMR_OPTIONS, mmrSelect, type MmrOptions } from "../lib/rank";
 import {
+  breakdownsToRankMatrix,
   computeBreakdowns,
   DEFAULT_WEIGHTS,
   scoreBreakdown,
@@ -46,6 +47,12 @@ interface SourceComponents {
   breakdowns: Breakdown[];
 }
 
+/** Rank matrix of a source's full candidate set, plus where each candidate sits. */
+interface SourceRanks {
+  ranks: Float32Array;
+  rowOf: Map<TrackId, number>;
+}
+
 const HIT_SAMPLE = 200;
 const HIT_SEED = 42;
 const CHUNK = 10;
@@ -64,6 +71,13 @@ const hitProgress = ref({ done: 0, total: 0 });
 const tuneProgress = ref<{ done: number; total: number } | null>(null);
 const tuneUsesAgreement = ref<boolean | null>(null);
 
+// Bumped by every (re)load: a build started before the bump is stale.
+let generation = 0;
+
+let ratedRanks = new Map<TrackId, SourceRanks>();
+let ratedRanksCtx: RecommenderContext | null = null;
+let ratedRanksWindow = -1;
+
 const yieldToUi = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
 const now = () => performance.now();
@@ -73,6 +87,12 @@ const mmrOptions = (): MmrOptions => ({
   albumPenalty: params.albumPenalty,
   maxPerArtist: params.maxPerArtist,
 });
+
+const excludedFor = (c: RecommenderContext, seedId: TrackId): Set<TrackId> => {
+  const excluded = new Set<TrackId>([seedId]);
+  for (const recent of c.recentlyPlayed.slice(0, Math.max(0, params.recentWindow))) excluded.add(recent);
+  return excluded;
+};
 
 const candidatesFor = (c: RecommenderContext, excluded: ReadonlySet<TrackId>): CandidateInput[] => {
   const out: CandidateInput[] = [];
@@ -96,18 +116,19 @@ const rebuildSourceComponents = () => {
     return;
   }
   const t0 = now();
-  const excluded = new Set<TrackId>([seedTrack.id]);
-  for (const recent of c.recentlyPlayed.slice(0, Math.max(0, params.recentWindow))) excluded.add(recent);
-  const candidates = candidatesFor(c, excluded);
-  sourceComponents.value = { candidates, breakdowns: computeBreakdowns(c, seedFor(c, seedTrack), candidates) };
+  const candidates = candidatesFor(c, excludedFor(c, seedTrack.id));
+  // Fresh clock like production: the cached context can be hours old, but the
+  // recency tiers must score against "now".
+  const scoringCtx = { ...c, now: Date.now() };
+  sourceComponents.value = { candidates, breakdowns: computeBreakdowns(scoringCtx, seedFor(c, seedTrack), candidates) };
   timings.value = { ...timings.value, componentsMs: now() - t0 };
 };
 
 watch(() => params.recentWindow, rebuildSourceComponents);
 
-const buildTransitionCases = async (c: RecommenderContext) => {
+const buildTransitionCases = async (c: RecommenderContext, gen: number) => {
   const transitions = sampleTransitions(c.sessions, HIT_SAMPLE, HIT_SEED);
-  if (ctx.value !== c) return;
+  if (gen !== generation) return;
   hitProgress.value = { done: 0, total: transitions.length };
   const out: TransitionCase[] = [];
   for (let i = 0; i < transitions.length; i++) {
@@ -122,7 +143,7 @@ const buildTransitionCases = async (c: RecommenderContext) => {
         // The case's own session must not teach the transition it is testing.
         const heldOut = subtractTransitions(c.transitions, buildTransitions([session]));
         out.push({
-          breakdowns: computeBreakdowns({ ...c, transitions: heldOut }, seedFor(c, seedTrack), candidates),
+          ranks: breakdownsToRankMatrix(computeBreakdowns({ ...c, transitions: heldOut }, seedFor(c, seedTrack), candidates)),
           candidates: candidates.map(cand => ({
             trackId: cand.track.id,
             artistIds: cand.track.artistIds,
@@ -132,15 +153,38 @@ const buildTransitionCases = async (c: RecommenderContext) => {
         });
       }
     }
-    if (ctx.value !== c) return;
+    if (gen !== generation) return;
     hitProgress.value = { done: i + 1, total: transitions.length };
     if (i % CHUNK === CHUNK - 1) {
       await yieldToUi();
-      if (ctx.value !== c) return;
+      if (gen !== generation) return;
     }
   }
-  if (ctx.value !== c) return;
   transitionCases.value = out;
+};
+
+/**
+ * Ranks over the source's whole candidate set — the very set the list shows —
+ * so a rating is judged on the ranks the user saw. Cached per source: the
+ * matrix depends on the context and `recentWindow`, never on the labels.
+ */
+const ratedSourceRanks = (c: RecommenderContext, source: TrackId): SourceRanks | null => {
+  if (ratedRanksCtx !== c || ratedRanksWindow !== params.recentWindow) {
+    ratedRanksCtx = c;
+    ratedRanksWindow = params.recentWindow;
+    ratedRanks = new Map();
+  }
+  const cached = ratedRanks.get(source);
+  if (cached) return cached;
+  const seedTrack = c.tracks.get(source);
+  if (!seedTrack) return null;
+  const candidates = candidatesFor(c, excludedFor(c, source));
+  const entry: SourceRanks = {
+    ranks: breakdownsToRankMatrix(computeBreakdowns(c, seedFor(c, seedTrack), candidates)),
+    rowOf: new Map(candidates.map((cand, i) => [cand.track.id, i])),
+  };
+  ratedRanks.set(source, entry);
+  return entry;
 };
 
 const agreementCases = computed<AgreementCase[]>(() => {
@@ -155,23 +199,18 @@ const agreementCases = computed<AgreementCase[]>(() => {
   }
   const out: AgreementCase[] = [];
   for (const [source, entries] of bySource) {
-    const seedTrack = c.tracks.get(source);
-    if (!seedTrack) continue;
-    const candidates: CandidateInput[] = [];
+    const sourceRanks = ratedSourceRanks(c, source);
+    if (!sourceRanks) continue;
     const likedRows: number[] = [];
     const dislikedRows: number[] = [];
     for (const entry of entries) {
-      const track = c.tracks.get(entry.candidateId);
-      if (!track) continue;
-      if (entry.label === 1) likedRows.push(candidates.length);
-      else dislikedRows.push(candidates.length);
-      candidates.push({ track, features: c.features.get(track.id) ?? null });
+      const row = sourceRanks.rowOf.get(entry.candidateId);
+      if (row === undefined) continue;
+      if (entry.label === 1) likedRows.push(row);
+      else dislikedRows.push(row);
     }
-    out.push({
-      breakdowns: computeBreakdowns(c, seedFor(c, seedTrack), candidates),
-      likedRows,
-      dislikedRows,
-    });
+    if (likedRows.length === 0 || dislikedRows.length === 0) continue;
+    out.push({ ranks: sourceRanks.ranks, likedRows, dislikedRows });
   }
   return out;
 });
@@ -220,15 +259,17 @@ export const useRecoStand = () => {
     isLoading.value = true;
     transitionCases.value = [];
     hitProgress.value = { done: 0, total: 0 };
+    const gen = ++generation;
     try {
       if (dirty) markRecommenderContextDirty();
       const t0 = now();
       const [c, fb] = await Promise.all([getRecommenderContext(), loadFeedback()]);
+      if (gen !== generation) return;
       timings.value = { contextMs: now() - t0, componentsMs: 0, scoringMs: 0 };
       ctx.value = c;
       feedback.value = fb;
       rebuildSourceComponents();
-      buildTransitionCases(c).catch(error => getLogger().error(`[RecoStand] Building transition cases failed: ${String(error)}`));
+      buildTransitionCases(c, gen).catch(error => getLogger().error(`[RecoStand] Building transition cases failed: ${String(error)}`));
     }
     finally {
       isLoading.value = false;

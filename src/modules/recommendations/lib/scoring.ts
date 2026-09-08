@@ -152,6 +152,40 @@ export const scoreBreakdown = (b: Breakdown, weights: ComponentWeights): number 
   return s + b.recencyPenalty;
 };
 
+/** Columns of a rank matrix row: the weighted ranks plus the recency penalty. */
+export const RANK_MATRIX_STRIDE = COMPONENT_KEYS.length + 1;
+
+/**
+ * `ranks` in COMPONENT_KEYS order followed by `recencyPenalty`, one row per
+ * breakdown. The dev stand rescores hundreds of cached candidate sets on every
+ * weight change, where the per-row object walk of `scoreBreakdown` dominates.
+ */
+export const breakdownsToRankMatrix = (breakdowns: readonly Breakdown[]): Float32Array => {
+  const out = new Float32Array(breakdowns.length * RANK_MATRIX_STRIDE);
+  for (let i = 0; i < breakdowns.length; i++) {
+    const base = i * RANK_MATRIX_STRIDE;
+    const { ranks, recencyPenalty } = breakdowns[i];
+    for (let k = 0; k < COMPONENT_KEYS.length; k++) out[base + k] = ranks[COMPONENT_KEYS[k]];
+    out[base + COMPONENT_KEYS.length] = recencyPenalty;
+  }
+  return out;
+};
+
+/** Row-wise `scoreBreakdown` over a matrix from `breakdownsToRankMatrix`. */
+export const scoreRankMatrix = (matrix: Float32Array, weights: ComponentWeights): Float32Array => {
+  const cols = COMPONENT_KEYS.length;
+  const rows = matrix.length / RANK_MATRIX_STRIDE;
+  const w = COMPONENT_KEYS.map(k => weights[k]);
+  const out = new Float32Array(rows);
+  for (let r = 0; r < rows; r++) {
+    const base = r * RANK_MATRIX_STRIDE;
+    let s = 0;
+    for (let i = 0; i < cols; i++) s += w[i] * matrix[base + i];
+    out[r] = s + matrix[base + cols];
+  }
+  return out;
+};
+
 export const scoreCandidates = (
   ctx: ScoringContext,
   seed: SeedInput,

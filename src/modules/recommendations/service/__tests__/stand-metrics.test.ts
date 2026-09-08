@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { MmrOptions } from "@/modules/recommendations/lib/rank";
 import type { Session, SessionEvent } from "@/modules/recommendations/lib/sessions";
 import type { Breakdown, ComponentRanks, ComponentWeights } from "@/modules/recommendations/lib/scoring";
-import { COMPONENT_KEYS } from "@/modules/recommendations/lib/scoring";
+import { breakdownsToRankMatrix, COMPONENT_KEYS } from "@/modules/recommendations/lib/scoring";
 import {
   hitRate,
   pairAgreement,
@@ -39,7 +39,7 @@ const transitionCase = (
   targetRow: number,
   artists?: string[],
 ): TransitionCase => ({
-  breakdowns,
+  ranks: breakdownsToRankMatrix(breakdowns),
   candidates: breakdowns.map((_, i) => candidate(i, artists?.[i])),
   targetRow,
 });
@@ -108,11 +108,26 @@ describe("hitRate", () => {
     expect(hitRate([affinityCase(affinity, 2)], W, 3, NO_MMR)).toBe(1);
     expect(hitRate([affinityCase(affinity, 40)], W, 3, NO_MMR)).toBe(0);
   });
+
+  it("prefilters to the top K, dropping a row exact MMR would have picked", () => {
+    // limit 2 → K = 16. Only the last row has a free artist, and it scores
+    // lowest, so the artist cap can reach it only while the pool fits in K.
+    const cappedCase = (rows: number) => {
+      const affinity = Array.from({ length: rows }, (_, i) => 1 - i / (rows * 2));
+      affinity[rows - 1] = 0;
+      const artists = Array.from({ length: rows }, () => "x");
+      artists[rows - 1] = "y";
+      return affinityCase(affinity, rows - 1, artists);
+    };
+    const mmr = { ...NO_MMR, maxPerArtist: 1 };
+    expect(hitRate([cappedCase(10)], W, 2, mmr)).toBe(1);
+    expect(hitRate([cappedCase(20)], W, 2, mmr)).toBe(0);
+  });
 });
 
 describe("pairAgreement", () => {
   const agreementCase = (affinity: number[], likedRows: number[], dislikedRows: number[]): AgreementCase => ({
-    breakdowns: affinity.map(v => bd({ affinity: v })),
+    ranks: breakdownsToRankMatrix(affinity.map(v => bd({ affinity: v }))),
     likedRows,
     dislikedRows,
   });

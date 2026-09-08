@@ -6,7 +6,10 @@ import { computeFeatureStats, createAudioSpace } from "./audio-similarity";
 import { buildSessions } from "./sessions";
 import { buildTransitions } from "./transitions";
 import {
+  breakdownsToRankMatrix,
   computeBreakdowns,
+  scoreRankMatrix,
+  RANK_MATRIX_STRIDE,
   scoreBreakdown,
   scoreCandidates,
   ranksToVector,
@@ -422,5 +425,47 @@ describe("ranksToVector", () => {
   it("returns values in COMPONENT_KEYS order", () => {
     const ranks: ComponentRanks = { audio: 0.1, trackTransition: 0.2, artistTransition: 0.3, affinity: 0.4, explore: 1 };
     expect(ranksToVector(ranks)).toEqual(COMPONENT_KEYS.map(k => ranks[k]));
+  });
+});
+
+describe("rank matrices", () => {
+  const ranksOf = (values: number[]): ComponentRanks =>
+    Object.fromEntries(COMPONENT_KEYS.map((k, i) => [k, values[i]])) as ComponentRanks;
+
+  const breakdownOf = (values: number[], recencyPenalty: number) => ({
+    audioSimilarity: null,
+    trackTransition: 0,
+    artistTransition: 0,
+    affinity: 0,
+    explore: 0 as const,
+    recencyPenalty,
+    ranks: ranksOf(values),
+  });
+
+  const breakdowns = [
+    breakdownOf([0.1, 0.2, 0.3, 0.4, 1], 0),
+    breakdownOf([0.9, 0, 0.25, 0.75, 0], -0.3),
+    breakdownOf([0.5, 0.5, 0.5, 0.5, 0], -0.1),
+  ];
+
+  it("lays out ranks in COMPONENT_KEYS order with the penalty last", () => {
+    const m = breakdownsToRankMatrix(breakdowns);
+    expect(m.length).toBe(breakdowns.length * RANK_MATRIX_STRIDE);
+    expect(RANK_MATRIX_STRIDE).toBe(COMPONENT_KEYS.length + 1);
+    expect([...m.slice(0, RANK_MATRIX_STRIDE)]).toEqual([0.1, 0.2, 0.3, 0.4, 1, 0].map(v => Math.fround(v)));
+    expect(m[RANK_MATRIX_STRIDE * 2 - 1]).toBeCloseTo(-0.3, 6);
+  });
+
+  it("scores rows exactly like scoreBreakdown", () => {
+    const weights = { audio: 0.35, trackTransition: 0.25, artistTransition: 0.1, affinity: 0.2, explore: 0.1 };
+    const scores = scoreRankMatrix(breakdownsToRankMatrix(breakdowns), weights);
+    expect(scores.length).toBe(breakdowns.length);
+    breakdowns.forEach((b, i) => {
+      expect(scores[i]).toBeCloseTo(scoreBreakdown(b, weights), 6);
+    });
+  });
+
+  it("handles an empty candidate set", () => {
+    expect(scoreRankMatrix(breakdownsToRankMatrix([]), DEFAULT_WEIGHTS).length).toBe(0);
   });
 });
