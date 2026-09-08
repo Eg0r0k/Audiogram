@@ -1,4 +1,4 @@
-import type { ListenEventEntity, TrackEntity } from "@/db/entities";
+import type { TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
 import { DEFAULT_MMR_OPTIONS, mmrSelect, type MmrCandidate } from "../lib/rank";
 import { DEFAULT_WEIGHTS, scoreCandidates, type Breakdown, type CandidateInput, type SeedInput } from "../lib/scoring";
@@ -13,24 +13,6 @@ export interface ScoredTrack {
 
 /** Tracks played this recently are excluded from candidates alongside the seed. */
 export const RECENT_EXCLUDE = 3;
-
-/**
- * Unique track ids from the most recently played, newest first. Exported for
- * the dev stand; the service itself reads the precomputed `ctx.recentlyPlayed`
- * instead of re-sorting every event on each call.
- */
-export const recentlyPlayedIds = (events: readonly ListenEventEntity[], count: number): TrackId[] => {
-  const sorted = [...events].sort((a, b) => b.startedAt - a.startedAt);
-  const seen = new Set<TrackId>();
-  const out: TrackId[] = [];
-  for (const e of sorted) {
-    if (seen.has(e.trackId)) continue;
-    seen.add(e.trackId);
-    out.push(e.trackId);
-    if (out.length >= count) break;
-  }
-  return out;
-};
 
 export const getRecommendations = async (
   sourceTrackId: TrackId,
