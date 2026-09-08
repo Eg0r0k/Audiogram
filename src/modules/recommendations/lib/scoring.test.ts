@@ -154,13 +154,15 @@ describe("computeBreakdowns / scoreCandidates", () => {
     expect(scored.map(s => s.track.id)).toEqual([neverPlayed.id, skipped.id]);
   });
 
-  it("ranks a candidate that twice followed the seed in sessions above an equal-feature candidate", () => {
-    const seed = makeTrack({ id: tid("seed") });
+  it("ranks a candidate that twice followed the seed in sessions above an equal-feature candidate, and covers artistTransition", () => {
+    const seed = makeTrack({ id: tid("seed"), artistIds: [aid("art-seed")] });
     const trans = makeTrack({ id: tid("c-trans"), artistIds: [aid("art-trans")] });
     const equal = makeTrack({ id: tid("c-equal"), artistIds: [aid("art-equal")] });
+    const noArtist = makeTrack({ id: tid("c-no-artist"), artistIds: [] });
     const sharedFeatures = { bpm: 100, energy: 0.5, spectralCentroid: 2000, danceability: 0.6, key: 0, mode: 1 };
     const fTrans = makeFeatures({ trackId: trans.id, ...sharedFeatures });
     const fEqual = makeFeatures({ trackId: equal.id, ...sharedFeatures });
+    const fNoArtist = makeFeatures({ trackId: noArtist.id, ...sharedFeatures });
     const fSeed = makeFeatures({ trackId: seed.id, bpm: 90 });
 
     const events = [
@@ -169,18 +171,30 @@ describe("computeBreakdowns / scoreCandidates", () => {
       makeEvent("seed", "art-seed", now - 86_400_000),
       makeEvent("c-trans", "art-trans", now - 86_400_000 + 60_000),
     ];
-    const ctx = buildCtx(events, new Set(), [fSeed, fTrans, fEqual], now);
+    const ctx = buildCtx(events, new Set(), [fSeed, fTrans, fEqual, fNoArtist], now);
 
     const candidates: CandidateInput[] = [
       { track: trans, features: fTrans },
       { track: equal, features: fEqual },
+      { track: noArtist, features: fNoArtist },
     ];
-    const [bTrans, bEqual] = computeBreakdowns(ctx, { track: seed, features: fSeed }, candidates);
+    const [bTrans, bEqual, bNoArtist] = computeBreakdowns(ctx, { track: seed, features: fSeed }, candidates);
 
     expect(bTrans.trackTransition).toBeCloseTo(2 / 3, 6);
     expect(bEqual.trackTransition).toBe(0);
 
-    const scored = scoreCandidates(ctx, { track: seed, features: fSeed }, candidates)
+    // The seed and c-trans artists co-occurred through the same session pairs as the
+    // tracks, so artistTransition should carry a matching non-zero, higher-ranked signal
+    // while an artist that never co-occurred, or a candidate with no artist, stays at 0.
+    expect(bTrans.artistTransition).toBeCloseTo(2 / 3, 6);
+    expect(bEqual.artistTransition).toBe(0);
+    expect(bTrans.ranks.artistTransition).toBeGreaterThan(bEqual.ranks.artistTransition);
+    expect(bNoArtist.artistTransition).toBe(0);
+
+    const scored = scoreCandidates(ctx, { track: seed, features: fSeed }, [
+      { track: trans, features: fTrans },
+      { track: equal, features: fEqual },
+    ])
       .slice()
       .sort((a, b) => b.score - a.score);
     expect(scored.map(s => s.track.id)).toEqual([trans.id, equal.id]);
@@ -346,10 +360,61 @@ describe("computeBreakdowns / scoreCandidates", () => {
       { track: c1, features: f1 },
       { track: c2, features: f2 },
     ];
-    const scored = scoreCandidates(ctx, { track: seed, features: fSeed }, candidates, DEFAULT_WEIGHTS);
+    const scored = scoreCandidates(ctx, { track: seed, features: fSeed }, candidates);
     for (const s of scored) {
       expect(scoreBreakdown(s.breakdown, DEFAULT_WEIGHTS)).toBe(s.score);
     }
+  });
+});
+
+describe("computeBreakdowns edge cases", () => {
+  const now = Date.now();
+
+  it("returns [] for zero candidates", () => {
+    const seed = makeTrack({ id: tid("seed") });
+    const ctx = buildCtx([], new Set(), [], now);
+    expect(computeBreakdowns(ctx, { track: seed, features: null }, [])).toEqual([]);
+  });
+
+  it("gives every percentile-based rank 0.5 for a single candidate", () => {
+    const seed = makeTrack({ id: tid("seed") });
+    const only = makeTrack({ id: tid("only") });
+    const fSeed = makeFeatures({ trackId: seed.id, bpm: 100 });
+    const fOnly = makeFeatures({ trackId: only.id, bpm: 120 });
+
+    const ctx = buildCtx([], new Set(), [fSeed, fOnly], now);
+    const [b] = computeBreakdowns(ctx, { track: seed, features: fSeed }, [{ track: only, features: fOnly }]);
+
+    expect(b.ranks.audio).toBe(0.5);
+    expect(b.ranks.trackTransition).toBe(0.5);
+    expect(b.ranks.artistTransition).toBe(0.5);
+    expect(b.ranks.affinity).toBe(0.5);
+  });
+
+  it("gives artistTransition 0 for every candidate when the seed has no artist", () => {
+    const seed = makeTrack({ id: tid("seed"), artistIds: [] });
+    const cand = makeTrack({ id: tid("cand"), artistIds: [aid("art-cand")] });
+
+    const events = [
+      makeEvent("seed", "art-seed", now - 60_000),
+      makeEvent("cand", "art-cand", now),
+    ];
+    const ctx = buildCtx(events, new Set(), [], now);
+    const [b] = computeBreakdowns(ctx, { track: seed, features: null }, [{ track: cand, features: null }]);
+
+    expect(b.artistTransition).toBe(0);
+  });
+
+  it("sets explore 0 for a liked-but-never-played candidate", () => {
+    const seed = makeTrack({ id: tid("seed") });
+    const liked = makeTrack({ id: tid("liked") });
+    const fSeed = makeFeatures({ trackId: seed.id, bpm: 100 });
+    const fLiked = makeFeatures({ trackId: liked.id, bpm: 120 });
+
+    const ctx = buildCtx([], new Set([liked.id]), [fSeed, fLiked], now);
+    const [b] = computeBreakdowns(ctx, { track: seed, features: fSeed }, [{ track: liked, features: fLiked }]);
+
+    expect(b.explore).toBe(0);
   });
 });
 

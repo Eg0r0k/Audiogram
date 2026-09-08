@@ -58,6 +58,7 @@ const recencyPenaltyOf = (
 ): number => {
   if (track.lastPlayedAt === undefined) return 0;
   const age = Math.max(0, now - track.lastPlayedAt);
+  // Tiers must be sorted ascending by withinMs — first match wins.
   for (const tier of tiers) {
     if (age <= tier.withinMs) return tier.penalty;
   }
@@ -89,7 +90,7 @@ export const computeBreakdowns = (
   for (let i = 0; i < n; i++) {
     const cand = candidates[i];
 
-    rawAudio[i] = seedVector && ctx.audioSpace && cand.features
+    rawAudio[i] = seedVector && ctx.audioSpace && cand.features !== null
       ? ctx.audioSpace.similarity(seedVector, ctx.audioSpace.encode(cand.features))
       : null;
 
