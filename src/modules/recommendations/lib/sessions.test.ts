@@ -6,6 +6,7 @@ import { buildSessions } from "./sessions";
 const tid = (s: string) => s as TrackId;
 const aid = (s: string) => s as ArtistId;
 const MIN = 60_000;
+const GAP = 30 * MIN;
 
 const makeEvent = (
   trackId: string,
@@ -31,7 +32,7 @@ describe("buildSessions", () => {
       makeEvent("t1", 0),
       makeEvent("t2", 31 * MIN),
     ];
-    const sessions = buildSessions(events);
+    const sessions = buildSessions(events, GAP);
     expect(sessions).toEqual([]);
   });
 
@@ -44,7 +45,7 @@ describe("buildSessions", () => {
       makeEvent("t5", 16 * MIN),
     ];
     const shuffled = [events[3], events[0], events[4], events[1], events[2]];
-    const sessions = buildSessions(shuffled);
+    const sessions = buildSessions(shuffled, GAP);
     expect(sessions).toHaveLength(1);
     expect(sessions[0].map(e => e.trackId)).toEqual(["t1", "t2", "t3", "t4", "t5"]);
   });
@@ -55,7 +56,7 @@ describe("buildSessions", () => {
       makeEvent("t1", 1 * MIN),
       makeEvent("t2", 2 * MIN),
     ];
-    const sessions = buildSessions(events, undefined, 1);
+    const sessions = buildSessions(events, GAP, 1);
     expect(sessions).toHaveLength(1);
     expect(sessions[0].map(e => e.trackId)).toEqual(["t1", "t2"]);
   });
@@ -66,7 +67,7 @@ describe("buildSessions", () => {
       makeEvent("t2", 1 * MIN),
       makeEvent("t1", 2 * MIN),
     ];
-    const sessions = buildSessions(events, undefined, 1);
+    const sessions = buildSessions(events, GAP, 1);
     expect(sessions).toHaveLength(1);
     expect(sessions[0].map(e => e.trackId)).toEqual(["t1", "t2", "t1"]);
   });
@@ -76,14 +77,14 @@ describe("buildSessions", () => {
       makeEvent("t1", 0),
       makeEvent("t2", 1 * MIN, { skipped: true, completed: false }),
     ];
-    const sessions = buildSessions(events);
+    const sessions = buildSessions(events, GAP);
     expect(sessions).toHaveLength(1);
     expect(sessions[0][1]).toMatchObject({ trackId: "t2", skipped: true });
   });
 
   it("drops sessions shorter than minLength (default 2)", () => {
     const events = [makeEvent("t1", 0)];
-    const sessions = buildSessions(events);
+    const sessions = buildSessions(events, GAP);
     expect(sessions).toEqual([]);
   });
 
@@ -92,7 +93,7 @@ describe("buildSessions", () => {
       makeEvent("t1", 0, { secondsListened: 42, origin: "autoplay" }),
       makeEvent("t2", 1 * MIN, { secondsListened: 99 }),
     ];
-    const sessions = buildSessions(events);
+    const sessions = buildSessions(events, GAP);
     expect(sessions[0][0]).toEqual({
       trackId: tid("t1"),
       artistId: aid("ar-t1"),

@@ -1,6 +1,5 @@
 import type { ListenEventEntity, ListenOrigin } from "@/db/entities";
 import type { ArtistId, TrackId } from "@/types/ids";
-import { SESSION_GAP_MS } from "@/db/repositories/stats.aggregate";
 
 export interface SessionEvent {
   trackId: TrackId;
@@ -26,7 +25,7 @@ const toSessionEvent = (e: ListenEventEntity): SessionEvent => ({
 
 export const buildSessions = (
   events: readonly ListenEventEntity[],
-  gapMs: number = SESSION_GAP_MS,
+  gapMs: number,
   minLength = 2,
 ): Session[] => {
   const sorted = [...events].sort((a, b) => a.startedAt - b.startedAt);
