@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ok } from "neverthrow";
+import { err, ok } from "neverthrow";
 import type { AudioFeaturesEntity, ListenEventEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
@@ -12,7 +12,7 @@ const makeTrack = (id: string, o: Partial<TrackEntity> = {}): TrackEntity => ({
   id: tid(id), title: `Track ${id}`, artistName: "Artist", albumTitle: "Album", artistIds: [`ar-${id}` as any], albumId: "al" as any, tagIds: [],
   source: TrackSource.LOCAL_INTERNAL, storagePath: `tracks/${id}.mp3`, state: TrackState.READY, duration: 200,
   format: { codec: "MP3", bitrate: 320000, sampleRate: 44100, lossless: false, channels: 2 },
-  pinned: 1 as any, playCount: 0, addedAt: 0, ...o,
+  pinned: 0 as any, playCount: 0, addedAt: 0, ...o,
 });
 const makeEvent = (trackId: string, startedAt: number, o: Partial<ListenEventEntity> = {}): ListenEventEntity => ({
   id: `${trackId}-${startedAt}`, trackId: tid(trackId), artistId: `ar-${trackId}` as any, albumId: "al" as any,
@@ -23,6 +23,9 @@ const makeFeatures = (trackId: string, o: Partial<AudioFeaturesEntity> = {}): Au
   analyzedAt: 0, algorithmVersion: 1, ...o,
 });
 
+vi.mock("@/lib/logger", () => ({
+  getLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+}));
 vi.mock("@/db/repositories", () => ({
   trackRepository: { findAll: vi.fn() },
 }));
@@ -58,6 +61,17 @@ describe("getRecommendations", () => {
     expect(await getRecommendations(tid("S"))).toEqual([]);
   });
 
+  it("returns [] when tracks cannot be read, and retries the repository on the next call", async () => {
+    mockFindAll.mockResolvedValueOnce(err(new Error("db")));
+    expect(await getRecommendations(tid("S"))).toEqual([]);
+    expect(mockFindAll).toHaveBeenCalledTimes(1);
+
+    mockFindAll.mockResolvedValueOnce(ok([makeTrack("S"), makeTrack("A")]));
+    const recs = await getRecommendations(tid("S"));
+    expect(mockFindAll).toHaveBeenCalledTimes(2);
+    expect(recs.map(r => r.trackId)).toEqual([tid("A")]);
+  });
+
   it("excludes the seed, explicit ids and the recently played tracks", async () => {
     const now = Date.now();
     mockFindAll.mockResolvedValue(ok(["S", "A", "B", "C", "D", "E"].map(id => makeTrack(id))));
@@ -86,8 +100,8 @@ describe("getRecommendations", () => {
       makeEvent("A", now - 8 * DAY, { completed: true, skipped: false, secondsListened: 200 }),
       makeEvent("B", now - 10 * DAY, { completed: false, skipped: true, secondsListened: 5 }),
       makeEvent("B", now - 8 * DAY, { completed: false, skipped: true, secondsListened: 5 }),
-      // Padding so A/B fall out of the RECENT_EXCLUDE=3 window (recentlyPlayedIds
-      // takes the 3 globally-newest unique tracks) while staying inside MAX_HISTORY_DAYS.
+      // Padding so A/B fall out of the RECENT_EXCLUDE=3 window (ctx.recentlyPlayed
+      // holds the globally-newest unique tracks) while staying inside MAX_HISTORY_DAYS.
       makeEvent("PAD1", now - MINUTE),
       makeEvent("PAD2", now - 2 * MINUTE),
       makeEvent("PAD3", now - 3 * MINUTE),

@@ -14,7 +14,11 @@ export interface ScoredTrack {
 /** Tracks played this recently are excluded from candidates alongside the seed. */
 export const RECENT_EXCLUDE = 3;
 
-/** Unique track ids from the most recently played, newest first. */
+/**
+ * Unique track ids from the most recently played, newest first. Exported for
+ * the dev stand; the service itself reads the precomputed `ctx.recentlyPlayed`
+ * instead of re-sorting every event on each call.
+ */
 export const recentlyPlayedIds = (events: readonly ListenEventEntity[], count: number): TrackId[] => {
   const sorted = [...events].sort((a, b) => b.startedAt - a.startedAt);
   const seen = new Set<TrackId>();
@@ -39,7 +43,7 @@ export const getRecommendations = async (
 
   const excluded = new Set<TrackId>(additionalExcludeIds);
   excluded.add(sourceTrackId);
-  for (const id of recentlyPlayedIds(ctx.events, RECENT_EXCLUDE)) excluded.add(id);
+  for (const id of ctx.recentlyPlayed.slice(0, RECENT_EXCLUDE)) excluded.add(id);
 
   const candidates: CandidateInput[] = [];
   for (const [id, track] of ctx.tracks) {
@@ -51,7 +55,10 @@ export const getRecommendations = async (
   // Task 10 replaces this with `await getActiveWeights()`.
   const weights = DEFAULT_WEIGHTS;
   const seed: SeedInput = { track: seedTrack, features: ctx.features.get(sourceTrackId) ?? null };
-  const scored = scoreCandidates(ctx, seed, candidates, weights);
+  // Fresh clock: the cached context can be hours old, but recency tiers must
+  // score against "now", not the context's build time.
+  const scoringCtx = { ...ctx, now: Date.now() };
+  const scored = scoreCandidates(scoringCtx, seed, candidates, weights);
 
   const mmrCandidates = scored.map(c => ({
     trackId: c.track.id,

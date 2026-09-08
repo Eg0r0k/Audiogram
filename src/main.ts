@@ -84,6 +84,7 @@ statsService.onChange(() => {
   );
 });
 onAllDataCleared(resetSearchIndex);
+onAllDataCleared(markRecommenderContextDirty);
 
 // Download queue: requeue interrupted jobs, sweep temp orphans, resume.
 // No-op outside Tauri. Failures must not block app startup.
