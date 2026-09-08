@@ -27,7 +27,7 @@ describe("statsService skip detection", () => {
   });
 
   it("records a mid-track interruption as skipped, without a play count", async () => {
-    statsService.startListening(TRACK_ID, ARTIST_ID, ALBUM_ID, DURATION);
+    statsService.startListening(TRACK_ID, ARTIST_ID, ALBUM_ID, DURATION, "user");
     await flush();
 
     await statsService.stopListening(30, { skipped: true });
@@ -40,7 +40,7 @@ describe("statsService skip detection", () => {
   });
 
   it("treats a near-complete listen as played even when it was interrupted", async () => {
-    statsService.startListening(TRACK_ID, ARTIST_ID, ALBUM_ID, DURATION);
+    statsService.startListening(TRACK_ID, ARTIST_ID, ALBUM_ID, DURATION, "user");
     await flush();
 
     await statsService.stopListening(DURATION * 0.9, { skipped: true });
@@ -53,14 +53,14 @@ describe("statsService skip detection", () => {
   });
 
   it("closes a leaked session as an unmeasured skip, not wall-clock time", async () => {
-    statsService.startListening(TRACK_ID, ARTIST_ID, ALBUM_ID, DURATION);
+    statsService.startListening(TRACK_ID, ARTIST_ID, ALBUM_ID, DURATION, "user");
     await flush();
 
     // A second start without an intervening stop (session leak). The old
     // wall-clock fallback fabricated listen time — hours if the app sat
     // paused or throttled in the background — inflating completions and
     // play counts.
-    statsService.startListening("track-2" as TrackId, ARTIST_ID, ALBUM_ID, DURATION);
+    statsService.startListening("track-2" as TrackId, ARTIST_ID, ALBUM_ID, DURATION, "user");
     await flush();
 
     const events = await db.listenEvents.toArray();
@@ -74,7 +74,7 @@ describe("statsService skip detection", () => {
   });
 
   it("records a natural end as completed, not skipped", async () => {
-    statsService.startListening(TRACK_ID, ARTIST_ID, ALBUM_ID, DURATION);
+    statsService.startListening(TRACK_ID, ARTIST_ID, ALBUM_ID, DURATION, "user");
     await flush();
 
     await statsService.stopListening(120, { completed: true });
@@ -103,10 +103,10 @@ describe("statsService change notifications", () => {
     const onChange = vi.fn();
     const { off } = statsService.onChange(onChange);
 
-    statsService.startListening(TRACK_ID, ARTIST_ID, ALBUM_ID, DURATION);
+    statsService.startListening(TRACK_ID, ARTIST_ID, ALBUM_ID, DURATION, "user");
     await flush();
     await statsService.stopListening(120, { completed: true });
-    statsService.startListening("track-2" as TrackId, ARTIST_ID, ALBUM_ID, DURATION);
+    statsService.startListening("track-2" as TrackId, ARTIST_ID, ALBUM_ID, DURATION, "user");
     await flush();
     await settle();
 
