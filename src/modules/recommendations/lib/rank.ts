@@ -76,6 +76,9 @@ export const mmrSelect = <T extends MmrCandidate>(
       }
     }
     const idx = bestUncappedIdx >= 0 ? bestUncappedIdx : bestIdx;
+    // Every remaining score compared false against -Infinity (all NaN):
+    // nothing is selectable, and splicing at -1 would drop the last item forever.
+    if (idx < 0) break;
     const [c] = pool.splice(idx, 1);
     picked.push(c);
     for (const a of c.artistIds) {

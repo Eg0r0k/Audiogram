@@ -8,9 +8,10 @@ import { buildRecommenderContext, type RecommenderContext } from "./recommender-
 const SAMPLE_SEED = 42;
 
 /**
- * `buildContextAt` for `buildExamples`: tracks/features stay the current
- * library, only the event window (and derived affinity/transitions) is
- * truncated to `< cutoff` — matching what the model would have seen live.
+ * `buildContextAt` for `buildExamples`: the event window (and the derived
+ * affinity/transitions) is truncated to `< cutoff`, and so is the library —
+ * a track imported after the cutoff did not exist for the live recommender
+ * and must not appear as a candidate or shift the feature statistics.
  */
 export const buildContextAtFactory = (ctx: RecommenderContext) => {
   const tracks = [...ctx.tracks.values()];
@@ -20,9 +21,11 @@ export const buildContextAtFactory = (ctx: RecommenderContext) => {
     tracks: Map<TrackId, TrackEntity>;
     features: Map<TrackId, AudioFeaturesEntity>;
   } => {
+    const known = tracks.filter(t => t.addedAt < cutoff);
+    const knownIds = new Set<TrackId>(known.map(t => t.id));
     const built = buildRecommenderContext({
-      tracks,
-      features,
+      tracks: known,
+      features: features.filter(f => knownIds.has(f.trackId)),
       events: ctx.events.filter(e => e.startedAt < cutoff),
       now: cutoff,
     });
@@ -30,12 +33,18 @@ export const buildContextAtFactory = (ctx: RecommenderContext) => {
   };
 };
 
-/** Deterministic, without-replacement sampling over the current context's track ids. */
+/**
+ * Without-replacement sampling over the tracks that existed at `cutoff`.
+ * Deterministic per factory: the seed advances by call index, so consecutive
+ * runs draw different background samples instead of repeating one draw, while
+ * two factories over the same input still produce identical sequences.
+ */
 export const sampleCandidatesFactory = (ctx: RecommenderContext) => {
-  const ids = [...ctx.tracks.keys()];
-  return (n: number, exclude: ReadonlySet<TrackId>): CandidateInput[] => {
-    const pool = ids.filter(id => !exclude.has(id));
-    const rnd = makeLcg(SAMPLE_SEED);
+  const tracks = [...ctx.tracks.values()];
+  let calls = 0;
+  return (n: number, exclude: ReadonlySet<TrackId>, cutoff: number): CandidateInput[] => {
+    const pool = tracks.filter(t => t.addedAt < cutoff && !exclude.has(t.id)).map(t => t.id);
+    const rnd = makeLcg(SAMPLE_SEED + calls++);
     const take = Math.min(n, pool.length);
     for (let i = 0; i < take; i++) {
       const j = i + Math.floor(rnd() * (pool.length - i));

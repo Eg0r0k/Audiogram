@@ -72,6 +72,8 @@ export const transitionWeight = <K extends string>(m: TransitionMatrix<K>, from:
   return v / (1 + Math.abs(v));
 };
 
+// Rows `minus` does not touch are shared by reference with `base` — the result
+// is read-only, mutating a row of either matrix would corrupt the other.
 const subtractMatrix = <K extends string>(base: TransitionMatrix<K>, minus: TransitionMatrix<K>): TransitionMatrix<K> => {
   const result: TransitionMatrix<K> = new Map(base);
   for (const [from, minusRow] of minus) {

@@ -9,9 +9,20 @@ import { buildContextAtFactory, sampleCandidatesFactory } from "./recommender-tr
 const FRESH_MS = 24 * 3_600_000;
 const RUN_CHUNK_SIZE = 20;
 
+/**
+ * Retraining walks one full context rebuild per chunk on the main thread, so
+ * the cost has to be bounded; the newest runs are kept because personalisation
+ * should follow current taste, not a years-old library.
+ */
+export const MAX_TRAINING_RUNS = 300;
+
 /** `undefined` = not loaded yet; `null` = loaded, no stored model. */
 let cachedRow: RecommenderModelEntity | null | undefined;
 let loadingRow: Promise<RecommenderModelEntity | null> | null = null;
+// Bumped by every cache invalidation. A read that started before the bump
+// must not populate `cachedRow` — it would resurrect the row the wipe or the
+// retrain just replaced.
+let rowGeneration = 0;
 let trainingPromise: Promise<void> | null = null;
 /**
  * Throttles `ensureModelFresh` attempts regardless of the stored row — a
@@ -23,6 +34,7 @@ let lastAttemptAt = 0;
 const loadRow = async (): Promise<RecommenderModelEntity | null> => {
   if (cachedRow !== undefined) return cachedRow;
   if (!loadingRow) {
+    const gen = rowGeneration;
     loadingRow = recommenderModelRepository.get()
       .then((result) => {
         if (result.isErr()) {
@@ -30,8 +42,8 @@ const loadRow = async (): Promise<RecommenderModelEntity | null> => {
           // Not cached: a transient read failure should not stick as "no model" forever.
           return null;
         }
-        cachedRow = result.value;
-        return cachedRow;
+        if (gen === rowGeneration) cachedRow = result.value;
+        return result.value;
       })
       .finally(() => {
         loadingRow = null;
@@ -42,6 +54,19 @@ const loadRow = async (): Promise<RecommenderModelEntity | null> => {
 
 export const invalidateWeightsCache = (): void => {
   cachedRow = undefined;
+  rowGeneration++;
+};
+
+/**
+ * Drops the learned model itself, not just the cache: weights fitted on
+ * history the user has just deleted must stop steering the recommender.
+ */
+export const clearModel = async (): Promise<void> => {
+  const result = await recommenderModelRepository.clear();
+  if (result.isErr()) {
+    getLogger().error(`[Recommendations] Clearing the learned model failed: ${String(result.error)}`);
+  }
+  invalidateWeightsCache();
 };
 
 export const getActiveWeights = async (): Promise<ComponentWeights> => {
@@ -51,7 +76,9 @@ export const getActiveWeights = async (): Promise<ComponentWeights> => {
 };
 
 const trainOnAllExamples = async (ctx: RecommenderContext): Promise<void> => {
-  const runs = [...extractAutoplayRuns(ctx.sessions)].sort((a, b) => a.startedAt - b.startedAt);
+  const runs = [...extractAutoplayRuns(ctx.sessions)]
+    .sort((a, b) => a.startedAt - b.startedAt)
+    .slice(-MAX_TRAINING_RUNS);
   if (runs.length === 0) return;
 
   const buildContextAt = buildContextAtFactory(ctx);

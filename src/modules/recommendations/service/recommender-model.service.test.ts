@@ -4,9 +4,10 @@ import type { RecommenderModelEntity } from "@/db/entities";
 import { DEFAULT_WEIGHTS, COMPONENT_KEYS } from "@/modules/recommendations/lib/scoring";
 import type * as RecommenderModelModule from "@/modules/recommendations/service/recommender-model.service";
 
-const { recommenderModelRepository, getRecommenderContextMock } = vi.hoisted(() => ({
-  recommenderModelRepository: { get: vi.fn(), put: vi.fn() },
+const { recommenderModelRepository, getRecommenderContextMock, buildContextAtSpy } = vi.hoisted(() => ({
+  recommenderModelRepository: { get: vi.fn(), put: vi.fn(), clear: vi.fn() },
   getRecommenderContextMock: vi.fn(),
+  buildContextAtSpy: vi.fn(),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -29,10 +30,27 @@ vi.mock("@/modules/recommendations/service/recommender-context.service", async (
   return { ...actual, getRecommenderContext: getRecommenderContextMock };
 });
 
+// Counts context rebuilds — the training loop's dominant cost — without
+// changing what the real factory produces.
+vi.mock("@/modules/recommendations/service/recommender-training-context", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/recommendations/service/recommender-training-context")>();
+  return {
+    ...actual,
+    buildContextAtFactory: (ctx: Parameters<typeof actual.buildContextAtFactory>[0]) => {
+      const inner = actual.buildContextAtFactory(ctx);
+      return (cutoff: number) => {
+        buildContextAtSpy(cutoff);
+        return inner(cutoff);
+      };
+    },
+  };
+});
+
 const { buildRecommenderContext } = await import("@/modules/recommendations/service/recommender-context.service");
 
 const mockGet = recommenderModelRepository.get;
 const mockPut = recommenderModelRepository.put;
+const mockClear = recommenderModelRepository.clear;
 const mockGetCtx = getRecommenderContextMock;
 
 const DAY = 86_400_000;
@@ -81,6 +99,28 @@ const fewExamplesCtx = () => {
   return buildRecommenderContext({ tracks, features: [], events: events as any, now });
 };
 
+/** `runCount` single-target autoplay runs inside one session (60 s apart). */
+const manyRunsCtx = (runCount: number) => {
+  const tracks = ["seed", "c0", "c1", "c2"].map(makeTrack);
+  const now = Date.now();
+  const events: unknown[] = [];
+  let t = now - runCount * 2 * 60_000 - 60_000;
+  for (let i = 0; i < runCount; i++) {
+    events.push({
+      id: `u-${i}`, trackId: "seed", artistId: "ar-seed", albumId: "al",
+      startedAt: t, secondsListened: 180, trackDuration: 200, completed: true, skipped: false, origin: "user",
+    });
+    t += 60_000;
+    events.push({
+      id: `a-${i}`, trackId: `c${i % 3}`, artistId: `ar-c${i % 3}`, albumId: "al",
+      startedAt: t, secondsListened: 180, trackDuration: 200, completed: true, skipped: false, origin: "autoplay",
+    });
+    t += 60_000;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- minimal fixture, full entity typing not needed for this test
+  return buildRecommenderContext({ tracks, features: [], events: events as any, now });
+};
+
 // The service holds module-level state (weights cache, in-flight training,
 // last-failed-attempt throttle) — reload it fresh for every test.
 let service: typeof RecommenderModelModule;
@@ -89,6 +129,8 @@ beforeEach(async () => {
   vi.resetModules();
   mockGet.mockReset();
   mockPut.mockReset();
+  mockClear.mockReset();
+  buildContextAtSpy.mockReset();
   mockGetCtx.mockReset().mockResolvedValue(emptyCtx());
   service = await import("@/modules/recommendations/service/recommender-model.service");
 });
@@ -139,6 +181,51 @@ describe("getActiveWeights", () => {
     await service.getActiveWeights();
     service.invalidateWeightsCache();
     await service.getActiveWeights();
+    expect(mockGet).toHaveBeenCalledTimes(2);
+  });
+
+  it("discards a read that resolves after an invalidation raised while it was in flight", async () => {
+    let resolveGet: (value: unknown) => void = () => {};
+    mockGet.mockReturnValueOnce(new Promise((resolve) => {
+      resolveGet = resolve;
+    }));
+
+    const inFlight = service.getActiveWeights();
+    service.invalidateWeightsCache();
+    resolveGet(ok(makeRow({ examples: 200 })));
+    await inFlight;
+
+    // Without the generation guard the stale row would sit in the cache and
+    // this call would answer from it instead of reading again.
+    mockGet.mockResolvedValueOnce(ok(null));
+    expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
+    expect(mockGet).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("clearModel", () => {
+  it("clears the repository row and the cache — the next read falls back to the defaults", async () => {
+    mockGet.mockResolvedValueOnce(ok(makeRow({ examples: 200 })));
+    mockClear.mockResolvedValue(ok(undefined));
+    expect(await service.getActiveWeights()).toEqual(learnedWeights);
+
+    await service.clearModel();
+    expect(mockClear).toHaveBeenCalledTimes(1);
+
+    mockGet.mockResolvedValueOnce(ok(null));
+    expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
+    expect(mockGet).toHaveBeenCalledTimes(2);
+  });
+
+  it("still drops the cache when the repository clear fails", async () => {
+    mockGet.mockResolvedValueOnce(ok(makeRow({ examples: 200 })));
+    mockClear.mockResolvedValue(err(new Error("db")));
+    await service.getActiveWeights();
+
+    await expect(service.clearModel()).resolves.toBeUndefined();
+
+    mockGet.mockResolvedValueOnce(ok(null));
+    expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
     expect(mockGet).toHaveBeenCalledTimes(2);
   });
 });
@@ -208,6 +295,18 @@ describe("ensureModelFresh", () => {
     finally {
       vi.useRealTimers();
     }
+  });
+
+  it("trains on at most MAX_TRAINING_RUNS of the newest runs", async () => {
+    expect(service.MAX_TRAINING_RUNS).toBe(300);
+    mockGet.mockResolvedValue(ok(null));
+    mockPut.mockResolvedValue(ok(undefined));
+    mockGetCtx.mockResolvedValue(manyRunsCtx(320));
+
+    await service.ensureModelFresh();
+
+    // 320 runs would be 16 context rebuilds at 20 runs per chunk; the cap makes it 15.
+    expect(buildContextAtSpy).toHaveBeenCalledTimes(Math.ceil(300 / 20));
   });
 
   it("runs only one training when called concurrently", async () => {

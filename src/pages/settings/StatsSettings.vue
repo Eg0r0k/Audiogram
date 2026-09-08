@@ -93,6 +93,7 @@ import { statsQueries } from "@/queries/stats.queries";
 import { statsService } from "@/services/stats.service";
 import { getLogger } from "@/lib/logger";
 import { runRecommenderEval } from "@/modules/recommendations/service/recommender-eval.service";
+import { clearModel } from "@/modules/recommendations/service/recommender-model.service";
 
 const { t } = useI18n();
 
@@ -114,6 +115,8 @@ async function handleClearHistory() {
     clear: async () => {
       try {
         await statsService.clearHistory();
+        // Weights fitted on the history just erased must not keep steering autoplay.
+        await clearModel();
       }
       catch (error) {
         getLogger().error(`[Stats] Clearing listening history failed: ${String(error)}`);

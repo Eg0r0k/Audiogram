@@ -1,16 +1,8 @@
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { toValue, type MaybeRef } from "vue";
 import type { TrackId } from "@/types/ids";
 import { recommendationsQueries } from "@/queries/recommendations.queries";
-import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
-
-const cacheVersion = ref(0);
-
-export function bumpRecommendationsCache(): void {
-  cacheVersion.value++;
-  markRecommenderContextDirty();
-}
 
 export function useTrackRecommendations(
   trackId: MaybeRef<TrackId | null | undefined>,
@@ -19,9 +11,9 @@ export function useTrackRecommendations(
   const queryConfig = computed(() => {
     const id = toValue(trackId);
     if (!id) {
-      return { ...recommendationsQueries.forTrack("" as TrackId, 0), enabled: false };
+      return { ...recommendationsQueries.forTrack("" as TrackId), enabled: false };
     }
-    return recommendationsQueries.forTrack(id, cacheVersion.value, limit);
+    return recommendationsQueries.forTrack(id, limit);
   });
 
   const { data, isLoading, error } = useQuery(queryConfig);

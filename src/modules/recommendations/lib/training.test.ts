@@ -63,6 +63,17 @@ describe("extractAutoplayRuns", () => {
     expect(extractAutoplayRuns([session])).toEqual([]);
   });
 
+  it("skips an event whose origin is neither user nor autoplay instead of spinning", () => {
+    const session: Session = [
+      se("u1", "user", 0),
+      { ...se("x", "autoplay", 100), origin: "other" as unknown as SessionEvent["origin"] },
+      se("a1", "autoplay", 200),
+    ];
+    const runs = extractAutoplayRuns([session]);
+    expect(runs).toHaveLength(1);
+    expect(runs[0].targets.map(t => t.trackId)).toEqual([tid("a1")]);
+  });
+
   it("uses a skipped user event as a seed", () => {
     const session: Session = [
       se("u1", "user", 0, { skipped: true, completed: false, secondsListened: 5 }),

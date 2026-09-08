@@ -18,6 +18,9 @@ const { tableList, resetSearchIndex, listFiles } = vi.hoisted(() => {
     "radioStations",
     "audioFeatures",
     "trackChapters",
+    "offlineCopies",
+    "downloadJobs",
+    "recommenderModels",
   ];
   const tableList = tableNames.map(name => ({
     name,
@@ -38,7 +41,7 @@ vi.mock("@/db/storage", () => ({
 }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: () => false }));
 
-import { clearAllData, onAllDataCleared } from "../storage-info.service";
+import { clearAllData, clearTimingsData, onAllDataCleared } from "../storage-info.service";
 
 // In the app main.ts wires the search-index reset through this hook.
 onAllDataCleared(resetSearchIndex);
@@ -78,5 +81,18 @@ describe("clearAllData", () => {
       warn.mockRestore();
       tableList.pop();
     }
+  });
+});
+
+describe("clearTimingsData", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("drops the learned recommender model along with the history it was fitted on", async () => {
+    await clearTimingsData();
+
+    const cleared = tableList.filter(t => t.clear.mock.calls.length > 0).map(t => t.name);
+    expect(cleared.sort()).toEqual(["audioFeatures", "listenEvents", "recommenderModels", "trackChapters"]);
   });
 });

@@ -33,6 +33,12 @@ export const extractAutoplayRuns = (sessions: readonly Session[]): AutoplayRun[]
         targets.push(session[i]);
         i++;
       }
+      // An origin outside the known union consumes nothing above: without this
+      // step `i` never advances and the loop spins forever.
+      if (targets.length === 0) {
+        i++;
+        continue;
+      }
       if (lastUser) runs.push({ seed: lastUser, targets, startedAt: targets[0].startedAt });
     }
   }
@@ -58,7 +64,8 @@ export interface BuildExamplesInput {
     tracks: Map<TrackId, TrackEntity>;
     features: Map<TrackId, AudioFeaturesEntity>;
   };
-  sampleCandidates: (n: number, exclude: ReadonlySet<TrackId>) => CandidateInput[];
+  /** `cutoff` is the chunk's context cutoff: the pool must exclude tracks added later. */
+  sampleCandidates: (n: number, exclude: ReadonlySet<TrackId>, cutoff: number) => CandidateInput[];
   candidateSample?: number;
   chunkSize?: number;
   earlySkipSeconds?: number;
@@ -79,7 +86,8 @@ export const buildExamples = (input: BuildExamplesInput): TrainingExample[] => {
 
   for (let start = 0; start < sorted.length; start += chunkSize) {
     const chunk = sorted.slice(start, start + chunkSize);
-    const { ctx, tracks, features } = buildContextAt(chunk[0].startedAt);
+    const cutoff = chunk[0].startedAt;
+    const { ctx, tracks, features } = buildContextAt(cutoff);
 
     for (const run of chunk) {
       const seedTrack = tracks.get(run.seed.trackId);
@@ -91,7 +99,8 @@ export const buildExamples = (input: BuildExamplesInput): TrainingExample[] => {
         const track = tracks.get(t.trackId);
         if (track) presentTargets.push({ event: t, candidate: { track, features: features.get(t.trackId) ?? null } });
       }
-      const sampled = sampleCandidates(candidateSample, exclude);
+      const sampled = sampleCandidates(candidateSample, exclude, cutoff);
+      // Present targets go first so `breakdowns[i]` lines up with `presentTargets[i]`.
       const candidates = [...presentTargets.map(pt => pt.candidate), ...sampled];
 
       const breakdowns = computeBreakdowns(ctx, { track: seedTrack, features: features.get(seedTrack.id) ?? null }, candidates);

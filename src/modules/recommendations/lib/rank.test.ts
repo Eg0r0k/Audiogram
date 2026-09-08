@@ -199,6 +199,23 @@ describe("rank", () => {
       expect(result[2].trackId).toBe(TrackId("tC"));
     });
 
+    it("returns nothing instead of throwing when every score is NaN", () => {
+      const candidates = [
+        makeCandidate({ trackId: TrackId("t1"), score: Number.NaN }),
+        makeCandidate({ trackId: TrackId("t2"), score: Number.NaN }),
+      ];
+      expect(mmrSelect(candidates, 2, DEFAULT_MMR_OPTIONS)).toEqual([]);
+    });
+
+    it("keeps the finite candidates when only some scores are NaN", () => {
+      const candidates = [
+        makeCandidate({ trackId: TrackId("t1"), artistIds: [ArtistId("a1")], score: Number.NaN }),
+        makeCandidate({ trackId: TrackId("t2"), artistIds: [ArtistId("a2")], score: 0.5 }),
+      ];
+      const result = mmrSelect(candidates, 2, DEFAULT_MMR_OPTIONS);
+      expect(result.map(c => c.trackId)).toEqual([TrackId("t2")]);
+    });
+
     it("empty artistIds: never capped, never penalized", () => {
       const artist1 = ArtistId("a1");
       const candidates = [

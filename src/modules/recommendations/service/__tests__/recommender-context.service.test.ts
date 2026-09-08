@@ -3,6 +3,7 @@ import { err, ok } from "neverthrow";
 import type { AudioFeaturesEntity, ListenEventEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
+import { computeBreakdowns } from "@/modules/recommendations/lib/scoring";
 
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
@@ -139,6 +140,35 @@ describe("buildRecommenderContext", () => {
     const entry = ctx.affinity.get(tid("A"));
     expect(entry).toBeDefined();
     expect(entry!.score).toBeGreaterThan(0);
+  });
+
+  it("ignores a like placed after `now` — with a training cutoff it would leak the future", () => {
+    const ctx = buildRecommenderContext({
+      tracks: [makeTrack("PAST", { likedAt: now - DAY }), makeTrack("FUTURE", { likedAt: now + DAY })],
+      features: [],
+      events: [],
+      now,
+    });
+
+    expect(ctx.affinity.has(tid("PAST"))).toBe(true);
+    expect(ctx.affinity.has(tid("FUTURE"))).toBe(false);
+  });
+
+  it("marks a track liked only in the future as unexplored", () => {
+    const seed = makeTrack("SEED");
+    const past = makeTrack("PAST", { likedAt: now - DAY });
+    const future = makeTrack("FUTURE", { likedAt: now + DAY });
+    const ctx = buildRecommenderContext({
+      tracks: [seed, past, future],
+      features: [makeFeatures("SEED"), makeFeatures("PAST"), makeFeatures("FUTURE", { bpm: 140 })],
+      events: [],
+      now,
+    });
+
+    const candidates = [past, future].map(track => ({ track, features: ctx.features.get(track.id) ?? null }));
+    const breakdowns = computeBreakdowns(ctx, { track: seed, features: ctx.features.get(seed.id) ?? null }, candidates);
+    expect(breakdowns[0].explore).toBe(0);
+    expect(breakdowns[1].explore).toBe(1);
   });
 
   it("leaves audioSpace null with fewer than 2 feature rows and builds it with 2 or more", () => {

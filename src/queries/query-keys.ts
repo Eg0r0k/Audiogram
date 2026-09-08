@@ -77,8 +77,8 @@ export const queryKeys = {
   },
   recommendations: {
     all: () => ["recommendations"] as const,
-    forTrack: (trackId: TrackId, cacheVersion: number, limit: number) =>
-      ["recommendations", "forTrack", trackId, cacheVersion, limit] as const,
+    forTrack: (trackId: TrackId, limit: number) =>
+      ["recommendations", "forTrack", trackId, limit] as const,
     analysisProgress: () => ["recommendations", "analysisProgress"] as const,
   },
   source: {

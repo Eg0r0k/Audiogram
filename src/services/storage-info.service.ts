@@ -166,6 +166,7 @@ const ACKNOWLEDGED_TABLES: ReadonlySet<string> = new Set([
   "trackChapters",
   "offlineCopies",
   "downloadJobs",
+  "recommenderModels",
 ]);
 
 function warnOnUnacknowledgedTables(): void {
@@ -208,10 +209,13 @@ export async function clearFoldersData(): Promise<void> {
   await db.folders.clear();
 }
 
+// The learned recommender weights are derived from the listen history erased
+// here — keeping them would let a deleted history keep steering autoplay.
 export async function clearTimingsData(): Promise<void> {
   await Promise.all([
     db.listenEvents.clear(),
     db.audioFeatures.clear(),
     db.trackChapters.clear(),
+    db.recommenderModels.clear(),
   ]);
 }

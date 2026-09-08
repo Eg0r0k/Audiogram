@@ -184,7 +184,7 @@
             variant="ghost-primary"
             size="sm"
             :disabled="isLoading || isClearing"
-            @click="clearTimingsData"
+            @click="handleClearTimings"
           >
             {{ $t("common.delete") }}
             <TrashIcon class="size-4" />
@@ -254,6 +254,8 @@ import { platformCaps } from "@/lib/environment/platformCaps";
 import ActiveDownloads from "@/modules/downloads/components/ActiveDownloads.vue";
 import WatchedFoldersSection from "@/modules/watched-folders/components/WatchedFoldersSection.vue";
 import { getLogger } from "@/lib/logger";
+import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
+import { invalidateWeightsCache } from "@/modules/recommendations/service/recommender-model.service";
 
 const {
   isLoading,
@@ -268,6 +270,16 @@ const {
 } = useStorageSettings();
 
 const { t } = useI18n();
+
+// The wipe took the listen events, the audio features and the model row with
+// it; both in-memory recommender caches would otherwise keep serving them.
+// Wired here, not in the settings store: a core module must not import a
+// feature module (ARCHITECTURE.md §3, M2).
+const handleClearTimings = async () => {
+  await clearTimingsData();
+  markRecommenderContextDirty();
+  invalidateWeightsCache();
+};
 
 const handleStoragePathCopied = () => {
   toast.success(t("settings.storage.locationCopied"));

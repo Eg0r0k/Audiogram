@@ -53,8 +53,10 @@ const recentlyPlayedOf = (events: readonly ListenEventEntity[], limit: number): 
 export const buildRecommenderContext = (input: BuildRecommenderContextInput): RecommenderContext => {
   const { tracks, features, events, now } = input;
 
+  // A like placed after `now` is future knowledge: with a training cutoff it
+  // would leak the outcome into the features the model learns from.
   const likedIds = new Set<TrackId>();
-  for (const t of tracks) if (t.likedAt) likedIds.add(t.id);
+  for (const t of tracks) if (t.likedAt !== undefined && t.likedAt <= now) likedIds.add(t.id);
 
   const affinity = buildAffinityMap(events, likedIds, { ...DEFAULT_AFFINITY_OPTIONS, now });
 

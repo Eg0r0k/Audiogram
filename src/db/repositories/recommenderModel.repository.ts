@@ -22,4 +22,13 @@ export const recommenderModelRepository = {
       return err(error as Error);
     }
   },
+  async clear(): Promise<Result<void, Error>> {
+    try {
+      await db.recommenderModels.clear();
+      return ok(undefined);
+    }
+    catch (error) {
+      return err(error as Error);
+    }
+  },
 };
