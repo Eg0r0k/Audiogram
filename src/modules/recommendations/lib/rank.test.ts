@@ -96,25 +96,25 @@ describe("rank", () => {
       expect(result[2].artistIds[0]).toBe(artist1);
     });
 
-    it("respects artist cap: 5 tracks of one artist, limit 3, maxPerArtist 2", () => {
+    it("enforces artist cap when alternatives exist: 5 artist1 (high score) + 1 artist2 (low score), limit 3, maxPerArtist 2", () => {
       const artist1 = ArtistId("a1");
       const artist2 = ArtistId("a2");
-      const artist3 = ArtistId("a3");
       const candidates = [
         makeCandidate({ trackId: TrackId("t1"), artistIds: [artist1], score: 1.0 }),
         makeCandidate({ trackId: TrackId("t2"), artistIds: [artist1], score: 0.99 }),
         makeCandidate({ trackId: TrackId("t3"), artistIds: [artist1], score: 0.98 }),
         makeCandidate({ trackId: TrackId("t4"), artistIds: [artist1], score: 0.97 }),
         makeCandidate({ trackId: TrackId("t5"), artistIds: [artist1], score: 0.96 }),
+        makeCandidate({ trackId: TrackId("t6"), artistIds: [artist2], score: 0.5 }),
       ];
       const opts = { ...DEFAULT_MMR_OPTIONS, maxPerArtist: 2 };
       const result = mmrSelect(candidates, 3, opts);
       expect(result).toHaveLength(3);
-      expect(result[0].artistIds[0]).toBe(artist1);
-      expect(result[1].artistIds[0]).toBe(artist1);
-      expect(result[2].artistIds[0]).toBe(artist1);
+      expect(result[0].trackId).toBe(TrackId("t1"));
+      expect(result[1].trackId).toBe(TrackId("t2"));
+      expect(result[2].trackId).toBe(TrackId("t6"));
       const artist1Count = result.filter(c => c.artistIds[0] === artist1).length;
-      expect(artist1Count).toBe(3);
+      expect(artist1Count).toBe(2);
     });
 
     it("relaxes artist cap when no alternatives remain", () => {
@@ -130,19 +130,90 @@ describe("rank", () => {
       expect(result.every(c => c.artistIds[0] === artist1)).toBe(true);
     });
 
-    it("applies album penalty: two tracks same album get penalty", () => {
+    it("applies album penalty: isolated from artist penalty with distinct artists", () => {
       const album1 = AlbumId("album-1");
       const album2 = AlbumId("album-2");
+      const artist1 = ArtistId("a1");
+      const artist2 = ArtistId("a2");
+      const artist3 = ArtistId("a3");
       const candidates = [
-        makeCandidate({ trackId: TrackId("t1"), albumId: album1, score: 1.0 }),
-        makeCandidate({ trackId: TrackId("t2"), albumId: album1, score: 0.99 }),
-        makeCandidate({ trackId: TrackId("t3"), albumId: album2, score: 0.98 }),
+        makeCandidate({ trackId: TrackId("t1"), albumId: album1, artistIds: [artist1], score: 1.0 }),
+        makeCandidate({ trackId: TrackId("t2"), albumId: album1, artistIds: [artist2], score: 0.99 }),
+        makeCandidate({ trackId: TrackId("t3"), albumId: album2, artistIds: [artist3], score: 0.98 }),
       ];
       const result = mmrSelect(candidates, 3, DEFAULT_MMR_OPTIONS);
       expect(result).toHaveLength(3);
-      expect(result[0].albumId).toBe(album1);
-      expect(result[1].albumId).toBe(album2);
-      expect(result[2].albumId).toBe(album1);
+      expect(result[0].trackId).toBe(TrackId("t1"));
+      expect(result[1].trackId).toBe(TrackId("t3"));
+      expect(result[2].trackId).toBe(TrackId("t2"));
+    });
+
+    it("penalty arithmetic: A(1.0) picked, then B(0.80 same artist/album) adjusts to 0.55 < C(0.76) → C second, B third", () => {
+      const artist1 = ArtistId("a1");
+      const artist2 = ArtistId("a2");
+      const album1 = AlbumId("album1");
+      const album2 = AlbumId("album2");
+      const candidates = [
+        makeCandidate({ trackId: TrackId("tA"), artistIds: [artist1], albumId: album1, score: 1.0 }),
+        makeCandidate({ trackId: TrackId("tB"), artistIds: [artist1], albumId: album1, score: 0.8 }),
+        makeCandidate({ trackId: TrackId("tC"), artistIds: [artist2], albumId: album2, score: 0.76 }),
+      ];
+      const result = mmrSelect(candidates, 3, DEFAULT_MMR_OPTIONS);
+      expect(result).toHaveLength(3);
+      expect(result[0].trackId).toBe(TrackId("tA"));
+      expect(result[1].trackId).toBe(TrackId("tC"));
+      expect(result[2].trackId).toBe(TrackId("tB"));
+    });
+
+    it("penalty arithmetic: B(0.9) adjusts to 0.65 < C(0.76) when A(1.0) picked", () => {
+      const artist1 = ArtistId("a1");
+      const artist2 = ArtistId("a2");
+      const album1 = AlbumId("album1");
+      const album2 = AlbumId("album2");
+      const candidates = [
+        makeCandidate({ trackId: TrackId("tA"), artistIds: [artist1], albumId: album1, score: 1.0 }),
+        makeCandidate({ trackId: TrackId("tB"), artistIds: [artist1], albumId: album1, score: 0.9 }),
+        makeCandidate({ trackId: TrackId("tC"), artistIds: [artist2], albumId: album2, score: 0.76 }),
+      ];
+      const result = mmrSelect(candidates, 3, DEFAULT_MMR_OPTIONS);
+      expect(result).toHaveLength(3);
+      expect(result[0].trackId).toBe(TrackId("tA"));
+      expect(result[1].trackId).toBe(TrackId("tC"));
+      expect(result[2].trackId).toBe(TrackId("tB"));
+    });
+
+    it("penalty arithmetic: B(1.0, 0.75 adjusted) > C(0.74) when A(1.0) picked", () => {
+      const artist1 = ArtistId("a1");
+      const artist2 = ArtistId("a2");
+      const album1 = AlbumId("album1");
+      const album2 = AlbumId("album2");
+      const candidates = [
+        makeCandidate({ trackId: TrackId("tA"), artistIds: [artist1], albumId: album1, score: 1.0 }),
+        makeCandidate({ trackId: TrackId("tB"), artistIds: [artist1], albumId: album1, score: 1.0 }),
+        makeCandidate({ trackId: TrackId("tC"), artistIds: [artist2], albumId: album2, score: 0.74 }),
+      ];
+      const result = mmrSelect(candidates, 3, DEFAULT_MMR_OPTIONS);
+      expect(result).toHaveLength(3);
+      expect(result[0].trackId).toBe(TrackId("tA"));
+      expect(result[1].trackId).toBe(TrackId("tB"));
+      expect(result[2].trackId).toBe(TrackId("tC"));
+    });
+
+    it("empty artistIds: never capped, never penalized", () => {
+      const artist1 = ArtistId("a1");
+      const candidates = [
+        makeCandidate({ trackId: TrackId("t1"), artistIds: [], score: 0.5 }),
+        makeCandidate({ trackId: TrackId("t2"), artistIds: [], score: 0.4 }),
+        makeCandidate({ trackId: TrackId("t3"), artistIds: [], score: 0.3 }),
+        makeCandidate({ trackId: TrackId("t4"), artistIds: [artist1], score: 1.0 }),
+      ];
+      const opts = { ...DEFAULT_MMR_OPTIONS, maxPerArtist: 1 };
+      const result = mmrSelect(candidates, 4, opts);
+      expect(result).toHaveLength(4);
+      expect(result[0].trackId).toBe(TrackId("t4"));
+      expect(result[1].trackId).toBe(TrackId("t1"));
+      expect(result[2].trackId).toBe(TrackId("t2"));
+      expect(result[3].trackId).toBe(TrackId("t3"));
     });
 
     it("maxPerArtist = 0 means no cap", () => {
