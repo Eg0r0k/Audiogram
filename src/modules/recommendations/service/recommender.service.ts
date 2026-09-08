@@ -1,8 +1,9 @@
 import type { TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
 import { DEFAULT_MMR_OPTIONS, mmrSelect, type MmrCandidate } from "../lib/rank";
-import { DEFAULT_WEIGHTS, scoreCandidates, type Breakdown, type CandidateInput, type SeedInput } from "../lib/scoring";
+import { scoreCandidates, type Breakdown, type CandidateInput, type SeedInput } from "../lib/scoring";
 import { getRecommenderContext } from "./recommender-context.service";
+import { ensureModelFresh, getActiveWeights } from "./recommender-model.service";
 
 export interface ScoredTrack {
   trackId: TrackId;
@@ -34,8 +35,7 @@ export const getRecommendations = async (
   }
   if (candidates.length === 0) return [];
 
-  // Task 10 replaces this with `await getActiveWeights()`.
-  const weights = DEFAULT_WEIGHTS;
+  const weights = await getActiveWeights();
   const seed: SeedInput = { track: seedTrack, features: ctx.features.get(sourceTrackId) ?? null };
   // Fresh clock: the cached context can be hours old, but recency tiers must
   // score against "now", not the context's build time.
@@ -53,6 +53,7 @@ export const getRecommendations = async (
 
   const picked = mmrSelect(mmrCandidates, limit, DEFAULT_MMR_OPTIONS);
 
+  ensureModelFresh().catch(() => {});
   return picked.map(p => ({
     trackId: p.trackId,
     track: p.track,

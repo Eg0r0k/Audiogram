@@ -34,6 +34,29 @@
           {{ $t("settings.stats.clear") }}
         </Button>
       </SettingsGroup>
+
+      <SettingsGroup
+        v-if="isDev"
+        class="mt-3"
+      >
+        <div class="px-4 py-3">
+          <div class="mb-1 text-primary font-medium">
+            {{ $t("settings.stats.recommender.evalTitle") }}
+          </div>
+          <div class="text-sm text-muted-foreground">
+            {{ $t("settings.stats.recommender.evalSubtitle") }}
+          </div>
+        </div>
+        <Button
+          class="w-full h-14 justify-start"
+          size="xl"
+          variant="ghost-primary"
+          @click="handleRecommenderEval"
+        >
+          <IconFlask class="size-6" />
+          {{ $t("settings.stats.recommender.evalTitle") }}
+        </Button>
+      </SettingsGroup>
     </template>
 
     <SettingsGroup v-else>
@@ -53,6 +76,7 @@ import { Button } from "@/components/ui/button";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
 import IconTrash from "~icons/tabler/trash";
+import IconFlask from "~icons/tabler/flask";
 import StatsPeriodSwitcher from "./components/stats/StatsPeriodSwitcher.vue";
 import StatsSummary from "./components/stats/StatsSummary.vue";
 import StatsStreakSection from "./components/stats/StatsStreakSection.vue";
@@ -68,8 +92,11 @@ import { periodSince } from "./components/stats/period";
 import { statsQueries } from "@/queries/stats.queries";
 import { statsService } from "@/services/stats.service";
 import { getLogger } from "@/lib/logger";
+import { runRecommenderEval } from "@/modules/recommendations/service/recommender-eval.service";
 
 const { t } = useI18n();
+
+const isDev = import.meta.env.DEV;
 
 const period = ref<StatsPeriod>("month");
 const since = computed(() => periodSince(period.value));
@@ -96,5 +123,20 @@ async function handleClearHistory() {
     },
   }, { key: "clear-history" });
   if (cleared) toast.success(t("settings.stats.cleared"));
+}
+
+async function handleRecommenderEval() {
+  try {
+    const report = await runRecommenderEval();
+    getLogger().info(`[Recommendations] Eval report: ${JSON.stringify(report)}`);
+    const aucValue = report.aucLearned ?? report.aucDefault;
+    const auc = aucValue === null ? "—" : aucValue.toFixed(3);
+    const rate = report.autoplaySkipRate14d === null ? "—" : (report.autoplaySkipRate14d * 100).toFixed(1);
+    toast.success(t("settings.stats.recommender.evalResult", { auc, rate, n: report.examples }));
+  }
+  catch (error) {
+    getLogger().error(`[Recommendations] Eval failed: ${String(error)}`);
+    toast.error(String(error));
+  }
 }
 </script>

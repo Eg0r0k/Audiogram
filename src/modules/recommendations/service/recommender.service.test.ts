@@ -37,22 +37,32 @@ vi.mock("@/db/repositories/audioFeatures.repository", () => ({
   audioFeaturesRepository: { findAll: vi.fn() },
   CURRENT_ALGORITHM_VERSION: 1,
 }));
+vi.mock("@/modules/recommendations/service/recommender-model.service", () => ({
+  getActiveWeights: vi.fn(),
+  ensureModelFresh: vi.fn(),
+}));
 
 const { trackRepository } = await import("@/db/repositories");
 const { statsRepository } = await import("@/db/repositories/stats.repository");
 const { audioFeaturesRepository } = await import("@/db/repositories/audioFeatures.repository");
+const { getActiveWeights, ensureModelFresh } = await import("@/modules/recommendations/service/recommender-model.service");
+const { DEFAULT_WEIGHTS } = await import("@/modules/recommendations/lib/scoring");
 const { getRecommendations } = await import("@/modules/recommendations/service/recommender.service");
 const { markRecommenderContextDirty } = await import("@/modules/recommendations/service/recommender-context.service");
 
 const mockFindAll = trackRepository.findAll as ReturnType<typeof vi.fn>;
 const mockFindAllEvents = statsRepository.findAllEvents as ReturnType<typeof vi.fn>;
 const mockFeaturesFindAll = audioFeaturesRepository.findAll as ReturnType<typeof vi.fn>;
+const mockGetActiveWeights = getActiveWeights as ReturnType<typeof vi.fn>;
+const mockEnsureModelFresh = ensureModelFresh as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
   markRecommenderContextDirty();
   mockFindAllEvents.mockResolvedValue(ok([]));
   mockFeaturesFindAll.mockResolvedValue(ok([]));
+  mockGetActiveWeights.mockResolvedValue(DEFAULT_WEIGHTS);
+  mockEnsureModelFresh.mockResolvedValue(undefined);
 });
 
 describe("getRecommendations", () => {

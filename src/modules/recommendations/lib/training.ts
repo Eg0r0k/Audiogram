@@ -178,3 +178,10 @@ export const blendWeights = (
   for (const key of COMPONENT_KEYS) weights[key] = base[key] * (1 - lambda) + learned[key] * lambda;
   return weights;
 };
+
+/** `x` is a `ranksToVector` output — component order matches `COMPONENT_KEYS`. */
+export const dot = (x: readonly number[], w: ComponentWeights): number => {
+  let s = 0;
+  for (let i = 0; i < COMPONENT_KEYS.length; i++) s += x[i] * w[COMPONENT_KEYS[i]];
+  return s;
+};

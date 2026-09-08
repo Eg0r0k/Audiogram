@@ -9,6 +9,7 @@ import {
   buildExamples,
   trainWeights,
   blendWeights,
+  dot,
   DEFAULT_TRAIN_OPTIONS,
   type BuildExamplesInput,
   type TrainingExample,
@@ -264,5 +265,18 @@ describe("blendWeights", () => {
     for (const key of COMPONENT_KEYS) {
       expect(blended[key]).toBeCloseTo((base[key] + learned[key]) / 2, 10);
     }
+  });
+});
+
+describe("dot", () => {
+  it("sums x[i] * w[COMPONENT_KEYS[i]] in COMPONENT_KEYS order", () => {
+    const w = { audio: 2, trackTransition: 3, artistTransition: 5, affinity: 7, explore: 11 };
+    const x = COMPONENT_KEYS.map((_, i) => i + 1);
+    expect(dot(x, w)).toBe(1 * 2 + 2 * 3 + 3 * 5 + 4 * 7 + 5 * 11);
+  });
+
+  it("returns 0 for an all-zero vector", () => {
+    const w = { audio: 1, trackTransition: 1, artistTransition: 1, affinity: 1, explore: 1 };
+    expect(dot([0, 0, 0, 0, 0], w)).toBe(0);
   });
 });

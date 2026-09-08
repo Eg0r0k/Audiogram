@@ -61,7 +61,12 @@
     "clearConfirm": "Очистить",
     "clearConfirmCountdown": "Очистить ({seconds})",
     "cleared": "История прослушивания очищена",
-    "noGenre": "Без жанра"
+    "noGenre": "Без жанра",
+    "recommender": {
+      "evalTitle": "Оценить рекомендации",
+      "evalSubtitle": "Обучить веса на автоплей-истории и посчитать AUC на отложенной выборке. Отчёт — в логе.",
+      "evalResult": "AUC {auc}, skip-rate автоплея {rate}% за 14 дн., примеров {n}"
+    }
   },
   "proxy": {
     "description": "Направлять поиск, потоковое воспроизведение и загрузку с YouTube через ваш прокси-сервер.",
