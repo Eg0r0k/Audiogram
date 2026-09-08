@@ -63,11 +63,10 @@
 import { onMounted } from "vue";
 import { toast } from "vue-sonner";
 import { getLogger } from "@/lib/logger";
-import type { SignalKey } from "@/modules/recommendations/service/signals";
-import type { ScoringParams } from "@/modules/recommendations/service/scoring";
+import type { ComponentKey } from "@/modules/recommendations/lib/scoring";
 import type { FeedbackLabel } from "@/modules/recommendations/service/stand-feedback.store";
 import type { TrackId } from "@/types/ids";
-import { useRecoStand } from "@/modules/recommendations/composables/useRecoStand";
+import { useRecoStand, type StandParams } from "@/modules/recommendations/composables/useRecoStand";
 import StandSourcePicker from "@/modules/recommendations/components/stand/StandSourcePicker.vue";
 import StandCandidateList from "@/modules/recommendations/components/stand/StandCandidateList.vue";
 import StandControls from "@/modules/recommendations/components/stand/StandControls.vue";
@@ -106,11 +105,11 @@ const onRate = async (id: TrackId, label: FeedbackLabel) => {
   }
 };
 
-const onUpdateWeight = (key: SignalKey, value: number) => {
+const onUpdateWeight = (key: ComponentKey, value: number) => {
   weights[key] = value;
 };
 
-const onUpdateParam = (key: keyof ScoringParams, value: number) => {
+const onUpdateParam = (key: keyof StandParams, value: number) => {
   params[key] = value;
 };
 

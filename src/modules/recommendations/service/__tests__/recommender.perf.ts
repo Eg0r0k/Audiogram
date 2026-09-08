@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import type { ListenEventEntity, TrackEntity } from "@/db/entities";
+import type { AudioFeaturesEntity, ListenEventEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { TrackId } from "@/types/ids";
-import { buildRecommendationContextFromData, candidateIdsFor } from "@/modules/recommendations/service/recommendation-context";
-import { collectSignalMatrix } from "@/modules/recommendations/service/signals";
-import { scoreMatrix, selectTop, DEFAULT_WEIGHTS } from "@/modules/recommendations/service/scoring";
+import { DEFAULT_MMR_OPTIONS, mmrSelect } from "@/modules/recommendations/lib/rank";
+import { computeBreakdowns, DEFAULT_WEIGHTS, scoreBreakdown, type CandidateInput } from "@/modules/recommendations/lib/scoring";
+import { buildRecommenderContext } from "@/modules/recommendations/service/recommender-context.service";
+import type { AlbumId, ArtistId, TagId, TrackId } from "@/types/ids";
 
 const TRACKS = 1000;
 const ARTISTS = 200;
@@ -23,13 +23,24 @@ const build = () => {
   const tracks: TrackEntity[] = Array.from({ length: TRACKS }, (_, i) => ({
     id: `t${i}` as TrackId,
     title: `Track ${i}`, artistName: `Artist ${i % ARTISTS}`, albumTitle: "",
-    artistIds: [`a${i % ARTISTS}` as any], albumId: `al${i % 300}` as any,
-    tagIds: [`g${i % 12}`, `g${(i * 7) % 12}`] as any,
+    artistIds: [`a${i % ARTISTS}` as ArtistId], albumId: `al${i % 300}` as AlbumId,
+    tagIds: [`g${i % 12}`, `g${(i * 7) % 12}`] as TagId[],
     source: TrackSource.LOCAL_INTERNAL, state: TrackState.READY, duration: 200,
     format: { codec: "MP3", bitrate: 320000, sampleRate: 44100, lossless: false, channels: 2 },
-    pinned: 0 as any, playCount: 0, addedAt: 0,
+    pinned: 0 as const, playCount: 0, addedAt: 0,
     likedAt: rnd() < 0.2 ? 1 : undefined,
     lastPlayedAt: rnd() < 0.7 ? now - rnd() * 90 * DAY : undefined,
+  }));
+  const features: AudioFeaturesEntity[] = tracks.map(t => ({
+    trackId: t.id,
+    bpm: 60 + rnd() * 140,
+    energy: rnd(),
+    spectralCentroid: 500 + rnd() * 5000,
+    danceability: rnd(),
+    key: Math.floor(rnd() * 12),
+    mode: rnd() < 0.5 ? 0 : 1,
+    analyzedAt: now,
+    algorithmVersion: 1,
   }));
   const events: ListenEventEntity[] = [];
   let t = now - 90 * DAY;
@@ -42,7 +53,7 @@ const build = () => {
       completed: rnd() < 0.7, skipped: rnd() < 0.15, origin: "user",
     });
   }
-  return { tracks, events, now };
+  return { tracks, features, events, now };
 };
 
 const timed = <T>(fn: () => T): [T, number] => {
@@ -52,27 +63,36 @@ const timed = <T>(fn: () => T): [T, number] => {
 };
 
 describe("recommender perf budget", () => {
-  const { tracks, events, now } = build();
+  const { tracks, features, events, now } = build();
+  const input = { tracks, features, events, now };
 
   it(`builds the context for ${TRACKS} tracks / ${EVENTS} events under ${BUDGET_MS} ms`, () => {
-    buildRecommendationContextFromData(tracks, events, now);
-    const [, ms] = timed(() => buildRecommendationContextFromData(tracks, events, now));
+    buildRecommenderContext(input);
+    const [, ms] = timed(() => buildRecommenderContext(input));
     console.log(`context: ${ms.toFixed(1)} ms`);
     expect(ms).toBeLessThan(BUDGET_MS);
   });
 
-  it(`signals + scoring for ${TRACKS} candidates under ${BUDGET_MS} ms`, () => {
-    const ctx = buildRecommendationContextFromData(tracks, events, now);
-    const source = tracks[3].id;
-    const candidates = candidateIdsFor(source, ctx, 5, []);
+  it(`components + scoring for ${TRACKS} candidates under ${BUDGET_MS} ms`, () => {
+    const ctx = buildRecommenderContext(input);
+    const seedTrack = tracks[3];
+    const seed = { track: seedTrack, features: ctx.features.get(seedTrack.id) ?? null };
+    const candidates: CandidateInput[] = [];
+    for (const [id, track] of ctx.tracks) {
+      if (id === seedTrack.id) continue;
+      candidates.push({ track, features: ctx.features.get(id) ?? null });
+    }
     const run = () => {
-      const m = collectSignalMatrix(source, candidates, ctx);
-      const s = scoreMatrix(m, DEFAULT_WEIGHTS);
-      return selectTop(m, s, 8, 2);
+      const breakdowns = computeBreakdowns(ctx, seed, candidates);
+      const scored = candidates.map((c, i) => ({
+        trackId: c.track.id, artistIds: c.track.artistIds, albumId: c.track.albumId,
+        score: scoreBreakdown(breakdowns[i], DEFAULT_WEIGHTS),
+      }));
+      return mmrSelect(scored, 8, DEFAULT_MMR_OPTIONS);
     };
     run();
     const [rows, ms] = timed(run);
-    console.log(`signals+scoring: ${ms.toFixed(1)} ms`);
+    console.log(`components+scoring: ${ms.toFixed(1)} ms`);
     expect(rows.length).toBe(8);
     expect(ms).toBeLessThan(BUDGET_MS);
   });

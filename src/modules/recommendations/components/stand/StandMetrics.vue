@@ -26,7 +26,7 @@
       </div>
     </div>
     <div class="col-span-2 rounded border p-2 tabular-nums text-muted-foreground">
-      контекст {{ timings.contextMs.toFixed(0) }} мс · сигналы {{ timings.signalsMs.toFixed(0) }} мс · скоринг {{ timings.scoringMs.toFixed(1) }} мс
+      контекст {{ timings.contextMs.toFixed(0) }} мс · компоненты {{ timings.componentsMs.toFixed(0) }} мс · скоринг {{ timings.scoringMs.toFixed(1) }} мс
       <span v-if="candidates !== null"> · кандидатов {{ candidates }}</span>
     </div>
     <div

@@ -1,12 +1,17 @@
-import { SIGNAL_KEYS, type SignalKey, type Weights } from "./signals";
+import type { MmrOptions } from "../lib/rank";
+import { COMPONENT_KEYS, type ComponentKey, type ComponentWeights } from "../lib/scoring";
 import { hitRate, makeLcg, pairAgreement, type AgreementCase, type TransitionCase } from "./stand-metrics";
+
+export const ZERO_WEIGHTS: ComponentWeights = Object.fromEntries(
+  COMPONENT_KEYS.map(k => [k, 0]),
+) as ComponentWeights;
 
 export interface TunerOptions {
   transitionCases: TransitionCase[];
   agreementCases: AgreementCase[];
   limit: number;
-  maxPerArtist: number;
-  frozen?: Partial<Record<SignalKey, number>>;
+  mmr: MmrOptions;
+  frozen?: Partial<Record<ComponentKey, number>>;
   randomSamples?: number;
   refineTop?: number;
   step?: number;
@@ -17,12 +22,14 @@ export interface TunerOptions {
 export interface Tuner {
   readonly total: number;
   readonly done: number;
-  readonly best: { weights: Weights; objective: number };
+  readonly best: { weights: ComponentWeights; objective: number };
   readonly usesAgreement: boolean;
   step: (count: number) => boolean;
 }
 
 const MAX_REFINE_PASSES = 20;
+const MIN_WEIGHT = 0;
+const MAX_WEIGHT = 1;
 
 const labeledPairs = (cases: AgreementCase[]): number =>
   cases.reduce((n, c) => n + c.likedRows.length * c.dislikedRows.length, 0);
@@ -30,8 +37,8 @@ const labeledPairs = (cases: AgreementCase[]): number =>
 const usesAgreementFor = (opts: TunerOptions): boolean =>
   labeledPairs(opts.agreementCases) >= (opts.minLabeledPairs ?? 20);
 
-export const objective = (weights: Weights, opts: TunerOptions): number => {
-  const hit = hitRate(opts.transitionCases, weights, opts.limit, opts.maxPerArtist);
+export const objective = (weights: ComponentWeights, opts: TunerOptions): number => {
+  const hit = hitRate(opts.transitionCases, weights, opts.limit, opts.mmr);
   if (!usesAgreementFor(opts)) return hit;
   const agreement = pairAgreement(opts.agreementCases, weights);
   return agreement === null ? hit : 0.5 * agreement + 0.5 * hit;
@@ -43,19 +50,18 @@ export const createTuner = (opts: TunerOptions): Tuner => {
   const stepSize = opts.step ?? 0.05;
   const rnd = makeLcg(opts.seed ?? 1);
   const frozen = opts.frozen ?? {};
-  const freeKeys = SIGNAL_KEYS.filter(k => !(k in frozen));
+  const freeKeys = COMPONENT_KEYS.filter(k => !(k in frozen));
   const usesAgreement = usesAgreementFor(opts);
 
-  const withFrozen = (w: Weights): Weights => ({ ...w, ...frozen });
-  const evaluate = (w: Weights) => ({ weights: w, objective: objective(w, opts) });
+  const withFrozen = (w: ComponentWeights): ComponentWeights => ({ ...w, ...frozen });
+  const evaluate = (w: ComponentWeights) => ({ weights: w, objective: objective(w, opts) });
 
-  const candidates: { weights: Weights; objective: number }[] = [];
-  const initialWeights = Object.fromEntries(SIGNAL_KEYS.map(k => [k, 0])) as Weights;
-  let best = evaluate(withFrozen(initialWeights));
+  const candidates: { weights: ComponentWeights; objective: number }[] = [];
+  let best = evaluate(withFrozen({ ...ZERO_WEIGHTS }));
   let done = 0;
   let phase: "random" | "refine" | "done" = "random";
   let refineIndex = 0;
-  let current: { weights: Weights; objective: number } | null = null;
+  let current: { weights: ComponentWeights; objective: number } | null = null;
   let pass = 0;
   let improvedInPass = false;
   let keyIndex = 0;
@@ -63,7 +69,7 @@ export const createTuner = (opts: TunerOptions): Tuner => {
 
   const total = randomSamples + refineTop * MAX_REFINE_PASSES * freeKeys.length * 2;
 
-  const consider = (c: { weights: Weights; objective: number }) => {
+  const consider = (c: { weights: ComponentWeights; objective: number }) => {
     if (c.objective > best.objective) best = c;
   };
 
@@ -75,7 +81,7 @@ export const createTuner = (opts: TunerOptions): Tuner => {
       return;
     }
     const w = { ...best.weights };
-    for (const k of freeKeys) w[k] = rnd() * 2 - 1;
+    for (const k of freeKeys) w[k] = rnd();
     const c = evaluate(withFrozen(w));
     candidates.push(c);
     consider(c);
@@ -88,8 +94,8 @@ export const createTuner = (opts: TunerOptions): Tuner => {
       return;
     }
     const key = freeKeys[keyIndex];
-    const w: Weights = { ...current.weights, [key]: Math.max(-1, Math.min(1, current.weights[key] + direction * stepSize)) };
-    const c = evaluate(w);
+    const moved = Math.max(MIN_WEIGHT, Math.min(MAX_WEIGHT, current.weights[key] + direction * stepSize));
+    const c = evaluate({ ...current.weights, [key]: moved });
     done++;
     if (c.objective > current.objective) {
       current = c;

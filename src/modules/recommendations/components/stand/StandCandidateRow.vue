@@ -20,7 +20,7 @@
         <div
           v-for="seg in segments"
           :key="seg.key"
-          :title="`${seg.key}: ${seg.signal.toFixed(2)} × ${seg.weight.toFixed(2)}`"
+          :title="seg.title"
           :style="{ width: `${seg.width}%`, background: seg.color, opacity: seg.negative ? 0.4 : 1 }"
         />
       </div>
@@ -67,22 +67,33 @@ import { Button } from "@/components/ui/button";
 import IconThumbUp from "~icons/tabler/thumb-up";
 import IconThumbDown from "~icons/tabler/thumb-down";
 import IconPlayerPlay from "~icons/tabler/player-play";
-import { SIGNAL_KEYS, type Weights } from "@/modules/recommendations/service/signals";
-import { SIGNAL_COLORS } from "@/modules/recommendations/service/stand-signal-meta";
+import { COMPONENT_KEYS, type ComponentWeights } from "@/modules/recommendations/lib/scoring";
+import { COMPONENT_COLORS, type StandBarKey } from "@/modules/recommendations/service/stand-signal-meta";
 import type { StandRow } from "@/modules/recommendations/composables/useRecoStand";
 
-const props = defineProps<{ row: StandRow; weights: Weights }>();
+const props = defineProps<{ row: StandRow; weights: ComponentWeights }>();
 defineEmits<{ rate: [label: 1 | -1]; play: [] }>();
 
+interface Segment { key: StandBarKey; contribution: number; title: string }
+
 const segments = computed(() => {
-  const parts = SIGNAL_KEYS.map((key) => {
-    const signal = props.row.breakdown[key];
+  const parts: Segment[] = COMPONENT_KEYS.map((key) => {
+    const rank = props.row.breakdown.ranks[key];
     const weight = props.weights[key];
-    return { key, signal, weight, contribution: signal * weight, color: SIGNAL_COLORS[key] };
+    return { key, contribution: rank * weight, title: `${key}: ${rank.toFixed(2)} × ${weight.toFixed(2)}` };
   });
+  // The penalty is not weighted — it lands on the score as is, always ≤ 0.
+  const penalty = props.row.breakdown.recencyPenalty;
+  parts.push({ key: "recencyPenalty", contribution: penalty, title: `recencyPenalty: ${penalty.toFixed(2)}` });
+
   const total = parts.reduce((s, p) => s + Math.abs(p.contribution), 0) || 1;
   return parts
     .filter(p => p.contribution !== 0)
-    .map(p => ({ ...p, width: (Math.abs(p.contribution) / total) * 100, negative: p.contribution < 0 }));
+    .map(p => ({
+      ...p,
+      color: COMPONENT_COLORS[p.key],
+      width: (Math.abs(p.contribution) / total) * 100,
+      negative: p.contribution < 0,
+    }));
 });
 </script>

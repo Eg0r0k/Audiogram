@@ -1,16 +1,16 @@
 <template>
   <div class="flex flex-col gap-4">
     <div
-      v-for="key in SIGNAL_KEYS"
+      v-for="key in COMPONENT_KEYS"
       :key="key"
       class="flex flex-col gap-1"
     >
       <div class="flex items-center justify-between text-xs">
-        <span :title="SIGNAL_DESCRIPTIONS[key]">{{ key }}</span>
+        <span :title="COMPONENT_DESCRIPTIONS[key]">{{ key }}</span>
         <input
           type="number"
           step="0.05"
-          min="-1"
+          min="0"
           max="1"
           class="w-16 rounded border bg-transparent px-1 text-right tabular-nums"
           :aria-label="key"
@@ -20,7 +20,7 @@
       </div>
       <Slider
         :model-value="[weights[key]]"
-        :min="-1"
+        :min="0"
         :max="1"
         :step="0.05"
         @update:model-value="v => setWeight(key, v?.[0] ?? 0)"
@@ -29,45 +29,20 @@
 
     <div class="grid grid-cols-3 gap-2 text-xs">
       <label
-        for="stand-limit"
+        v-for="spec in PARAM_SPECS"
+        :key="spec.key"
+        :for="`stand-param-${spec.key}`"
         class="flex flex-col gap-1"
-      >limit
+      >{{ spec.key }}
         <input
-          id="stand-limit"
+          :id="`stand-param-${spec.key}`"
           type="number"
-          min="1"
-          max="50"
+          :min="spec.min"
+          :max="spec.max"
+          :step="spec.step"
           class="rounded border bg-transparent px-1"
-          :value="params.limit"
-          @change="setParam('limit', $event)"
-        >
-      </label>
-      <label
-        for="stand-recent-window"
-        class="flex flex-col gap-1"
-      >recentWindow
-        <input
-          id="stand-recent-window"
-          type="number"
-          min="0"
-          max="100"
-          class="rounded border bg-transparent px-1"
-          :value="params.recentWindow"
-          @change="setParam('recentWindow', $event)"
-        >
-      </label>
-      <label
-        for="stand-max-per-artist"
-        class="flex flex-col gap-1"
-      >maxPerArtist
-        <input
-          id="stand-max-per-artist"
-          type="number"
-          min="0"
-          max="20"
-          class="rounded border bg-transparent px-1"
-          :value="params.maxPerArtist"
-          @change="setParam('maxPerArtist', $event)"
+          :value="params[spec.key]"
+          @change="setParam(spec, $event)"
         >
       </label>
     </div>
@@ -115,35 +90,39 @@
 <script setup lang="ts">
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
-import { SIGNAL_KEYS, type SignalKey, type Weights } from "@/modules/recommendations/service/signals";
-import { SIGNAL_DESCRIPTIONS } from "@/modules/recommendations/service/stand-signal-meta";
-import type { ScoringParams } from "@/modules/recommendations/service/scoring";
+import { COMPONENT_KEYS, type ComponentKey, type ComponentWeights } from "@/modules/recommendations/lib/scoring";
+import { COMPONENT_DESCRIPTIONS } from "@/modules/recommendations/service/stand-signal-meta";
+import type { StandParams } from "@/modules/recommendations/composables/useRecoStand";
 
-defineProps<{ weights: Weights; params: ScoringParams; tuning: boolean }>();
+defineProps<{ weights: ComponentWeights; params: StandParams; tuning: boolean }>();
 const emit = defineEmits<{
   "reset": [];
   "tune": [];
   "copy": [];
   "reload": [];
   "export": [];
-  "update:weight": [key: SignalKey, value: number];
-  "update:param": [key: keyof ScoringParams, value: number];
+  "update:weight": [key: ComponentKey, value: number];
+  "update:param": [key: keyof StandParams, value: number];
 }>();
 
-const setWeight = (key: SignalKey, value: number) => {
-  if (Number.isFinite(value)) emit("update:weight", key, Math.max(-1, Math.min(1, value)));
+const setWeight = (key: ComponentKey, value: number) => {
+  if (Number.isFinite(value)) emit("update:weight", key, Math.max(0, Math.min(1, value)));
 };
 
-const PARAM_RANGES: Record<keyof ScoringParams, [number, number]> = {
-  limit: [1, 50],
-  recentWindow: [0, 100],
-  maxPerArtist: [0, 20],
-};
+interface ParamSpec { key: keyof StandParams; min: number; max: number; step: number }
 
-const setParam = (key: keyof ScoringParams, e: Event) => {
-  const v = (e.target as HTMLInputElement).valueAsNumber;
-  if (!Number.isFinite(v)) return;
-  const [min, max] = PARAM_RANGES[key];
-  emit("update:param", key, Math.round(Math.max(min, Math.min(max, v))));
+const PARAM_SPECS: readonly ParamSpec[] = [
+  { key: "limit", min: 1, max: 50, step: 1 },
+  { key: "recentWindow", min: 0, max: 100, step: 1 },
+  { key: "maxPerArtist", min: 0, max: 20, step: 1 },
+  { key: "artistPenalty", min: 0, max: 1, step: 0.05 },
+  { key: "albumPenalty", min: 0, max: 1, step: 0.05 },
+];
+
+const setParam = (spec: ParamSpec, e: Event) => {
+  const raw = (e.target as HTMLInputElement).valueAsNumber;
+  if (!Number.isFinite(raw)) return;
+  const clamped = Math.max(spec.min, Math.min(spec.max, raw));
+  emit("update:param", spec.key, spec.step === 1 ? Math.round(clamped) : clamped);
 };
 </script>

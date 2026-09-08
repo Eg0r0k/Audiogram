@@ -1,33 +1,64 @@
 import { computed, reactive, ref, shallowRef, watch } from "vue";
 import type { TrackEntity } from "@/db/entities";
-import type { TrackId } from "@/types/ids";
+import { getLogger } from "@/lib/logger";
+import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
-import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
-import { getLogger } from "@/lib/logger";
-import { buildRecommendationContext, candidateIdsFor, type RecommendationContext } from "../service/recommendation-context";
-import { collectSignalMatrix, type SignalMatrix, type Weights } from "../service/signals";
-import { DEFAULT_PARAMS, DEFAULT_WEIGHTS, scoreMatrix, selectTop, toScoredTracks, type ScoredTrack, type ScoringParams } from "../service/scoring";
+import type { TrackId } from "@/types/ids";
+import { DEFAULT_MMR_OPTIONS, mmrSelect, type MmrOptions } from "../lib/rank";
+import {
+  computeBreakdowns,
+  DEFAULT_WEIGHTS,
+  scoreBreakdown,
+  type Breakdown,
+  type CandidateInput,
+  type ComponentWeights,
+  type SeedInput,
+} from "../lib/scoring";
+import { buildTransitions, subtractTransitions } from "../lib/transitions";
+import { getRecommenderContext, markRecommenderContextDirty, type RecommenderContext } from "../service/recommender-context.service";
+import { RECENT_EXCLUDE, type ScoredTrack } from "../service/recommender.service";
 import { loadFeedback, pairKey, saveFeedback, writeSnapshot, type FeedbackEntry, type FeedbackLabel } from "../service/stand-feedback.store";
 import { hitRate, pairAgreement, sampleTransitions, type AgreementCase, type TransitionCase } from "../service/stand-metrics";
 import { createTuner } from "../service/stand-tuner";
 
-export interface StandTimings { contextMs: number; signalsMs: number; scoringMs: number }
+export interface StandParams {
+  limit: number;
+  recentWindow: number;
+  maxPerArtist: number;
+  artistPenalty: number;
+  albumPenalty: number;
+}
+
+export const DEFAULT_STAND_PARAMS: StandParams = {
+  limit: 8,
+  recentWindow: RECENT_EXCLUDE,
+  maxPerArtist: DEFAULT_MMR_OPTIONS.maxPerArtist,
+  artistPenalty: DEFAULT_MMR_OPTIONS.artistPenalty,
+  albumPenalty: DEFAULT_MMR_OPTIONS.albumPenalty,
+};
+
+export interface StandTimings { contextMs: number; componentsMs: number; scoringMs: number }
 export interface StandRow extends ScoredTrack { label: FeedbackLabel | null }
+
+interface SourceComponents {
+  candidates: CandidateInput[];
+  breakdowns: Breakdown[];
+}
 
 const HIT_SAMPLE = 200;
 const HIT_SEED = 42;
 const CHUNK = 10;
 
-const ctx = shallowRef<RecommendationContext | null>(null);
+const ctx = shallowRef<RecommenderContext | null>(null);
 const isLoading = ref(false);
 const sourceId = ref<TrackId | null>(null);
-const weights = reactive<Weights>({ ...DEFAULT_WEIGHTS });
-const params = reactive<ScoringParams>({ ...DEFAULT_PARAMS });
+const weights = reactive<ComponentWeights>({ ...DEFAULT_WEIGHTS });
+const params = reactive<StandParams>({ ...DEFAULT_STAND_PARAMS });
 const extraRows = ref(0);
-const timings = ref<StandTimings>({ contextMs: 0, signalsMs: 0, scoringMs: 0 });
+const timings = ref<StandTimings>({ contextMs: 0, componentsMs: 0, scoringMs: 0 });
 const feedback = ref<Map<string, FeedbackEntry>>(new Map());
-const sourceMatrix = shallowRef<SignalMatrix | null>(null);
+const sourceComponents = shallowRef<SourceComponents | null>(null);
 const transitionCases = shallowRef<TransitionCase[]>([]);
 const hitProgress = ref({ done: 0, total: 0 });
 const tuneProgress = ref<{ done: number; total: number } | null>(null);
@@ -37,40 +68,70 @@ const yieldToUi = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
 const now = () => performance.now();
 
-const rebuildSourceMatrix = () => {
+const mmrOptions = (): MmrOptions => ({
+  artistPenalty: params.artistPenalty,
+  albumPenalty: params.albumPenalty,
+  maxPerArtist: params.maxPerArtist,
+});
+
+const candidatesFor = (c: RecommenderContext, excluded: ReadonlySet<TrackId>): CandidateInput[] => {
+  const out: CandidateInput[] = [];
+  for (const [id, track] of c.tracks) {
+    if (excluded.has(id)) continue;
+    out.push({ track, features: c.features.get(id) ?? null });
+  }
+  return out;
+};
+
+const seedFor = (c: RecommenderContext, track: TrackEntity): SeedInput =>
+  ({ track, features: c.features.get(track.id) ?? null });
+
+/** Weight-independent part of the scoring: recomputed only on source / recentWindow change. */
+const rebuildSourceComponents = () => {
   const c = ctx.value;
   const id = sourceId.value;
-  if (!c || !id) {
-    sourceMatrix.value = null;
+  const seedTrack = c && id ? c.tracks.get(id) : undefined;
+  if (!c || !seedTrack) {
+    sourceComponents.value = null;
     return;
   }
   const t0 = now();
-  const candidates = candidateIdsFor(id, c, params.recentWindow, []);
-  sourceMatrix.value = collectSignalMatrix(id, candidates, c);
-  timings.value = { ...timings.value, signalsMs: now() - t0 };
+  const excluded = new Set<TrackId>([seedTrack.id]);
+  for (const recent of c.recentlyPlayed.slice(0, Math.max(0, params.recentWindow))) excluded.add(recent);
+  const candidates = candidatesFor(c, excluded);
+  sourceComponents.value = { candidates, breakdowns: computeBreakdowns(c, seedFor(c, seedTrack), candidates) };
+  timings.value = { ...timings.value, componentsMs: now() - t0 };
 };
 
-watch(() => params.recentWindow, rebuildSourceMatrix);
+watch(() => params.recentWindow, rebuildSourceComponents);
 
-const buildTransitionCases = async (c: RecommendationContext) => {
-  const transitions = sampleTransitions(c.trackSessions, HIT_SAMPLE, HIT_SEED);
+const buildTransitionCases = async (c: RecommenderContext) => {
+  const transitions = sampleTransitions(c.sessions, HIT_SAMPLE, HIT_SEED);
   if (ctx.value !== c) return;
   hitProgress.value = { done: 0, total: transitions.length };
   const out: TransitionCase[] = [];
   for (let i = 0; i < transitions.length; i++) {
     const { session, index } = transitions[i];
-    const source = session[index];
-    const target = session[index + 1];
-    const played = new Set(session.slice(0, index + 1));
-    const candidates = candidateIdsFor(source, c, 0, played);
-    const sessionTracks = new Set(session);
-    const artists = new Set(session.flatMap((t) => {
-      const a = c.tracks.get(t)?.artistIds[0];
-      return a ? [a] : [];
-    }));
-    const matrix = collectSignalMatrix(source, candidates, c, { exclude: { tracks: sessionTracks, artists } });
-    const targetRow = matrix.candidateIds.indexOf(target);
-    if (targetRow >= 0) out.push({ matrix, targetRow });
+    const seedTrack = c.tracks.get(session[index].trackId);
+    const targetId = session[index + 1].trackId;
+    if (seedTrack) {
+      const played = new Set<TrackId>(session.slice(0, index + 1).map(e => e.trackId));
+      const candidates = candidatesFor(c, played);
+      const targetRow = candidates.findIndex(cand => cand.track.id === targetId);
+      if (targetRow >= 0) {
+        // The case's own session must not teach the transition it is testing.
+        const heldOut = subtractTransitions(c.transitions, buildTransitions([session]));
+        out.push({
+          breakdowns: computeBreakdowns({ ...c, transitions: heldOut }, seedFor(c, seedTrack), candidates),
+          candidates: candidates.map(cand => ({
+            trackId: cand.track.id,
+            artistIds: cand.track.artistIds,
+            albumId: cand.track.albumId,
+          })),
+          targetRow,
+        });
+      }
+    }
     if (ctx.value !== c) return;
     hitProgress.value = { done: i + 1, total: transitions.length };
     if (i % CHUNK === CHUNK - 1) {
@@ -94,15 +155,23 @@ const agreementCases = computed<AgreementCase[]>(() => {
   }
   const out: AgreementCase[] = [];
   for (const [source, entries] of bySource) {
-    const matrix = collectSignalMatrix(source, entries.map(e => e.candidateId), c);
+    const seedTrack = c.tracks.get(source);
+    if (!seedTrack) continue;
+    const candidates: CandidateInput[] = [];
     const likedRows: number[] = [];
     const dislikedRows: number[] = [];
-    matrix.candidateIds.forEach((id, row) => {
-      const label = entries.find(e => e.candidateId === id)?.label;
-      if (label === 1) likedRows.push(row);
-      else if (label === -1) dislikedRows.push(row);
+    for (const entry of entries) {
+      const track = c.tracks.get(entry.candidateId);
+      if (!track) continue;
+      if (entry.label === 1) likedRows.push(candidates.length);
+      else dislikedRows.push(candidates.length);
+      candidates.push({ track, features: c.features.get(track.id) ?? null });
+    }
+    out.push({
+      breakdowns: computeBreakdowns(c, seedFor(c, seedTrack), candidates),
+      likedRows,
+      dislikedRows,
     });
-    out.push({ matrix, likedRows, dislikedRows });
   }
   return out;
 });
@@ -115,44 +184,50 @@ export const useRecoStand = () => {
     sourceId.value && ctx.value ? ctx.value.tracks.get(sourceId.value) ?? null : null);
 
   const rows = computed<StandRow[]>(() => {
-    const c = ctx.value;
-    const m = sourceMatrix.value;
+    const s = sourceComponents.value;
     const id = sourceId.value;
-    if (!c || !m || !id) return [];
+    if (!s || !id) return [];
     const t0 = now();
-    const scores = scoreMatrix(m, weights);
-    const top = selectTop(m, scores, params.limit + extraRows.value, params.maxPerArtist);
-    const scored = toScoredTracks(m, scores, top, c.tracks);
+    const scored = s.candidates.map((cand, i) => ({
+      trackId: cand.track.id,
+      artistIds: cand.track.artistIds,
+      albumId: cand.track.albumId,
+      score: scoreBreakdown(s.breakdowns[i], weights),
+      track: cand.track,
+      breakdown: s.breakdowns[i],
+    }));
+    const picked = mmrSelect(scored, params.limit + extraRows.value, mmrOptions());
     timings.value = { ...timings.value, scoringMs: now() - t0 };
-    return scored.map(r => ({ ...r, label: feedback.value.get(pairKey(id, r.trackId))?.label ?? null }));
+    return picked.map(p => ({
+      trackId: p.trackId,
+      track: p.track,
+      score: p.score,
+      breakdown: p.breakdown,
+      label: feedback.value.get(pairKey(id, p.trackId))?.label ?? null,
+    }));
   });
 
   const feedbackCount = computed(() => feedback.value.size);
   const feedbackSources = computed(() => new Set([...feedback.value.values()].map(e => e.sourceId)).size);
-  const candidateCount = computed(() => sourceMatrix.value?.candidateIds.length ?? null);
+  const candidateCount = computed(() => sourceComponents.value?.candidates.length ?? null);
 
-  const metrics = computed(() => {
-    const hit = hitRate(transitionCases.value, weights, params.limit, params.maxPerArtist);
-    const agreement = pairAgreement(agreementCases.value, weights);
-    return { hit, agreement };
-  });
+  const metrics = computed(() => ({
+    hit: hitRate(transitionCases.value, weights, params.limit, mmrOptions()),
+    agreement: pairAgreement(agreementCases.value, weights),
+  }));
 
-  const load = async () => {
-    if (ctx.value || isLoading.value) return;
-    await reload();
-  };
-
-  const reload = async () => {
+  const loadContext = async (dirty: boolean) => {
     isLoading.value = true;
     transitionCases.value = [];
     hitProgress.value = { done: 0, total: 0 };
     try {
+      if (dirty) markRecommenderContextDirty();
       const t0 = now();
-      const [c, fb] = await Promise.all([buildRecommendationContext(), loadFeedback()]);
-      timings.value = { contextMs: now() - t0, signalsMs: 0, scoringMs: 0 };
+      const [c, fb] = await Promise.all([getRecommenderContext(), loadFeedback()]);
+      timings.value = { contextMs: now() - t0, componentsMs: 0, scoringMs: 0 };
       ctx.value = c;
       feedback.value = fb;
-      rebuildSourceMatrix();
+      rebuildSourceComponents();
       buildTransitionCases(c).catch(error => getLogger().error(`[RecoStand] Building transition cases failed: ${String(error)}`));
     }
     finally {
@@ -160,10 +235,20 @@ export const useRecoStand = () => {
     }
   };
 
+  const load = async () => {
+    if (ctx.value || isLoading.value) return;
+    await loadContext(false);
+  };
+
+  const reload = async () => {
+    if (isLoading.value) return;
+    await loadContext(true);
+  };
+
   const setSource = (id: TrackId | null) => {
     sourceId.value = id;
     extraRows.value = 0;
-    rebuildSourceMatrix();
+    rebuildSourceComponents();
   };
 
   const pickCurrent = () => {
@@ -211,7 +296,7 @@ export const useRecoStand = () => {
 
   const resetWeights = () => {
     Object.assign(weights, DEFAULT_WEIGHTS);
-    Object.assign(params, DEFAULT_PARAMS);
+    Object.assign(params, DEFAULT_STAND_PARAMS);
   };
 
   const tune = async () => {
@@ -220,8 +305,7 @@ export const useRecoStand = () => {
       transitionCases: transitionCases.value,
       agreementCases: agreementCases.value,
       limit: params.limit,
-      maxPerArtist: params.maxPerArtist,
-      frozen: { audioSimilarity: 0 },
+      mmr: mmrOptions(),
     });
     tuneProgress.value = { done: 0, total: tuner.total };
     tuneUsesAgreement.value = tuner.usesAgreement;
@@ -256,7 +340,7 @@ export const useRecoStand = () => {
     return writeSnapshot({
       exportedAt: Date.now(),
       tracks,
-      sessions: c.trackSessions,
+      sessions: c.sessions,
       feedback: [...feedback.value.values()],
     });
   };

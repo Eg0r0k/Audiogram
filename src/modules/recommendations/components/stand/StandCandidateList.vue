@@ -30,10 +30,10 @@
 import { Button } from "@/components/ui/button";
 import type { TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
-import type { Weights } from "@/modules/recommendations/service/signals";
+import type { ComponentWeights } from "@/modules/recommendations/lib/scoring";
 import type { StandRow } from "@/modules/recommendations/composables/useRecoStand";
 import StandCandidateRow from "./StandCandidateRow.vue";
 
-defineProps<{ rows: StandRow[]; weights: Weights; sourceId: TrackId | null; step: number }>();
+defineProps<{ rows: StandRow[]; weights: ComponentWeights; sourceId: TrackId | null; step: number }>();
 defineEmits<{ rate: [id: TrackId, label: 1 | -1]; play: [track: TrackEntity]; more: [] }>();
 </script>
