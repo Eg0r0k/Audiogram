@@ -236,6 +236,17 @@ describe("computeBreakdowns / scoreCandidates", () => {
     expect(bOld.recencyPenalty).toBe(0);
   });
 
+  it("clamps a future lastPlayedAt (clock skew) to the strongest recency tier", () => {
+    const seed = makeTrack({ id: tid("seed") });
+    const future = makeTrack({ id: tid("future"), lastPlayedAt: now + 3_600_000 });
+
+    const ctx = buildCtx([], new Set(), [], now);
+    const candidates: CandidateInput[] = [{ track: future, features: null }];
+    const [bFuture] = computeBreakdowns(ctx, { track: seed, features: null }, candidates, DEFAULT_RECENCY_TIERS);
+
+    expect(bFuture.recencyPenalty).toBe(-0.3);
+  });
+
   it("gives every candidate audio rank 0.5 and null audioSimilarity when the seed has no features", () => {
     const seed = makeTrack({ id: tid("seed") });
     const c1 = makeTrack({ id: tid("c1") });

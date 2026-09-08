@@ -11,11 +11,11 @@ export type ComponentKey = typeof COMPONENT_KEYS[number];
 export type ComponentWeights = Record<ComponentKey, number>;
 
 export const DEFAULT_WEIGHTS: ComponentWeights = {
-  audio: 0.3,
+  audio: 0.35,
   trackTransition: 0.25,
-  artistTransition: 0.15,
-  affinity: 0.2,
-  explore: 0.1,
+  artistTransition: 0.10,
+  affinity: 0.20,
+  explore: 0.10,
 };
 
 export type RecencyPenaltyTiers = { withinMs: number; penalty: number }[];
@@ -57,7 +57,7 @@ const recencyPenaltyOf = (
   tiers: RecencyPenaltyTiers,
 ): number => {
   if (track.lastPlayedAt === undefined) return 0;
-  const age = now - track.lastPlayedAt;
+  const age = Math.max(0, now - track.lastPlayedAt);
   for (const tier of tiers) {
     if (age <= tier.withinMs) return tier.penalty;
   }
