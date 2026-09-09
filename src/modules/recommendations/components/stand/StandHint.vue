@@ -1,8 +1,5 @@
 <template>
-  <details
-    open
-    class="rounded-lg border p-3 text-sm"
-  >
+  <details class="rounded-lg border p-3 text-sm">
     <summary class="cursor-pointer font-medium">
       Как пользоваться стендом
     </summary>
