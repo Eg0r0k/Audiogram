@@ -1,7 +1,7 @@
 import type { AudioFeaturesEntity, TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
 import type { CandidateInput, ComponentWeights, ScoringContext } from "./scoring";
-import { COMPONENT_KEYS, computeBreakdowns, DEFAULT_WEIGHTS, ranksToVector } from "./scoring";
+import { COMPONENT_KEYS, computeBreakdowns, DEFAULT_WEIGHTS, ranksToVector, weightsTotal } from "./scoring";
 import type { Session, SessionEvent } from "./sessions";
 
 export interface AutoplayRun {
@@ -171,8 +171,11 @@ export const trainWeights = (
   const sum = w.reduce((a, b) => a + b, 0);
   if (!Number.isFinite(sum) || sum === 0) return null;
 
+  // Same total as the defaults so the blend and the unweighted recency
+  // penalty see one scale.
+  const total = weightsTotal(DEFAULT_WEIGHTS);
   const weights = {} as ComponentWeights;
-  for (let i = 0; i < k; i++) weights[COMPONENT_KEYS[i]] = w[i] / sum;
+  for (let i = 0; i < k; i++) weights[COMPONENT_KEYS[i]] = (w[i] / sum) * total;
   return weights;
 };
 

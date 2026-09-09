@@ -10,12 +10,23 @@ export const COMPONENT_KEYS = ["audio", "trackTransition", "artistTransition", "
 export type ComponentKey = typeof COMPONENT_KEYS[number];
 export type ComponentWeights = Record<ComponentKey, number>;
 
+/**
+ * Hand-tuned on the dev stand (2026-09-09). Not normalised on purpose: the
+ * recency penalty is added unweighted, so the total sets how strong it is
+ * relative to the ranks. Learned weights are rescaled to this total.
+ */
 export const DEFAULT_WEIGHTS: ComponentWeights = {
-  audio: 0.35,
-  trackTransition: 0.25,
-  artistTransition: 0.10,
-  affinity: 0.20,
-  explore: 0.10,
+  audio: 0.978,
+  trackTransition: 0.709,
+  artistTransition: 0.124,
+  affinity: 0.867,
+  explore: 0,
+};
+
+export const weightsTotal = (w: ComponentWeights): number => {
+  let s = 0;
+  for (const k of COMPONENT_KEYS) s += w[k];
+  return s;
 };
 
 export type RecencyPenaltyTiers = { withinMs: number; penalty: number }[];

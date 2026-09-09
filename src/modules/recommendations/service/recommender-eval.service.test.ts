@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { DEFAULT_WEIGHTS, weightsTotal } from "@/modules/recommendations/lib/scoring";
 
 const { getRecommenderContextMock } = vi.hoisted(() => ({
   getRecommenderContextMock: vi.fn(),
@@ -107,7 +108,7 @@ describe("runRecommenderEval", () => {
     expect(report.examples).toBe(report.positives + report.negatives);
     expect(report.weights).not.toBeNull();
     const sum = Object.values(report.weights!).reduce((a, b) => a + b, 0);
-    expect(sum).toBeCloseTo(1, 5);
+    expect(sum).toBeCloseTo(weightsTotal(DEFAULT_WEIGHTS), 5);
     expect(typeof report.aucDefault).toBe("number");
     expect(typeof report.aucLearned).toBe("number");
     expect(report.aucLearned!).toBeGreaterThanOrEqual(0);
