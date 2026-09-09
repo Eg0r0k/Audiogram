@@ -19,10 +19,17 @@ export const useTrackSelectionMode = (
   containerRef: Ref<HTMLElement | null>,
   options: UseTrackSelectionModeOptions,
 ) => {
-  // Pruning is off: "select all" holds ids the infinite query has not loaded.
-  const selection = useTrackSelection(tracks, containerRef, { pruneToItems: false });
-
   const isSelectMode = ref(false);
+
+  // Pruning is off: "select all" holds ids the infinite query has not loaded.
+  // Outside the mode a long-press belongs to the row's context menu (its
+  // "Select" entry is the way in); inside it the same press starts a range
+  // and must not also open the menu.
+  const selection = useTrackSelection(tracks, containerRef, {
+    pruneToItems: false,
+    canStartTouch: () => isSelectMode.value,
+    suppressContextMenu: true,
+  });
   const isSelectingAll = ref(false);
 
   const isAllSelected = computed(() => {
