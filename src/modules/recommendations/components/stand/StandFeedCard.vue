@@ -11,8 +11,16 @@
     />
     <div class="flex min-w-0 flex-1 flex-col gap-2">
       <div class="min-w-0">
-        <div class="truncate text-xl font-semibold">
-          {{ row.track.title }}
+        <div class="flex items-center gap-2">
+          <div class="truncate text-xl font-semibold">
+            {{ row.track.title }}
+          </div>
+          <span
+            v-if="row.pick === 'explore'"
+            class="shrink-0 rounded bg-yellow-500/20 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-yellow-700 dark:text-yellow-300"
+          >
+            разведка
+          </span>
         </div>
         <div class="truncate text-muted-foreground">
           {{ row.track.artistName }}

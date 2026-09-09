@@ -130,6 +130,10 @@ describe("runRecommenderEval", () => {
       weights: null,
       autoplaySkipRate14d: null,
       autoplayPlays14d: 0,
+      picks14d: {
+        rank: { plays: 0, completed: 0, earlySkips: 0 },
+        explore: { plays: 0, completed: 0, earlySkips: 0 },
+      },
     });
   });
 });

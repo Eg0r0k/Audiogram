@@ -1,7 +1,7 @@
-import type { TrackEntity } from "@/db/entities";
+import type { ListenPick, TrackEntity } from "@/db/entities";
 import type { QueueItem } from "@/modules/queue/types";
 import type { TrackId } from "@/types/ids";
-import { mmrSelect, type MmrOptions } from "../lib/rank";
+import type { MmrOptions } from "../lib/rank";
 import {
   computeBreakdowns,
   scoreBreakdown,
@@ -10,6 +10,7 @@ import {
   type ComponentWeights,
   type ScoringContext,
 } from "../lib/scoring";
+import { buildSlate, exploreEligibility, type SlateCandidate } from "../lib/slate";
 import type { RecommenderContext } from "./recommender-context.service";
 import { pairKey, type FeedbackEntry, type FeedbackLabel } from "./stand-feedback.store";
 
@@ -19,6 +20,7 @@ export interface FeedEntry {
   sourceId: TrackId | null;
   score: number;
   breakdown: Breakdown | null;
+  pick: ListenPick;
 }
 
 export interface FeedRow extends FeedEntry {
@@ -37,6 +39,15 @@ export interface FeedPick {
   track: TrackEntity;
   score: number;
   breakdown: Breakdown;
+  pick: ListenPick;
+}
+
+export interface FeedBatchOptions {
+  limit: number;
+  exploreShare: number;
+  mmr: MmrOptions;
+  allowExplore: boolean;
+  rng: () => number;
 }
 
 export type FeedContext = ScoringContext & Pick<RecommenderContext, "tracks" | "features">;
@@ -46,11 +57,10 @@ export const pickFeedBatch = (
   seedId: TrackId,
   exclude: ReadonlySet<TrackId>,
   weights: ComponentWeights,
-  limit: number,
-  mmr: MmrOptions,
+  opts: FeedBatchOptions,
 ): FeedPick[] => {
   const seedTrack = ctx.tracks.get(seedId);
-  if (!seedTrack || limit <= 0) return [];
+  if (!seedTrack || opts.limit <= 0) return [];
   const candidates: CandidateInput[] = [];
   for (const [id, track] of ctx.tracks) {
     if (id === seedId || exclude.has(id)) continue;
@@ -66,8 +76,16 @@ export const pickFeedBatch = (
     score: scoreBreakdown(breakdowns[i], weights),
     track: c.track,
     breakdown: breakdowns[i],
-  }));
-  return mmrSelect(scored, limit, mmr).map(p => ({ track: p.track, score: p.score, breakdown: p.breakdown }));
+  } satisfies SlateCandidate));
+  const slate = buildSlate(scored, {
+    limit: opts.limit,
+    exploreShare: opts.exploreShare,
+    mmr: opts.mmr,
+    allowExplore: opts.allowExplore,
+    isExploreEligible: exploreEligibility(ctx, ctx.now),
+    rng: opts.rng,
+  });
+  return slate.map(({ item, pick }) => ({ track: item.track, score: item.score, breakdown: item.breakdown, pick }));
 };
 
 const rowOf = (

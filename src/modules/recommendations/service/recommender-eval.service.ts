@@ -1,5 +1,6 @@
 import { DEFAULT_AFFINITY_OPTIONS } from "../lib/affinity";
 import { autoplaySkipRate, pairwiseAuc, splitByTime, type EvalReport } from "../lib/eval";
+import { exploreStats } from "../lib/explore-policy";
 import { buildExamples, dot, extractAutoplayRuns, trainWeights } from "../lib/training";
 import { DEFAULT_WEIGHTS } from "../lib/scoring";
 import { getRecommenderContext } from "./recommender-context.service";
@@ -26,11 +27,9 @@ export const runRecommenderEval = async (): Promise<EvalReport> => {
 
   const positives = examples.filter(e => e.y === 1).length;
   const negatives = examples.length - positives;
-  const { plays, rate } = autoplaySkipRate(
-    ctx.events,
-    Date.now() - SKIP_RATE_WINDOW_DAYS * DAY_MS,
-    DEFAULT_AFFINITY_OPTIONS.earlySkipSeconds,
-  );
+  const since = Date.now() - SKIP_RATE_WINDOW_DAYS * DAY_MS;
+  const { plays, rate } = autoplaySkipRate(ctx.events, since, DEFAULT_AFFINITY_OPTIONS.earlySkipSeconds);
+  const picks14d = exploreStats(ctx.events, since, DEFAULT_AFFINITY_OPTIONS.earlySkipSeconds);
 
   return {
     examples: examples.length,
@@ -41,5 +40,6 @@ export const runRecommenderEval = async (): Promise<EvalReport> => {
     weights,
     autoplaySkipRate14d: rate,
     autoplayPlays14d: plays,
+    picks14d,
   };
 };

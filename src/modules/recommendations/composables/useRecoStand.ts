@@ -16,10 +16,12 @@ import {
 } from "../lib/scoring";
 import { buildTransitions, subtractTransitions } from "../lib/transitions";
 import { getRecommenderContext, markRecommenderContextDirty, type RecommenderContext } from "../service/recommender-context.service";
+import { adaptiveExploreShare, exploreStats } from "../lib/explore-policy";
+import { DEFAULT_EXPLORE_SHARE } from "../lib/slate";
 import { RECENT_EXCLUDE } from "../service/recommender.service";
 import { pickFeedBatch, splitFeed, type FeedEntry, type FeedSplit } from "../service/stand-feed";
 import { loadFeedback, pairKey, saveFeedback, writeSnapshot, type FeedbackEntry, type FeedbackLabel } from "../service/stand-feedback.store";
-import { hitRate, pairAgreement, sampleTransitions, type AgreementCase, type TransitionCase } from "../service/stand-metrics";
+import { hitRate, pairAgreement, reach, sampleTransitions, type AgreementCase, type TransitionCase } from "../service/stand-metrics";
 import { createTuner } from "../service/stand-tuner";
 
 export interface StandParams {
@@ -28,6 +30,8 @@ export interface StandParams {
   maxPerArtist: number;
   artistPenalty: number;
   albumPenalty: number;
+  /** Base share of the batch given to exploration; the effective share adapts to outcomes. */
+  exploreShare: number;
 }
 
 /** `limit` is both the feed batch size and N for hit@N. */
@@ -37,9 +41,13 @@ export const DEFAULT_STAND_PARAMS: StandParams = {
   maxPerArtist: DEFAULT_MMR_OPTIONS.maxPerArtist,
   artistPenalty: DEFAULT_MMR_OPTIONS.artistPenalty,
   albumPenalty: DEFAULT_MMR_OPTIONS.albumPenalty,
+  exploreShare: DEFAULT_EXPLORE_SHARE,
 };
 
 export interface StandTimings { contextMs: number; batchMs: number }
+export interface StandCoverage { autoplay7d: number; library: number }
+
+const DAY_MS = 86_400_000;
 
 /** Rank matrix of a source's full candidate set, plus where each candidate sits. */
 interface SourceRanks {
@@ -206,7 +214,23 @@ export const useRecoStand = () => {
   const metrics = computed(() => ({
     hit: hitRate(transitionCases.value, weights, params.limit, mmrOptions()),
     agreement: pairAgreement(agreementCases.value, weights),
+    reach: reach(transitionCases.value, weights, params.limit, mmrOptions()),
   }));
+
+  const effectiveShare = computed(() =>
+    ctx.value ? adaptiveExploreShare(ctx.value.events, params.exploreShare) : params.exploreShare);
+
+  const pickStats = computed(() =>
+    exploreStats(ctx.value?.events ?? [], Date.now() - 14 * DAY_MS));
+
+  const coverage = computed<StandCoverage>(() => {
+    const c = ctx.value;
+    if (!c) return { autoplay7d: 0, library: 0 };
+    const since = Date.now() - 7 * DAY_MS;
+    const played = new Set<TrackId>();
+    for (const e of c.events) if (e.origin === "autoplay" && e.startedAt >= since) played.add(e.trackId);
+    return { autoplay7d: played.size, library: c.tracks.size };
+  });
 
   const refill = () => {
     const c = ctx.value;
@@ -215,13 +239,25 @@ export const useRecoStand = () => {
     const exclude = new Set<TrackId>(feed.value.keys());
     for (const recent of c.recentlyPlayed.slice(0, Math.max(0, params.recentWindow))) exclude.add(recent);
     const t0 = now();
-    const picks = pickFeedBatch({ ...c, now: Date.now() }, current.trackId, exclude, weights, params.limit, mmrOptions());
+    const picks = pickFeedBatch({ ...c, now: Date.now() }, current.trackId, exclude, weights, {
+      limit: params.limit,
+      exploreShare: effectiveShare.value,
+      mmr: mmrOptions(),
+      // The journal stands in for the listen log the production policy reads.
+      allowExplore: current.pick !== "explore" && current.label !== -1,
+      rng: Math.random,
+    });
     timings.value = { ...timings.value, batchMs: now() - t0 };
     if (picks.length === 0) return;
     const next = new Map(feed.value);
-    for (const p of picks) next.set(p.track.id, { track: p.track, sourceId: current.trackId, score: p.score, breakdown: p.breakdown });
+    for (const p of picks) {
+      next.set(p.track.id, { track: p.track, sourceId: current.trackId, score: p.score, breakdown: p.breakdown, pick: p.pick });
+    }
     feed.value = next;
-    queueStore.addMultipleToQueue(picks.map(p => mapTrackEntityToPlayerTrack(p.track)), { type: "autoplay" });
+    queueStore.appendItems(picks.map(p => ({
+      track: mapTrackEntityToPlayerTrack(p.track),
+      source: { type: "autoplay", pick: p.pick },
+    })));
   };
 
   // Sync so the queue never observes "current is last" between the commit
@@ -265,7 +301,7 @@ export const useRecoStand = () => {
     const track = ctx.value?.tracks.get(id);
     if (!track) return;
     seedId.value = id;
-    feed.value = new Map([[id, { track, sourceId: null, score: 0, breakdown: null }]]);
+    feed.value = new Map([[id, { track, sourceId: null, score: 0, breakdown: null, pick: "rank" }]]);
     await queueStore.setQueue([mapTrackEntityToPlayerTrack(track)], 0, { type: "manual" });
   };
 
@@ -400,6 +436,7 @@ export const useRecoStand = () => {
     ctx, isLoading, seedId, seedTrack, weights, params, timings,
     feedSplit, feedActive, feedStarted,
     feedbackCount, feedbackSources, metrics, hitProgress, tuneProgress, tuneUsesAgreement,
+    effectiveShare, pickStats, coverage,
     load, reload, startFeed, pickCurrent, pickRandomFromHistory, searchTracks,
     rate, likeCurrent, dislikeCurrent, skipCurrent, jumpTo, rebuildUpcoming,
     resetWeights, tune, copyWeightsJson, exportSnapshot,

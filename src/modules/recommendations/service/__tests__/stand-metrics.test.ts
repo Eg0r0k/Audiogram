@@ -6,6 +6,7 @@ import { breakdownsToRankMatrix, COMPONENT_KEYS } from "@/modules/recommendation
 import {
   hitRate,
   pairAgreement,
+  reach,
   sampleTransitions,
   type AgreementCase,
   type TransitionCase,
@@ -142,5 +143,25 @@ describe("pairAgreement", () => {
 
   it("returns null without any two-sided source", () => {
     expect(pairAgreement([agreementCase([1], [0], [])], W)).toBeNull();
+  });
+});
+
+describe("reach", () => {
+  it("counts distinct tracks across the ranked top-N of every case", () => {
+    const same = affinityCase([0.9, 0.8, 0.1, 0.1], 0);
+    const shifted = affinityCase([0.1, 0.9, 0.8, 0.1], 0);
+    expect(reach([same, same], W, 2, NO_MMR)).toBe(2);
+    expect(reach([same, shifted], W, 2, NO_MMR)).toBe(3);
+    expect(reach([], W, 2, NO_MMR)).toBe(0);
+  });
+
+  it("grows when the weights spread the top-N over more tracks", () => {
+    const cases = [
+      transitionCase([bd({ affinity: 0.9, explore: 0 }), bd({ affinity: 0.1, explore: 1 })], 0),
+      transitionCase([bd({ affinity: 0.9, explore: 0 }), bd({ affinity: 0.1, explore: 1 })], 0),
+    ];
+    expect(reach(cases, W, 1, NO_MMR)).toBe(1);
+    expect(reach(cases, { ...ZERO, explore: 1 }, 1, NO_MMR)).toBe(1);
+    expect(reach(cases, W, 2, NO_MMR)).toBe(2);
   });
 });

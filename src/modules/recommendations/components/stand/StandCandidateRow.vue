@@ -10,8 +10,16 @@
       image-class="size-10 rounded"
     />
     <div class="min-w-0">
-      <div class="truncate text-sm font-medium">
-        {{ row.track.title }}
+      <div class="flex items-center gap-2">
+        <div class="truncate text-sm font-medium">
+          {{ row.track.title }}
+        </div>
+        <span
+          v-if="row.pick === 'explore'"
+          class="shrink-0 rounded bg-yellow-500/20 px-1 text-[10px] font-medium uppercase tracking-wide text-yellow-700 dark:text-yellow-300"
+        >
+          разведка
+        </span>
       </div>
       <div class="truncate text-xs text-muted-foreground">
         {{ row.track.artistName }}

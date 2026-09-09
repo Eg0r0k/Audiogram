@@ -1,3 +1,4 @@
+import type { TrackId } from "@/types/ids";
 import { mmrSelect, type MmrCandidate, type MmrOptions } from "../lib/rank";
 import { makeLcg } from "../lib/random";
 import { scoreRankMatrix, type ComponentWeights } from "../lib/scoring";
@@ -91,6 +92,24 @@ export const hitRate = (
     if (selectRows(c, scores, limit, mmr).includes(c.targetRow)) hits++;
   }
   return hits / cases.length;
+};
+
+/**
+ * How many distinct tracks the ranked top-N touches across all cases: the
+ * size of the "ring" the current weights can ever recommend from these seeds.
+ */
+export const reach = (
+  cases: readonly TransitionCase[],
+  weights: ComponentWeights,
+  limit: number,
+  mmr: MmrOptions,
+): number => {
+  const seen = new Set<TrackId>();
+  for (const c of cases) {
+    const scores = scoreRankMatrix(c.ranks, weights);
+    for (const row of selectRows(c, scores, limit, mmr)) seen.add(c.candidates[row].trackId);
+  }
+  return seen.size;
 };
 
 export const pairAgreement = (cases: readonly AgreementCase[], weights: ComponentWeights): number | null => {

@@ -1,4 +1,5 @@
-import type { ListenEventEntity } from "@/db/entities";
+import type { ListenEventEntity, ListenPick } from "@/db/entities";
+import type { PickStats } from "./explore-policy";
 import type { ComponentWeights } from "./scoring";
 
 /** Fraction of (positive, negative) pairs where the positive scores higher; ties count 0.5. */
@@ -38,6 +39,7 @@ export interface EvalReport {
   weights: ComponentWeights | null;
   autoplaySkipRate14d: number | null;
   autoplayPlays14d: number;
+  picks14d: Record<ListenPick, PickStats>;
 }
 
 export const autoplaySkipRate = (

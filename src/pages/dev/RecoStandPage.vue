@@ -44,6 +44,9 @@
         :feedback-sources="feedbackSources"
         :limit="params.limit"
         :tune-uses-agreement="tuneUsesAgreement"
+        :coverage="coverage"
+        :picks="pickStats"
+        :explore-share="{ base: params.exploreShare, effective: effectiveShare }"
       />
       <StandLegend />
       <StandControls
@@ -83,6 +86,7 @@ const {
   ctx, isLoading, seedTrack, weights, params, timings,
   feedSplit, feedActive, feedStarted,
   feedbackCount, feedbackSources, metrics, hitProgress, tuneProgress, tuneUsesAgreement,
+  effectiveShare, pickStats, coverage,
   load, reload, startFeed, pickCurrent, pickRandomFromHistory, searchTracks,
   rate, likeCurrent, dislikeCurrent, skipCurrent, jumpTo, rebuildUpcoming,
   resetWeights, tune, copyWeightsJson, exportSnapshot,

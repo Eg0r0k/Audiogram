@@ -29,7 +29,6 @@ export const getRecommendations = async (
   additionalExcludeIds: TrackId[] = [],
   deps: Partial<RecommendationDeps> = {},
 ): Promise<ScoredTrack[]> => {
-  // eslint-disable-next-line sonarjs/pseudo-random -- exploration draw, not security-sensitive
   const rng = deps.rng ?? Math.random;
   // Fresh clock: the cached context can be hours old, but recency tiers must
   // score against "now", not the context's build time.

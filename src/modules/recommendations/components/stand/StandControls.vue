@@ -117,6 +117,7 @@ const PARAM_SPECS: readonly ParamSpec[] = [
   { key: "maxPerArtist", min: 0, max: 20, step: 1 },
   { key: "artistPenalty", min: 0, max: 1, step: 0.05 },
   { key: "albumPenalty", min: 0, max: 1, step: 0.05 },
+  { key: "exploreShare", min: 0, max: 1, step: 0.05 },
 ];
 
 const setParam = (spec: ParamSpec, e: Event) => {
