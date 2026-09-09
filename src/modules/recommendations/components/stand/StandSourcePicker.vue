@@ -45,6 +45,9 @@
         image-class="size-14 rounded"
       />
       <div class="min-w-0">
+        <div class="text-xs text-muted-foreground">
+          Стартовый трек потока
+        </div>
         <div class="truncate font-medium">
           {{ source.title }}
         </div>

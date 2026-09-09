@@ -2,9 +2,9 @@
   <div class="grid h-full grid-cols-[300px_minmax(0,1fr)_340px] gap-4 overflow-hidden p-4">
     <aside class="overflow-auto">
       <StandSourcePicker
-        :source="sourceTrack"
+        :source="seedTrack"
         :search="searchTracks"
-        @select="setSource"
+        @select="id => run(() => startFeed(id))"
         @pick-current="pickCurrent"
         @pick-random="pickRandomFromHistory"
       />
@@ -18,15 +18,19 @@
       >
         Загрузка базы…
       </p>
-      <StandCandidateList
+      <StandFeed
         v-else
-        :rows="rows"
+        :split="feedSplit"
         :weights="weights"
-        :source-id="sourceId"
-        :step="params.limit"
+        :active="feedActive"
+        :started="feedStarted"
+        :title-of="titleOf"
+        @like="run(likeCurrent)"
+        @dislike="run(dislikeCurrent)"
+        @skip="run(skipCurrent)"
+        @rebuild="run(rebuildUpcoming)"
         @rate="onRate"
-        @play="play"
-        @more="extraRows += params.limit"
+        @jump="id => run(() => jumpTo(id))"
       />
     </main>
 
@@ -39,7 +43,6 @@
         :feedback-count="feedbackCount"
         :feedback-sources="feedbackSources"
         :limit="params.limit"
-        :candidates="candidateCount"
         :tune-uses-agreement="tuneUsesAgreement"
       />
       <StandLegend />
@@ -61,6 +64,7 @@
 
 <script setup lang="ts">
 import { onMounted } from "vue";
+import { onKeyStroke } from "@vueuse/core";
 import { toast } from "vue-sonner";
 import { getLogger } from "@/lib/logger";
 import type { ComponentKey } from "@/modules/recommendations/lib/scoring";
@@ -68,7 +72,7 @@ import type { FeedbackLabel } from "@/modules/recommendations/service/stand-feed
 import type { TrackId } from "@/types/ids";
 import { useRecoStand, type StandParams } from "@/modules/recommendations/composables/useRecoStand";
 import StandSourcePicker from "@/modules/recommendations/components/stand/StandSourcePicker.vue";
-import StandCandidateList from "@/modules/recommendations/components/stand/StandCandidateList.vue";
+import StandFeed from "@/modules/recommendations/components/stand/StandFeed.vue";
 import StandControls from "@/modules/recommendations/components/stand/StandControls.vue";
 import StandMetrics from "@/modules/recommendations/components/stand/StandMetrics.vue";
 import StandLegend from "@/modules/recommendations/components/stand/StandLegend.vue";
@@ -76,11 +80,19 @@ import StandHint from "@/modules/recommendations/components/stand/StandHint.vue"
 
 const stand = useRecoStand();
 const {
-  isLoading, sourceId, sourceTrack, weights, params, extraRows, rows, timings,
-  feedbackCount, feedbackSources, metrics, hitProgress, tuneProgress, tuneUsesAgreement, candidateCount,
-  load, reload, setSource, pickCurrent, pickRandomFromHistory, searchTracks,
-  rate, play, resetWeights, tune, copyWeightsJson, exportSnapshot,
+  ctx, isLoading, seedTrack, weights, params, timings,
+  feedSplit, feedActive, feedStarted,
+  feedbackCount, feedbackSources, metrics, hitProgress, tuneProgress, tuneUsesAgreement,
+  load, reload, startFeed, pickCurrent, pickRandomFromHistory, searchTracks,
+  rate, likeCurrent, dislikeCurrent, skipCurrent, jumpTo, rebuildUpcoming,
+  resetWeights, tune, copyWeightsJson, exportSnapshot,
 } = stand;
+
+const titleOf = (id: TrackId | null) => (id && ctx.value?.tracks.get(id)?.title) ?? "";
+
+const run = (action: () => Promise<void>) => {
+  action().catch(error => toast.error(String(error)));
+};
 
 const onCopy = async () => {
   await copyWeightsJson();
@@ -112,6 +124,19 @@ const onUpdateWeight = (key: ComponentKey, value: number) => {
 const onUpdateParam = (key: keyof StandParams, value: number) => {
   params[key] = value;
 };
+
+const EDITABLE_TAGS = new Set(["INPUT", "SELECT", "TEXTAREA"]);
+const hotkey = (action: () => Promise<void>) => (e: KeyboardEvent) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const el = document.activeElement;
+  if (el && (EDITABLE_TAGS.has(el.tagName) || (el as HTMLElement).isContentEditable)) return;
+  if (!feedActive.value) return;
+  e.preventDefault();
+  run(action);
+};
+onKeyStroke(["d", "D", "в", "В"], hotkey(dislikeCurrent));
+onKeyStroke(["l", "L", "д", "Д"], hotkey(likeCurrent));
+onKeyStroke(["n", "N", "т", "Т"], hotkey(skipCurrent));
 
 onMounted(() => {
   load().catch(error => getLogger().error(`[RecoStandPage] Load failed: ${String(error)}`));

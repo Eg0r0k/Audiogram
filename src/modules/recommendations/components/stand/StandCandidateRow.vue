@@ -5,7 +5,7 @@
   >
     <EntityCoverImage
       owner-type="track"
-      :owner-id="row.track.id"
+      :owner-id="row.trackId"
       :alt="row.track.title"
       image-class="size-10 rounded"
     />
@@ -16,22 +16,21 @@
       <div class="truncate text-xs text-muted-foreground">
         {{ row.track.artistName }}
       </div>
-      <div class="mt-1 flex h-1.5 w-full overflow-hidden rounded bg-muted">
-        <div
-          v-for="seg in segments"
-          :key="seg.key"
-          :title="seg.title"
-          :style="{ width: `${seg.width}%`, background: seg.color, opacity: seg.negative ? 0.4 : 1 }"
-        />
-      </div>
+      <StandBreakdownBar
+        v-if="row.breakdown"
+        class="mt-1"
+        :breakdown="row.breakdown"
+        :weights="weights"
+      />
     </div>
     <div class="text-right text-xs tabular-nums">
-      {{ row.score.toFixed(3) }}
+      {{ row.sourceId ? row.score.toFixed(3) : "старт" }}
     </div>
     <div class="flex gap-1">
       <Button
         size="icon-sm"
         :variant="row.label === 1 ? 'default' : 'ghost'"
+        :disabled="!row.sourceId"
         aria-label="Нравится"
         title="Нравится"
         @click="$emit('rate', 1)"
@@ -41,6 +40,7 @@
       <Button
         size="icon-sm"
         :variant="row.label === -1 ? 'default' : 'ghost'"
+        :disabled="!row.sourceId"
         aria-label="Не нравится"
         title="Не нравится"
         @click="$emit('rate', -1)"
@@ -50,9 +50,9 @@
       <Button
         size="icon-sm"
         variant="ghost"
-        aria-label="Послушать"
-        title="Послушать"
-        @click="$emit('play')"
+        aria-label="Перейти"
+        title="Перейти"
+        @click="$emit('jump')"
       >
         <IconPlayerPlay class="size-4" />
       </Button>
@@ -61,39 +61,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";
 import { Button } from "@/components/ui/button";
 import IconThumbUp from "~icons/tabler/thumb-up";
 import IconThumbDown from "~icons/tabler/thumb-down";
 import IconPlayerPlay from "~icons/tabler/player-play";
-import { COMPONENT_KEYS, type ComponentWeights } from "@/modules/recommendations/lib/scoring";
-import { COMPONENT_COLORS, type StandBarKey } from "@/modules/recommendations/service/stand-signal-meta";
-import type { StandRow } from "@/modules/recommendations/composables/useRecoStand";
+import type { ComponentWeights } from "@/modules/recommendations/lib/scoring";
+import type { FeedRow } from "@/modules/recommendations/service/stand-feed";
+import StandBreakdownBar from "./StandBreakdownBar.vue";
 
-const props = defineProps<{ row: StandRow; weights: ComponentWeights }>();
-defineEmits<{ rate: [label: 1 | -1]; play: [] }>();
-
-interface Segment { key: StandBarKey; contribution: number; title: string }
-
-const segments = computed(() => {
-  const parts: Segment[] = COMPONENT_KEYS.map((key) => {
-    const rank = props.row.breakdown.ranks[key];
-    const weight = props.weights[key];
-    return { key, contribution: rank * weight, title: `${key}: ${rank.toFixed(2)} × ${weight.toFixed(2)}` };
-  });
-  // The penalty is not weighted — it lands on the score as is, always ≤ 0.
-  const penalty = props.row.breakdown.recencyPenalty;
-  parts.push({ key: "recencyPenalty", contribution: penalty, title: `recencyPenalty: ${penalty.toFixed(2)}` });
-
-  const total = parts.reduce((s, p) => s + Math.abs(p.contribution), 0) || 1;
-  return parts
-    .filter(p => p.contribution !== 0)
-    .map(p => ({
-      ...p,
-      color: COMPONENT_COLORS[p.key],
-      width: (Math.abs(p.contribution) / total) * 100,
-      negative: p.contribution < 0,
-    }));
-});
+defineProps<{ row: FeedRow; weights: ComponentWeights }>();
+defineEmits<{ rate: [label: 1 | -1]; jump: [] }>();
 </script>

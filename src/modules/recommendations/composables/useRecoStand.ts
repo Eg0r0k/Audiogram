@@ -5,20 +5,19 @@ import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity"
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { TrackId } from "@/types/ids";
-import { DEFAULT_MMR_OPTIONS, mmrSelect, type MmrOptions } from "../lib/rank";
+import { DEFAULT_MMR_OPTIONS, type MmrOptions } from "../lib/rank";
 import {
   breakdownsToRankMatrix,
   computeBreakdowns,
   DEFAULT_WEIGHTS,
-  scoreBreakdown,
-  type Breakdown,
   type CandidateInput,
   type ComponentWeights,
   type SeedInput,
 } from "../lib/scoring";
 import { buildTransitions, subtractTransitions } from "../lib/transitions";
 import { getRecommenderContext, markRecommenderContextDirty, type RecommenderContext } from "../service/recommender-context.service";
-import { RECENT_EXCLUDE, type ScoredTrack } from "../service/recommender.service";
+import { RECENT_EXCLUDE } from "../service/recommender.service";
+import { pickFeedBatch, splitFeed, type FeedEntry, type FeedSplit } from "../service/stand-feed";
 import { loadFeedback, pairKey, saveFeedback, writeSnapshot, type FeedbackEntry, type FeedbackLabel } from "../service/stand-feedback.store";
 import { hitRate, pairAgreement, sampleTransitions, type AgreementCase, type TransitionCase } from "../service/stand-metrics";
 import { createTuner } from "../service/stand-tuner";
@@ -31,21 +30,16 @@ export interface StandParams {
   albumPenalty: number;
 }
 
+/** `limit` is both the feed batch size and N for hit@N. */
 export const DEFAULT_STAND_PARAMS: StandParams = {
-  limit: 8,
+  limit: 3,
   recentWindow: RECENT_EXCLUDE,
   maxPerArtist: DEFAULT_MMR_OPTIONS.maxPerArtist,
   artistPenalty: DEFAULT_MMR_OPTIONS.artistPenalty,
   albumPenalty: DEFAULT_MMR_OPTIONS.albumPenalty,
 };
 
-export interface StandTimings { contextMs: number; componentsMs: number; scoringMs: number }
-export interface StandRow extends ScoredTrack { label: FeedbackLabel | null }
-
-interface SourceComponents {
-  candidates: CandidateInput[];
-  breakdowns: Breakdown[];
-}
+export interface StandTimings { contextMs: number; batchMs: number }
 
 /** Rank matrix of a source's full candidate set, plus where each candidate sits. */
 interface SourceRanks {
@@ -59,13 +53,12 @@ const CHUNK = 10;
 
 const ctx = shallowRef<RecommenderContext | null>(null);
 const isLoading = ref(false);
-const sourceId = ref<TrackId | null>(null);
+const seedId = ref<TrackId | null>(null);
 const weights = reactive<ComponentWeights>({ ...DEFAULT_WEIGHTS });
 const params = reactive<StandParams>({ ...DEFAULT_STAND_PARAMS });
-const extraRows = ref(0);
-const timings = ref<StandTimings>({ contextMs: 0, componentsMs: 0, scoringMs: 0 });
+const timings = ref<StandTimings>({ contextMs: 0, batchMs: 0 });
 const feedback = ref<Map<string, FeedbackEntry>>(new Map());
-const sourceComponents = shallowRef<SourceComponents | null>(null);
+const feed = ref<Map<TrackId, FeedEntry>>(new Map());
 const transitionCases = shallowRef<TransitionCase[]>([]);
 const hitProgress = ref({ done: 0, total: 0 });
 const tuneProgress = ref<{ done: number; total: number } | null>(null);
@@ -88,8 +81,8 @@ const mmrOptions = (): MmrOptions => ({
   maxPerArtist: params.maxPerArtist,
 });
 
-const excludedFor = (c: RecommenderContext, seedId: TrackId): Set<TrackId> => {
-  const excluded = new Set<TrackId>([seedId]);
+const excludedFor = (c: RecommenderContext, seed: TrackId): Set<TrackId> => {
+  const excluded = new Set<TrackId>([seed]);
   for (const recent of c.recentlyPlayed.slice(0, Math.max(0, params.recentWindow))) excluded.add(recent);
   return excluded;
 };
@@ -105,26 +98,6 @@ const candidatesFor = (c: RecommenderContext, excluded: ReadonlySet<TrackId>): C
 
 const seedFor = (c: RecommenderContext, track: TrackEntity): SeedInput =>
   ({ track, features: c.features.get(track.id) ?? null });
-
-/** Weight-independent part of the scoring: recomputed only on source / recentWindow change. */
-const rebuildSourceComponents = () => {
-  const c = ctx.value;
-  const id = sourceId.value;
-  const seedTrack = c && id ? c.tracks.get(id) : undefined;
-  if (!c || !seedTrack) {
-    sourceComponents.value = null;
-    return;
-  }
-  const t0 = now();
-  const candidates = candidatesFor(c, excludedFor(c, seedTrack.id));
-  // Fresh clock like production: the cached context can be hours old, but the
-  // recency tiers must score against "now".
-  const scoringCtx = { ...c, now: Date.now() };
-  sourceComponents.value = { candidates, breakdowns: computeBreakdowns(scoringCtx, seedFor(c, seedTrack), candidates) };
-  timings.value = { ...timings.value, componentsMs: now() - t0 };
-};
-
-watch(() => params.recentWindow, rebuildSourceComponents);
 
 const buildTransitionCases = async (c: RecommenderContext, gen: number) => {
   const transitions = sampleTransitions(c.sessions, HIT_SAMPLE, HIT_SEED);
@@ -164,9 +137,9 @@ const buildTransitionCases = async (c: RecommenderContext, gen: number) => {
 };
 
 /**
- * Ranks over the source's whole candidate set — the very set the list shows —
- * so a rating is judged on the ranks the user saw. Cached per source: the
- * matrix depends on the context and `recentWindow`, never on the labels.
+ * Ranks over a source's whole candidate set, so a rating is judged against
+ * everything the batch was picked from. Cached per source: the matrix depends
+ * on the context and `recentWindow`, never on the labels.
  */
 const ratedSourceRanks = (c: RecommenderContext, source: TrackId): SourceRanks | null => {
   if (ratedRanksCtx !== c || ratedRanksWindow !== params.recentWindow) {
@@ -219,41 +192,44 @@ export const useRecoStand = () => {
   const playerStore = usePlayerStore();
   const queueStore = useQueueStore();
 
-  const sourceTrack = computed(() =>
-    sourceId.value && ctx.value ? ctx.value.tracks.get(sourceId.value) ?? null : null);
+  const seedTrack = computed(() =>
+    seedId.value && ctx.value ? ctx.value.tracks.get(seedId.value) ?? null : null);
 
-  const rows = computed<StandRow[]>(() => {
-    const s = sourceComponents.value;
-    const id = sourceId.value;
-    if (!s || !id) return [];
-    const t0 = now();
-    const scored = s.candidates.map((cand, i) => ({
-      trackId: cand.track.id,
-      artistIds: cand.track.artistIds,
-      albumId: cand.track.albumId,
-      score: scoreBreakdown(s.breakdowns[i], weights),
-      track: cand.track,
-      breakdown: s.breakdowns[i],
-    }));
-    const picked = mmrSelect(scored, params.limit + extraRows.value, mmrOptions());
-    timings.value = { ...timings.value, scoringMs: now() - t0 };
-    return picked.map(p => ({
-      trackId: p.trackId,
-      track: p.track,
-      score: p.score,
-      breakdown: p.breakdown,
-      label: feedback.value.get(pairKey(id, p.trackId))?.label ?? null,
-    }));
-  });
+  const feedSplit = computed<FeedSplit>(() =>
+    splitFeed(queueStore.queue, queueStore.currentIndex, feed.value, feedback.value));
+  const feedStarted = computed(() => feed.value.size > 0);
+  const feedActive = computed(() => feedSplit.value.current !== null);
 
   const feedbackCount = computed(() => feedback.value.size);
   const feedbackSources = computed(() => new Set([...feedback.value.values()].map(e => e.sourceId)).size);
-  const candidateCount = computed(() => sourceComponents.value?.candidates.length ?? null);
 
   const metrics = computed(() => ({
     hit: hitRate(transitionCases.value, weights, params.limit, mmrOptions()),
     agreement: pairAgreement(agreementCases.value, weights),
   }));
+
+  const refill = () => {
+    const c = ctx.value;
+    const current = feedSplit.value.current;
+    if (!c || !current) return;
+    const exclude = new Set<TrackId>(feed.value.keys());
+    for (const recent of c.recentlyPlayed.slice(0, Math.max(0, params.recentWindow))) exclude.add(recent);
+    const t0 = now();
+    const picks = pickFeedBatch({ ...c, now: Date.now() }, current.trackId, exclude, weights, params.limit, mmrOptions());
+    timings.value = { ...timings.value, batchMs: now() - t0 };
+    if (picks.length === 0) return;
+    const next = new Map(feed.value);
+    for (const p of picks) next.set(p.track.id, { track: p.track, sourceId: current.trackId, score: p.score, breakdown: p.breakdown });
+    feed.value = next;
+    queueStore.addMultipleToQueue(picks.map(p => mapTrackEntityToPlayerTrack(p.track)), { type: "autoplay" });
+  };
+
+  // Sync so the queue never observes "current is last" between the commit
+  // that made it last and the append: otherwise the production autoplay
+  // tail watcher would start its own batch.
+  watch(() => feedActive.value && queueStore.upcomingItems.length === 0, (due) => {
+    if (due) refill();
+  }, { flush: "sync" });
 
   const loadContext = async (dirty: boolean) => {
     isLoading.value = true;
@@ -265,10 +241,9 @@ export const useRecoStand = () => {
       const t0 = now();
       const [c, fb] = await Promise.all([getRecommenderContext(), loadFeedback()]);
       if (gen !== generation) return;
-      timings.value = { contextMs: now() - t0, componentsMs: 0, scoringMs: 0 };
+      timings.value = { contextMs: now() - t0, batchMs: 0 };
       ctx.value = c;
       feedback.value = fb;
-      rebuildSourceComponents();
       buildTransitionCases(c, gen).catch(error => getLogger().error(`[RecoStand] Building transition cases failed: ${String(error)}`));
     }
     finally {
@@ -286,15 +261,17 @@ export const useRecoStand = () => {
     await loadContext(true);
   };
 
-  const setSource = (id: TrackId | null) => {
-    sourceId.value = id;
-    extraRows.value = 0;
-    rebuildSourceComponents();
+  const startFeed = async (id: TrackId) => {
+    const track = ctx.value?.tracks.get(id);
+    if (!track) return;
+    seedId.value = id;
+    feed.value = new Map([[id, { track, sourceId: null, score: 0, breakdown: null }]]);
+    await queueStore.setQueue([mapTrackEntityToPlayerTrack(track)], 0, { type: "manual" });
   };
 
   const pickCurrent = () => {
     const id = playerStore.currentTrack?.id;
-    if (id && ctx.value?.tracks.has(id as TrackId)) setSource(id as TrackId);
+    if (id && ctx.value?.tracks.has(id as TrackId)) startFeed(id as TrackId).catch(() => {});
   };
 
   const pickRandomFromHistory = () => {
@@ -303,7 +280,7 @@ export const useRecoStand = () => {
     const pool = c.recentlyPlayed.length > 0 ? c.recentlyPlayed : [...c.tracks.keys()];
     if (pool.length === 0) return;
     // eslint-disable-next-line sonarjs/pseudo-random -- UI sampling only, not security-sensitive
-    setSource(pool[Math.floor(Math.random() * pool.length)]);
+    startFeed(pool[Math.floor(Math.random() * pool.length)]).catch(() => {});
   };
 
   const searchTracks = (q: string, limit = 20): TrackEntity[] => {
@@ -320,19 +297,52 @@ export const useRecoStand = () => {
     return out;
   };
 
-  const rate = async (candidateId: TrackId, label: FeedbackLabel) => {
-    const id = sourceId.value;
-    if (!id) return;
-    const key = pairKey(id, candidateId);
+  const rate = async (trackId: TrackId, label: FeedbackLabel) => {
+    const sourceId = feed.value.get(trackId)?.sourceId;
+    if (!sourceId) return;
+    const key = pairKey(sourceId, trackId);
     const next = new Map(feedback.value);
     if (next.get(key)?.label === label) next.delete(key);
-    else next.set(key, { sourceId: id, candidateId, label, at: Date.now() });
+    else next.set(key, { sourceId, candidateId: trackId, label, at: Date.now() });
     feedback.value = next;
     await saveFeedback(next.values());
   };
 
-  const play = async (track: TrackEntity) => {
-    await queueStore.setQueue([mapTrackEntityToPlayerTrack(track)], 0, { type: "manual" });
+  const likeCurrent = async () => {
+    const current = feedSplit.value.current;
+    if (current) await rate(current.trackId, 1);
+  };
+
+  const dislikeCurrent = async () => {
+    const current = feedSplit.value.current;
+    if (!current) return;
+    if (current.label !== -1) await rate(current.trackId, -1);
+    await queueStore.next();
+  };
+
+  const skipCurrent = () => queueStore.next();
+
+  const jumpTo = async (trackId: TrackId) => {
+    const item = queueStore.queue.find(i => i.track.kind === "library" && i.track.id === trackId);
+    if (item) await queueStore.jumpToId(item.id);
+  };
+
+  // Dropping the upcoming entries from the journal first makes them eligible
+  // again for the refill the removal triggers.
+  const rebuildUpcoming = async () => {
+    const ids = feedSplit.value.upcoming.map(r => r.trackId);
+    if (ids.length === 0) {
+      refill();
+      return;
+    }
+    const idSet = new Set(ids);
+    const next = new Map(feed.value);
+    for (const id of ids) next.delete(id);
+    feed.value = next;
+    const itemIds = queueStore.queue
+      .filter(i => i.track.kind === "library" && idSet.has(i.track.id))
+      .map(i => i.id);
+    await queueStore.removeMultiple(itemIds);
   };
 
   const resetWeights = () => {
@@ -387,9 +397,11 @@ export const useRecoStand = () => {
   };
 
   return {
-    ctx, isLoading, sourceId, sourceTrack, weights, params, extraRows, rows, timings,
-    feedbackCount, feedbackSources, metrics, hitProgress, tuneProgress, tuneUsesAgreement, candidateCount,
-    load, reload, setSource, pickCurrent, pickRandomFromHistory, searchTracks,
-    rate, play, resetWeights, tune, copyWeightsJson, exportSnapshot,
+    ctx, isLoading, seedId, seedTrack, weights, params, timings,
+    feedSplit, feedActive, feedStarted,
+    feedbackCount, feedbackSources, metrics, hitProgress, tuneProgress, tuneUsesAgreement,
+    load, reload, startFeed, pickCurrent, pickRandomFromHistory, searchTracks,
+    rate, likeCurrent, dislikeCurrent, skipCurrent, jumpTo, rebuildUpcoming,
+    resetWeights, tune, copyWeightsJson, exportSnapshot,
   };
 };
