@@ -60,6 +60,7 @@ const learnedWeights = { audio: 0.5, trackTransition: 0.1, artistTransition: 0.1
 const makeRow = (o: Partial<RecommenderModelEntity> = {}): RecommenderModelEntity => ({
   id: "weights",
   weights: learnedWeights,
+  featureVersion: 2,
   trainedAt: Date.now(),
   examples: 200,
   positives: 100,
@@ -138,6 +139,14 @@ beforeEach(async () => {
 describe("getActiveWeights", () => {
   it("returns DEFAULT_WEIGHTS when there is no stored model", async () => {
     mockGet.mockResolvedValue(ok(null));
+    expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
+  });
+
+  it("returns DEFAULT_WEIGHTS when the stored model was fitted on an older feature version", async () => {
+    mockGet.mockResolvedValue(ok(makeRow({ featureVersion: undefined })));
+    expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
+    mockGet.mockResolvedValue(ok(makeRow({ featureVersion: 1 })));
+    service.invalidateWeightsCache();
     expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
   });
 
@@ -243,6 +252,12 @@ describe("ensureModelFresh", () => {
     await service.ensureModelFresh();
     expect(mockGetCtx).toHaveBeenCalledTimes(1);
     expect(mockPut).not.toHaveBeenCalled();
+  });
+
+  it("retrains a fresh model fitted on an older feature version", async () => {
+    mockGet.mockResolvedValue(ok(makeRow({ trainedAt: Date.now() - 1000, featureVersion: 1 })));
+    await service.ensureModelFresh();
+    expect(mockGetCtx).toHaveBeenCalledTimes(1);
   });
 
   it("trains when the stored model is stale (>= 24h old)", async () => {
@@ -362,6 +377,7 @@ describe("ensureModelFresh", () => {
     expect(saved.positives).toBe(15);
     expect(saved.negatives).toBe(15);
     expect(saved.weights).toBeTruthy();
+    expect(saved.featureVersion).toBe(service.MODEL_FEATURE_VERSION);
 
     // ensureModelFresh's own loadRow() read the row once; invalidateWeightsCache()
     // after the save must force the next getActiveWeights() to read again.

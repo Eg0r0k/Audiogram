@@ -16,6 +16,13 @@ const RUN_CHUNK_SIZE = 20;
  */
 export const MAX_TRAINING_RUNS = 300;
 
+/**
+ * Bumped whenever the meaning of a rank component changes (v2: explore no
+ * longer needs audio features, affinity falls back to the artist). Weights
+ * fitted on older semantics are ignored and retrained.
+ */
+export const MODEL_FEATURE_VERSION = 2;
+
 /** `undefined` = not loaded yet; `null` = loaded, no stored model. */
 let cachedRow: RecommenderModelEntity | null | undefined;
 let loadingRow: Promise<RecommenderModelEntity | null> | null = null;
@@ -52,6 +59,11 @@ const loadRow = async (): Promise<RecommenderModelEntity | null> => {
   return loadingRow;
 };
 
+const loadCurrentRow = async (): Promise<RecommenderModelEntity | null> => {
+  const row = await loadRow();
+  return row && row.featureVersion === MODEL_FEATURE_VERSION ? row : null;
+};
+
 export const invalidateWeightsCache = (): void => {
   cachedRow = undefined;
   rowGeneration++;
@@ -70,7 +82,7 @@ export const clearModel = async (): Promise<void> => {
 };
 
 export const getActiveWeights = async (): Promise<ComponentWeights> => {
-  const row = await loadRow();
+  const row = await loadCurrentRow();
   if (!row) return DEFAULT_WEIGHTS;
   return blendWeights(DEFAULT_WEIGHTS, row.weights, row.examples);
 };
@@ -97,6 +109,7 @@ const trainOnAllExamples = async (ctx: RecommenderContext): Promise<void> => {
   const negatives = examples.length - positives;
   const putResult = await recommenderModelRepository.put({
     weights,
+    featureVersion: MODEL_FEATURE_VERSION,
     trainedAt: Date.now(),
     examples: examples.length,
     positives,
@@ -110,7 +123,7 @@ const trainOnAllExamples = async (ctx: RecommenderContext): Promise<void> => {
 };
 
 const runEnsureModelFresh = async (): Promise<void> => {
-  const row = await loadRow();
+  const row = await loadCurrentRow();
   const now = Date.now();
   if (row && now - row.trainedAt < FRESH_MS) return;
   if (now - lastAttemptAt < FRESH_MS) return;

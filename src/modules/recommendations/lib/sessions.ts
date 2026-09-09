@@ -1,4 +1,4 @@
-import type { ListenEventEntity, ListenOrigin } from "@/db/entities";
+import type { ListenEventEntity, ListenOrigin, ListenPick } from "@/db/entities";
 import type { ArtistId, TrackId } from "@/types/ids";
 
 export interface SessionEvent {
@@ -8,6 +8,7 @@ export interface SessionEvent {
   skipped: boolean;
   completed: boolean;
   origin: ListenOrigin;
+  pick?: ListenPick;
   secondsListened: number;
 }
 
@@ -20,6 +21,7 @@ const toSessionEvent = (e: ListenEventEntity): SessionEvent => ({
   skipped: e.skipped,
   completed: e.completed,
   origin: e.origin,
+  pick: e.pick,
   secondsListened: e.secondsListened,
 });
 

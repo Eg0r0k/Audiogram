@@ -120,6 +120,9 @@ export interface TrackEntity {
  */
 export type ListenOrigin = "user" | "autoplay";
 
+/** How an autoplay pick was chosen: by rank, or from the exploration slot. */
+export type ListenPick = "rank" | "explore";
+
 export interface ListenEventEntity {
   id: string;
   trackId: TrackId;
@@ -131,6 +134,8 @@ export interface ListenEventEntity {
   completed: boolean;
   skipped: boolean;
   origin: ListenOrigin;
+  /** Set for autoplay picks only. */
+  pick?: ListenPick;
 }
 
 export type CoverOwnerType = "album" | "playlist" | "artist" | "track";
@@ -218,6 +223,8 @@ export interface TrackChapterEntity {
 export interface RecommenderModelEntity {
   id: "weights";
   weights: ComponentWeights;
+  /** Semantics of the feature vector the weights were fitted on; a mismatch means "no model". */
+  featureVersion?: number;
   trainedAt: number;
   examples: number;
   positives: number;
