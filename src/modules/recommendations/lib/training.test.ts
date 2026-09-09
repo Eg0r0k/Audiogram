@@ -137,6 +137,7 @@ const emptyCtx: ScoringContext = {
   audioSpace: null,
   transitions: { tracks: new Map(), artists: new Map() },
   affinity: new Map(),
+  artistAffinity: new Map(),
 };
 
 describe("buildExamples", () => {

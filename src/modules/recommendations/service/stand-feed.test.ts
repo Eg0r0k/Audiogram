@@ -22,6 +22,7 @@ const makeCtx = (tracks: TrackEntity[]): FeedContext => ({
   audioSpace: null,
   transitions: buildTransitions([]),
   affinity: new Map(),
+  artistAffinity: new Map(),
   tracks: new Map(tracks.map(t => [t.id, t])),
   features: new Map(),
 });

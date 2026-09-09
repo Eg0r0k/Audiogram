@@ -3,8 +3,8 @@ import { trackRepository } from "@/db/repositories";
 import { audioFeaturesRepository } from "@/db/repositories/audioFeatures.repository";
 import { SESSION_GAP_MS, statsRepository } from "@/db/repositories/stats.repository";
 import { getLogger } from "@/lib/logger";
-import type { TrackId } from "@/types/ids";
-import { buildAffinityMap, DEFAULT_AFFINITY_OPTIONS } from "../lib/affinity";
+import type { ArtistId, TrackId } from "@/types/ids";
+import { buildAffinityMap, buildArtistAffinityMap, DEFAULT_AFFINITY_OPTIONS } from "../lib/affinity";
 import { computeFeatureStats, createAudioSpace } from "../lib/audio-similarity";
 import { buildSessions, type Session } from "../lib/sessions";
 import type { ScoringContext } from "../lib/scoring";
@@ -56,9 +56,16 @@ export const buildRecommenderContext = (input: BuildRecommenderContextInput): Re
   // A like placed after `now` is future knowledge: with a training cutoff it
   // would leak the outcome into the features the model learns from.
   const likedIds = new Set<TrackId>();
-  for (const t of tracks) if (t.likedAt !== undefined && t.likedAt <= now) likedIds.add(t.id);
+  const likedArtistIds: ArtistId[] = [];
+  for (const t of tracks) {
+    if (t.likedAt === undefined || t.likedAt > now) continue;
+    likedIds.add(t.id);
+    likedArtistIds.push(...t.artistIds);
+  }
 
-  const affinity = buildAffinityMap(events, likedIds, { ...DEFAULT_AFFINITY_OPTIONS, now });
+  const affinityOptions = { ...DEFAULT_AFFINITY_OPTIONS, now };
+  const artistAffinity = buildArtistAffinityMap(events, likedArtistIds, affinityOptions);
+  const affinity = buildAffinityMap(events, likedIds, affinityOptions, artistAffinity);
 
   const historyStart = now - MAX_HISTORY_DAYS * 86_400_000;
   const recentEvents = events.filter(e => e.startedAt >= historyStart);
@@ -77,6 +84,7 @@ export const buildRecommenderContext = (input: BuildRecommenderContextInput): Re
     recentlyPlayed: recentlyPlayedOf(events, RECENT_LIMIT),
     transitions,
     affinity,
+    artistAffinity,
     audioSpace,
     builtAt: now,
   };

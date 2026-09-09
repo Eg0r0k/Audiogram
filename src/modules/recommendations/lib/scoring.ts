@@ -1,5 +1,5 @@
 import type { AudioFeaturesEntity, TrackEntity } from "@/db/entities";
-import type { TrackId } from "@/types/ids";
+import type { ArtistId, TrackId } from "@/types/ids";
 import type { AffinityEntry } from "./affinity";
 import type { AudioSpace } from "./audio-similarity";
 import { percentileRanks } from "./rank";
@@ -30,7 +30,24 @@ export interface ScoringContext {
   audioSpace: AudioSpace | null;
   transitions: Transitions;
   affinity: Map<TrackId, AffinityEntry>;
+  artistAffinity: Map<ArtistId, AffinityEntry>;
 }
+
+/** Best artist-level score among the track's artists; 0 when none is known. */
+export const artistAffinityOf = (
+  artistAffinity: ReadonlyMap<ArtistId, AffinityEntry>,
+  artistIds: readonly ArtistId[],
+): number => {
+  let best = 0;
+  let known = false;
+  for (const a of artistIds) {
+    const entry = artistAffinity.get(a);
+    if (!entry) continue;
+    if (!known || entry.score > best) best = entry.score;
+    known = true;
+  }
+  return best;
+};
 
 export interface SeedInput { track: TrackEntity; features: AudioFeaturesEntity | null }
 export interface CandidateInput { track: TrackEntity; features: AudioFeaturesEntity | null }
@@ -102,8 +119,8 @@ export const computeBreakdowns = (
       : 0;
 
     const affinityEntry = ctx.affinity.get(cand.track.id);
-    rawAffinity[i] = affinityEntry?.score ?? 0;
-    rawExplore[i] = !affinityEntry && cand.features !== null ? 1 : 0;
+    rawAffinity[i] = affinityEntry?.score ?? artistAffinityOf(ctx.artistAffinity, cand.track.artistIds);
+    rawExplore[i] = affinityEntry ? 0 : 1;
 
     recencyPenalties[i] = recencyPenaltyOf(cand.track, ctx.now, recencyTiers);
   }

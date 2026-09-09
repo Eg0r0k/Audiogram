@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { AudioFeaturesEntity, ListenEventEntity, TrackEntity } from "@/db/entities";
 import type { ArtistId, TrackId } from "@/types/ids";
-import { buildAffinityMap, DEFAULT_AFFINITY_OPTIONS } from "./affinity";
+import { buildAffinityMap, buildArtistAffinityMap, DEFAULT_AFFINITY_OPTIONS } from "./affinity";
 import { computeFeatureStats, createAudioSpace } from "./audio-similarity";
 import { buildSessions } from "./sessions";
 import { buildTransitions } from "./transitions";
@@ -83,10 +83,11 @@ const buildCtx = (
 ): ScoringContext => {
   const sessions = buildSessions(events, GAP_MS);
   const transitions = buildTransitions(sessions);
-  const affinity = buildAffinityMap(events, likedIds, { now, ...DEFAULT_AFFINITY_OPTIONS });
+  const artistAffinity = buildArtistAffinityMap(events, [], { now, ...DEFAULT_AFFINITY_OPTIONS });
+  const affinity = buildAffinityMap(events, likedIds, { now, ...DEFAULT_AFFINITY_OPTIONS }, artistAffinity);
   const stats = computeFeatureStats(featuresList);
   const audioSpace = stats ? createAudioSpace(stats) : null;
-  return { now, audioSpace, transitions, affinity };
+  return { now, audioSpace, transitions, affinity, artistAffinity };
 };
 
 describe("computeBreakdowns / scoreCandidates", () => {
@@ -145,7 +146,8 @@ describe("computeBreakdowns / scoreCandidates", () => {
     ];
     const [bSkipped, bNever] = computeBreakdowns(ctx, { track: seed, features: fSeed }, candidates);
 
-    expect(bSkipped.affinity).toBeCloseTo(-3 / 5, 5);
+    // Three early skips: artist mean −3/8, track shrinks toward it: (−3 + 2 × −3/8) / 5.
+    expect(bSkipped.affinity).toBeCloseTo(-0.75, 5);
     expect(bSkipped.explore).toBe(0);
     expect(bNever.affinity).toBe(0);
     expect(bNever.explore).toBe(1);
@@ -284,7 +286,27 @@ describe("computeBreakdowns / scoreCandidates", () => {
     }
   });
 
-  it("sets explore = 1 only for a candidate with no affinity history and features present", () => {
+  it("gives an unplayed track of a known artist the artist's affinity, and 0 for an unknown artist", () => {
+    const seed = makeTrack({ id: tid("seed") });
+    const known = makeTrack({ id: tid("known"), artistIds: [aid("art-played")] });
+    const unknown = makeTrack({ id: tid("unknown"), artistIds: [aid("art-nobody")] });
+    const events = [
+      makeEvent("played", "art-played", now, { completed: true }),
+      makeEvent("played2", "art-played", now, { completed: true }),
+    ];
+    const ctx = buildCtx(events, new Set(), [], now);
+    const [bKnown, bUnknown] = computeBreakdowns(ctx, { track: seed, features: null }, [
+      { track: known, features: null },
+      { track: unknown, features: null },
+    ]);
+    expect(bKnown.affinity).toBeCloseTo(ctx.artistAffinity.get(aid("art-played"))!.score, 5);
+    expect(bKnown.affinity).toBeGreaterThan(0);
+    expect(bUnknown.affinity).toBe(0);
+    expect(bKnown.explore).toBe(1);
+    expect(bUnknown.explore).toBe(1);
+  });
+
+  it("sets explore = 1 for any candidate with no affinity history, features or not", () => {
     const seed = makeTrack({ id: tid("seed") });
     const unplayedWithFeatures = makeTrack({ id: tid("unplayed-features") });
     const unplayedNoFeatures = makeTrack({ id: tid("unplayed-no-features") });
@@ -309,7 +331,7 @@ describe("computeBreakdowns / scoreCandidates", () => {
     );
 
     expect(bUnplayedFeatures.explore).toBe(1);
-    expect(bUnplayedNoFeatures.explore).toBe(0);
+    expect(bUnplayedNoFeatures.explore).toBe(1);
     expect(bPlayed.explore).toBe(0);
   });
 
