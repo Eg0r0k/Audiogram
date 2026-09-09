@@ -13,14 +13,16 @@ import { playlistQueries } from "@/queries/playlist.queries";
 
 export interface QueueSourceLink {
   label: string;
-  to: RouteLocationRaw;
+  /** Absent for an origin that has a name but no page (recommendations). */
+  to?: RouteLocationRaw;
 }
 
 /**
  * Where the current queue item was queued from, as something to navigate
- * to: album / artist / playlist / liked / the whole library. Null when the
- * origin has no page (search, manual, recommendations, ...) or its name
- * is not known yet.
+ * to: album / artist / playlist / liked / the whole library. A recommended
+ * track is only labelled: the user should know the machine picked it, but
+ * there is nowhere to go. Null when the origin has no name (search, manual,
+ * ...) or its name is not known yet.
  *
  * Names come from the Dexie row when there is one — a downloaded remote
  * entity has one under its branded id — and off the source otherwise.
@@ -93,6 +95,9 @@ export const useQueueSourceLink = () => {
         return { label: t("media.type.liked"), to: routeLocation.liked() };
       case "allMedia":
         return { label: t("library.allMusic.title"), to: routeLocation.allMusic() };
+      case "autoplay":
+      case "recommendation":
+        return { label: t("queue.fromRecommendations") };
       default:
         return null;
     }

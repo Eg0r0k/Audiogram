@@ -12,7 +12,7 @@
 
     <div class="flex min-w-0 flex-col items-center">
       <Link
-        v-if="sourceLink"
+        v-if="sourceLink?.to"
         :to="sourceLink.to"
         class="max-w-55 truncate text-sm font-medium text-white hover:underline"
         @click="closePlayer"
@@ -21,9 +21,9 @@
       </Link>
       <div
         v-else
-        class="text-sm font-medium text-white"
+        class="max-w-55 truncate text-sm font-medium text-white"
       >
-        {{ $t('player.nowPlaying') }}
+        {{ sourceLink ? sourceLink.label : $t('player.nowPlaying') }}
       </div>
 
       <Button
