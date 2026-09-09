@@ -76,11 +76,12 @@ describe("player lifecycle", () => {
       "album-1",
       200,
       "user",
+      undefined,
     );
   });
 
   it("attributes the listen to autoplay when the queue's current item says so", () => {
-    mockQueue.currentItem = { id: "q1", track: libraryTrack, source: { type: "autoplay" }, addedAt: 0 };
+    mockQueue.currentItem = { id: "q1", track: libraryTrack, source: { type: "autoplay", pick: "explore" }, addedAt: 0 };
 
     trackChangedBus.emit(libraryTrack);
 
@@ -90,6 +91,7 @@ describe("player lifecycle", () => {
       "album-1",
       200,
       "autoplay",
+      "explore",
     );
   });
 

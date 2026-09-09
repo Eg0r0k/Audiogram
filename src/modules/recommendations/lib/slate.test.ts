@@ -110,9 +110,8 @@ describe("exploreEligibility", () => {
   const artistAffinity = new Map([[aid("ar-loved"), { score: 0.4, evidence: 5, plays: 5, skips: 0 }]]);
   const eligible = exploreEligibility({ artistAffinity }, now);
 
-  it("accepts a loved artist, a like, or a recent import; rejects the rest", () => {
+  it("accepts a loved artist or a recent import; rejects the rest", () => {
     expect(eligible(cand("a", 0, 1, { artistIds: [aid("ar-loved")] }))).toBe(true);
-    expect(eligible(cand("b", 0, 1, { likedAt: now - 1 }))).toBe(true);
     expect(eligible(cand("c", 0, 1, { addedAt: now - 86_400_000 }))).toBe(true);
     expect(eligible(cand("d", 0, 1, { addedAt: now - 40 * 86_400_000 }))).toBe(false);
   });

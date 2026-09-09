@@ -36,7 +36,8 @@ export const exploreSlots = (limit: number, share: number): number =>
 
 /**
  * An unplayed track earns an exploration draw only with a hook: an artist
- * the user already likes, a like without a listen, or a recent import.
+ * the user already likes, or a recent import. (A like already gives the
+ * track an affinity entry, so it never reaches the pool.)
  */
 export const exploreEligibility = (
   ctx: { artistAffinity: ReadonlyMap<ArtistId, AffinityEntry> },
@@ -44,7 +45,6 @@ export const exploreEligibility = (
   recentAddedMs = RECENTLY_ADDED_MS,
 ) => (c: SlateCandidate): boolean =>
   artistAffinityOf(ctx.artistAffinity, c.track.artistIds) > 0
-  || c.track.likedAt !== undefined
   || now - c.track.addedAt <= recentAddedMs;
 
 /**

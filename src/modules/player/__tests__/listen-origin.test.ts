@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveListenOrigin } from "../lib/listen-origin";
+import { resolveListenOrigin, resolveListenPick } from "../lib/listen-origin";
 import type { QueueItem } from "@/modules/queue/types";
 import type { TrackId } from "@/types/ids";
 
@@ -23,5 +23,19 @@ describe("resolveListenOrigin", () => {
   });
   it("is user without a queue item", () => {
     expect(resolveListenOrigin(null, "t1" as TrackId)).toBe("user");
+  });
+});
+
+describe("resolveListenPick", () => {
+  it("returns the autoplay item's pick tag for this track", () => {
+    const explore: QueueItem = { ...item("t1", "autoplay"), source: { type: "autoplay", pick: "explore" } };
+    expect(resolveListenPick(explore, "t1" as TrackId)).toBe("explore");
+  });
+  it("is undefined for an untagged autoplay item, a non-autoplay item, a mismatch or no item", () => {
+    expect(resolveListenPick(item("t1", "autoplay"), "t1" as TrackId)).toBeUndefined();
+    expect(resolveListenPick(item("t1", "album"), "t1" as TrackId)).toBeUndefined();
+    const explore: QueueItem = { ...item("t2", "autoplay"), source: { type: "autoplay", pick: "explore" } };
+    expect(resolveListenPick(explore, "t1" as TrackId)).toBeUndefined();
+    expect(resolveListenPick(null, "t1" as TrackId)).toBeUndefined();
   });
 });

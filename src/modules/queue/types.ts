@@ -1,3 +1,4 @@
+import type { ListenPick } from "@/db/entities";
 import type { AlbumId, ArtistId, PlaylistId, QueueItemId } from "@/types/ids";
 import type { PlayerTrack } from "@/modules/player/types";
 
@@ -9,7 +10,7 @@ export type QueueSource
     | { type: "history" }
     | { type: "manual" }
     | { type: "recommendation" }
-    | { type: "autoplay" }
+    | { type: "autoplay"; pick?: ListenPick }
     | { type: "liked" }
     | { type: "allMedia" }
     | { type: "external" }

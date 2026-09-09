@@ -1,17 +1,22 @@
 import type { PlayerTrack, RepeatMode } from "@/modules/player/types";
 import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
 import { getLogger } from "@/lib/logger";
-import type { TrackEntity } from "@/db/entities";
+import type { ListenPick, TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
 import type { QueueItem } from "../types";
 
 const AUTOPLAY_RECOMMENDATION_LIMIT = 5;
 
+export interface AutoplayEntry {
+  track: PlayerTrack;
+  pick?: ListenPick;
+}
+
 export type AutoplaySource = (
   sourceTrackId: TrackId,
   limit: number,
   additionalExcludeIds: TrackId[],
-) => Promise<readonly { track: TrackEntity }[]>;
+) => Promise<readonly { track: TrackEntity; pick?: ListenPick }[]>;
 
 // Provided by the recommendations feature at bootstrap; the queue never
 // imports it (ARCHITECTURE.md §3). Without a source autoplay is simply off.
@@ -27,7 +32,7 @@ interface AutoplayDeps {
   queue: () => readonly QueueItem[];
   currentIndex: () => number;
   currentItem: () => QueueItem | null;
-  append: (tracks: PlayerTrack[]) => void;
+  append: (entries: AutoplayEntry[]) => void;
 }
 
 /**
@@ -73,10 +78,10 @@ export const createAutoplayRecommender = (deps: AutoplayDeps) => {
     if (deps.currentItem()?.id !== sourceItemId) return false;
     if (!isAtTail()) return false;
 
-    const tracks = recommendations.map(({ track }) => mapTrackEntityToPlayerTrack(track));
-    if (tracks.length === 0) return false;
+    const entries = recommendations.map(({ track, pick }) => ({ track: mapTrackEntityToPlayerTrack(track), pick }));
+    if (entries.length === 0) return false;
 
-    deps.append(tracks);
+    deps.append(entries);
     return true;
   };
 

@@ -129,6 +129,51 @@ describe("getRecommendations", () => {
     expect(recs.every(r => r.breakdown.audioSimilarity === null)).toBe(true);
   });
 
+  it("puts an unplayed track of a known artist into the exploration slot, tagged and in the middle", async () => {
+    const now = Date.now();
+    mockFindAll.mockResolvedValue(ok([
+      makeTrack("S"),
+      makeTrack("K", { artistIds: ["ar-known" as any] }),
+      makeTrack("R1"),
+      makeTrack("R2"),
+      makeTrack("N", { artistIds: ["ar-known" as any] }),
+    ]));
+    mockFindAllEvents.mockResolvedValue(ok([
+      makeEvent("K", now - 10 * DAY, { artistId: "ar-known" as any }),
+      makeEvent("K", now - 9 * DAY, { artistId: "ar-known" as any }),
+      makeEvent("R1", now - 8 * DAY),
+      makeEvent("R2", now - 7 * DAY),
+      makeEvent("PAD1", now - MINUTE),
+      makeEvent("PAD2", now - 2 * MINUTE),
+      makeEvent("PAD3", now - 3 * MINUTE),
+    ]));
+    const recs = await getRecommendations(tid("S"), 3, [], { rng: () => 0 });
+    expect(recs.map(r => r.pick)).toEqual(["rank", "explore", "rank"]);
+    expect(recs[1].trackId).toBe(tid("N"));
+    expect(recs[1].breakdown.explore).toBe(1);
+  });
+
+  it("skips the exploration slot right after an early skip", async () => {
+    const now = Date.now();
+    mockFindAll.mockResolvedValue(ok([
+      makeTrack("S"),
+      makeTrack("K", { artistIds: ["ar-known" as any] }),
+      makeTrack("R1"),
+      makeTrack("R2"),
+      makeTrack("N", { artistIds: ["ar-known" as any] }),
+    ]));
+    mockFindAllEvents.mockResolvedValue(ok([
+      makeEvent("K", now - 10 * DAY, { artistId: "ar-known" as any }),
+      makeEvent("R1", now - 8 * DAY),
+      makeEvent("R2", now - 7 * DAY),
+      makeEvent("PAD1", now - 3 * MINUTE),
+      makeEvent("PAD2", now - 2 * MINUTE),
+      makeEvent("PAD3", now - MINUTE, { completed: false, skipped: true, secondsListened: 4 }),
+    ]));
+    const recs = await getRecommendations(tid("S"), 3, [], { rng: () => 0 });
+    expect(recs.every(r => r.pick === "rank")).toBe(true);
+  });
+
   it("respects limit and the default MMR artist cap", async () => {
     mockFindAll.mockResolvedValue(ok([
       makeTrack("S"),
