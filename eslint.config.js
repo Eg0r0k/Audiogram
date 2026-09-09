@@ -223,6 +223,10 @@ export default withVueTs(
   {
     rules: {
       "vue/multi-word-component-names": "off",
+      "vue/no-ref-object-reactivity-loss": "error",
+      "vue/no-setup-props-reactivity-loss": "error",
+      "vue/prefer-use-template-ref": "error",
+      "vue/no-unused-refs": "error",
       "@typescript-eslint/no-unused-vars": "warn",
       "@typescript-eslint/ban-ts-comment": "warn",
       "no-void": "error",
