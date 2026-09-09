@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { ListenEventEntity } from "@/db/entities";
-import type { TrackId } from "@/types/ids";
-import { eventWeight, buildAffinityMap, DEFAULT_AFFINITY_OPTIONS } from "./affinity";
+import type { ArtistId, TrackId } from "@/types/ids";
+import { eventWeight, buildAffinityMap, buildArtistAffinityMap, DEFAULT_AFFINITY_OPTIONS } from "./affinity";
 
 const tid = (s: string) => s as TrackId;
 const DAY = 86_400_000;
@@ -123,5 +123,52 @@ describe("buildAffinityMap", () => {
     const map = buildAffinityMap(events, new Set(), opts);
 
     expect(map.has(tid("t2"))).toBe(false);
+  });
+});
+
+describe("buildArtistAffinityMap", () => {
+  const now = Date.now();
+  const aid = (s: string) => s as ArtistId;
+
+  it("aggregates events by artist with the artist prior", () => {
+    const events = [
+      makeEvent("t1", now, { artistId: aid("ar-x"), completed: true }),
+      makeEvent("t2", now, { artistId: aid("ar-x"), completed: true }),
+    ];
+    const map = buildArtistAffinityMap(events, [], { now, ...DEFAULT_AFFINITY_OPTIONS });
+    const entry = map.get(aid("ar-x"))!;
+    expect(entry.score).toBeCloseTo(2 / (2 + DEFAULT_AFFINITY_OPTIONS.artistPrior), 5);
+    expect(entry.plays).toBe(2);
+  });
+
+  it("adds a liked weight per liked track of the artist", () => {
+    const map = buildArtistAffinityMap([], [aid("ar-x"), aid("ar-x")], { now, ...DEFAULT_AFFINITY_OPTIONS });
+    const entry = map.get(aid("ar-x"))!;
+    expect(entry.score).toBeCloseTo(3 / (2 + DEFAULT_AFFINITY_OPTIONS.artistPrior), 5);
+    expect(entry.evidence).toBeCloseTo(2, 5);
+  });
+});
+
+describe("buildAffinityMap with artist shrinkage", () => {
+  const now = Date.now();
+  const aid = (s: string) => s as ArtistId;
+
+  it("shrinks a thin track history toward its artist mean instead of zero", () => {
+    const events = [makeEvent("t1", now, { artistId: aid("ar-x"), completed: false, skipped: true, secondsListened: 5 })];
+    const opts = { now, ...DEFAULT_AFFINITY_OPTIONS };
+    const artist = new Map([[aid("ar-x"), { score: 0.6, evidence: 10, plays: 10, skips: 0 }]]);
+
+    const without = buildAffinityMap(events, new Set(), opts).get(tid("t1"))!;
+    const withArtist = buildAffinityMap(events, new Set(), opts, artist).get(tid("t1"))!;
+
+    expect(without.score).toBeCloseTo(-1 / 3, 5);
+    expect(withArtist.score).toBeCloseTo((-1 + 2 * 0.6) / 3, 5);
+  });
+
+  it("leaves tracks of unknown artists shrinking to zero", () => {
+    const events = [makeEvent("t1", now, { artistId: aid("ar-y"), completed: true })];
+    const opts = { now, ...DEFAULT_AFFINITY_OPTIONS };
+    const artist = new Map([[aid("ar-x"), { score: 0.6, evidence: 10, plays: 10, skips: 0 }]]);
+    expect(buildAffinityMap(events, new Set(), opts, artist).get(tid("t1"))!.score).toBeCloseTo(1 / 3, 5);
   });
 });
