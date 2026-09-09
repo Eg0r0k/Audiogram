@@ -32,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { array, check, pipe, regex, safeParse, string } from "valibot";
 import { formatDuration } from "@/lib/format/time";
@@ -54,8 +54,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const textareaRef = ref<HTMLTextAreaElement>();
-const textValue = ref(chaptersToText(props.modelValue));
+const textareaRef = useTemplateRef<HTMLTextAreaElement>("textareaRef");
+const textValue = ref("");
 const internalUpdate = ref(false);
 
 function chaptersToText(chapters: DraftChapter[]): string {
@@ -78,7 +78,7 @@ watch(() => props.modelValue, (val) => {
   if (current !== textValue.value) {
     textValue.value = current;
   }
-}, { deep: true });
+}, { deep: true, immediate: true });
 
 // `[H:]MM:SS`, then a space or a dash, then the title. The lookahead demands
 // the separator up front so the greedy `\s*` never has to backtrack into it

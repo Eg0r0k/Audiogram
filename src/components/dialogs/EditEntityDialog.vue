@@ -153,7 +153,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { summonDialog } from "@/components/dialogs/summonDialog";
 import { useSummonedDialog } from "@/components/dialogs/summon";
 import { useCoverImageField, type CoverSelectionErrorType } from "@/composables/useCoverImageField";
-import type { EditEntityDialogProps } from "./editEntityDialog";
+import type { EditEntityDialogProps, EditEntityFieldConfig } from "./editEntityDialog";
 
 import IconPhoto from "~icons/tabler/photo";
 import IconTrash from "~icons/tabler/trash";
@@ -169,21 +169,23 @@ const emit = defineEmits<{
 
 const { resolve, dismiss } = useSummonedDialog<true>();
 
-const entityFormSchema = object({
+const buildSchema = (primary: EditEntityFieldConfig, secondary: EditEntityFieldConfig) => object({
   primary: pipe(
     string(),
-    minLength(1, props.primaryField.requiredMessage ?? ""),
-    maxLength(props.primaryField.maxLength, props.primaryField.maxLengthMessage),
+    minLength(1, primary.requiredMessage ?? ""),
+    maxLength(primary.maxLength, primary.maxLengthMessage),
   ),
   secondary: optional(pipe(
     string(),
-    maxLength(props.secondaryField.maxLength, props.secondaryField.maxLengthMessage),
+    maxLength(secondary.maxLength, secondary.maxLengthMessage),
   )),
 });
-type EntityFormValues = InferOutput<typeof entityFormSchema>;
+type EntityFormValues = InferOutput<ReturnType<typeof buildSchema>>;
+
+const entityFormSchema = computed(() => toTypedSchema(buildSchema(props.primaryField, props.secondaryField)));
 
 const { errors, meta, defineField, handleSubmit, resetForm, setValues } = useForm<EntityFormValues>({
-  validationSchema: toTypedSchema(entityFormSchema),
+  validationSchema: entityFormSchema,
   initialValues: { primary: "", secondary: "" },
 });
 

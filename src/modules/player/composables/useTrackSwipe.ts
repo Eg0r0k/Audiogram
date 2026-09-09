@@ -88,7 +88,7 @@ export const useTrackSwipe = (options: TrackSwipeOptions) => {
   // opacity of its old one, motion leaves a swapped style value unapplied.
   const generation = ref(0);
 
-  const liveSlots = computed<SwipeSlot[]>(() => {
+  const buildSlots = (): SwipeSlot[] => {
     const center = neighbors.anchorItem.value;
     const centerTrack = center?.track ?? playerStore.currentTrack;
     if (!centerTrack) return [];
@@ -113,13 +113,14 @@ export const useTrackSwipe = (options: TrackSwipeOptions) => {
       list.push({ role: "next", track: next.track, coverUrl: neighbors.nextCoverUrl.value, key: `${next.id}${suffix}` });
     }
     return list;
-  });
+  };
+  const liveSlots = computed(buildSlots);
 
   const x = useMotionValue(0);
   const isDragging = ref(false);
   const isActive = () => options.active?.() ?? true;
 
-  const slots = shallowRef<SwipeSlot[]>(liveSlots.value);
+  const slots = shallowRef<SwipeSlot[]>(buildSlots());
   let wasActive = isActive();
 
   // Pre-flush, so the offset shift lands in the same paint as the re-keyed

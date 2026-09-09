@@ -2,11 +2,11 @@
   <motion.button
     :ref="setTriggerRef"
     type="button"
-    :layout-id="`dialog-${dialog.uniqueId}`"
+    :layout-id="`dialog-${dialog.uniqueId.value}`"
     :class="cn('relative cursor-pointer', props.class)"
     aria-haspopup="dialog"
     :aria-expanded="dialog.isOpen.value"
-    :aria-controls="`motion-ui-morphing-dialog-content-${dialog.uniqueId}`"
+    :aria-controls="`motion-ui-morphing-dialog-content-${dialog.uniqueId.value}`"
     @click="toggle"
     @keydown="onKeyDown"
   >

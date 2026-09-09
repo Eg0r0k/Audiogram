@@ -1,6 +1,5 @@
 <template>
   <div
-    ref="wrapperRef"
     :class="wrapperClasses"
   >
     <div
@@ -8,7 +7,6 @@
       class="scrollable-thumb-container scrollable-thumb-container-y"
     >
       <div
-        ref="thumbRef"
         class="scrollable-thumb"
         :class="{ 'is-focused': scrollable.isDragging.value }"
         :style="thumbStyle"
@@ -188,7 +186,7 @@ function updateStickyHeight() {
 
 const scrollable = useScrollable(containerRef, {
   direction: "vertical",
-  onScrollOffset: props.loadMoreOffset,
+  onScrollOffset: () => props.loadMoreOffset,
   onScrolledTop: () => emit("scrolledTop"),
 });
 

@@ -55,7 +55,7 @@ useEventListener(window, "resize", () => {
     >
       <template v-if="dialog.isOpen.value">
         <Motion
-          :key="`backdrop-${dialog.uniqueId}`"
+          :key="`backdrop-${dialog.uniqueId.value}`"
           class="
             fixed
             z-50

@@ -21,7 +21,7 @@ if (!dialog) {
 
 <template>
   <motion.div
-    :layout-id="`dialog-subtitle-container-${dialog.uniqueId}`"
+    :layout-id="`dialog-subtitle-container-${dialog.uniqueId.value}`"
     :class="cn(props.class)"
   >
     <slot />

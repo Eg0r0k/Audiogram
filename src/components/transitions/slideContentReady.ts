@@ -18,11 +18,10 @@ export const SLIDE_CONTENT_READY_KEY: InjectionKey<Readonly<Ref<boolean>>>
  */
 export const useSlideContentReady = (): Readonly<Ref<boolean>> => {
   const gate = inject(SLIDE_CONTENT_READY_KEY, null);
-  const ready = ref(gate?.value ?? true);
-  if (gate && !ready.value) {
-    watch(gate, () => {
-      ready.value = true;
-    }, { once: true });
-  }
+  if (!gate || gate.value) return ref(true);
+  const ready = ref(false);
+  watch(gate, () => {
+    ready.value = true;
+  }, { once: true });
   return ready;
 };

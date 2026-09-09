@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DropdownMenuRootEmits, DropdownMenuRootProps } from "reka-ui";
 import { DropdownMenuRoot, useForwardPropsEmits } from "reka-ui";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useOverlayScrollLock } from "@/components/ui/scrollable/scroll-lock";
 import DropdownMenuCursorAutoClose from "./DropdownMenuCursorAutoClose.vue";
 import { registerOverlayBackHandler } from "@/composables/useOverlayBackButton";
@@ -16,7 +16,10 @@ const forwarded = useForwardPropsEmits(props, emits);
 // not: Vue casts an absent boolean prop to `false` rather than `undefined`, so
 // `props.open ?? emitted` pinned an uncontrolled menu to "closed" forever —
 // the scroll lock never engaged and nothing could tell the menu was open.
-const isOpen = ref(props.defaultOpen);
+const isOpen = ref(false);
+watch(() => props.defaultOpen, (open) => {
+  isOpen.value = open === true;
+}, { immediate: true, once: true });
 useOverlayScrollLock(isOpen);
 // Android's hardware back must dismiss an open menu, and only surfaces that
 // register here are offered the press. Closing goes through reka's own Escape

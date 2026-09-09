@@ -225,7 +225,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, shallowRef } from "vue";
+import { computed } from "vue";
 import { cva } from "class-variance-authority";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { Button } from "@/components/ui/button";
@@ -239,7 +239,6 @@ import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import SourceDownloadButton from "@/modules/downloads/components/SourceDownloadButton.vue";
-import type { OfflineCopyEntity } from "@/db/entities";
 import { offlineCopyQueries } from "@/queries/offlineCopy.queries";
 import { useQuery } from "@tanstack/vue-query";
 import type { ArtistId, TrackId } from "@/types/ids";
@@ -369,11 +368,9 @@ const isLibraryRow = computed(() => !props.track.sourceDto);
 // The downloaded check by the title: catalog rows carry their DTO id, YT
 // display rows pass downloadId explicitly.
 const offlineTrackId = computed(() => props.downloadId ?? props.track.sourceDto?.id ?? null);
-// A local library row has no offline copy to look up: no query observer for
-// it. Rows are keyed by track id, so a row never turns remote after mount.
-const offlineCopy = offlineTrackId.value === null
-  ? shallowRef<OfflineCopyEntity | null | undefined>(undefined)
-  : useQuery(computed(() => offlineCopyQueries.detail(offlineTrackId.value))).data;
+// A local library row has no offline copy to look up: `detail(null)` is a
+// skipToken query, so the observer idles without fetching.
+const offlineCopy = useQuery(computed(() => offlineCopyQueries.detail(offlineTrackId.value))).data;
 const isDownloaded = computed(() => !!offlineCopy.value);
 const relativeAddedAt = computed(() =>
   props.track.addedAt ? formatRelativeTime(props.track.addedAt, locale.value) : "",

@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onUnmounted, ref, shallowRef } from "vue";
+import { computed, defineAsyncComponent, onUnmounted, ref, useTemplateRef } from "vue";
 import { useI18n } from "vue-i18n";
 import type Cropper from "cropperjs";
 
@@ -157,7 +157,7 @@ const emit = defineEmits<{
 const { resolve, dismiss } = useSummonedDialog<Blob>();
 const errorMessage = ref<string | null>(null);
 
-const cropperRef = shallowRef<VueCropperComponent | null>(null);
+const cropperRef = useTemplateRef<VueCropperComponent>("cropperRef");
 
 const localImageSrc = ref<string | null>(null);
 const isReady = ref(false);

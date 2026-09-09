@@ -23,7 +23,8 @@ const props = defineProps<{
 }>();
 
 const isOpen = ref(false);
-const uniqueId = computed(() => props.id || useId().replace(/:/g, ""));
+const generatedId = useId().replace(/:/g, "");
+const uniqueId = computed(() => props.id || generatedId);
 const triggerRef = ref<HTMLButtonElement | null>(null);
 
 const setIsOpen = (value: boolean) => {
@@ -32,7 +33,7 @@ const setIsOpen = (value: boolean) => {
 provide(MorphingDialogKey, {
   isOpen,
   setIsOpen,
-  uniqueId: uniqueId.value,
+  uniqueId,
   triggerRef,
 });
 

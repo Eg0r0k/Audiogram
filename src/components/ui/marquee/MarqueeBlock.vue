@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, useTemplateRef, watch } from "vue";
 import { useResizeObserver, useDebounceFn } from "@vueuse/core";
 
 type Direction = "normal" | "reverse";
@@ -80,8 +80,8 @@ const emit = defineEmits<{
   overflowCleared: [];
 }>();
 
-const containerRef = ref<HTMLElement | null>(null);
-const contentRef = ref<HTMLElement | null>(null);
+const containerRef = useTemplateRef<HTMLElement>("containerRef");
+const contentRef = useTemplateRef<HTMLElement>("contentRef");
 
 const extraClones = ref(0);
 const isOverflowing = ref(false);

@@ -1,4 +1,5 @@
 import { fireEvent, render } from "@testing-library/vue";
+import { VueQueryPlugin } from "@tanstack/vue-query";
 import { createPinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TrackSource, TrackState } from "@/db/entities";
@@ -45,7 +46,7 @@ const makeTrack = (id: string): Track => ({
 const renderRow = (isSelecting: boolean, extra: Record<string, unknown> = {}) => render(TrackExpanded, {
   props: { track: makeTrack("t1"), index: 0, isSelecting, ...extra },
   global: {
-    plugins: [createPinia(), i18n],
+    plugins: [createPinia(), VueQueryPlugin, i18n],
     directives: { ripple: {} },
     stubs: {
       NuxtImage: true,

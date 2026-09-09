@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { useId } from "vue";
+import { useId, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/valibot";
@@ -96,10 +96,12 @@ const schema = object({
   ),
 });
 
-const { errors, meta, defineField, handleSubmit } = useForm({
+const { errors, meta, defineField, handleSubmit, resetForm } = useForm({
   validationSchema: toTypedSchema(schema),
-  initialValues: { name: props.initialName },
 });
+watch(() => props.initialName, (name) => {
+  resetForm({ values: { name } });
+}, { immediate: true });
 
 const [name] = defineField("name");
 

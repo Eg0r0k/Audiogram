@@ -1,4 +1,5 @@
 import {
+  computed,
   defineComponent,
   h,
   inject,
@@ -145,7 +146,11 @@ const SummonedDialog = defineComponent({
     },
   },
   setup(props) {
-    provide(summonedDialogKey, props.instance.controller);
+    provide(summonedDialogKey, {
+      open: computed(() => props.instance.controller.open.value),
+      resolve: value => props.instance.controller.resolve(value),
+      dismiss: () => props.instance.controller.dismiss(),
+    });
     return () => h(props.instance.component, {
       ...props.instance.props,
       "open": props.instance.controller.open.value,

@@ -14,7 +14,8 @@ const TRANSITION = {
   mass: 0.3,
 };
 
-const y = useTransform(props.mv, (latest) => {
+const y = useTransform(() => {
+  const latest = props.mv.get();
   if (!props.height) return 0;
 
   const placeValue = latest % 10;

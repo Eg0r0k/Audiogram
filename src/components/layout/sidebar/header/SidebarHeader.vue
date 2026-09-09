@@ -203,7 +203,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, useTemplateRef, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
@@ -258,7 +258,7 @@ const { query, source, setSource, isSearchOpen, openSearch, closeSearch, submitY
 
 // `ref="inputRef"` in the template had no declaration behind it, so nothing
 // could reach the field. Declared here so a focus request can land on it.
-const inputRef = ref<HTMLInputElement | { $el?: HTMLElement } | null>(null);
+const inputRef = useTemplateRef<HTMLInputElement | { $el?: HTMLElement }>("inputRef");
 
 watch(focusRequests, async () => {
   openSearch();

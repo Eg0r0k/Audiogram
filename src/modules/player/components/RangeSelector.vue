@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, useTemplateRef, watch } from "vue";
 import { useElementBounding, useEventListener } from "@vueuse/core";
 import { clamp } from "@/lib/math";
 import { isRTL } from "@/lib/environment/lang";
@@ -119,16 +119,17 @@ const emit = defineEmits<{
   "scrub": [value: number];
 }>();
 
-const containerRef = ref<HTMLDivElement | null>(null);
-const filledRef = ref<HTMLDivElement | null>(null);
-const seekRef = ref<HTMLInputElement | null>(null);
-const thumbRef = ref<HTMLDivElement | null>(null);
-const hoverFilledRef = ref<HTMLDivElement | null>(null);
+const containerRef = useTemplateRef<HTMLDivElement>("containerRef");
+const filledRef = useTemplateRef<HTMLDivElement>("filledRef");
+const seekRef = useTemplateRef<HTMLInputElement>("seekRef");
+const thumbRef = useTemplateRef<HTMLDivElement>("thumbRef");
+const hoverFilledRef = useTemplateRef<HTMLDivElement>("hoverFilledRef");
 
 const mousedown = ref(false);
 // Not bound in the template: the value lands on the <input> and the bar by
 // direct DOM writes (setProgress), so a progress tick re-renders nothing.
-const internalValue = ref(props.modelValue);
+// Seeded from the prop on mount, when the <input> exists to take it.
+const internalValue = ref(0);
 
 const isHovering = ref(false);
 const hoverPercent = ref(0);

@@ -95,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, ref, shallowRef, useTemplateRef, watch } from "vue";
 import { useElementBounding } from "@vueuse/core";
 import { Scrollable } from "@/components/ui/scrollable";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -118,8 +118,8 @@ const props = defineProps<{ data: DailyActivityPoint[] }>();
 const monthLabelHeight = 20;
 const dayLabelWidth = 30;
 
-const scrollableRef = ref<{ scrollToEnd: (behavior?: ScrollBehavior) => void } | null>(null);
-const containerRef = ref<HTMLElement | null>(null);
+const scrollableRef = useTemplateRef<{ scrollToEnd: (behavior?: ScrollBehavior) => void }>("scrollableRef");
+const containerRef = useTemplateRef<HTMLElement>("containerRef");
 const { width: containerWidth } = useElementBounding(containerRef);
 
 const weeks = computed(() => visibleWeeks(toCells(props.data), MAX_WEEKS));

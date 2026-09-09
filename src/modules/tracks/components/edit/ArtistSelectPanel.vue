@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { refDebounced } from "@vueuse/core";
 import { keepPreviousData, useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
@@ -68,7 +68,10 @@ const search = ref("");
 const debouncedSearch = refDebounced(search, 200);
 const normalizedSearch = computed(() => debouncedSearch.value.trim().replace(/\s+/g, " "));
 
-const selectedNames = ref<string[]>([...(props.payload.selectedNames ?? [])]);
+const selectedNames = ref<string[]>([]);
+watch(() => props.payload.selectedNames, (names) => {
+  selectedNames.value = [...(names ?? [])];
+}, { immediate: true });
 const isSelectedName = (name: string) => selectedNames.value.some(item => identityKey(item) === identityKey(name));
 
 const toggleName = (name: string) => {

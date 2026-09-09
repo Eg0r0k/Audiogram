@@ -24,7 +24,7 @@ if (!dialog) {
   <motion.img
     :src="props.src"
     :alt="props.alt ?? ''"
-    :layout-id="`dialog-img-${dialog.uniqueId}`"
+    :layout-id="`dialog-img-${dialog.uniqueId.value}`"
     :class="cn(props.class)"
     draggable="false"
   />

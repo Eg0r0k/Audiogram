@@ -13,7 +13,6 @@ const props = withDefaults(defineProps<{
   placeholder?: string;
   ariaLabel?: string;
   id?: string;
-  defaultValue?: string | number;
   modelValue?: string | number;
 
   type?:
@@ -58,10 +57,7 @@ const emits = defineEmits<{
 const generatedId = useId();
 const inputId = computed(() => props.id ?? generatedId);
 
-const modelValue = useVModel(props, "modelValue", emits, {
-  passive: true,
-  defaultValue: props.defaultValue,
-});
+const modelValue = useVModel(props, "modelValue", emits, { passive: true });
 
 const isFocused = ref(false);
 

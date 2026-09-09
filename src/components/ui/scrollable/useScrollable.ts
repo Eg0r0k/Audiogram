@@ -1,11 +1,11 @@
 import { IS_OVERLAY_SCROLL_SUPPORTED } from "@/lib/environment/overlayScrollSupport";
 import IS_TOUCH_SUPPORTED from "@/lib/environment/touchSupport";
 import { IS_MOBILE_SAFARI, IS_SAFARI } from "@/lib/environment/userAgent";
-import { ref, computed, onMounted, onUnmounted, type Ref, nextTick } from "vue";
+import { ref, computed, onMounted, onUnmounted, type MaybeRefOrGetter, type Ref, nextTick, toValue } from "vue";
 
 export interface ScrollableOptions {
-  direction?: "vertical" | "horizontal";
-  onScrollOffset?: number;
+  direction?: MaybeRefOrGetter<"vertical" | "horizontal">;
+  onScrollOffset?: MaybeRefOrGetter<number>;
   onScrolledTop?: () => void;
   onScrolledBottom?: () => void;
   onAdditionalScroll?: () => void;
@@ -32,16 +32,12 @@ export default function useScrollable(
   containerRef: Ref<HTMLElement | null>,
   options: ScrollableOptions = {},
 ) {
-  const {
-    direction = "vertical",
-    onScrollOffset = 300,
-    onScrolledTop,
-    onScrolledBottom,
-    onAdditionalScroll,
-  } = options;
+  const { onScrolledTop, onScrolledBottom, onAdditionalScroll } = options;
+  const direction = () => toValue(options.direction) ?? "vertical";
+  const onScrollOffset = () => toValue(options.onScrollOffset) ?? 300;
 
   const props = computed(() => {
-    if (direction === "vertical") {
+    if (direction() === "vertical") {
       return {
         scrollPosition: "scrollTop" as const,
         scrollSize: "scrollHeight" as const,
@@ -140,7 +136,7 @@ export default function useScrollable(
 
     if (
       onScrolledTop
-      && scrollPosition.value <= onScrollOffset
+      && scrollPosition.value <= onScrollOffset()
       && lastScrollDirection.value <= 0
     ) {
       onScrolledTop();
@@ -148,7 +144,7 @@ export default function useScrollable(
 
     if (
       onScrolledBottom
-      && maxScrollPosition - scrollPosition.value <= onScrollOffset
+      && maxScrollPosition - scrollPosition.value <= onScrollOffset()
       && lastScrollDirection.value >= 0
     ) {
       onScrolledBottom();
@@ -276,7 +272,7 @@ export default function useScrollable(
   }
 
   function handleWheel(e: WheelEvent) {
-    if (direction !== "horizontal" || IS_TOUCH_SUPPORTED) return;
+    if (direction() !== "horizontal" || IS_TOUCH_SUPPORTED) return;
 
     if (isScrollLocked.value) {
       e.preventDefault();
@@ -307,7 +303,7 @@ export default function useScrollable(
       const rect = opts.element.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
 
-      if (direction === "vertical") {
+      if (direction() === "vertical") {
         targetPosition = container.scrollTop + rect.top - containerRect.top;
       }
       else {
@@ -319,7 +315,7 @@ export default function useScrollable(
     }
 
     container.scrollTo({
-      [direction === "vertical" ? "top" : "left"]: targetPosition,
+      [direction() === "vertical" ? "top" : "left"]: targetPosition,
       behavior: opts.behavior ?? "smooth",
     });
   }
@@ -369,7 +365,7 @@ export default function useScrollable(
     });
     resizeObserver.observe(container);
 
-    if (direction === "horizontal" && !IS_TOUCH_SUPPORTED) {
+    if (direction() === "horizontal" && !IS_TOUCH_SUPPORTED) {
       container.addEventListener("wheel", handleWheel, { passive: false });
     }
 
@@ -395,7 +391,7 @@ export default function useScrollable(
       resizeObserver.disconnect();
     }
 
-    if (direction === "horizontal" && !IS_TOUCH_SUPPORTED) {
+    if (direction() === "horizontal" && !IS_TOUCH_SUPPORTED) {
       container.removeEventListener("wheel", handleWheel);
     }
 

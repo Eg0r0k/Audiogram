@@ -10,7 +10,6 @@
       "
     >
       <div
-        ref="thumbRef"
         class="scrollable-thumb"
         :class="{ 'is-focused': scrollable.isDragging.value }"
         :style="thumbStyle"
@@ -57,8 +56,8 @@ const emit = defineEmits<{
 const containerRef = useTemplateRef("containerRef");
 
 const scrollable = useScrollable(containerRef, {
-  direction: props.direction,
-  onScrollOffset: props.onScrollOffset,
+  direction: () => props.direction,
+  onScrollOffset: () => props.onScrollOffset,
   onScrolledTop: () => emit("scrolledTop"),
   onScrolledBottom: () => emit("scrolledBottom"),
 });

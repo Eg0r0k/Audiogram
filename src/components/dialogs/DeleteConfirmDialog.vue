@@ -75,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   Dialog,
@@ -108,7 +108,10 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const { resolve, dismiss } = useSummonedDialog<DeleteConfirmResult>();
 
-const deleteTracks = ref(props.data.defaultDeleteTracks === true);
+const deleteTracks = ref(false);
+watch(() => props.data.defaultDeleteTracks, (value) => {
+  deleteTracks.value = value === true;
+}, { immediate: true });
 
 const canDeleteTracks = computed(() => props.data.trackCount > 0);
 
