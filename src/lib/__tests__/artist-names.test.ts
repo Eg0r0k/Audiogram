@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dedupeArtistNames, identityKey, normalizeName, splitArtistNames } from "../artist-names";
+import { dedupeArtistNames, identityKey, normalizeName, sameArtistNames, splitArtistNames } from "../artist-names";
 
 describe("identityKey", () => {
   it("folds case, padding, inner whitespace and ё/е", () => {
@@ -39,5 +39,14 @@ describe("splitArtistNames", () => {
     expect(splitArtistNames("Markul, NIKER, markul")).toEqual(["Markul", "NIKER"]);
     expect(splitArtistNames(" , ")).toEqual([]);
     expect(splitArtistNames(undefined)).toEqual([]);
+  });
+});
+
+describe("sameArtistNames", () => {
+  it("ignores spelling that maps to one identity, not order or count", () => {
+    expect(sameArtistNames(["Markul", "NIKER"], ["markul", " Niker "])).toBe(true);
+    expect(sameArtistNames(["A", "B"], ["B", "A"])).toBe(false);
+    expect(sameArtistNames(["A"], ["A", "B"])).toBe(false);
+    expect(sameArtistNames([], [])).toBe(true);
   });
 });

@@ -510,6 +510,55 @@ describe("track.queries", () => {
         .toHaveBeenCalledWith("track", albumless.id);
     });
 
+    // Imports store tag-less files with no artist and no album; the editor
+    // may not be stricter than that, but an album still needs an artist.
+    it("saves a track with no artists, album-less", async () => {
+      repositories.coverRepository.findByOwner.mockResolvedValue(ok(undefined));
+
+      const next = await updateTrackMetadataAndSync(queryClient, track, {
+        title: "Renamed",
+        artistNames: [],
+      });
+
+      expect(repositories.artistRepository.findByName).not.toHaveBeenCalled();
+      expect(repositories.trackRepository.update).toHaveBeenCalledWith(
+        currentTrackEntity.id,
+        expect.objectContaining({ title: "Renamed", artistIds: [], artistName: "", albumId: "" }),
+      );
+      expect(next.artistIds).toEqual([]);
+      expect(next.artist).toBe("");
+    });
+
+    it("keeps the album a track already has when its artists are cleared", async () => {
+      repositories.albumRepository.findById.mockResolvedValue(ok({ ...existingAlbum, id: currentTrackEntity.albumId, title: "Old Album" }));
+
+      const next = await updateTrackMetadataAndSync(queryClient, track, {
+        title: track.title,
+        artistNames: [],
+        albumId: currentTrackEntity.albumId,
+      });
+
+      expect(next.albumId).toBe(currentTrackEntity.albumId);
+      expect(repositories.trackRepository.update).toHaveBeenCalledWith(
+        currentTrackEntity.id,
+        expect.objectContaining({ artistIds: [], albumId: currentTrackEntity.albumId }),
+      );
+    });
+
+    it("refuses a new album for a track with no artists", async () => {
+      await expect(updateTrackMetadataAndSync(queryClient, track, {
+        title: track.title,
+        artistNames: [],
+        albumTitle: "Greatest Hits",
+      })).rejects.toThrow(/artist/);
+      await expect(updateTrackMetadataAndSync(queryClient, track, {
+        title: track.title,
+        artistNames: [],
+        albumId: existingAlbum.id,
+      })).rejects.toThrow(/artist/);
+      expect(repositories.trackRepository.update).not.toHaveBeenCalled();
+    });
+
     it("detaches the track from its album when neither albumId nor albumTitle is given", async () => {
       repositories.coverRepository.findByOwner.mockResolvedValue(ok(undefined));
 
