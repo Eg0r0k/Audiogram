@@ -81,12 +81,13 @@ export async function getArtistByIdOrThrow(artistId: ArtistId) {
   return artist;
 }
 
+/** Every pinned artist when nothing is typed — a cap there would hide part
+ *  of the library from the picker; `limit` bounds a typed search only. */
 export async function searchArtists(query: string, limit = 8) {
   const normalizedQuery = query.trim();
 
   if (!normalizedQuery) {
-    const artists = await getArtists();
-    return artists.slice(0, limit);
+    return getArtists();
   }
 
   const found = await unwrapResult(artistRepository.search(normalizedQuery, limit));
