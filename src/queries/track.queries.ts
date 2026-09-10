@@ -590,12 +590,14 @@ export async function attachTrackLyricsAndSync(
 const resolveAlbumForChanges = async (
   queryClient: QueryClient,
   changes: TrackMetadataChanges,
-  firstArtistId: ArtistId,
+  firstArtistId: ArtistId | null,
 ): Promise<AlbumEntity | null> => {
   if (changes.albumId) return getAlbumByIdOrThrow(changes.albumId);
 
+  // A new album row is owned by an artist; the caller has already refused
+  // a title for an artist-less track, so this only guards the type.
   const title = changes.albumTitle?.trim().replace(/\s+/g, " ");
-  if (!title) return null;
+  if (!title || !firstArtistId) return null;
 
   const artistAlbums = await unwrapResult(albumRepository.findByArtistId(firstArtistId));
   const existing = artistAlbums.find(album => identityKey(album.title) === identityKey(title));
@@ -633,12 +635,17 @@ export async function updateTrackMetadataAndSync(
   const artistNames = dedupeArtistNames(changes.artistNames);
   for (const name of artistNames) assertValidName(name, "artist");
 
-  if (artistNames.length === 0) {
-    throw new Error("At least one artist is required");
+  // Tag-less imports already store rows with no artist and no album; the
+  // editor allows the same. An album row is owned by an artist, so with no
+  // artists the track may keep the album it has but not pick up another.
+  const albumChanges = !!changes.albumTitle?.trim()
+    || (!!changes.albumId && changes.albumId !== currentTrack.albumId);
+  if (artistNames.length === 0 && albumChanges) {
+    throw new Error("An album needs an artist");
   }
 
   const artists = await findOrCreateArtists(queryClient, artistNames);
-  const album = await resolveAlbumForChanges(queryClient, changes, artists[0].id);
+  const album = await resolveAlbumForChanges(queryClient, changes, artists[0]?.id ?? null);
   const nextArtistIds = artists.map(artist => artist.id);
   const nextArtistName = artists.map(artist => artist.name).join(", ");
   const nextTrackNo = resolveNullableNumber(changes.trackNo, currentTrack.trackNo);

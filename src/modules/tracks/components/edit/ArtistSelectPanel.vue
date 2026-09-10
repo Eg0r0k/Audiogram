@@ -6,6 +6,7 @@
     :get-key="(artist: ArtistEntity) => artist.id"
     :can-create="canCreate"
     :confirm-count="selectedNames.length"
+    :show-confirm="isDirty"
     :reveal-key="revealKey"
     @confirm="handleConfirm"
     @create="handleCreate"
@@ -49,7 +50,7 @@ import { refDebounced } from "@vueuse/core";
 import { keepPreviousData, useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { EntitySelectPanel } from "@/components/entity-select";
-import { identityKey } from "@/lib/artist-names";
+import { identityKey, sameArtistNames } from "@/lib/artist-names";
 import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";
 import type { ArtistEntity } from "@/db/entities";
@@ -69,7 +70,8 @@ const search = ref("");
 const debouncedSearch = refDebounced(search, 200);
 const normalizedSearch = computed(() => debouncedSearch.value.trim().replace(/\s+/g, " "));
 
-const selectedNames = ref<string[]>([...(props.payload.selectedNames ?? [])]);
+const initialNames: readonly string[] = props.payload.selectedNames ?? [];
+const selectedNames = ref<string[]>([...initialNames]);
 const isSelectedName = (name: string) => selectedNames.value.some(item => identityKey(item) === identityKey(name));
 
 const toggleName = (name: string) => {
@@ -89,8 +91,12 @@ const suggestions = computed(() =>
   [...(data.value ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
 );
 
+// Confirm follows "something changed", not "something selected": clearing
+// the last artist is a valid outcome (the track becomes artist-less).
+const isDirty = computed(() => !sameArtistNames(selectedNames.value, initialNames));
+
 // The picker opens on the first of the track's current artists in list order.
-const initialNameKeys = new Set((props.payload.selectedNames ?? []).map(identityKey));
+const initialNameKeys = new Set(initialNames.map(identityKey));
 const revealKey = computed(() =>
   suggestions.value.find(artist => initialNameKeys.has(identityKey(artist.name)))?.id ?? null,
 );

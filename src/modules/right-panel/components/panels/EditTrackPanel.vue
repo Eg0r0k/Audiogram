@@ -13,7 +13,6 @@
 
     <Scrollable class="min-h-0 flex-1">
       <form
-        v-if="track"
         class="grid gap-5 px-5 pb-[calc(6rem+var(--keyboard-inset,0px))] pt-2"
         @submit.prevent="onSubmit"
       >
@@ -172,21 +171,6 @@
           </div>
         </div>
       </form>
-
-      <Empty
-        v-else
-        class="p-6 py-12 md:p-6 md:py-12"
-      >
-        <EmptyHeader>
-          <EmptyMedia
-            variant="icon"
-            class="rounded-full text-muted-foreground"
-          >
-            <IconPencilOff class="size-5" />
-          </EmptyMedia>
-          <EmptyDescription>{{ $t('track.edit.libraryOnly') }}</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
     </Scrollable>
 
     <FloatingActionButton :show="hasChanges">
@@ -217,10 +201,9 @@ import type { InferOutput } from "valibot";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { Badge } from "@/components/ui/badge";
-import { splitArtistNames } from "@/lib/artist-names";
+import { sameArtistNames, splitArtistNames } from "@/lib/artist-names";
 import { NAME_MAX_LENGTH } from "@/lib/limits";
 import { Button } from "@/components/ui/button";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Scrollable } from "@/components/ui/scrollable";
 import FloatingActionButton from "@/components/common/FloatingActionButton.vue";
@@ -236,7 +219,6 @@ import { updateTrackMetadataAndSync, type TrackMetadataChanges } from "@/queries
 import type { AlbumId } from "@/types/ids";
 import RightPanelHeader from "../RightPanelHeader.vue";
 import IconDisc from "~icons/tabler/disc";
-import IconPencilOff from "~icons/tabler/pencil-off";
 import IconSave from "~icons/tabler/device-floppy";
 
 const props = defineProps<{
@@ -272,13 +254,12 @@ const buildTrackFormSchema = () => {
       minLength(1, t("track.edit.validation.titleRequired")),
       maxLength(NAME_MAX_LENGTH, t("track.edit.validation.titleMaxLength", { max: NAME_MAX_LENGTH })),
     ),
-    artists: pipe(
-      array(pipe(
-        string(),
-        maxLength(NAME_MAX_LENGTH, t("track.edit.validation.artistMaxLength", { max: NAME_MAX_LENGTH })),
-      )),
-      minLength(1, t("track.edit.validation.artistsRequired")),
-    ),
+    // Empty = no artist, like a tag-less import. Only an album needs one,
+    // which onSubmit checks across both fields.
+    artists: array(pipe(
+      string(),
+      maxLength(NAME_MAX_LENGTH, t("track.edit.validation.artistMaxLength", { max: NAME_MAX_LENGTH })),
+    )),
     // Empty = no album: the track stays album-less, like an import without album tags.
     albumLabel: pipe(
       string(),
@@ -293,7 +274,7 @@ type TrackFormValues = InferOutput<ReturnType<typeof buildTrackFormSchema>>;
 
 const validationSchema = computed(() => toTypedSchema(buildTrackFormSchema()));
 
-const { errors, meta, defineField, handleSubmit, setValues } = useForm<TrackFormValues>({
+const { errors, meta, defineField, handleSubmit, setValues, setFieldError } = useForm<TrackFormValues>({
   validationSchema,
   initialValues: {
     title: "",
@@ -417,12 +398,15 @@ const hasChanges = computed(() => {
   const source = track.value;
 
   return title.value.trim() !== source.title
-    || artistChips.value.join("\n") !== splitArtistNames(source.artist).join("\n")
+    || !sameArtistNames(artistChips.value, splitArtistNames(source.artist))
     || albumId.value !== (source.albumId || null)
     || newAlbumTitle.value !== null
     || (trackNo.value ?? null) !== (source.trackNo ?? null)
     || (diskNo.value ?? null) !== (source.diskNo ?? null);
 });
+
+const albumChanged = computed(() =>
+  newAlbumTitle.value !== null || albumId.value !== (track.value.albumId || null));
 
 const albumChange = computed<Pick<TrackMetadataChanges, "albumId" | "albumTitle">>(() => {
   if (newAlbumTitle.value) return { albumTitle: newAlbumTitle.value };
@@ -524,6 +508,10 @@ const { mutateAsync: updateTrack, isPending } = useMutation({
 
 const onSubmit = handleSubmit(async (values) => {
   if (!hasChanges.value) return;
+  if (values.artists.length === 0 && albumChanged.value) {
+    setFieldError("artists", t("track.edit.validation.albumNeedsArtist"));
+    return;
+  }
 
   const nextTrack = await updateTrack({
     title: values.title,

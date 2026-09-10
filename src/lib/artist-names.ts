@@ -57,3 +57,11 @@ export const dedupeArtistNames = (names: readonly string[]): string[] => {
  */
 export const splitArtistNames = (value: string | undefined): string[] =>
   value ? dedupeArtistNames(value.split(/[,;&]/)) : [];
+
+/**
+ * Same artists in the same order, compared by identity: a respelling is not
+ * a change, a reorder is — the first artist owns the album and the joined
+ * artistName follows the order.
+ */
+export const sameArtistNames = (left: readonly string[], right: readonly string[]): boolean =>
+  left.length === right.length && left.every((name, index) => identityKey(name) === identityKey(right[index]));

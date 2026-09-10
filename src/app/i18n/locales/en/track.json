@@ -109,13 +109,12 @@
     "unsavedTitle": "Unsaved changes",
     "unsavedDescription": "Your changes will be lost. Leave without saving?",
     "discard": "Discard",
-    "libraryOnly": "Only library tracks can be edited.",
     "saved": "Track info saved",
     "saveFailed": "Failed to save track info",
     "validation": {
       "titleRequired": "Enter track title",
       "titleMaxLength": "Title must be at most {max} characters",
-      "artistsRequired": "Enter at least one artist",
+      "albumNeedsArtist": "Add an artist to set an album",
       "artistMaxLength": "Artist name must be at most {max} characters",
       "albumMaxLength": "Album title must be at most {max} characters",
       "numberMin": "Number must be a whole number greater than zero"
