@@ -12,7 +12,15 @@ const queue = vi.hoisted(() => ({
   removeMultiple: vi.fn(async () => {}),
 }));
 
+const dialog = vi.hoisted(() => ({ summonDialog: vi.fn() }));
+const settings = vi.hoisted(() => ({
+  confirmTrackDeletion: { value: true },
+  setConfirmTrackDeletion: vi.fn(),
+}));
+
 vi.mock("@/queries/track-undo", () => ({ deleteTracksWithUndo: undoApi.deleteTracksWithUndo }));
+vi.mock("@/components/dialogs/summonDialog", () => dialog);
+vi.mock("@/modules/settings/store/general", () => ({ useGeneralSettings: () => settings }));
 vi.mock("vue-sonner", () => ({ toast }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock("@tanstack/vue-query", () => ({ useQueryClient: () => ({ tag: "qc" }) }));
@@ -34,8 +42,37 @@ const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 describe("useTrackDeletion", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    settings.confirmTrackDeletion.value = true;
     queue.queue = [];
     undoApi.deleteTracksWithUndo.mockResolvedValue({ deleted: 2, restore: undoApi.restore, finalize: undoApi.finalize });
+  });
+
+  describe("confirmDeletion", () => {
+    it("skips every dialog when the setting is off", async () => {
+      settings.confirmTrackDeletion.value = false;
+
+      await expect(useTrackDeletion().confirmDeletion([TrackId("t1")], "One")).resolves.toBe(true);
+      await expect(useTrackDeletion().confirmDeletion([TrackId("t1"), TrackId("t2")])).resolves.toBe(true);
+      expect(dialog.summonDialog).not.toHaveBeenCalled();
+    });
+
+    it("asks by name for a single row and honours don't-ask-again", async () => {
+      dialog.summonDialog.mockResolvedValue({ dontAskAgain: true });
+
+      await expect(useTrackDeletion().confirmDeletion([TrackId("t1")], "One")).resolves.toBe(true);
+
+      expect(dialog.summonDialog).toHaveBeenCalledWith("deleteTrack", { trackTitle: "One" }, { key: "delete-track:t1" });
+      expect(settings.setConfirmTrackDeletion).toHaveBeenCalledWith(false);
+    });
+
+    it("asks by count for a batch and reports a dismissed dialog", async () => {
+      dialog.summonDialog.mockResolvedValue(undefined);
+
+      await expect(useTrackDeletion().confirmDeletion([TrackId("t1"), TrackId("t2")])).resolves.toBe(false);
+
+      expect(dialog.summonDialog).toHaveBeenCalledWith("deleteTracks", { count: 2 }, { key: "delete-tracks" });
+      expect(settings.setConfirmTrackDeletion).not.toHaveBeenCalled();
+    });
   });
 
   it("deletes, drops queue entries and shows a toast with an undo action", async () => {

@@ -193,7 +193,7 @@
       <Button
         type="button"
         class="size-12 rounded-full shadow-lg"
-        :disabled="!track || isPending || !meta.valid || !hasChanges"
+        :disabled="isPending || !meta.valid || !hasChanges"
         @click="onSubmit"
       >
         <IconSave class="size-6" />
@@ -225,7 +225,7 @@ import { Input } from "@/components/ui/input";
 import { Scrollable } from "@/components/ui/scrollable";
 import FloatingActionButton from "@/components/common/FloatingActionButton.vue";
 import { useKeyboardInset } from "@/composables/useKeyboardInset";
-import { isLibraryTrack, type Track } from "@/modules/player/types";
+import type { Track } from "@/modules/player/types";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { usePanelUiBack } from "@/modules/right-panel/composables/usePanelUiBack";
@@ -293,7 +293,7 @@ type TrackFormValues = InferOutput<ReturnType<typeof buildTrackFormSchema>>;
 
 const validationSchema = computed(() => toTypedSchema(buildTrackFormSchema()));
 
-const { errors, meta, defineField, handleSubmit, resetForm, setValues } = useForm<TrackFormValues>({
+const { errors, meta, defineField, handleSubmit, setValues } = useForm<TrackFormValues>({
   validationSchema,
   initialValues: {
     title: "",
@@ -314,9 +314,7 @@ const albumId = ref<string | null>(null);
 const newAlbumTitle = ref<string | null>(null);
 const pendingLeave = ref<(() => void) | null>(null);
 
-const track = computed<Track | null>(() => {
-  return isLibraryTrack(props.payload.track) ? props.payload.track : null;
-});
+const track = computed<Track>(() => props.payload.track);
 
 const artistChips = computed(() => artists.value);
 
@@ -396,18 +394,12 @@ const draftValues = computed(() => ({
 }));
 
 const syncDraft = (): void => {
-  if (!track.value) return;
   patchDraft(track.value.id, draftValues.value);
 };
 
 watch(
   track,
   (nextTrack) => {
-    if (!nextTrack) {
-      resetForm();
-      return;
-    }
-
     const stored = readDraft(nextTrack.id);
     const next = stored ?? draftFromTrack(nextTrack);
 
@@ -423,7 +415,6 @@ watch(draftValues, () => {
 
 const hasChanges = computed(() => {
   const source = track.value;
-  if (!source) return false;
 
   return title.value.trim() !== source.title
     || artistChips.value.join("\n") !== splitArtistNames(source.artist).join("\n")
@@ -476,8 +467,6 @@ const handleClose = (): void => {
 
 const openArtistPicker = (): void => {
   const source = track.value;
-  if (!source) return;
-
   syncDraft();
 
   const trackId = source.id;
@@ -496,8 +485,6 @@ const openArtistPicker = (): void => {
 
 const openAlbumPicker = (): void => {
   const source = track.value;
-  if (!source) return;
-
   syncDraft();
 
   const trackId = source.id;
@@ -528,13 +515,7 @@ const openAlbumPicker = (): void => {
 
 const { mutateAsync: updateTrack, isPending } = useMutation({
   mutationFn: (changes: TrackMetadataChanges) => {
-    const source = track.value;
-
-    if (!source) {
-      throw new Error("Track is not editable");
-    }
-
-    return updateTrackMetadataAndSync(queryClient, source, changes);
+    return updateTrackMetadataAndSync(queryClient, track.value, changes);
   },
   onError: () => {
     toast.error(t("track.edit.saveFailed"));
@@ -542,7 +523,7 @@ const { mutateAsync: updateTrack, isPending } = useMutation({
 });
 
 const onSubmit = handleSubmit(async (values) => {
-  if (!track.value || !hasChanges.value) return;
+  if (!hasChanges.value) return;
 
   const nextTrack = await updateTrack({
     title: values.title,

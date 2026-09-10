@@ -2,6 +2,8 @@ import { useQueryClient } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { getLogger } from "@/lib/logger";
+import { summonDialog } from "@/components/dialogs/summonDialog";
+import { useGeneralSettings } from "@/modules/settings/store/general";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { deleteTracksWithUndo } from "@/queries/track-undo";
 import type { TrackId } from "@/types/ids";
@@ -12,6 +14,27 @@ export const useTrackDeletion = () => {
   const queryClient = useQueryClient();
   const queueStore = useQueueStore();
   const { t } = useI18n();
+  const { confirmTrackDeletion, setConfirmTrackDeletion } = useGeneralSettings();
+
+  /**
+   * The one confirmation policy for every delete entry point: the setting
+   * skips the dialog, a single named row gets the dialog with "don't ask
+   * again", a batch the counted one. Resolves false when the user backs out.
+   */
+  const confirmDeletion = async (ids: TrackId[], title?: string): Promise<boolean> => {
+    if (!confirmTrackDeletion.value) return true;
+    if (ids.length === 1 && title !== undefined) {
+      const confirmation = await summonDialog(
+        "deleteTrack",
+        { trackTitle: title },
+        { key: `delete-track:${ids[0]}` },
+      );
+      if (!confirmation) return false;
+      if (confirmation.dontAskAgain) setConfirmTrackDeletion(false);
+      return true;
+    }
+    return !!(await summonDialog("deleteTracks", { count: ids.length }, { key: "delete-tracks" }));
+  };
 
   const deleteWithUndo = async (ids: TrackId[], message: (deleted: number) => string): Promise<number> => {
     const idSet = new Set<string>(ids);
@@ -50,5 +73,5 @@ export const useTrackDeletion = () => {
     return undo.deleted;
   };
 
-  return { deleteWithUndo };
+  return { confirmDeletion, deleteWithUndo };
 };
