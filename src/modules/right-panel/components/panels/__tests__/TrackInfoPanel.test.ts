@@ -7,7 +7,11 @@ import type { Track } from "@/modules/player/types";
 import TrackInfoPanel from "../TrackInfoPanel.vue";
 
 const queries = vi.hoisted(() => ({ getTrackEntityById: vi.fn() }));
-vi.mock("@/queries/track.queries", () => queries);
+vi.mock("@/queries/track.queries", () => ({
+  trackQueries: {
+    detail: (id: string) => ({ queryKey: ["tracks", id], queryFn: () => queries.getTrackEntityById(id) }),
+  },
+}));
 vi.mock("@/queries/offlineCopy.queries", async () => {
   const { skipToken } = await import("@tanstack/vue-query");
   return {

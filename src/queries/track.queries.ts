@@ -211,6 +211,12 @@ export async function getLikedTracksPaginated(
 // queryOptions factories — only for non-infinite queries.
 // Infinite queries are configured directly in composables via useInfiniteQuery.
 export const trackQueries = {
+  /** The stored row; `syncTrack*Caches` write to this key, mutations invalidate it. */
+  detail: (trackId: TrackId) =>
+    queryOptions({
+      queryKey: queryKeys.tracks.detail(trackId),
+      queryFn: () => getTrackEntityById(trackId),
+    }),
   liked: () =>
     queryOptions({
       queryKey: queryKeys.tracks.liked(),
