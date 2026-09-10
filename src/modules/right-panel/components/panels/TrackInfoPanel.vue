@@ -214,18 +214,16 @@ import { computed, ref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { TrackSource, TrackState } from "@/db/entities";
 import { Button } from "@/components/ui/button";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { formatDuration } from "@/lib/format/time";
 import { getLogger } from "@/lib/logger";
 import { trackQueries } from "@/queries/track.queries";
 import { useTrackDeletion } from "@/modules/tracks/composables/useTrackDeletion";
-import { summonDialog } from "@/components/dialogs/summonDialog";
-import { useGeneralSettings } from "@/modules/settings/store/general";
 import { offlineCopyQueries } from "@/queries/offlineCopy.queries";
 import type { Track } from "@/modules/player/types";
 import { isRemoteTrack } from "@/modules/tracks/lib/trackPredicates";
+import { resolveTrackFormat, trackSourceLabelKey, trackStateLabelKey } from "@/modules/tracks/lib/trackDetails";
 import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import type { RightPanelTrackInfoPayload } from "@/modules/right-panel/types";
@@ -279,7 +277,7 @@ const storagePathValue = computed(() =>
   track.value.storagePath || offlineCopy.value?.storagePath || "—",
 );
 
-const { deleteWithUndo } = useTrackDeletion();
+const { confirmDeletion, deleteWithUndo } = useTrackDeletion();
 const isDeleting = ref(false);
 
 const formattedDuration = computed(() => formatDuration(track.value.duration));
@@ -288,47 +286,11 @@ function openEdit() {
   rightPanel.openEditTrack({ track: track.value });
 }
 
-const sourceLabel = computed(() => {
-  switch (track.value.source) {
-    case TrackSource.LOCAL_INTERNAL:
-      return t("track.details.values.localInternal");
-    case TrackSource.LOCAL_EXTERNAL:
-      return t("track.details.values.localExternal");
-    case TrackSource.REMOTE_HLS:
-      return t("track.details.values.remoteHls");
-    case TrackSource.REMOTE_YT:
-      return t("track.details.values.remoteYt");
-    case TrackSource.REMOTE_SUBSONIC:
-      return t("track.details.values.remoteNd");
-    default:
-      return "—";
-  }
-});
+const labelOr = (key: string | null) => (key ? t(key) : "—");
+const sourceLabel = computed(() => labelOr(trackSourceLabelKey(track.value.source)));
+const stateLabel = computed(() => labelOr(trackStateLabelKey(track.value.state)));
 
-const stateLabel = computed(() => {
-  switch (track.value.state) {
-    case TrackState.READY:
-      return t("track.details.values.ready");
-    case TrackState.BROKEN:
-      return t("track.details.values.broken");
-    default:
-      return "—";
-  }
-});
-
-// Формат по строке трека, с фолбэком на скачанную копию (у YT/ND-строк
-// собственный format пуст, реальный лежит рядом с файлом в offlineCopies).
-const effectiveFormat = computed(() => {
-  const entityFormat = entity.value?.format;
-  const copyFormat = offlineCopy.value?.format;
-  return {
-    codec: entityFormat?.codec ?? copyFormat?.codec,
-    bitrate: entityFormat?.bitrate ?? copyFormat?.bitrate,
-    sampleRate: entityFormat?.sampleRate ?? copyFormat?.sampleRate,
-    channels: entityFormat?.channels ?? copyFormat?.channels,
-    lossless: entityFormat?.lossless ?? copyFormat?.lossless,
-  };
-});
+const effectiveFormat = computed(() => resolveTrackFormat(entity.value?.format, offlineCopy.value?.format));
 
 const formattedBitrate = computed(() => {
   const bitrate = effectiveFormat.value.bitrate;
@@ -352,21 +314,9 @@ function handleBack(): void {
   rightPanel.back();
 }
 
-const { confirmTrackDeletion, setConfirmTrackDeletion } = useGeneralSettings();
-
 async function handleDelete(): Promise<void> {
   if (isDeleting.value) return;
-
-  if (confirmTrackDeletion.value) {
-    const confirmation = await summonDialog(
-      "deleteTrack",
-      { trackTitle: track.value.title },
-      { key: `delete-track:${track.value.id}` },
-    );
-    if (!confirmation) return;
-    if (confirmation.dontAskAgain) setConfirmTrackDeletion(false);
-  }
-
+  if (!(await confirmDeletion([track.value.id], track.value.title))) return;
   await performDelete();
 }
 

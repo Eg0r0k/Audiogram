@@ -21,7 +21,7 @@ vi.mock("@/queries/offlineCopy.queries", async () => {
   };
 });
 vi.mock("@/modules/tracks/composables/useTrackDeletion", () => ({
-  useTrackDeletion: () => ({ deleteWithUndo: vi.fn() }),
+  useTrackDeletion: () => ({ confirmDeletion: vi.fn(), deleteWithUndo: vi.fn() }),
 }));
 vi.mock("@/components/dialogs/summonDialog", () => ({ summonDialog: vi.fn() }));
 
