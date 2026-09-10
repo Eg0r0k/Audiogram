@@ -12,7 +12,10 @@ const opfsServiceWorkerSource = readFileSync(
   "utf8",
 );
 
-function loadOpfsServiceWorker(storageManager: { getDirectory: ReturnType<typeof vi.fn> }) {
+function loadOpfsServiceWorker(
+  storageManager: { getDirectory: ReturnType<typeof vi.fn> },
+  locationHref = "https://app.test/opfs-sw.js?standalone",
+) {
   const handlers = new Map<string, FetchHandler>();
   const skipWaiting = vi.fn();
   const claim = vi.fn().mockResolvedValue(undefined);
@@ -24,6 +27,7 @@ function loadOpfsServiceWorker(storageManager: { getDirectory: ReturnType<typeof
     }),
     skipWaiting,
     clients: { claim },
+    location: new URL(locationHref),
   });
 
   // eslint-disable-next-line sonarjs/code-eval -- test loads the real public service worker source verbatim
@@ -196,7 +200,7 @@ describe("opfs-sw", () => {
     expect(response?.headers.get("Content-Range")).toBe("bytes */10");
   });
 
-  it("takes control of pages immediately after install", async () => {
+  it("takes control of pages immediately after install when registered standalone", async () => {
     const storageManager = { getDirectory: vi.fn() };
 
     const { handlers, skipWaiting, claim } = loadOpfsServiceWorker(storageManager);
@@ -208,5 +212,15 @@ describe("opfs-sw", () => {
     handlers.get("activate")?.({ waitUntil } as never);
     expect(waitUntil).toHaveBeenCalledOnce();
     expect(claim).toHaveBeenCalledOnce();
+  });
+
+  it("leaves the lifecycle to the host worker when imported into sw.js", async () => {
+    const storageManager = { getDirectory: vi.fn() };
+
+    const { handlers } = loadOpfsServiceWorker(storageManager, "https://app.test/sw.js");
+
+    expect(handlers.has("install")).toBe(false);
+    expect(handlers.has("activate")).toBe(false);
+    expect(handlers.has("fetch")).toBe(true);
   });
 });

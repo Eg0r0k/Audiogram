@@ -7,14 +7,31 @@ import {
 } from "./file-fingerprint";
 import type { StorageError } from "@/db/errors/storage.errors";
 import { extensionForAudioMimeType } from "@/lib/environment/mimeSupport";
+import { androidContentDisplayName } from "@/lib/android/contentName";
 import type { ResultAsync } from "neverthrow";
 import type { ImportItem } from "../types";
 import { ImportError } from "../types";
 import { HEAD_READ_SIZE, MAX_METADATA_READ } from "./constants";
 
 export function fileNameFromPath(path: string): string {
+  if (path.startsWith("content://")) return contentUriFileName(path);
   return path.split(/[\\/]/).pop() ?? "unknown";
 }
+
+// The last segment of a SAF URI is the provider's document id, not the file
+// name. Providers that report no display name (some cloud documents) leave
+// the decoded id as the fallback; ids like `primary:Music/x.mp3` or
+// `raw:/storage/.../x.mp3` still carry the real name at their end.
+const contentUriFileName = (uri: string): string => {
+  const fromResolver = androidContentDisplayName(uri);
+  if (fromResolver) return fromResolver;
+  let docId = uri.split("/").pop() ?? "";
+  try {
+    docId = decodeURIComponent(docId);
+  }
+  catch { /* keep the raw id */ }
+  return docId.split("/").pop() || "unknown";
+};
 
 /**
  * Extension of a file name or full path, lowercased, without the dot.
@@ -28,13 +45,16 @@ export function extensionOf(name: string): string {
 }
 
 export function itemsFromPaths(paths: string[]): ImportItem[] {
-  return paths.map(path => ({
-    type: "native" as const,
-    name: fileNameFromPath(path),
-    ext: extensionOf(path),
-    path,
-    fileSize: 0,
-  }));
+  return paths.map((path) => {
+    const name = fileNameFromPath(path);
+    return {
+      type: "native" as const,
+      name,
+      ext: extensionOf(name),
+      path,
+      fileSize: 0,
+    };
+  });
 }
 
 export function itemsFromFiles(files: File[]): ImportItem[] {
