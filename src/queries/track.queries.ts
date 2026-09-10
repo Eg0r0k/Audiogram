@@ -13,6 +13,7 @@ import {
   upsertSearchDocuments,
 } from "@/modules/search/service/searchIndex";
 import type { TrackSortKey } from "@/modules/tracks/types";
+import { DEFAULT_TRACK_SORT_KEY } from "@/types/track-sort";
 import type { SearchDocument } from "@/modules/search/types";
 import { queryKeys } from "@/queries/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
@@ -210,6 +211,12 @@ export async function getLikedTracksPaginated(
 // queryOptions factories — only for non-infinite queries.
 // Infinite queries are configured directly in composables via useInfiniteQuery.
 export const trackQueries = {
+  /** The stored row; `syncTrack*Caches` write to this key, mutations invalidate it. */
+  detail: (trackId: TrackId) =>
+    queryOptions({
+      queryKey: queryKeys.tracks.detail(trackId),
+      queryFn: () => getTrackEntityById(trackId),
+    }),
   liked: () =>
     queryOptions({
       queryKey: queryKeys.tracks.liked(),
@@ -260,11 +267,31 @@ export async function getAllTracksPaginated(
   };
 }
 
+// Search hits come back in score order; a chosen sort reorders the whole hit
+// set, so a page of it needs every id first. No sort = relevance, which is
+// why `null` is meaningful here and must not be defaulted away.
+async function searchedTracksSorted(query: string, sortKey: TrackSortKey): Promise<TrackEntity[]> {
+  const response = await searchDocuments(query, "track", { offset: 0 });
+  const ids = response.results.map(item => item.entityId as TrackId);
+  return unwrapResult(trackRepository.findSortedByIds(ids, sortKey));
+}
+
 export async function searchTracksPaginated(
   query: string,
   offset: number,
   limit = PAGE_SIZE,
+  sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> {
+  if (sortKey) {
+    const sorted = await searchedTracksSorted(query, sortKey);
+    const total = sorted.length;
+    return {
+      tracks: await loadTrackRelations(sorted.slice(offset, offset + limit)),
+      nextOffset: offset + limit < total ? offset + limit : null,
+      total,
+    };
+  }
+
   const { tracks, total } = await searchIndexedTracks(query, offset, limit);
   const nextOffset = offset + limit < total ? offset + limit : null;
 
@@ -284,22 +311,23 @@ export async function getTracksPaginated(
   const normalizedSearchQuery = searchQuery.trim();
 
   if (normalizedSearchQuery.length > 0) {
-    return searchTracksPaginated(normalizedSearchQuery, offset, limit);
+    return searchTracksPaginated(normalizedSearchQuery, offset, limit, sortKey);
   }
 
   return getAllTracksPaginated(offset, limit, sortKey);
 }
 
-export async function getAllTracksForQueue(sortKey: TrackSortKey, searchQuery = ""): Promise<Track[]> {
+/** The whole index in the order the list page shows it: `null` sort is
+ *  relevance for a search and newest-first otherwise. */
+export async function getAllTracksForQueue(sortKey: TrackSortKey | null, searchQuery = ""): Promise<Track[]> {
   const q = searchQuery.trim();
   if (q.length > 0) {
-    const searchResult = await searchIndexedTracks(q, 0, undefined);
-    const rawTracks = await unwrapResult(
-      trackRepository.findSortedByIds(searchResult.tracks.map(t => t.id), sortKey),
-    );
-    return loadTrackRelations(rawTracks);
+    if (!sortKey) {
+      return (await searchIndexedTracks(q, 0, undefined)).tracks;
+    }
+    return loadTrackRelations(await searchedTracksSorted(q, sortKey));
   }
-  const rawTracks = await unwrapResult(trackRepository.findAllSorted(sortKey));
+  const rawTracks = await unwrapResult(trackRepository.findAllSorted(sortKey ?? DEFAULT_TRACK_SORT_KEY));
   return loadTrackRelations(rawTracks);
 }
 
@@ -311,17 +339,23 @@ export async function getTracksByIds(ids: TrackId[]): Promise<Track[]> {
 
 /** Every track id matching the index page's sort + search, ids only. Search
  *  results come back in score order — a selection set does not care. */
-export async function getAllTrackIds(sortKey: TrackSortKey, searchQuery = ""): Promise<TrackId[]> {
+export async function getAllTrackIds(sortKey: TrackSortKey | null, searchQuery = ""): Promise<TrackId[]> {
   const q = searchQuery.trim();
   if (q.length > 0) {
     const response = await searchDocuments(q, "track", { offset: 0 });
     return response.results.map(item => item.entityId as TrackId);
   }
-  return unwrapResult(trackRepository.findAllIdsSorted(sortKey));
+  return unwrapResult(trackRepository.findAllIdsSorted(sortKey ?? DEFAULT_TRACK_SORT_KEY));
 }
 
-export async function getTracksByIdsSorted(ids: TrackId[], sortKey: TrackSortKey): Promise<Track[]> {
+/** `null` keeps the order of `ids` — the caller's list order. */
+export async function getTracksByIdsSorted(ids: TrackId[], sortKey: TrackSortKey | null): Promise<Track[]> {
   if (ids.length === 0) return [];
+  if (!sortKey) {
+    const byId = new Map((await unwrapResult(trackRepository.findByIds(ids))).map(track => [track.id, track]));
+    const entities = ids.map(id => byId.get(id)).filter((track): track is TrackEntity => !!track);
+    return loadTrackRelations(entities);
+  }
   const entities = await unwrapResult(trackRepository.findSortedByIds(ids, sortKey));
   return loadTrackRelations(entities);
 }
@@ -556,12 +590,14 @@ export async function attachTrackLyricsAndSync(
 const resolveAlbumForChanges = async (
   queryClient: QueryClient,
   changes: TrackMetadataChanges,
-  firstArtistId: ArtistId,
+  firstArtistId: ArtistId | null,
 ): Promise<AlbumEntity | null> => {
   if (changes.albumId) return getAlbumByIdOrThrow(changes.albumId);
 
+  // A new album row is owned by an artist; the caller has already refused
+  // a title for an artist-less track, so this only guards the type.
   const title = changes.albumTitle?.trim().replace(/\s+/g, " ");
-  if (!title) return null;
+  if (!title || !firstArtistId) return null;
 
   const artistAlbums = await unwrapResult(albumRepository.findByArtistId(firstArtistId));
   const existing = artistAlbums.find(album => identityKey(album.title) === identityKey(title));
@@ -599,12 +635,17 @@ export async function updateTrackMetadataAndSync(
   const artistNames = dedupeArtistNames(changes.artistNames);
   for (const name of artistNames) assertValidName(name, "artist");
 
-  if (artistNames.length === 0) {
-    throw new Error("At least one artist is required");
+  // Tag-less imports already store rows with no artist and no album; the
+  // editor allows the same. An album row is owned by an artist, so with no
+  // artists the track may keep the album it has but not pick up another.
+  const albumChanges = !!changes.albumTitle?.trim()
+    || (!!changes.albumId && changes.albumId !== currentTrack.albumId);
+  if (artistNames.length === 0 && albumChanges) {
+    throw new Error("An album needs an artist");
   }
 
   const artists = await findOrCreateArtists(queryClient, artistNames);
-  const album = await resolveAlbumForChanges(queryClient, changes, artists[0].id);
+  const album = await resolveAlbumForChanges(queryClient, changes, artists[0]?.id ?? null);
   const nextArtistIds = artists.map(artist => artist.id);
   const nextArtistName = artists.map(artist => artist.name).join(", ");
   const nextTrackNo = resolveNullableNumber(changes.trackNo, currentTrack.trackNo);

@@ -45,6 +45,7 @@
       class="relative min-h-0 flex-1 overflow-hidden"
     >
       <VirtualScrollable
+        ref="virtualList"
         :items="items"
         :get-item-key="keyAt"
         :item-height="itemHeight"
@@ -87,7 +88,7 @@
 </template>
 
 <script setup lang="ts" generic="T">
-import { computed, useTemplateRef } from "vue";
+import { computed, nextTick, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useKeyboardInset } from "@/composables/useKeyboardInset";
 import { Button } from "@/components/ui/button";
@@ -113,6 +114,8 @@ const props = withDefaults(defineProps<{
   showBack?: boolean;
   /** Extra classes for the header row, e.g. to drop its top padding when the host already provides one. */
   headerClass?: string;
+  /** Key of the row to scroll into view once it first appears (a picker's current choice). */
+  revealKey?: string | null;
 }>(), {
   isLoading: false,
   itemHeight: 64,
@@ -122,6 +125,7 @@ const props = withDefaults(defineProps<{
   showConfirm: undefined,
   showBack: true,
   headerClass: undefined,
+  revealKey: null,
 });
 
 const emit = defineEmits<{
@@ -144,6 +148,22 @@ const keyboardInsetStyle = computed(() => ({ "--keyboard-inset": `${keyboardInse
 
 const listEl = useTemplateRef<HTMLElement>("listEl");
 defineExpose({ listEl });
+
+const virtualList = useTemplateRef<{
+  scrollToIndex: (index: number, options?: { align?: "start" | "center" | "end" | "auto" }) => void;
+}>("virtualList");
+
+// Reveal happens once, on the first list that holds the row: a later list
+// (the user typed a search) must keep the scroll where the user left it.
+let revealed = false;
+watch(() => props.items, async (items) => {
+  if (revealed || !props.revealKey) return;
+  const index = items.findIndex(item => props.getKey(item) === props.revealKey);
+  if (index === -1) return;
+  revealed = true;
+  await nextTick();
+  virtualList.value?.scrollToIndex(index, { align: "center" });
+}, { immediate: true });
 
 const keyAt = (index: number) => {
   const item = props.items[index];

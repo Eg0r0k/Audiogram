@@ -106,8 +106,11 @@ sweepOrphanedEntities().catch(error =>
 // visited a settings page.
 initZoom();
 
-if ("serviceWorker" in navigator && !platformCaps.hasFs) {
-  navigator.serviceWorker.register("/opfs-sw.js").catch(console.error);
+// In production the OPFS handler is part of the workbox sw.js (registered by
+// usePwaUpdate); vite-plugin-pwa builds no worker in dev, so only there the
+// script is registered on its own.
+if (import.meta.env.DEV && "serviceWorker" in navigator && !platformCaps.hasFs) {
+  navigator.serviceWorker.register("/opfs-sw.js?standalone").catch(console.error);
 }
 
 app.directive("ripple", vRipple);

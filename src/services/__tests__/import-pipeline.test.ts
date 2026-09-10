@@ -714,6 +714,43 @@ describe("ImportPipeline", () => {
       expect(items.map(i => i.ext)).toEqual(["mp3", "flac"]);
     });
 
+    describe("Android content:// URIs", () => {
+      const PICKED = "content://com.android.providers.media.documents/document/msf%3A1002330782";
+
+      afterEach(() => {
+        delete window.AudiogramContentName;
+      });
+
+      it("asks the ContentResolver bridge for the display name", () => {
+        window.AudiogramContentName = { displayName: vi.fn(() => "Temper City - Reverse Psychology.mp3") };
+
+        const [item] = itemsFromPaths([PICKED]);
+
+        expect(window.AudiogramContentName.displayName).toHaveBeenCalledWith(PICKED);
+        expect(item).toMatchObject({ name: "Temper City - Reverse Psychology.mp3", ext: "mp3", path: PICKED });
+      });
+
+      it("decodes the document id when the bridge is missing or has no name", () => {
+        expect(itemsFromPaths([PICKED])[0].name).toBe("msf:1002330782");
+
+        window.AudiogramContentName = { displayName: vi.fn(() => null) };
+        expect(itemsFromPaths([PICKED])[0].name).toBe("msf:1002330782");
+
+        window.AudiogramContentName = { displayName: vi.fn(() => { throw new Error("gone"); }) };
+        expect(itemsFromPaths([PICKED])[0].name).toBe("msf:1002330782");
+      });
+
+      it("takes the base name of a path-carrying document id", () => {
+        const [primary, raw] = itemsFromPaths([
+          "content://com.android.externalstorage.documents/document/primary%3AMusic%2FTemper%20City.mp3",
+          "content://com.android.providers.downloads.documents/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2Fsong.flac",
+        ]);
+
+        expect(primary).toMatchObject({ name: "Temper City.mp3", ext: "mp3" });
+        expect(raw).toMatchObject({ name: "song.flac", ext: "flac" });
+      });
+    });
+
     it("carries the File size and type through for web items", () => {
       const [item] = itemsFromFiles([new File(["abc"], "s.mp3", { type: "audio/mpeg" })]);
 

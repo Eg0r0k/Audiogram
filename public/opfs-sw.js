@@ -1,10 +1,15 @@
-// Without these the first session after registration is uncontrolled and
-// every /opfs/ URL falls through to the network (media error instead of
-// playback until the app is reloaded).
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
-});
+// In production this file is pulled into the workbox sw.js via importScripts,
+// where the update prompt owns the lifecycle: a skipWaiting here would
+// activate every new build behind the user's back. Only when registered on
+// its own (dev, where no sw.js is built) does it claim pages itself —
+// otherwise the first session is uncontrolled and every /opfs/ URL falls
+// through to the network (media error until the app is reloaded).
+if (new URL(self.location.href).searchParams.has("standalone")) {
+  self.addEventListener("install", () => self.skipWaiting());
+  self.addEventListener("activate", (event) => {
+    event.waitUntil(self.clients.claim());
+  });
+}
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);

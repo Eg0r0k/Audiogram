@@ -1,10 +1,14 @@
 import { render, fireEvent } from "@testing-library/vue";
-import { describe, expect, it } from "vitest";
+import { nextTick } from "vue";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
 import EntitySelectPanel from "../EntitySelectPanel.vue";
 
+const scrollToIndex = vi.fn();
+
 const VirtualScrollableStub = {
   props: ["items"],
+  methods: { scrollToIndex },
   template: `
     <div>
       <template v-if="items.length">
@@ -40,6 +44,44 @@ const renderPanel = (props: Record<string, unknown> = {}) =>
   });
 
 describe("EntitySelectPanel", () => {
+  beforeEach(() => {
+    scrollToIndex.mockReset();
+  });
+
+  describe("revealKey", () => {
+    const items = [{ id: "a", name: "Alpha" }, { id: "b", name: "Beta" }, { id: "c", name: "Gamma" }];
+
+    it("scrolls the revealed item into the middle once its row is in the list", async () => {
+      const { rerender } = renderPanel({ items: [], revealKey: "c" });
+      expect(scrollToIndex).not.toHaveBeenCalled();
+
+      await rerender({ items });
+      await nextTick();
+
+      expect(scrollToIndex).toHaveBeenCalledWith(2, { align: "center" });
+    });
+
+    it("reveals only once: a later list (a search) keeps its own scroll", async () => {
+      const { rerender } = renderPanel({ items, revealKey: "c" });
+      await nextTick();
+      expect(scrollToIndex).toHaveBeenCalledTimes(1);
+
+      await rerender({ items: [items[2]] });
+      await nextTick();
+
+      expect(scrollToIndex).toHaveBeenCalledTimes(1);
+    });
+
+    it("does nothing without a revealKey or when the key is absent", async () => {
+      renderPanel({ items });
+      const { rerender } = renderPanel({ items, revealKey: "zzz" });
+      await rerender({ items: [...items] });
+      await nextTick();
+
+      expect(scrollToIndex).not.toHaveBeenCalled();
+    });
+  });
+
   it("renders rows through the #row slot", () => {
     const { getAllByTestId } = renderPanel();
     expect(getAllByTestId("row")).toHaveLength(2);

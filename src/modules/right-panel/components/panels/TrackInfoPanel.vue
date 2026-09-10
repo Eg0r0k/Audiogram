@@ -22,17 +22,12 @@
             side="left"
             align="start"
           >
-            <DropdownMenuItem
-              v-if="libraryTrack"
-              @click="openEdit"
-            >
+            <DropdownMenuItem @click="openEdit">
               <IconPencil class="size-5" />
               {{ $t('common.edit') }}
             </DropdownMenuItem>
             <DropdownMenuItem
-              v-if="libraryTrack"
               variant="destructive"
-
               @click="handleDelete"
             >
               <TrashIcon class="size-5" />
@@ -91,7 +86,6 @@
               </template>
             </DetailField>
             <DetailField
-              v-if="isLibraryTrack(track)"
               :title="$t('track.details.fields.storagePath')"
               :value="storagePathValue"
               class="sm:col-span-2"
@@ -103,7 +97,6 @@
           </div>
         </section>
         <section
-          v-if="isLibraryTrack(track)"
           class="grid gap-3 p-2 bg-card"
         >
           <div class="grid gap-3 sm:grid-cols-1">
@@ -154,7 +147,6 @@
           </div>
         </section>
         <section
-          v-if="isLibraryTrack(track)"
           class="grid gap-3 p-2 bg-card"
         >
           <div class="grid gap-3 sm:grid-cols-1">
@@ -219,21 +211,21 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { skipToken, useQuery } from "@tanstack/vue-query";
+import { useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { TrackSource, TrackState } from "@/db/entities";
 import { Button } from "@/components/ui/button";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { formatDuration } from "@/lib/format/time";
+import { formatBitrate, formatSampleRate } from "@/lib/format/audio";
 import { getLogger } from "@/lib/logger";
-import { getTrackEntityById } from "@/queries/track.queries";
+import { trackQueries } from "@/queries/track.queries";
 import { useTrackDeletion } from "@/modules/tracks/composables/useTrackDeletion";
-import { summonDialog } from "@/components/dialogs/summonDialog";
-import { useGeneralSettings } from "@/modules/settings/store/general";
 import { offlineCopyQueries } from "@/queries/offlineCopy.queries";
-import { queryKeys } from "@/queries/query-keys";
-import { isLibraryTrack, type Track } from "@/modules/player/types";
+import type { Track } from "@/modules/player/types";
+import { isRemoteTrack } from "@/modules/tracks/lib/trackPredicates";
+import { resolveTrackFormat, trackSourceLabelKey, trackStateLabelKey } from "@/modules/tracks/lib/trackDetails";
+import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import type { RightPanelTrackInfoPayload } from "@/modules/right-panel/types";
 import DetailField from "@/modules/tracks/components/TrackDetailsField.vue";
@@ -267,108 +259,38 @@ const props = defineProps<{
 const { t } = useI18n();
 const rightPanel = useRightPanelStore();
 
-const track = computed(() => props.payload.track);
-const libraryTrack = computed<Track | null>(() => isLibraryTrack(track.value) ? track.value : null);
+const payloadTrack = computed(() => props.payload.track);
 
-const { data: entity } = useQuery({
-  queryKey: computed(() =>
-    libraryTrack.value ? queryKeys.tracks.detail(libraryTrack.value.id) : ["tracks", "detail", "none"]),
-  queryFn: computed(() => {
-    const id = libraryTrack.value?.id;
-    return id ? () => getTrackEntityById(id) : skipToken;
-  }),
-});
+const { data: entity } = useQuery(computed(() => trackQueries.detail(payloadTrack.value.id)));
 
-// У remote-треков (YT/ND) storagePath в строке трека пуст by design — путь
-// и формат скачанного файла живут в offlineCopies.
-const isRemoteLibraryTrack = computed(() => {
-  const source = libraryTrack.value?.source;
-  return source === TrackSource.REMOTE_YT || source === TrackSource.REMOTE_SUBSONIC;
-});
+const track = computed<Track>(() =>
+  entity.value ? mapTrackEntityToPlayerTrack(entity.value) : payloadTrack.value);
 
 const { data: offlineCopy } = useQuery(computed(() =>
-  offlineCopyQueries.detail(isRemoteLibraryTrack.value ? libraryTrack.value!.id : null),
+  offlineCopyQueries.detail(isRemoteTrack(track.value) ? track.value.id : null),
 ));
 
 const storagePathValue = computed(() =>
-  libraryTrack.value?.storagePath || offlineCopy.value?.storagePath || "—",
+  track.value.storagePath || offlineCopy.value?.storagePath || "—",
 );
 
-const { deleteWithUndo } = useTrackDeletion();
+const { confirmDeletion, deleteWithUndo } = useTrackDeletion();
 const isDeleting = ref(false);
 
-const formattedDuration = computed(() => {
-  if (isLibraryTrack(track.value)) {
-    return formatDuration(track.value.duration);
-  }
-
-  return track.value.duration ? formatDuration(track.value.duration) : "—";
-});
+const formattedDuration = computed(() => formatDuration(track.value.duration));
 
 function openEdit() {
-  if (!libraryTrack.value) return;
-  rightPanel.openEditTrack({ track: libraryTrack.value });
+  rightPanel.openEditTrack({ track: track.value });
 }
 
-const sourceLabel = computed(() => {
-  if (!isLibraryTrack(track.value)) {
-    return track.value.source.type;
-  }
+const labelOr = (key: string | null) => (key ? t(key) : "—");
+const sourceLabel = computed(() => labelOr(trackSourceLabelKey(track.value.source)));
+const stateLabel = computed(() => labelOr(trackStateLabelKey(track.value.state)));
 
-  switch (track.value.source) {
-    case TrackSource.LOCAL_INTERNAL:
-      return t("track.details.values.localInternal");
-    case TrackSource.LOCAL_EXTERNAL:
-      return t("track.details.values.localExternal");
-    case TrackSource.REMOTE_HLS:
-      return t("track.details.values.remoteHls");
-    case TrackSource.REMOTE_YT:
-      return t("track.details.values.remoteYt");
-    case TrackSource.REMOTE_SUBSONIC:
-      return t("track.details.values.remoteNd");
-    default:
-      return "—";
-  }
-});
+const effectiveFormat = computed(() => resolveTrackFormat(entity.value?.format, offlineCopy.value?.format));
 
-const stateLabel = computed(() => {
-  if (!isLibraryTrack(track.value)) return "—";
-
-  switch (track.value.state) {
-    case TrackState.READY:
-      return t("track.details.values.ready");
-    case TrackState.BROKEN:
-      return t("track.details.values.broken");
-    default:
-      return "—";
-  }
-});
-
-// Формат по строке трека, с фолбэком на скачанную копию (у YT/ND-строк
-// собственный format пуст, реальный лежит рядом с файлом в offlineCopies).
-const effectiveFormat = computed(() => {
-  const entityFormat = entity.value?.format;
-  const copyFormat = offlineCopy.value?.format;
-  return {
-    codec: entityFormat?.codec ?? copyFormat?.codec,
-    bitrate: entityFormat?.bitrate ?? copyFormat?.bitrate,
-    sampleRate: entityFormat?.sampleRate ?? copyFormat?.sampleRate,
-    channels: entityFormat?.channels ?? copyFormat?.channels,
-    lossless: entityFormat?.lossless ?? copyFormat?.lossless,
-  };
-});
-
-const formattedBitrate = computed(() => {
-  const bitrate = effectiveFormat.value.bitrate;
-  if (!bitrate) return "—";
-  return `${Math.round(bitrate / 1000)} kbps`;
-});
-
-const formattedSampleRate = computed(() => {
-  const sampleRate = effectiveFormat.value.sampleRate;
-  if (!sampleRate) return "—";
-  return `${(sampleRate / 1000).toFixed(1)} kHz`;
-});
+const formattedBitrate = computed(() => formatBitrate(effectiveFormat.value.bitrate));
+const formattedSampleRate = computed(() => formatSampleRate(effectiveFormat.value.sampleRate));
 
 const losslessLabel = computed(() => {
   const lossless = effectiveFormat.value.lossless;
@@ -380,30 +302,18 @@ function handleBack(): void {
   rightPanel.back();
 }
 
-const { confirmTrackDeletion, setConfirmTrackDeletion } = useGeneralSettings();
-
 async function handleDelete(): Promise<void> {
-  if (!libraryTrack.value || isDeleting.value) return;
-
-  if (confirmTrackDeletion.value) {
-    const confirmation = await summonDialog(
-      "deleteTrack",
-      { trackTitle: libraryTrack.value.title },
-      { key: `delete-track:${libraryTrack.value.id}` },
-    );
-    if (!confirmation) return;
-    if (confirmation.dontAskAgain) setConfirmTrackDeletion(false);
-  }
-
+  if (isDeleting.value) return;
+  if (!(await confirmDeletion([track.value.id], track.value.title))) return;
   await performDelete();
 }
 
 async function performDelete(): Promise<void> {
-  if (!libraryTrack.value || isDeleting.value) return;
+  if (isDeleting.value) return;
 
   isDeleting.value = true;
   try {
-    const deleted = await deleteWithUndo([libraryTrack.value.id], () => t("track.deleted"));
+    const deleted = await deleteWithUndo([track.value.id], () => t("track.deleted"));
     if (deleted === 0) throw new Error("Track not found");
     rightPanel.close();
   }

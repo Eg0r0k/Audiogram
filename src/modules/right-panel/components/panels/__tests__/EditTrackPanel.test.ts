@@ -164,6 +164,38 @@ describe("EditTrackPanel", () => {
     expect(await screen.findByText("Artist name must be at most 120 characters")).toBeInTheDocument();
   });
 
+  it("saves a title change for a track without artists", async () => {
+    const { container } = renderPanel({ ...libraryTrack(), artist: "", artistIds: [] });
+    const title = container.querySelector("#track-title") as HTMLInputElement;
+    await userEvent.clear(title);
+    await userEvent.type(title, "Renamed");
+
+    vi.mocked(updateTrackMetadataAndSync).mockClear();
+    await fireEvent.submit(container.querySelector("form") as HTMLFormElement);
+
+    await vi.waitFor(() => expect(updateTrackMetadataAndSync).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(updateTrackMetadataAndSync).mock.calls[0][2]).toMatchObject({ title: "Renamed", artistNames: [] });
+  });
+
+  it("asks for an artist before an album can be set", async () => {
+    const track = { ...libraryTrack(), artist: "", artistIds: [] };
+    const first = renderPanel(track);
+    const rightPanel = useRightPanelStore();
+
+    await userEvent.click(screen.getByRole("button", { name: /Album/ }));
+    (rightPanel.payload as RightPanelEntitySelectPayload).onConfirm({ title: "New Album" });
+    (rightPanel.payload as RightPanelEntitySelectPayload).onDone?.();
+
+    first.unmount();
+    const { container } = renderPanel(track);
+
+    vi.mocked(updateTrackMetadataAndSync).mockClear();
+    await fireEvent.submit(container.querySelector("form") as HTMLFormElement);
+
+    expect(await screen.findByText("Add an artist to set an album")).toBeInTheDocument();
+    expect(updateTrackMetadataAndSync).not.toHaveBeenCalled();
+  });
+
   it("guards back navigation while the form is dirty", async () => {
     const { container } = renderPanel(libraryTrack());
     const rightPanel = useRightPanelStore();

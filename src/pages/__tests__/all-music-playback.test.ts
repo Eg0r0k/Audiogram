@@ -39,7 +39,7 @@ vi.mock("@/modules/tracks/composables/useIndexTracksPage", () => ({
   useIndexTracksPage: (sortKey: { value: string | null }, searchQuery: { value: string }) => ({
     ...(indexPage.searchQuery = searchQuery, {}),
     normalizedSearchQuery: computed(() => searchQuery.value.trim()),
-    resolvedSortKey: computed(() => sortKey.value ?? "date_added_desc"),
+    resolvedSortKey: computed(() => sortKey.value ?? (searchQuery.value.trim() ? null : "date_added_desc")),
     tracks: indexPage.tracks,
     total: ref(1),
     totalDuration: ref(0),
@@ -95,6 +95,6 @@ describe("AllMusicPage playback", () => {
 
     expect(toValue(playback.options!.source)).toEqual({ type: "search" });
     await playback.options!.loadAll();
-    expect(queries.getAllTracksForQueue).toHaveBeenCalledWith("date_added_desc", "hello");
+    expect(queries.getAllTracksForQueue).toHaveBeenCalledWith(null, "hello");
   });
 });

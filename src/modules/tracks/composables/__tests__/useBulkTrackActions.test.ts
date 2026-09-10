@@ -25,6 +25,9 @@ vi.mock("@/queries/track.queries", () => queries);
 vi.mock("@/queries/track-undo", () => undoApi);
 vi.mock("@/queries/playlist.queries", () => playlistQueries);
 vi.mock("@/components/dialogs/summonDialog", () => dialog);
+vi.mock("@/modules/settings/store/general", () => ({
+  useGeneralSettings: () => ({ confirmTrackDeletion: { value: true }, setConfirmTrackDeletion: vi.fn() }),
+}));
 vi.mock("vue-sonner", () => ({ toast }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock("@tanstack/vue-query", () => ({ useQueryClient: () => ({ tag: "qc" }) }));

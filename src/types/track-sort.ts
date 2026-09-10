@@ -10,3 +10,6 @@ export type TrackSortKey
     | "duration_asc"
     | "duration_desc"
     | "plays_desc";
+
+/** The index order when no sort is chosen and no search narrows the list. */
+export const DEFAULT_TRACK_SORT_KEY: TrackSortKey = "date_added_desc";

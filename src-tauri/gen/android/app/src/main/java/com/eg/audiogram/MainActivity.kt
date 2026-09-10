@@ -62,6 +62,7 @@ class MainActivity : TauriActivity() {
     val folderPicker = FolderPickerBridge(this, webView)
     folderPickerBridge = folderPicker
     webView.addJavascriptInterface(folderPicker, "AudiogramFolderPicker")
+    webView.addJavascriptInterface(ContentNameBridge(contentResolver), "AudiogramContentName")
 
     val back = BackBridge(webView)
     backBridge = back

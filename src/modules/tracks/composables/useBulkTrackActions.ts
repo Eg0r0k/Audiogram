@@ -3,7 +3,6 @@ import type { ComputedRef, Ref } from "vue";
 import { useQueryClient } from "@tanstack/vue-query";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
-import { summonDialog } from "@/components/dialogs/summonDialog";
 import { getLogger } from "@/lib/logger";
 import type { Track } from "@/modules/player/types";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
@@ -22,7 +21,7 @@ export interface UseBulkTrackActionsOptions {
   selectedIds: ComputedRef<ReadonlySet<string>>;
   /** Loaded rows — the only place the like status of a selected id is known. */
   loadedTracks: Ref<Track[]> | ComputedRef<Track[]>;
-  sortKey: Ref<TrackSortKey> | ComputedRef<TrackSortKey>;
+  sortKey: Ref<TrackSortKey | null> | ComputedRef<TrackSortKey | null>;
   onDone?: (action: BulkTrackAction) => void;
 }
 
@@ -30,7 +29,7 @@ export const useBulkTrackActions = (options: UseBulkTrackActionsOptions) => {
   const queryClient = useQueryClient();
   const queueStore = useQueueStore();
   const { t } = useI18n();
-  const { deleteWithUndo } = useTrackDeletion();
+  const { confirmDeletion, deleteWithUndo } = useTrackDeletion();
 
   const busy = ref(false);
 
@@ -106,8 +105,7 @@ export const useBulkTrackActions = (options: UseBulkTrackActionsOptions) => {
   const deleteSelected = async () => {
     const count = options.selectedIds.value.size;
     if (busy.value || count === 0) return;
-    const confirmed = await summonDialog("deleteTracks", { count }, { key: "delete-tracks" });
-    if (!confirmed) return;
+    if (!(await confirmDeletion(ids()))) return;
 
     await run("delete", async () => {
       await deleteWithUndo(ids(), deleted => t("library.selection.deleted", deleted));
