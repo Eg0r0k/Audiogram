@@ -60,12 +60,13 @@ export async function getAlbumByIdOrThrow(albumId: AlbumId) {
   return album;
 }
 
+/** Every pinned album when nothing is typed; `limit` bounds a typed search only. */
 export async function searchAlbums(query: string, limit = 8) {
   const normalizedQuery = query.trim();
 
   if (!normalizedQuery) {
     const albums = await unwrapResult(albumRepository.findAllSortedByTitle());
-    return albums.filter(album => album.pinned !== 0).slice(0, limit);
+    return albums.filter(album => album.pinned !== 0);
   }
 
   const found = await unwrapResult(albumRepository.search(normalizedQuery, limit));
