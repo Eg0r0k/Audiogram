@@ -1,13 +1,16 @@
 import type { RecommenderModelEntity } from "@/db/entities";
 import { recommenderModelRepository } from "@/db/repositories/recommenderModel.repository";
 import { getLogger } from "@/lib/logger";
-import { blendWeights, extractAutoplayRuns, buildExamples, trainWeights, type TrainingExample } from "../lib/training";
+import { pairwiseAuc, splitByTime } from "../lib/eval";
+import { blendWeights, dot, extractAutoplayRuns, buildExamples, trainWeights, type TrainingExample } from "../lib/training";
 import { DEFAULT_WEIGHTS, type ComponentWeights } from "../lib/scoring";
 import { getRecommenderContext, type RecommenderContext } from "./recommender-context.service";
 import { buildContextAtFactory, sampleCandidatesFactory } from "./recommender-training-context";
 
 const FRESH_MS = 24 * 3_600_000;
 const RUN_CHUNK_SIZE = 20;
+/** Newest share of the examples the candidate weights must win on before they replace the defaults. */
+const HOLDOUT_SHARE = 0.2;
 
 /**
  * Retraining walks one full context rebuild per chunk on the main thread, so
@@ -100,6 +103,21 @@ const trainOnAllExamples = async (ctx: RecommenderContext): Promise<void> => {
     const chunk = runs.slice(start, start + RUN_CHUNK_SIZE);
     examples.push(...buildExamples({ runs: chunk, buildContextAt, sampleCandidates }));
     if (start + RUN_CHUNK_SIZE < runs.length) await new Promise<void>(resolve => setTimeout(resolve, 0));
+  }
+
+  // The stand-tuned defaults are the prior; learned weights only replace
+  // them when they rank the newest hold-out better. Otherwise a stale row
+  // fitted on older data must stop steering the recommender too.
+  const { train, holdout } = splitByTime(examples, HOLDOUT_SHARE);
+  const candidate = trainWeights(train);
+  if (!candidate) return;
+  const aucDefault = pairwiseAuc(holdout.map(e => ({ score: dot(e.x, DEFAULT_WEIGHTS), y: e.y })));
+  const aucLearned = pairwiseAuc(holdout.map(e => ({ score: dot(e.x, candidate), y: e.y })));
+  if (aucDefault === null || aucLearned === null) return;
+  if (aucLearned < aucDefault) {
+    getLogger().info(`[Recommendations] Learned weights rejected: hold-out AUC ${aucLearned.toFixed(3)} < default ${aucDefault.toFixed(3)}`);
+    await clearModel();
+    return;
   }
 
   const weights = trainWeights(examples);

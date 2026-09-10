@@ -25,6 +25,12 @@ vi.mock("@/db/repositories/audioFeatures.repository", () => ({
   CURRENT_ALGORITHM_VERSION: 1,
 }));
 vi.mock("@/db/repositories/recommenderModel.repository", () => ({ recommenderModelRepository }));
+// The hold-out gate compares two AUCs; the numbers are scripted per test.
+const { pairwiseAucMock } = vi.hoisted(() => ({ pairwiseAucMock: vi.fn() }));
+vi.mock("@/modules/recommendations/lib/eval", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/recommendations/lib/eval")>();
+  return { ...actual, pairwiseAuc: pairwiseAucMock };
+});
 vi.mock("@/modules/recommendations/service/recommender-context.service", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/modules/recommendations/service/recommender-context.service")>();
   return { ...actual, getRecommenderContext: getRecommenderContextMock };
@@ -122,6 +128,32 @@ const manyRunsCtx = (runCount: number) => {
   return buildRecommenderContext({ tracks, features: [], events: events as any, now });
 };
 
+/**
+ * `runCount` runs alternating a completed and an early-skipped autoplay
+ * target, so both labels clear `trainWeights`'s 15/15 minimum.
+ */
+const mixedRunsCtx = (runCount: number) => {
+  const tracks = ["seed", "c0", "c1", "c2", "c3"].map(makeTrack);
+  const now = Date.now();
+  const events: unknown[] = [];
+  let t = now - runCount * 2 * 60_000 - 60_000;
+  for (let i = 0; i < runCount; i++) {
+    events.push({
+      id: `u-${i}`, trackId: "seed", artistId: "ar-seed", albumId: "al",
+      startedAt: t, secondsListened: 180, trackDuration: 200, completed: true, skipped: false, origin: "user",
+    });
+    t += 60_000;
+    const good = i % 2 === 0;
+    events.push({
+      id: `a-${i}`, trackId: `c${i % 4}`, artistId: `ar-c${i % 4}`, albumId: "al",
+      startedAt: t, secondsListened: good ? 180 : 5, trackDuration: 200, completed: good, skipped: !good, origin: "autoplay",
+    });
+    t += 60_000;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- minimal fixture, full entity typing not needed for this test
+  return buildRecommenderContext({ tracks, features: [], events: events as any, now });
+};
+
 // The service holds module-level state (weights cache, in-flight training,
 // last-failed-attempt throttle) — reload it fresh for every test.
 let service: typeof RecommenderModelModule;
@@ -132,6 +164,7 @@ beforeEach(async () => {
   mockPut.mockReset();
   mockClear.mockReset();
   buildContextAtSpy.mockReset();
+  pairwiseAucMock.mockReset().mockReturnValue(0.5);
   mockGetCtx.mockReset().mockResolvedValue(emptyCtx());
   service = await import("@/modules/recommendations/service/recommender-model.service");
 });
@@ -236,6 +269,50 @@ describe("clearModel", () => {
     mockGet.mockResolvedValueOnce(ok(null));
     expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
     expect(mockGet).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("ensureModelFresh hold-out gate", () => {
+  // pairwiseAuc is called twice per retrain: defaults first, then the candidate.
+  const scriptAuc = (defaults: number | null, learned: number | null) => {
+    pairwiseAucMock.mockReturnValueOnce(defaults).mockReturnValueOnce(learned);
+  };
+
+  it("saves the model when the learned weights beat the defaults on the hold-out", async () => {
+    mockGet.mockResolvedValue(ok(null));
+    mockPut.mockResolvedValue(ok(undefined));
+    mockGetCtx.mockResolvedValue(mixedRunsCtx(60));
+    scriptAuc(0.55, 0.7);
+
+    await service.ensureModelFresh();
+
+    expect(pairwiseAucMock).toHaveBeenCalledTimes(2);
+    expect(mockPut).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the defaults and drops a stale learned row when the candidate is worse", async () => {
+    mockGet.mockResolvedValue(ok(makeRow({ trainedAt: Date.now() - 25 * 60 * 60 * 1000 })));
+    mockClear.mockResolvedValue(ok(undefined));
+    mockGetCtx.mockResolvedValue(mixedRunsCtx(60));
+    scriptAuc(0.7, 0.55);
+
+    await service.ensureModelFresh();
+
+    expect(mockPut).not.toHaveBeenCalled();
+    expect(mockClear).toHaveBeenCalledTimes(1);
+    mockGet.mockResolvedValue(ok(null));
+    expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
+  });
+
+  it("does not save when the hold-out has only one label and no AUC exists", async () => {
+    mockGet.mockResolvedValue(ok(null));
+    mockGetCtx.mockResolvedValue(mixedRunsCtx(60));
+    scriptAuc(null, null);
+
+    await service.ensureModelFresh();
+
+    expect(mockPut).not.toHaveBeenCalled();
+    expect(mockClear).not.toHaveBeenCalled();
   });
 });
 
@@ -351,8 +428,10 @@ describe("ensureModelFresh", () => {
     const now = Date.now();
     const events: unknown[] = [];
     let t = now - 5 * DAY;
-    for (let i = 0; i < 30; i++) {
-      const label = i < 15
+    // 40 alternating labels: the 80% training split still clears 15/15 and
+    // the newest 20% hold-out carries both labels.
+    for (let i = 0; i < 40; i++) {
+      const label = i % 2 === 0
         ? { completed: true, skipped: false, secondsListened: 180 }
         : { completed: false, skipped: true, secondsListened: 5 };
       events.push({
@@ -373,9 +452,9 @@ describe("ensureModelFresh", () => {
 
     expect(mockPut).toHaveBeenCalledTimes(1);
     const saved = mockPut.mock.calls[0][0];
-    expect(saved.examples).toBe(30);
-    expect(saved.positives).toBe(15);
-    expect(saved.negatives).toBe(15);
+    expect(saved.examples).toBe(40);
+    expect(saved.positives).toBe(20);
+    expect(saved.negatives).toBe(20);
     expect(saved.weights).toBeTruthy();
     expect(saved.featureVersion).toBe(service.MODEL_FEATURE_VERSION);
 
