@@ -6,6 +6,7 @@
     :get-key="(artist: ArtistEntity) => artist.id"
     :can-create="canCreate"
     :confirm-count="selectedNames.length"
+    :reveal-key="revealKey"
     @confirm="handleConfirm"
     @create="handleCreate"
     @back="handleDone"
@@ -86,6 +87,12 @@ const { data } = useQuery({
 });
 const suggestions = computed(() =>
   [...(data.value ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+);
+
+// The picker opens on the first of the track's current artists in list order.
+const initialNameKeys = new Set((props.payload.selectedNames ?? []).map(identityKey));
+const revealKey = computed(() =>
+  suggestions.value.find(artist => initialNameKeys.has(identityKey(artist.name)))?.id ?? null,
 );
 
 const canCreate = computed(() =>
