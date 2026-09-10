@@ -66,6 +66,13 @@ export default defineConfig({
 
         },
         workbox: {
+          // One registration per scope: a second worker (opfs-sw.js) registered
+          // beside sw.js only ever lands as "waiting" and reads as an update
+          // that never installs. The OPFS handler rides inside sw.js instead.
+          importScripts: ["opfs-sw.js"],
+          // Control the page from the first install; with registerType
+          // "prompt" updates still wait for the user.
+          clientsClaim: true,
           maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 МБ
           globIgnores: ["**/*.{mp3,flac,ogg,wav,m4a,aac}"],
           navigateFallback: "/index.html",
