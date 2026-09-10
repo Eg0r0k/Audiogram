@@ -233,7 +233,8 @@ import { summonDialog } from "@/components/dialogs/summonDialog";
 import { useGeneralSettings } from "@/modules/settings/store/general";
 import { offlineCopyQueries } from "@/queries/offlineCopy.queries";
 import { queryKeys } from "@/queries/query-keys";
-import { isLibraryTrack, type Track } from "@/modules/player/types";
+import { isLibraryTrack, type PlayerTrack, type Track } from "@/modules/player/types";
+import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import type { RightPanelTrackInfoPayload } from "@/modules/right-panel/types";
 import DetailField from "@/modules/tracks/components/TrackDetailsField.vue";
@@ -267,17 +268,24 @@ const props = defineProps<{
 const { t } = useI18n();
 const rightPanel = useRightPanelStore();
 
-const track = computed(() => props.payload.track);
-const libraryTrack = computed<Track | null>(() => isLibraryTrack(track.value) ? track.value : null);
+const payloadTrack = computed(() => props.payload.track);
+const libraryTrackId = computed(() =>
+  isLibraryTrack(payloadTrack.value) ? payloadTrack.value.id : null);
 
 const { data: entity } = useQuery({
   queryKey: computed(() =>
-    libraryTrack.value ? queryKeys.tracks.detail(libraryTrack.value.id) : ["tracks", "detail", "none"]),
+    libraryTrackId.value ? queryKeys.tracks.detail(libraryTrackId.value) : ["tracks", "detail", "none"]),
   queryFn: computed(() => {
-    const id = libraryTrack.value?.id;
+    const id = libraryTrackId.value;
     return id ? () => getTrackEntityById(id) : skipToken;
   }),
 });
+
+// The payload is a snapshot taken when the panel opened; every track mutation
+// invalidates the detail query, so once it resolves the stored row wins.
+const track = computed<PlayerTrack>(() =>
+  entity.value ? mapTrackEntityToPlayerTrack(entity.value) : payloadTrack.value);
+const libraryTrack = computed<Track | null>(() => isLibraryTrack(track.value) ? track.value : null);
 
 // У remote-треков (YT/ND) storagePath в строке трека пуст by design — путь
 // и формат скачанного файла живут в offlineCopies.

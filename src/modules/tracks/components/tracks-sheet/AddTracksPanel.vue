@@ -50,10 +50,13 @@ import {
   addTracksToAlbumAndSync,
   addTracksToArtistAndSync,
   favoriteTracksAndSync,
+  getTracksByIds,
   getTracksPaginated,
 } from "@/queries/track.queries";
+import { unique } from "@/queries/shared";
 import { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { RightPanelAddTracksPayload } from "@/modules/right-panel/types";
 import type { Track } from "@/modules/player/types";
 import { useSelection } from "@/composables/useSelection";
@@ -66,6 +69,7 @@ const props = defineProps<{
 const { t } = useI18n();
 const queryClient = useQueryClient();
 const rightPanel = useRightPanelStore();
+const queueStore = useQueueStore();
 
 const searchInput = ref("");
 const debouncedSearchQuery = refDebounced(searchInput, 200);
@@ -180,6 +184,11 @@ const { mutateAsync: confirmSelection } = useMutation({
         await favoriteTracksAndSync(queryClient, tracksToAdd);
         break;
     }
+
+    // The queue holds snapshots; a row playing right now would keep its old
+    // artist / album / liked flag until it is re-handed to the player.
+    const stored = await getTracksByIds(unique(tracksToAdd.map(track => track.id)));
+    queueStore.syncTracksMetadata(stored);
   },
 });
 
