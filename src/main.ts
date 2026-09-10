@@ -54,6 +54,7 @@ if (dbOpen.isErr()) {
 sources.register(ytSourceProvider);
 registerAutoplaySource(getRecommendations);
 statsService.onChange(markRecommenderContextDirty);
+statsService.onListenRecorded(markRecommenderContextDirty);
 
 const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate);

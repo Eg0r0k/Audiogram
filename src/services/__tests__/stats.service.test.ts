@@ -115,6 +115,22 @@ describe("statsService change notifications", () => {
     await statsService.stopListening(0, { skipped: true });
   });
 
+  // The queue asks for autoplay picks in the same tick the ended track's
+  // event is written; a debounced notification would hand it a context
+  // without that event (and without its early skip).
+  it("announces a recorded listen synchronously, before the write settles", async () => {
+    const onListenRecorded = vi.fn();
+    const { off } = statsService.onListenRecorded(onListenRecorded);
+
+    statsService.startListening(TRACK_ID, ARTIST_ID, ALBUM_ID, DURATION, "user");
+    await flush();
+    const stopping = statsService.stopListening(5, { skipped: true });
+
+    expect(onListenRecorded).toHaveBeenCalledTimes(1);
+    await stopping;
+    off();
+  });
+
   it("a history edit notifies before it resolves", async () => {
     const onChange = vi.fn();
     const { off } = statsService.onChange(onChange);
