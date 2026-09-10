@@ -217,6 +217,7 @@ import { toast } from "vue-sonner";
 import { Button } from "@/components/ui/button";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { formatDuration } from "@/lib/format/time";
+import { formatBitrate, formatSampleRate } from "@/lib/format/audio";
 import { getLogger } from "@/lib/logger";
 import { trackQueries } from "@/queries/track.queries";
 import { useTrackDeletion } from "@/modules/tracks/composables/useTrackDeletion";
@@ -262,13 +263,9 @@ const payloadTrack = computed(() => props.payload.track);
 
 const { data: entity } = useQuery(computed(() => trackQueries.detail(payloadTrack.value.id)));
 
-// The payload is a snapshot taken when the panel opened; every track mutation
-// invalidates the detail query, so once it resolves the stored row wins.
 const track = computed<Track>(() =>
   entity.value ? mapTrackEntityToPlayerTrack(entity.value) : payloadTrack.value);
 
-// У remote-треков (YT/ND) storagePath в строке трека пуст by design — путь
-// и формат скачанного файла живут в offlineCopies.
 const { data: offlineCopy } = useQuery(computed(() =>
   offlineCopyQueries.detail(isRemoteTrack(track.value) ? track.value.id : null),
 ));
@@ -292,17 +289,8 @@ const stateLabel = computed(() => labelOr(trackStateLabelKey(track.value.state))
 
 const effectiveFormat = computed(() => resolveTrackFormat(entity.value?.format, offlineCopy.value?.format));
 
-const formattedBitrate = computed(() => {
-  const bitrate = effectiveFormat.value.bitrate;
-  if (!bitrate) return "—";
-  return `${Math.round(bitrate / 1000)} kbps`;
-});
-
-const formattedSampleRate = computed(() => {
-  const sampleRate = effectiveFormat.value.sampleRate;
-  if (!sampleRate) return "—";
-  return `${(sampleRate / 1000).toFixed(1)} kHz`;
-});
+const formattedBitrate = computed(() => formatBitrate(effectiveFormat.value.bitrate));
+const formattedSampleRate = computed(() => formatSampleRate(effectiveFormat.value.sampleRate));
 
 const losslessLabel = computed(() => {
   const lossless = effectiveFormat.value.lossless;
