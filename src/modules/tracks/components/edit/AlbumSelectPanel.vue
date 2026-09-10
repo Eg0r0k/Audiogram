@@ -6,6 +6,7 @@
     :get-key="(album: AlbumEntity) => album.id"
     :can-create="canCreate"
     :show-confirm="isDirty"
+    :reveal-key="payload.selectedAlbumId ?? null"
     @confirm="handleConfirm"
     @create="handleCreate"
     @back="handleDone"
