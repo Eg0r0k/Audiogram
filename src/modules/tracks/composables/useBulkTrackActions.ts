@@ -22,7 +22,7 @@ export interface UseBulkTrackActionsOptions {
   selectedIds: ComputedRef<ReadonlySet<string>>;
   /** Loaded rows — the only place the like status of a selected id is known. */
   loadedTracks: Ref<Track[]> | ComputedRef<Track[]>;
-  sortKey: Ref<TrackSortKey> | ComputedRef<TrackSortKey>;
+  sortKey: Ref<TrackSortKey | null> | ComputedRef<TrackSortKey | null>;
   onDone?: (action: BulkTrackAction) => void;
 }
 

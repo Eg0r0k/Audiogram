@@ -13,6 +13,7 @@ import {
   upsertSearchDocuments,
 } from "@/modules/search/service/searchIndex";
 import type { TrackSortKey } from "@/modules/tracks/types";
+import { DEFAULT_TRACK_SORT_KEY } from "@/types/track-sort";
 import type { SearchDocument } from "@/modules/search/types";
 import { queryKeys } from "@/queries/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
@@ -260,11 +261,31 @@ export async function getAllTracksPaginated(
   };
 }
 
+// Search hits come back in score order; a chosen sort reorders the whole hit
+// set, so a page of it needs every id first. No sort = relevance, which is
+// why `null` is meaningful here and must not be defaulted away.
+async function searchedTracksSorted(query: string, sortKey: TrackSortKey): Promise<TrackEntity[]> {
+  const response = await searchDocuments(query, "track", { offset: 0 });
+  const ids = response.results.map(item => item.entityId as TrackId);
+  return unwrapResult(trackRepository.findSortedByIds(ids, sortKey));
+}
+
 export async function searchTracksPaginated(
   query: string,
   offset: number,
   limit = PAGE_SIZE,
+  sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> {
+  if (sortKey) {
+    const sorted = await searchedTracksSorted(query, sortKey);
+    const total = sorted.length;
+    return {
+      tracks: await loadTrackRelations(sorted.slice(offset, offset + limit)),
+      nextOffset: offset + limit < total ? offset + limit : null,
+      total,
+    };
+  }
+
   const { tracks, total } = await searchIndexedTracks(query, offset, limit);
   const nextOffset = offset + limit < total ? offset + limit : null;
 
@@ -284,22 +305,23 @@ export async function getTracksPaginated(
   const normalizedSearchQuery = searchQuery.trim();
 
   if (normalizedSearchQuery.length > 0) {
-    return searchTracksPaginated(normalizedSearchQuery, offset, limit);
+    return searchTracksPaginated(normalizedSearchQuery, offset, limit, sortKey);
   }
 
   return getAllTracksPaginated(offset, limit, sortKey);
 }
 
-export async function getAllTracksForQueue(sortKey: TrackSortKey, searchQuery = ""): Promise<Track[]> {
+/** The whole index in the order the list page shows it: `null` sort is
+ *  relevance for a search and newest-first otherwise. */
+export async function getAllTracksForQueue(sortKey: TrackSortKey | null, searchQuery = ""): Promise<Track[]> {
   const q = searchQuery.trim();
   if (q.length > 0) {
-    const searchResult = await searchIndexedTracks(q, 0, undefined);
-    const rawTracks = await unwrapResult(
-      trackRepository.findSortedByIds(searchResult.tracks.map(t => t.id), sortKey),
-    );
-    return loadTrackRelations(rawTracks);
+    if (!sortKey) {
+      return (await searchIndexedTracks(q, 0, undefined)).tracks;
+    }
+    return loadTrackRelations(await searchedTracksSorted(q, sortKey));
   }
-  const rawTracks = await unwrapResult(trackRepository.findAllSorted(sortKey));
+  const rawTracks = await unwrapResult(trackRepository.findAllSorted(sortKey ?? DEFAULT_TRACK_SORT_KEY));
   return loadTrackRelations(rawTracks);
 }
 
@@ -311,17 +333,23 @@ export async function getTracksByIds(ids: TrackId[]): Promise<Track[]> {
 
 /** Every track id matching the index page's sort + search, ids only. Search
  *  results come back in score order — a selection set does not care. */
-export async function getAllTrackIds(sortKey: TrackSortKey, searchQuery = ""): Promise<TrackId[]> {
+export async function getAllTrackIds(sortKey: TrackSortKey | null, searchQuery = ""): Promise<TrackId[]> {
   const q = searchQuery.trim();
   if (q.length > 0) {
     const response = await searchDocuments(q, "track", { offset: 0 });
     return response.results.map(item => item.entityId as TrackId);
   }
-  return unwrapResult(trackRepository.findAllIdsSorted(sortKey));
+  return unwrapResult(trackRepository.findAllIdsSorted(sortKey ?? DEFAULT_TRACK_SORT_KEY));
 }
 
-export async function getTracksByIdsSorted(ids: TrackId[], sortKey: TrackSortKey): Promise<Track[]> {
+/** `null` keeps the order of `ids` — the caller's list order. */
+export async function getTracksByIdsSorted(ids: TrackId[], sortKey: TrackSortKey | null): Promise<Track[]> {
   if (ids.length === 0) return [];
+  if (!sortKey) {
+    const byId = new Map((await unwrapResult(trackRepository.findByIds(ids))).map(track => [track.id, track]));
+    const entities = ids.map(id => byId.get(id)).filter((track): track is TrackEntity => !!track);
+    return loadTrackRelations(entities);
+  }
   const entities = await unwrapResult(trackRepository.findSortedByIds(ids, sortKey));
   return loadTrackRelations(entities);
 }

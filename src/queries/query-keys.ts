@@ -60,7 +60,7 @@ export const queryKeys = {
     byIds: (ids: readonly TrackId[]) => ["tracks", "byIds", ...ids] as const,
     allPaginated: (search = "") => ["tracks", "all", "paginated", search] as const,
     index: (sortKey: TrackSortKey, search = "") => ["tracks", "index", sortKey, search] as const,
-    indexInfinite: (sortKey: TrackSortKey, search = "") => ["tracks", "index", "infinite", sortKey, search] as const,
+    indexInfinite: (sortKey: TrackSortKey | null, search = "") => ["tracks", "index", "infinite", sortKey, search] as const,
     indexTotalDuration: (search = "") => ["tracks", "index", "totalDuration", search] as const,
   },
   trackChapters: {
