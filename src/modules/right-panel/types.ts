@@ -1,4 +1,4 @@
-import type { PlayerTrack, Track } from "@/modules/player/types";
+import type { Track } from "@/modules/player/types";
 
 export type RightPanelView = "queue" | "current-track" | "lyrics" | "track-info" | "edit-track" | "add-tracks" | "chapters" | "downloads" | "import" | "entity-select" | "folder-add" | "none";
 export type RightPanelBackView = "queue" | "current-track" | "none";
@@ -8,15 +8,16 @@ export type RightPanelScope
     | { type: "route"; routeKey: string }
     | { type: "folder"; folderId: string };
 
+/** Library rows only: the openers check `isLibraryTrack` before opening. */
 export interface RightPanelTrackInfoPayload {
-  track: PlayerTrack;
+  track: Track;
 }
 export interface RightPanelChaptersPayload {
   track: Track;
 }
 
 export interface RightPanelEditTrackPayload {
-  track: PlayerTrack;
+  track: Track;
 }
 
 export interface RightPanelPayloadMap {

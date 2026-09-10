@@ -22,17 +22,12 @@
             side="left"
             align="start"
           >
-            <DropdownMenuItem
-              v-if="libraryTrack"
-              @click="openEdit"
-            >
+            <DropdownMenuItem @click="openEdit">
               <IconPencil class="size-5" />
               {{ $t('common.edit') }}
             </DropdownMenuItem>
             <DropdownMenuItem
-              v-if="libraryTrack"
               variant="destructive"
-
               @click="handleDelete"
             >
               <TrashIcon class="size-5" />
@@ -91,7 +86,6 @@
               </template>
             </DetailField>
             <DetailField
-              v-if="isLibraryTrack(track)"
               :title="$t('track.details.fields.storagePath')"
               :value="storagePathValue"
               class="sm:col-span-2"
@@ -103,7 +97,6 @@
           </div>
         </section>
         <section
-          v-if="isLibraryTrack(track)"
           class="grid gap-3 p-2 bg-card"
         >
           <div class="grid gap-3 sm:grid-cols-1">
@@ -154,7 +147,6 @@
           </div>
         </section>
         <section
-          v-if="isLibraryTrack(track)"
           class="grid gap-3 p-2 bg-card"
         >
           <div class="grid gap-3 sm:grid-cols-1">
@@ -219,7 +211,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { skipToken, useQuery } from "@tanstack/vue-query";
+import { useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { TrackSource, TrackState } from "@/db/entities";
@@ -227,13 +219,13 @@ import { Button } from "@/components/ui/button";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { formatDuration } from "@/lib/format/time";
 import { getLogger } from "@/lib/logger";
-import { getTrackEntityById } from "@/queries/track.queries";
+import { trackQueries } from "@/queries/track.queries";
 import { useTrackDeletion } from "@/modules/tracks/composables/useTrackDeletion";
 import { summonDialog } from "@/components/dialogs/summonDialog";
 import { useGeneralSettings } from "@/modules/settings/store/general";
 import { offlineCopyQueries } from "@/queries/offlineCopy.queries";
-import { queryKeys } from "@/queries/query-keys";
-import { isLibraryTrack, type PlayerTrack, type Track } from "@/modules/player/types";
+import type { Track } from "@/modules/player/types";
+import { isRemoteTrack } from "@/modules/tracks/lib/trackPredicates";
 import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import type { RightPanelTrackInfoPayload } from "@/modules/right-panel/types";
@@ -269,60 +261,34 @@ const { t } = useI18n();
 const rightPanel = useRightPanelStore();
 
 const payloadTrack = computed(() => props.payload.track);
-const libraryTrackId = computed(() =>
-  isLibraryTrack(payloadTrack.value) ? payloadTrack.value.id : null);
 
-const { data: entity } = useQuery({
-  queryKey: computed(() =>
-    libraryTrackId.value ? queryKeys.tracks.detail(libraryTrackId.value) : ["tracks", "detail", "none"]),
-  queryFn: computed(() => {
-    const id = libraryTrackId.value;
-    return id ? () => getTrackEntityById(id) : skipToken;
-  }),
-});
+const { data: entity } = useQuery(computed(() => trackQueries.detail(payloadTrack.value.id)));
 
 // The payload is a snapshot taken when the panel opened; every track mutation
 // invalidates the detail query, so once it resolves the stored row wins.
-const track = computed<PlayerTrack>(() =>
+const track = computed<Track>(() =>
   entity.value ? mapTrackEntityToPlayerTrack(entity.value) : payloadTrack.value);
-const libraryTrack = computed<Track | null>(() => isLibraryTrack(track.value) ? track.value : null);
 
 // У remote-треков (YT/ND) storagePath в строке трека пуст by design — путь
 // и формат скачанного файла живут в offlineCopies.
-const isRemoteLibraryTrack = computed(() => {
-  const source = libraryTrack.value?.source;
-  return source === TrackSource.REMOTE_YT || source === TrackSource.REMOTE_SUBSONIC;
-});
-
 const { data: offlineCopy } = useQuery(computed(() =>
-  offlineCopyQueries.detail(isRemoteLibraryTrack.value ? libraryTrack.value!.id : null),
+  offlineCopyQueries.detail(isRemoteTrack(track.value) ? track.value.id : null),
 ));
 
 const storagePathValue = computed(() =>
-  libraryTrack.value?.storagePath || offlineCopy.value?.storagePath || "—",
+  track.value.storagePath || offlineCopy.value?.storagePath || "—",
 );
 
 const { deleteWithUndo } = useTrackDeletion();
 const isDeleting = ref(false);
 
-const formattedDuration = computed(() => {
-  if (isLibraryTrack(track.value)) {
-    return formatDuration(track.value.duration);
-  }
-
-  return track.value.duration ? formatDuration(track.value.duration) : "—";
-});
+const formattedDuration = computed(() => formatDuration(track.value.duration));
 
 function openEdit() {
-  if (!libraryTrack.value) return;
-  rightPanel.openEditTrack({ track: libraryTrack.value });
+  rightPanel.openEditTrack({ track: track.value });
 }
 
 const sourceLabel = computed(() => {
-  if (!isLibraryTrack(track.value)) {
-    return track.value.source.type;
-  }
-
   switch (track.value.source) {
     case TrackSource.LOCAL_INTERNAL:
       return t("track.details.values.localInternal");
@@ -340,8 +306,6 @@ const sourceLabel = computed(() => {
 });
 
 const stateLabel = computed(() => {
-  if (!isLibraryTrack(track.value)) return "—";
-
   switch (track.value.state) {
     case TrackState.READY:
       return t("track.details.values.ready");
@@ -391,13 +355,13 @@ function handleBack(): void {
 const { confirmTrackDeletion, setConfirmTrackDeletion } = useGeneralSettings();
 
 async function handleDelete(): Promise<void> {
-  if (!libraryTrack.value || isDeleting.value) return;
+  if (isDeleting.value) return;
 
   if (confirmTrackDeletion.value) {
     const confirmation = await summonDialog(
       "deleteTrack",
-      { trackTitle: libraryTrack.value.title },
-      { key: `delete-track:${libraryTrack.value.id}` },
+      { trackTitle: track.value.title },
+      { key: `delete-track:${track.value.id}` },
     );
     if (!confirmation) return;
     if (confirmation.dontAskAgain) setConfirmTrackDeletion(false);
@@ -407,11 +371,11 @@ async function handleDelete(): Promise<void> {
 }
 
 async function performDelete(): Promise<void> {
-  if (!libraryTrack.value || isDeleting.value) return;
+  if (isDeleting.value) return;
 
   isDeleting.value = true;
   try {
-    const deleted = await deleteWithUndo([libraryTrack.value.id], () => t("track.deleted"));
+    const deleted = await deleteWithUndo([track.value.id], () => t("track.deleted"));
     if (deleted === 0) throw new Error("Track not found");
     rightPanel.close();
   }
