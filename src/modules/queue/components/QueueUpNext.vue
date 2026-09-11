@@ -227,10 +227,6 @@ onUnmounted(stopAutoScroll);
   transition: transform 0.16s cubic-bezier(0, 0, 0.2, 1);
 }
 
-.queue-up-next-list.is-dragging .queue-sortable-row {
-  will-change: transform;
-}
-
 .queue-up-next-list.is-settling [data-index],
 .queue-up-next-list.is-settling .queue-sortable-row {
   transition: none;

@@ -622,6 +622,7 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
   overflow: hidden;
   position: absolute;
   inset: 0;
+  overflow-anchor: none;
   -webkit-overflow-scrolling: touch;
 }
 

@@ -250,19 +250,16 @@ function getLineClass(index: number, text: string): string {
   transition:
     color 220ms ease,
     opacity 220ms ease,
-    transform 260ms ease,
-    filter 220ms ease;
+    transform 260ms ease;
 }
 
 .lyrics-line-active {
   opacity: 1;
-  filter: blur(0);
   transform: scale(1);
 }
 
 .lyrics-line-inactive {
   opacity: 0.58;
-  filter: blur(0.2px);
   transform: scale(0.985);
 }
 
