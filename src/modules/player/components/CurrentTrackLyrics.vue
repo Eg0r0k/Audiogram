@@ -80,6 +80,12 @@ import IconMicrophoneOff from "~icons/tabler/microphone-off";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useLyricsStore } from "@/modules/player/store/lyrics.store";
 import type { PlayerTrack } from "@/modules/player/types";
+import {
+  type FollowEvent,
+  type FollowState,
+  INITIAL_FOLLOW_STATE,
+  reduceFollow,
+} from "@/modules/player/lib/lyrics-follow";
 import IconArrowDown from "~icons/tabler/arrow-down";
 
 const SKELETON_WIDTHS = ["55%", "72%", "48%", "66%", "38%", "60%", "44%"];
@@ -104,11 +110,12 @@ let lastActiveIndex = -1;
 
 const sectionRef = useTemplateRef<HTMLElement>("sectionRef");
 const scrollParent = ref<HTMLElement | null>(null);
-const isFollowing = ref(true);
-const resumeDirection = ref<"up" | "down">("down");
-// Programmatic smooth scrolls fire the same scroll events as the user;
-// ignore them for the duration of the animation.
-let suppressScrollUntil = 0;
+const follow = ref<FollowState>(INITIAL_FOLLOW_STATE);
+const dispatch = (event: FollowEvent) => {
+  follow.value = reduceFollow(follow.value, event);
+};
+const isFollowing = computed(() => follow.value.following);
+const resumeDirection = computed(() => follow.value.direction);
 
 const showResumeButton = computed(() =>
   !isFollowing.value && lyricsStore.activeLineIndex >= 0 && lyricsStore.lines.length > 0,
@@ -138,31 +145,46 @@ function activeLineOffset(): number | null {
   return (r.top + r.bottom) / 2 - (c.top + c.height / 2);
 }
 
+// Only scrolls the user started can release the follow; a programmatic smooth
+// scroll fires identical `scroll` events and must not. "User scrolling" lasts
+// from the input until `scrollend` — fling inertia after touchend included.
+let scrollEndTimer: ReturnType<typeof setTimeout> | null = null;
+const onUserScrollStart = () => dispatch({ type: "userScrollStart" });
+const onScrollEnd = () => {
+  if (scrollEndTimer) {
+    clearTimeout(scrollEndTimer);
+    scrollEndTimer = null;
+  }
+  dispatch({ type: "scrollEnd" });
+};
+
+useEventListener(scrollParent, ["touchstart", "wheel"], onUserScrollStart, { passive: true });
+useEventListener(scrollParent, "pointerdown", (e: PointerEvent) => {
+  if (e.pointerType === "mouse") onUserScrollStart();
+}, { passive: true });
 useEventListener(scrollParent, "scroll", () => {
-  if (Date.now() < suppressScrollUntil) return;
   const container = scrollParent.value;
   const offset = activeLineOffset();
   if (!container || offset === null) return;
-
-  // Re-stick only when the user deliberately returns the active line near
-  // the center; any other manual scroll releases the follow.
-  isFollowing.value = Math.abs(offset) <= container.clientHeight * 0.3;
-  resumeDirection.value = offset < 0 ? "up" : "down";
+  dispatch({ type: "scroll", offset, clientHeight: container.clientHeight });
+  // Fallback for engines without `scrollend`: 200 ms of silence ends the scroll.
+  if (scrollEndTimer) clearTimeout(scrollEndTimer);
+  scrollEndTimer = setTimeout(onScrollEnd, 200);
 }, { passive: true });
+useEventListener(scrollParent, "scrollend", onScrollEnd, { passive: true });
 
-function scrollToActiveLine() {
-  suppressScrollUntil = Date.now() + 900;
+const scrollToActiveLine = () => {
   lineRefs[lyricsStore.activeLineIndex]?.scrollIntoView({ behavior: "smooth", block: "center" });
-}
+};
 
-function resumeFollow() {
-  isFollowing.value = true;
+const resumeFollow = () => {
+  dispatch({ type: "resume" });
   scrollToActiveLine();
-}
+};
 
 // A new track (or reloaded lyrics) starts followed again.
 watch(() => lyricsStore.lines, () => {
-  isFollowing.value = true;
+  dispatch({ type: "linesChanged" });
   lastActiveIndex = -1;
 });
 
@@ -198,8 +220,11 @@ const stopWatch = watch(
     if (!isFollowing.value) {
       // Not following: only keep the resume button's arrow pointing at the
       // line as it moves through the track.
+      const container = scrollParent.value;
       const offset = activeLineOffset();
-      if (offset !== null) resumeDirection.value = offset < 0 ? "up" : "down";
+      if (container && offset !== null) {
+        dispatch({ type: "scroll", offset, clientHeight: container.clientHeight });
+      }
       return;
     }
 
@@ -209,6 +234,7 @@ const stopWatch = watch(
 
 onUnmounted(() => {
   stopWatch();
+  if (scrollEndTimer) clearTimeout(scrollEndTimer);
   lineRefs.length = 0;
 });
 
