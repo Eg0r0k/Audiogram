@@ -103,7 +103,7 @@ const actions = useTrackContextActions(
     queueIndex: activeIndex,
     queueItemId: activeQueueItemId,
     subject: activeSubject,
-    onNavigate: props.onNavigate,
+    onNavigate: () => props.onNavigate?.(),
   },
 );
 

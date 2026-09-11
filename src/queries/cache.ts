@@ -21,6 +21,7 @@ import type {
   TracksIndexPageData,
 } from "./types";
 import { coverCache } from "@/modules/covers/lib/cover-cache";
+import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 
 function setQueryDataIfPresent<T>(
   queryClient: QueryClient,
@@ -392,6 +393,7 @@ export function removeTracksFromCaches(
   queryClient: QueryClient,
   trackIds: readonly string[],
 ) {
+  markRecommenderContextDirty();
   const trackIdSet = new Set(trackIds);
 
   setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.tracks.all(), tracks =>
@@ -493,6 +495,7 @@ export function syncTrackLikeCaches(
   nextTrackEntity: TrackEntity,
   nextTrack: Track,
 ) {
+  markRecommenderContextDirty();
   const likedAt = nextTrackEntity.likedAt;
 
   patchStatsTrackCaches(queryClient, nextTrackEntity, nextTrack);
@@ -681,6 +684,7 @@ export function syncTrackMetadataCaches(
   nextTrackEntity: TrackEntity,
   nextTrack: Track,
 ) {
+  markRecommenderContextDirty();
   queryClient.setQueryData(queryKeys.tracks.detail(nextTrackEntity.id), nextTrackEntity);
 
   patchStatsTrackCaches(queryClient, nextTrackEntity, nextTrack);
@@ -909,6 +913,7 @@ export function invalidateForTrackMutation(
   queryClient: QueryClient,
   ctx: TrackMutationCtx,
 ): Promise<void> {
+  markRecommenderContextDirty();
   switch (ctx.kind) {
     case "like":
       return runInvalidations(queryClient, affectedKeys.tracks.likedSortedPages());

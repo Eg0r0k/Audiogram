@@ -7,6 +7,7 @@ import {
 } from "@/db/repositories";
 import { queryKeys } from "@/queries/query-keys";
 import { coverCache } from "@/modules/covers/lib/cover-cache";
+import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import { unwrapResult } from "./shared";
 import type { LibrarySummaryData } from "./types";
@@ -64,6 +65,7 @@ export async function invalidateLibrarySummary(queryClient: QueryClient) {
 }
 
 export async function invalidateLibraryData(queryClient: QueryClient) {
+  markRecommenderContextDirty();
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.artists.all() }),

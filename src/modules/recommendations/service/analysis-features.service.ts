@@ -2,6 +2,7 @@ import { audioFeaturesRepository, CURRENT_ALGORITHM_VERSION } from "@/db/reposit
 import { trackRepository } from "@/db/repositories";
 import type { AudioFeaturesEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
+import { markRecommenderContextDirty } from "./recommender-context.service";
 
 type ExtractedFeatures = Omit<AudioFeaturesEntity, "trackId" | "analyzedAt" | "algorithmVersion">;
 
@@ -35,4 +36,5 @@ export const saveAnalyzedFeatures = async (
     analyzedAt: Date.now(),
     algorithmVersion: CURRENT_ALGORITHM_VERSION,
   });
+  markRecommenderContextDirty();
 };

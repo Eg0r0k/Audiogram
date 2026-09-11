@@ -16,6 +16,13 @@ const FEATURE_MODULES = ["albums", "artists", "playlist", "favorite", "media-her
 // Files that still break M1/M2. This list only shrinks.
 const KNOWN_LAYER_VIOLATIONS = [];
 
+// Composed into `no-restricted-imports` below. Type imports stay free.
+const BAN_INVOKE = { name: "@tauri-apps/api/core", importNames: ["invoke"], message: "M3: use invokeCommand(COMMANDS.x) from @/app/tauri-commands." };
+const BAN_LISTEN = { name: "@tauri-apps/api/event", importNames: ["listen"], message: "M3: use listenEvent(EVENTS.x) from @/app/tauri-commands." };
+const BAN_SUMMON_COMPONENT = { name: "@/components/dialogs/summon", importNames: ["summonComponent"], message: "Summon by key: summonDialog(key, props) from @/components/dialogs/summonDialog." };
+const BAN_IS_TAURI = { group: ["**/environment/userAgent"], importNames: ["IS_TAURI"], message: "Gate on platformCaps.hasX (src/lib/environment/platformCaps.ts), not on IS_TAURI." };
+const restrictImports = (paths, patterns) => ({ "no-restricted-imports": ["error", { paths, patterns }] });
+
 export default withVueTs(
   {
     ignores: [
@@ -153,41 +160,28 @@ export default withVueTs(
     },
   },
 
-  // ARCHITECTURE.md §5 (M3): the Rust bridge is reached only through the
-  // typed registry. Type imports (Channel, Event) stay free.
+  // Import bans share one core rule, and ESLint does not merge a rule's
+  // options across config objects (the last match wins), so the full set is
+  // composed here once and each exempt location re-applies the set minus
+  // what it alone may import.
   {
     files: ["src/**/*.{ts,vue}"],
-    ignores: ["src/app/tauri-commands.ts"],
-    rules: {
-      "no-restricted-imports": ["error", {
-        paths: [
-          { name: "@tauri-apps/api/core", importNames: ["invoke"], message: "M3: use invokeCommand(COMMANDS.x) from @/app/tauri-commands." },
-          { name: "@tauri-apps/api/event", importNames: ["listen"], message: "M3: use listenEvent(EVENTS.x) from @/app/tauri-commands." },
-        ],
-      }],
-    },
+    rules: restrictImports([BAN_INVOKE, BAN_LISTEN, BAN_SUMMON_COMPONENT], [BAN_IS_TAURI]),
   },
-
-  // ARCHITECTURE.md §4: features gate on platformCaps.hasX, never on the raw
-  // platform flag. The exceptions are the capability table itself, the Tauri
-  // bridge and its event wrappers, and the root CSS class.
+  // The Tauri bridge itself (M3) may use invoke/listen and the raw flag.
   {
-    files: ["src/**/*.{ts,vue}"],
-    ignores: [
-      "src/lib/environment/**",
-      "src/app/tauri-commands.ts",
-      "src/composables/tauri/**",
-      "src/composables/useSetupRootClasses.ts",
-    ],
-    rules: {
-      "no-restricted-imports": ["error", {
-        patterns: [{
-          group: ["**/environment/userAgent"],
-          importNames: ["IS_TAURI"],
-          message: "Gate on platformCaps.hasX (src/lib/environment/platformCaps.ts), not on IS_TAURI.",
-        }],
-      }],
-    },
+    files: ["src/app/tauri-commands.ts"],
+    rules: restrictImports([BAN_SUMMON_COMPONENT], []),
+  },
+  // The capability table, the event wrappers and the root CSS class (§4).
+  {
+    files: ["src/lib/environment/**", "src/composables/tauri/**", "src/composables/useSetupRootClasses.ts"],
+    rules: restrictImports([BAN_INVOKE, BAN_LISTEN, BAN_SUMMON_COMPONENT], []),
+  },
+  // The keyed dialog wrapper is the one caller of the raw primitive (§6).
+  {
+    files: ["src/components/dialogs/summonDialog.ts"],
+    rules: restrictImports([BAN_INVOKE, BAN_LISTEN], [BAN_IS_TAURI]),
   },
 
   // Module layering (ARCHITECTURE.md §3). M1: domain code (everything in a
@@ -229,6 +223,10 @@ export default withVueTs(
   {
     rules: {
       "vue/multi-word-component-names": "off",
+      "vue/no-ref-object-reactivity-loss": "error",
+      "vue/no-setup-props-reactivity-loss": "error",
+      "vue/prefer-use-template-ref": "error",
+      "vue/no-unused-refs": "error",
       "@typescript-eslint/no-unused-vars": "warn",
       "@typescript-eslint/ban-ts-comment": "warn",
       "no-void": "error",

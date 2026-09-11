@@ -16,6 +16,11 @@ vi.mock("@/queries/track.queries", () => ({
   updateTrackMetadataAndSync: vi.fn(),
 }));
 
+// The unsaved-changes question is summoned, not rendered here: the mock
+// stands in for the user and stays pending unless a test resolves it.
+const dialog = vi.hoisted(() => ({ summonDialog: vi.fn() }));
+vi.mock("@/components/dialogs/summonDialog", () => dialog);
+
 const slotStub = { template: "<div><slot /></div>" };
 const stubs = {
   Scrollable: slotStub,
@@ -26,10 +31,6 @@ const stubs = {
       <button type="button" data-testid="header-back" @click="$emit('back')"></button>
       <button type="button" data-testid="header-close" @click="$emit('close')"></button>
     </div>`,
-  },
-  UnsavedChangesDialog: {
-    props: { open: Boolean },
-    template: `<div v-if="open" data-testid="unsaved-dialog"></div>`,
   },
 };
 
@@ -55,6 +56,7 @@ const renderPanel = (track: Track) => render(EditTrackPanel, {
 
 describe("EditTrackPanel", () => {
   beforeEach(() => {
+    dialog.summonDialog.mockReset();
     i18n.global.locale.value = "en";
     useTrackEditDraft().clearDraft();
   });
@@ -201,10 +203,25 @@ describe("EditTrackPanel", () => {
     const titleInput = container.querySelector("#track-title") as HTMLInputElement;
     await userEvent.type(titleInput, " remix");
 
+    dialog.summonDialog.mockReturnValue(new Promise(() => {}));
     await userEvent.click(screen.getByTestId("header-back"));
 
-    expect(screen.getByTestId("unsaved-dialog")).toBeInTheDocument();
+    expect(dialog.summonDialog).toHaveBeenCalledWith("unsavedChanges", {}, expect.anything());
     expect(rightPanel.view).not.toBe("track-info");
+  });
+
+  it("leaves once the user discards the changes", async () => {
+    const { container } = renderPanel(libraryTrack());
+    const rightPanel = useRightPanelStore();
+
+    const titleInput = container.querySelector("#track-title") as HTMLInputElement;
+    await userEvent.type(titleInput, " remix");
+
+    dialog.summonDialog.mockResolvedValue(true);
+    await userEvent.click(screen.getByTestId("header-back"));
+    await nextTick();
+
+    expect(rightPanel.view).toBe("track-info");
   });
 
   it("navigates straight back when nothing changed", async () => {
@@ -213,7 +230,7 @@ describe("EditTrackPanel", () => {
 
     await userEvent.click(screen.getByTestId("header-back"));
 
-    expect(screen.queryByTestId("unsaved-dialog")).toBeNull();
+    expect(dialog.summonDialog).not.toHaveBeenCalled();
     expect(rightPanel.view).toBe("track-info");
   });
 });

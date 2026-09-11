@@ -1,4 +1,5 @@
 ﻿import { db } from "@/db";
+import type { ListenOrigin, ListenPick } from "@/db/entities";
 import { statsRepository } from "@/db/repositories/stats.repository";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { createEventHook } from "@vueuse/core";
@@ -18,6 +19,14 @@ class StatsService {
   // must not touch the query cache.
   private readonly _changed = createEventHook<void>();
   readonly onChange = this._changed.on;
+  /**
+   * Fires synchronously as a listen event is written, before the write
+   * settles — unlike the debounced `onChange`. The queue asks for autoplay
+   * picks in the same tick the ended track's event is recorded, and the
+   * recommender must not answer from a snapshot that lacks it.
+   */
+  private readonly _listenRecorded = createEventHook<void>();
+  readonly onListenRecorded = this._listenRecorded.on;
   private _notifyTimer: ReturnType<typeof setTimeout> | null = null;
 
   private _notifyLater(): void {
@@ -42,6 +51,7 @@ class StatsService {
     albumId: AlbumId;
     startedAt: number;
     trackDuration: number;
+    origin: ListenOrigin;
   } | null = null;
 
   private async _finalizePending(
@@ -60,6 +70,7 @@ class StatsService {
     // a skip — mirroring scrobbling conventions.
     const isSkipped = skipped && !isCompleted;
 
+    this._listenRecorded.trigger().catch(error => getLogger().error(`[Stats] Listen hook failed: ${String(error)}`));
     await db.listenEvents.update(pending.eventId, {
       secondsListened,
       completed: isCompleted,
@@ -87,6 +98,8 @@ class StatsService {
     artistId: ArtistId,
     albumId: AlbumId,
     trackDuration: number,
+    origin: ListenOrigin,
+    pick?: ListenPick,
   ): void {
     if (this._pendingEvent) {
       this._finalizePending(0, true).catch(error => getLogger().error(`[Stats] Finalizing pending event failed: ${String(error)}`));
@@ -105,6 +118,8 @@ class StatsService {
       trackDuration,
       completed: false,
       skipped: false,
+      origin,
+      ...(pick ? { pick } : {}),
     }).then(() => this._notifyLater()).catch(error => getLogger().error(`[Stats] Recording listen event for ${trackId} failed: ${String(error)}`));
 
     this._pendingEvent = {
@@ -114,6 +129,7 @@ class StatsService {
       albumId,
       startedAt: now,
       trackDuration,
+      origin,
     };
   }
 

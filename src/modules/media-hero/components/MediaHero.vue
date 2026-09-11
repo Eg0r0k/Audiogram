@@ -21,7 +21,7 @@
         @play="$emit('play')"
       />
 
-      <div class="relative flex min-h-[265px] flex-col items-center gap-5 px-4 pb-6 pt-[72px] text-center @lg:flex-row @lg:items-end @lg:gap-7 @lg:px-7 @lg:pb-7 @lg:text-left">
+      <div class="relative mx-auto flex min-h-[265px] w-full max-w-page flex-col items-center gap-5 px-4 pb-6 pt-[72px] text-center @lg:flex-row @lg:items-end @lg:gap-7 @lg:px-7 @lg:pb-7 @lg:text-left">
         <div class="w-full max-w-44 mb-auto shrink-0 @sm:max-w-52 @lg:max-w-[232px]">
           <MediaHeroImage
             :src="data.image"

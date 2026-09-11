@@ -13,6 +13,13 @@ export interface SelectionDragOptions {
   ignoreSelector?: string;
   longPressMs?: number;
   scrollEl?: HTMLElement;
+  /** Asked on every touchstart; false leaves the touch to the browser (its own long-press, scrolling). */
+  canStartTouch?: () => boolean;
+  /**
+   * Swallow the native `contextmenu` while a touch gesture is armed, so a
+   * long-press selects instead of also opening a menu.
+   */
+  suppressContextMenu?: boolean;
 }
 
 export interface UseSelectionOptions {
@@ -142,6 +149,8 @@ export function useSelection<T extends Selectable>(
       ].join(", "),
       longPressMs = 450,
       scrollEl,
+      canStartTouch = () => true,
+      suppressContextMenu = false,
     } = options;
 
     let dragStartIndex = -1;
@@ -414,6 +423,7 @@ export function useSelection<T extends Selectable>(
 
       const row = getRowFromPoint(touch.clientX, touch.clientY);
       if (!row) return;
+      if (!canStartTouch()) return;
 
       stopTouchDrag?.();
       touchDragActive = false;
@@ -425,6 +435,16 @@ export function useSelection<T extends Selectable>(
         longPressTimer = null;
         activateTouchDrag(row);
       }, longPressMs);
+
+      // Android fires `contextmenu` at the system long-press delay while the
+      // finger is still down — inside this gesture, so the capture listener
+      // lives exactly as long as the gesture does.
+      const stopContextMenu = suppressContextMenu
+        ? useEventListener(window, "contextmenu", (event) => {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }, { capture: true })
+        : null;
 
       // Touch events of one gesture are always dispatched to the touchstart
       // target — even after the virtual list unmounts that row mid-autoscroll.
@@ -440,6 +460,7 @@ export function useSelection<T extends Selectable>(
         stopMove();
         stopEnd();
         stopCancel();
+        stopContextMenu?.();
       };
     }
 

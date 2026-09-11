@@ -1,3 +1,4 @@
+import type { ListenPick } from "@/db/entities";
 import type { AlbumId, ArtistId, PlaylistId, QueueItemId } from "@/types/ids";
 import type { PlayerTrack } from "@/modules/player/types";
 
@@ -9,6 +10,7 @@ export type QueueSource
     | { type: "history" }
     | { type: "manual" }
     | { type: "recommendation" }
+    | { type: "autoplay"; pick?: ListenPick }
     | { type: "liked" }
     | { type: "allMedia" }
     | { type: "external" }
@@ -54,6 +56,7 @@ export function isSameQueueSource(left: QueueSource, right: QueueSource): boolea
     case "search":
     case "manual":
     case "recommendation":
+    case "autoplay":
     case "external":
     case "unknown":
       return true;

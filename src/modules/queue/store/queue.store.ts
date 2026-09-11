@@ -497,11 +497,8 @@ export const useQueueStore = defineStore("queue", () => {
     addMultipleToQueue([track], source);
   }
 
-  function addMultipleToQueue(
-    tracks: PlayerTrack[],
-    source: QueueSource = { type: "manual" },
-  ): void {
-    const added = tracks.map(t => createItem(t, source));
+  function appendItems(entries: readonly { track: PlayerTrack; source: QueueSource }[]): void {
+    const added = entries.map(e => createItem(e.track, e.source));
     commit({
       items: [...items.value, ...added],
       playbackOrder: playbackOrder.value
@@ -510,12 +507,19 @@ export const useQueueStore = defineStore("queue", () => {
     });
   }
 
+  function addMultipleToQueue(
+    tracks: PlayerTrack[],
+    source: QueueSource = { type: "manual" },
+  ): void {
+    appendItems(tracks.map(track => ({ track, source })));
+  }
+
   const autoplay = createAutoplayRecommender({
     repeatMode: () => repeatMode.value,
     queue: () => queue.value,
     currentIndex: () => currentIndex.value,
     currentItem: () => currentItem.value,
-    append: tracks => addMultipleToQueue(tracks, { type: "recommendation" }),
+    append: entries => appendItems(entries.map(({ track, pick }) => ({ track, source: { type: "autoplay", pick } }))),
   });
   const ensureAutoplayRecommendations = () => autoplay.ensure();
 
@@ -793,6 +797,7 @@ export const useQueueStore = defineStore("queue", () => {
     jumpToId,
     removeFromQueue,
     removeMultiple,
+    appendItems,
     moveTrack,
     shuffle,
     unshuffle,

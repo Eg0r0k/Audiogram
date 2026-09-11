@@ -61,7 +61,12 @@
     "clearConfirm": "Clear",
     "clearConfirmCountdown": "Clear ({seconds})",
     "cleared": "Listening history cleared",
-    "noGenre": "No genre"
+    "noGenre": "No genre",
+    "recommender": {
+      "evalTitle": "Evaluate recommendations",
+      "evalSubtitle": "Train weights on the autoplay history and compute AUC on a held-out sample. The full report goes to the log.",
+      "evalResult": "AUC {auc}, autoplay skip rate {rate}% over 14d, {n} examples"
+    }
   },
   "proxy": {
     "description": "Route YouTube search, streaming and downloads through your own proxy server.",

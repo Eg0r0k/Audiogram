@@ -1,6 +1,6 @@
 <template>
   <div class="flex min-h-0 flex-1 flex-col bg-background">
-    <div class="flex items-center gap-3 px-4 pb-2 pt-4 sm:px-6">
+    <div class="mx-auto flex w-full max-w-page items-center gap-3 px-4 pb-2 pt-4 sm:px-6">
       <Button
         variant="ghost"
         size="icon-lg"
@@ -146,7 +146,7 @@ const goBack = useGoBack(
   routeLocation.artist(route.params.id as string, { catalog: wantsCatalogView(route.query) }),
 );
 
-const gridClass = "grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-x-2 gap-y-3 px-4 pb-6 pt-2 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] sm:px-6";
+const gridClass = "mx-auto max-w-page grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-x-2 gap-y-3 px-4 pb-6 pt-2 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] sm:px-6";
 
 const albumItems = computed<LibraryItem[]>(() => albums.value.map(album => ({
   id: album.id,

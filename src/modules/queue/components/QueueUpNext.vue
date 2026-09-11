@@ -11,7 +11,7 @@
       :overscan="4"
       :padding-bottom="8"
       :get-item-key="getItemKey"
-      keep-scroll-anchor
+      :keep-scroll-anchor="!isSettling"
       class="queue-up-next-list flex-1 bg-card"
       :class="[isSettling && 'is-settling', drag && 'is-dragging']"
     >
@@ -181,7 +181,10 @@ const onDragEnd = async () => {
   stopAutoScroll();
 
   // Commit and snap in one render: the store reorders, the rows' shifts
-  // reset without animating, the virtualizer's own transition is off.
+  // reset without animating, the virtualizer's own transition is off. The
+  // scroll anchor is off for that render too: the visible rows were already
+  // slid into their new slots, so re-anchoring on a key whose index just
+  // changed would scroll the list by a row right under the landing ghost.
   settlingId.value = state.item.id;
   isSettling.value = true;
   drag.value = null;

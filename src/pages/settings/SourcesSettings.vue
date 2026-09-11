@@ -1,84 +1,76 @@
 <template>
-  <Scrollable
-    direction="vertical"
-    class="flex-1"
-  >
-    <div class="pb-8">
-      <SettingsHeader :title="$t('settings.index.sources')" />
-
-      <section
-        v-for="source in sourceList"
-        :key="source.kind"
-        class="mb-6"
-      >
-        <SettingsGroup>
-          <Item>
-            <ItemMedia>
-              <component
-                :is="source.ui.icon"
-                class="size-6 text-muted-foreground"
-              />
-            </ItemMedia>
-            <ItemContent>
-              <ItemTitle>{{ $t(source.ui.labelKey) }}</ItemTitle>
-              <ItemSubtitle>{{ statusLabel(source.kind) }}</ItemSubtitle>
-            </ItemContent>
-          </Item>
-        </SettingsGroup>
-
-        <component
-          :is="source.settings"
-          v-if="source.settings"
-        />
-
-        <template v-if="source.canCheck">
-          <Button
-            class="w-full h-14 justify-start mt-2"
-            size="xl"
-            variant="ghost-primary"
-            :disabled="!source.isAvailable || isChecking(source.kind)"
-            @click="check(source.kind)"
-          >
-            <IconLoader2
-              v-if="isChecking(source.kind)"
-              class="size-6 animate-spin"
+  <SettingsScreen :title="$t('settings.index.sources')">
+    <section
+      v-for="source in sourceList"
+      :key="source.kind"
+      class="mb-6"
+    >
+      <SettingsGroup>
+        <Item>
+          <ItemMedia>
+            <component
+              :is="source.ui.icon"
+              class="size-6 text-muted-foreground"
             />
-            <IconPlugConnected
-              v-else
-              class="size-6"
-            />
-            {{ $t("source.status.check") }}
-          </Button>
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>{{ $t(source.ui.labelKey) }}</ItemTitle>
+            <ItemSubtitle>{{ statusLabel(source.kind) }}</ItemSubtitle>
+          </ItemContent>
+        </Item>
+      </SettingsGroup>
 
-          <p
-            v-if="failureOf(source.kind)"
-            class="text-sm text-destructive wrap-break-word px-4 mt-2"
-          >
-            {{ failureOf(source.kind)?.message }}
-          </p>
-          <p
-            v-else-if="health(source.kind).state === 'ok'"
-            class="text-sm text-primary px-4 mt-2"
-          >
-            {{ $t("source.status.ok") }}
-          </p>
-        </template>
-      </section>
-    </div>
-  </Scrollable>
+      <component
+        :is="source.settings"
+        v-if="source.settings"
+      />
+
+      <template v-if="source.canCheck">
+        <Button
+          class="w-full h-14 justify-start mt-2"
+          size="xl"
+          variant="ghost-primary"
+          :disabled="!source.isAvailable || isChecking(source.kind)"
+          @click="check(source.kind)"
+        >
+          <IconLoader2
+            v-if="isChecking(source.kind)"
+            class="size-6 animate-spin"
+          />
+          <IconPlugConnected
+            v-else
+            class="size-6"
+          />
+          {{ $t("source.status.check") }}
+        </Button>
+
+        <p
+          v-if="failureOf(source.kind)"
+          class="text-sm text-destructive wrap-break-word px-4 mt-2"
+        >
+          {{ failureOf(source.kind)?.message }}
+        </p>
+        <p
+          v-else-if="health(source.kind).state === 'ok'"
+          class="text-sm text-primary px-4 mt-2"
+        >
+          {{ $t("source.status.ok") }}
+        </p>
+      </template>
+    </section>
+  </SettingsScreen>
 </template>
 
 <script setup lang="ts">
 import { computed, type Component } from "vue";
 import { useI18n } from "vue-i18n";
-import { Scrollable } from "@/components/ui/scrollable";
 import { Item, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import ItemSubtitle from "@/components/ui/item/ItemSubtitle.vue";
 import { Button } from "@/components/ui/button";
 import IconLoader2 from "~icons/tabler/loader-2";
 import IconPlugConnected from "~icons/tabler/plug-connected";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
-import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
+import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
 import { sources } from "@/modules/sources";
 import { sourceUI } from "@/modules/sources/lib/source-ui";
 import { checkSource } from "@/modules/sources/composables/useSourceHealth";

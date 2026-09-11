@@ -145,3 +145,81 @@ describe("useTrackSelectionMode", () => {
     expect(mode.isSelectMode.value).toBe(false);
   });
 });
+
+describe("useTrackSelectionMode touch long-press", () => {
+  const ROW_HEIGHT = 50;
+  const LONG_PRESS_MS = 450;
+
+  const touchEvent = (type: string, y: number, target: EventTarget): Event => {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "touches", { value: type === "touchend" ? [] : [{ clientX: 10, clientY: y, target }] });
+    return event;
+  };
+
+  const setupWithRows = async () => {
+    const container = document.createElement("div");
+    for (let i = 1; i <= 2; i++) {
+      const row = document.createElement("div");
+      row.dataset.trackId = `t${i}`;
+      row.dataset.trackIndex = String(i - 1);
+      container.appendChild(row);
+    }
+    document.body.appendChild(container);
+    vi.spyOn(document, "elementFromPoint").mockImplementation(
+      (_x: number, y: number) => container.children[Math.floor(y / ROW_HEIGHT)] ?? null,
+    );
+    Object.defineProperty(navigator, "vibrate", { value: vi.fn(), configurable: true });
+    const tracks = ref<Track[]>([makeTrack("t1"), makeTrack("t2")]);
+    const containerRef = ref<HTMLElement | null>(null);
+    const scope = effectScope();
+    const mode = scope.run(() => useTrackSelectionMode(tracks, containerRef, {
+      getAllIds: async () => [],
+      total: ref(2),
+      resetKey: ref("k"),
+    }))!;
+    containerRef.value = container;
+    await nextTick();
+    const longPress = (index: number) => {
+      const row = container.children[index]!;
+      container.dispatchEvent(touchEvent("touchstart", index * ROW_HEIGHT + 25, row));
+      vi.advanceTimersByTime(LONG_PRESS_MS);
+      const menu = new Event("contextmenu", { bubbles: true, cancelable: true });
+      row.dispatchEvent(menu);
+      row.dispatchEvent(touchEvent("touchend", 0, row));
+      return menu.defaultPrevented;
+    };
+    return { mode, longPress, scope, container };
+  };
+
+  it("outside the mode a long-press selects nothing and leaves the context menu alone", async () => {
+    vi.useFakeTimers();
+    try {
+      const { mode, longPress, scope, container } = await setupWithRows();
+      expect(longPress(0)).toBe(false);
+      expect(mode.isSelectMode.value).toBe(false);
+      expect(mode.selectedCount.value).toBe(0);
+      scope.stop();
+      container.remove();
+    }
+    finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    }
+  });
+
+  it("inside the mode a long-press selects the row and swallows the context menu", async () => {
+    vi.useFakeTimers();
+    try {
+      const { mode, longPress, scope, container } = await setupWithRows();
+      mode.enter();
+      expect(longPress(1)).toBe(true);
+      expect(mode.isSelected("t2")).toBe(true);
+      scope.stop();
+      container.remove();
+    }
+    finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    }
+  });
+});

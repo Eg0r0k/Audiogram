@@ -1,13 +1,7 @@
 <script setup lang="ts">
 import type {
   HTMLAttributes } from "vue";
-import {
-  inject,
-  nextTick,
-  onUnmounted,
-  ref,
-  watch,
-} from "vue";
+import { inject, nextTick, onUnmounted, useTemplateRef, watch } from "vue";
 
 import { motion } from "motion-v";
 
@@ -21,7 +15,7 @@ const props = defineProps<{
 
 const dialog = inject(MorphingDialogKey)!;
 
-const containerRef = ref<HTMLDivElement | null>(null);
+const containerRef = useTemplateRef<HTMLDivElement>("containerRef");
 
 function close() {
   dialog.setIsOpen(false);
@@ -90,13 +84,13 @@ onUnmounted(() => {
 <template>
   <div ref="containerRef">
     <motion.div
-      :id="`motion-ui-morphing-dialog-content-${dialog.uniqueId}`"
-      :layout-id="`dialog-${dialog.uniqueId}`"
+      :id="`motion-ui-morphing-dialog-content-${dialog.uniqueId.value}`"
+      :layout-id="`dialog-${dialog.uniqueId.value}`"
       :class="cn(props.class)"
       role="dialog"
       aria-modal="true"
-      :aria-labelledby="`motion-ui-morphing-dialog-title-${dialog.uniqueId}`"
-      :aria-describedby="`motion-ui-morphing-dialog-description-${dialog.uniqueId}`"
+      :aria-labelledby="`motion-ui-morphing-dialog-title-${dialog.uniqueId.value}`"
+      :aria-describedby="`motion-ui-morphing-dialog-description-${dialog.uniqueId.value}`"
     >
       <slot />
     </motion.div>

@@ -1,6 +1,5 @@
 ﻿<template>
   <div
-    ref="dropZoneRef"
     class="app-grid overflow-hidden h-dvh antialiased pt-[env(safe-area-inset-top,0px)] pr-[env(safe-area-inset-right,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)]"
   >
     <WindowToolbar class="toolbar" />

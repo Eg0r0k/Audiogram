@@ -170,3 +170,67 @@ describe("useSelection touch long-press", () => {
     expect(selection.selectedCount.value).toBe(0);
   });
 });
+
+describe("useSelection touch gating and context menu", () => {
+  let container: HTMLElement;
+  let cleanup: () => void;
+  let selection: ReturnType<typeof useSelection>;
+  let allowed = true;
+  let gestureNode: Element;
+
+  const touchStartOnRow = (index: number) => {
+    gestureNode = container.children[index]!;
+    container.dispatchEvent(touchEvent("touchstart", 10, rowY(index), gestureNode));
+  };
+  const touchEnd = () => gestureNode.dispatchEvent(touchEvent("touchend", 0, 0, gestureNode));
+  const contextMenu = () => {
+    const event = new Event("contextmenu", { bubbles: true, cancelable: true });
+    gestureNode.dispatchEvent(event);
+    return event;
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    Object.defineProperty(navigator, "vibrate", { value: vi.fn(), configurable: true });
+    container = buildContainer(3);
+    selection = useSelection(makeItems(3));
+    allowed = true;
+  });
+
+  afterEach(() => {
+    cleanup();
+    container.remove();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("leaves the touch alone when canStartTouch says no", () => {
+    cleanup = selection.attachDragListeners(container, { canStartTouch: () => allowed });
+    allowed = false;
+    touchStartOnRow(1);
+    vi.advanceTimersByTime(LONG_PRESS_MS + 50);
+    expect(selection.selectedCount.value).toBe(0);
+    expect(contextMenu().defaultPrevented).toBe(false);
+
+    allowed = true;
+    touchStartOnRow(1);
+    vi.advanceTimersByTime(LONG_PRESS_MS);
+    expect(selection.isSelected("t1")).toBe(true);
+  });
+
+  it("swallows contextmenu only while a gesture is armed, when asked to", () => {
+    cleanup = selection.attachDragListeners(container, { suppressContextMenu: true });
+    touchStartOnRow(0);
+    expect(contextMenu().defaultPrevented).toBe(true);
+    vi.advanceTimersByTime(LONG_PRESS_MS);
+    expect(contextMenu().defaultPrevented).toBe(true);
+    touchEnd();
+    expect(contextMenu().defaultPrevented).toBe(false);
+  });
+
+  it("lets contextmenu through by default", () => {
+    cleanup = selection.attachDragListeners(container);
+    touchStartOnRow(0);
+    expect(contextMenu().defaultPrevented).toBe(false);
+  });
+});

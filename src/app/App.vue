@@ -14,7 +14,6 @@
     </RouterView>
   </component>
   <WhatsNewDialog />
-  <ExternalLinkDialog />
   <DialogSummonHost />
   <NetworkStatusToast />
   <Toaster
@@ -43,7 +42,6 @@ import { useSetupRootClasses } from "@/composables/useSetupRootClasses";
 import { usePreventPinchZoom } from "@/composables/usePreventPinchZoom";
 import { useGeneralSettings } from "@/modules/settings/store/general";
 import SlideTransition from "@/components/transitions/SlideTransition.vue";
-import ExternalLinkDialog from "@/components/dialogs/ExternalLinkDialog.vue";
 import { useAccentColor } from "@/modules/settings/composables/useAccentColor";
 import { useAudioSettings } from "@/modules/settings/composables/useAudioSettings";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";

@@ -1,175 +1,168 @@
 <template>
-  <Scrollable
-    direction="vertical"
-    class="flex-1"
-  >
-    <div class="pb-8">
-      <SettingsHeader :title="$t('settings.index.about')" />
-
-      <SettingsGroup>
-        <div class="px-4 py-6 flex flex-col items-center">
-          <div class="size-20 rounded-2xl bg-primary flex items-center justify-center mb-4">
-            <IconLogo class="size-15 text-white" />
-          </div>
-          <div class="font-semibold text-lg">
-            Audiogram
-          </div>
-          <div class="text-sm text-muted-foreground mb-2">
-            Version {{ appVersion }}  ({{ buildTime }})
-          </div>
-          <div class="flex gap-2">
-            <Button
-              size="icon-lg"
-              variant="link"
-              as-child
-            >
-              <Link
-                to="https://github.com/Eg0r0k/Audiogram"
-                confirm-external
-              >
-                <IconGithub
-                  class="size-6"
-                />
-              </Link>
-            </Button>
-            <Button
-              size="icon-lg"
-              variant="link"
-              as-child
-            >
-              <Link
-                to="https://t.me/EG0RK13"
-                confirm-external
-              >
-                <IconTelegram
-                  class="size-6"
-                />
-              </Link>
-            </Button>
-          </div>
+  <SettingsScreen :title="$t('settings.index.about')">
+    <SettingsGroup>
+      <div class="px-4 py-6 flex flex-col items-center">
+        <div class="size-20 rounded-2xl bg-primary flex items-center justify-center mb-4">
+          <IconLogo class="size-15 text-white" />
         </div>
-      </SettingsGroup>
-      <SettingsGroup class="mt-3">
-        <Button
-          class="w-full h-14 justify-start"
-          size="xl"
-          variant="ghost-primary"
-          :class="{ 'text-destructive': updateStore.status === 'error' }"
-          :disabled="updateStore.isBusy"
-          :title="updateStore.error?.message"
-          @click="updateStore.check()"
-        >
-          <IconLoader2
-            v-if="updateStore.status === 'checking'"
-            class="size-6 animate-spin"
-          />
-          <IconCheck
-            v-else-if="updateStore.status === 'up-to-date'"
-            class="size-6"
-          />
-          <IconAlertTriangle
-            v-else-if="updateStore.status === 'error'"
-            class="size-6"
-          />
-          <IconCloudDownload
-            v-else
-            class="size-6"
-          />
-          {{ checkStateLabel }}
-        </Button>
-        <SettingsItem
-          :title="$t('settings.about.whatsNew')"
-          @click="handleOpenWhatsNew"
-        >
-          <template #action>
-            <div class="flex items-center gap-2">
-              <span
-                v-if="changelog.hasUnseenUpdate"
-                class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary"
-              >
-                {{ $t("settings.about.newBadge") }}
-              </span>
-              <IconLoader2
-                v-if="isOpening"
-                class="size-4 animate-spin text-muted-foreground"
+        <div class="font-semibold text-lg">
+          Audiogram
+        </div>
+        <div class="text-sm text-muted-foreground mb-2">
+          Version {{ appVersion }}  ({{ buildTime }})
+        </div>
+        <div class="flex gap-2">
+          <Button
+            size="icon-lg"
+            variant="link"
+            as-child
+          >
+            <Link
+              to="https://github.com/Eg0r0k/Audiogram"
+              confirm-external
+            >
+              <IconGithub
+                class="size-6"
               />
-              <IconChevronRight
-                v-else
-                class="size-5 text-muted-foreground"
+            </Link>
+          </Button>
+          <Button
+            size="icon-lg"
+            variant="link"
+            as-child
+          >
+            <Link
+              to="https://t.me/EG0RK13"
+              confirm-external
+            >
+              <IconTelegram
+                class="size-6"
               />
-            </div>
-          </template>
-        </SettingsItem>
-        <SettingsItem
-          :title="$t('settings.about.exportLogs')"
-          @click="handleExportLogs"
-        >
-          <template #action>
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </SettingsGroup>
+    <SettingsGroup class="mt-3">
+      <Button
+        class="w-full h-14 justify-start"
+        size="xl"
+        variant="ghost-primary"
+        :class="{ 'text-destructive': updateStore.status === 'error' }"
+        :disabled="updateStore.isBusy"
+        :title="updateStore.error?.message"
+        @click="updateStore.check()"
+      >
+        <IconLoader2
+          v-if="updateStore.status === 'checking'"
+          class="size-6 animate-spin"
+        />
+        <IconCheck
+          v-else-if="updateStore.status === 'up-to-date'"
+          class="size-6"
+        />
+        <IconAlertTriangle
+          v-else-if="updateStore.status === 'error'"
+          class="size-6"
+        />
+        <IconCloudDownload
+          v-else
+          class="size-6"
+        />
+        {{ checkStateLabel }}
+      </Button>
+      <SettingsItem
+        :title="$t('settings.about.whatsNew')"
+        @click="handleOpenWhatsNew"
+      >
+        <template #action>
+          <div class="flex items-center gap-2">
+            <span
+              v-if="changelog.hasUnseenUpdate"
+              class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary"
+            >
+              {{ $t("settings.about.newBadge") }}
+            </span>
             <IconLoader2
-              v-if="isExporting"
+              v-if="isOpening"
               class="size-4 animate-spin text-muted-foreground"
             />
-
-            <IconDownload
+            <IconChevronRight
               v-else
               class="size-5 text-muted-foreground"
             />
-          </template>
-        </SettingsItem>
-      </SettingsGroup>
-
-      <SettingsGroup class="mt-3">
-        <SettingsItem
-          :title="$t('settings.about.termsOfService')"
-          @click="router.push(routeLocation.settingsTerms())"
-        >
-          <template #action>
-            <IconChevronRight
-              class="size-5 text-muted-foreground"
-            />
-          </template>
-        </SettingsItem>
-
-        <SettingsItem
-          :title="$t('settings.about.privacyPolicy')"
-          @click="router.push(routeLocation.settingsPrivacy())"
-        >
-          <template #action>
-            <IconChevronRight
-              class="size-5 text-muted-foreground"
-            />
-          </template>
-        </SettingsItem>
-
-        <Link
-          to="https://github.com/Eg0r0k/Audiogram/blob/main/LICENSE"
-          confirm-external
-        >
-          <SettingsItem
-            :title="$t('settings.about.licenses')"
-          >
-            <template #action>
-              <IconExternalLink
-                class="size-5 text-muted-foreground"
-              />
-            </template>
-          </SettingsItem>
-        </Link>
-      </SettingsGroup>
-
-      <div class="px-4 py-6 text-center text-xs text-muted-foreground">
-        <p class=" inline-flex gap-1 items-center">
-          {{ $t('settings.about.madeWith') }} <IconBarBell
-            class="size-4"
+          </div>
+        </template>
+      </SettingsItem>
+      <SettingsItem
+        :title="$t('settings.about.exportLogs')"
+        @click="handleExportLogs"
+      >
+        <template #action>
+          <IconLoader2
+            v-if="isExporting"
+            class="size-4 animate-spin text-muted-foreground"
           />
-        </p>
 
-        <p class="mt-1">
-          © {{ dateYear }} Audiogram. {{ $t('settings.about.allRightsReserved') }}.
-        </p>
-      </div>
+          <IconDownload
+            v-else
+            class="size-5 text-muted-foreground"
+          />
+        </template>
+      </SettingsItem>
+    </SettingsGroup>
+
+    <SettingsGroup class="mt-3">
+      <SettingsItem
+        :title="$t('settings.about.termsOfService')"
+        @click="router.push(routeLocation.settingsTerms())"
+      >
+        <template #action>
+          <IconChevronRight
+            class="size-5 text-muted-foreground"
+          />
+        </template>
+      </SettingsItem>
+
+      <SettingsItem
+        :title="$t('settings.about.privacyPolicy')"
+        @click="router.push(routeLocation.settingsPrivacy())"
+      >
+        <template #action>
+          <IconChevronRight
+            class="size-5 text-muted-foreground"
+          />
+        </template>
+      </SettingsItem>
+
+      <Link
+        to="https://github.com/Eg0r0k/Audiogram/blob/main/LICENSE"
+        confirm-external
+      >
+        <SettingsItem
+          :title="$t('settings.about.licenses')"
+        >
+          <template #action>
+            <IconExternalLink
+              class="size-5 text-muted-foreground"
+            />
+          </template>
+        </SettingsItem>
+      </Link>
+    </SettingsGroup>
+
+    <div class="px-4 py-6 text-center text-xs text-muted-foreground">
+      <p class=" inline-flex gap-1 items-center">
+        {{ $t('settings.about.madeWith') }} <IconBarBell
+          class="size-4"
+        />
+      </p>
+
+      <p class="mt-1">
+        © {{ dateYear }} Audiogram. {{ $t('settings.about.allRightsReserved') }}.
+      </p>
     </div>
-  </Scrollable>
+  </SettingsScreen>
 </template>
 
 <script setup lang="ts">
@@ -188,12 +181,11 @@ import IconLogo from "~icons/audiogram/logo";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 
-import { Scrollable } from "@/components/ui/scrollable";
 import Button from "@/components/ui/button/Button.vue";
 import Link from "@/components/ui/link/Link.vue";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsItem from "@/modules/settings/components/SettingsItem.vue";
-import SettingsHeader from "@/modules/settings/components/SettingsHeader.vue";
+import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
 import { useReleaseNotesDialog } from "@/modules/update/composables/useReleaseNotesDialog";
 import { useChangelogStore } from "@/modules/update/store/changelog.store";
 import { useUpdateStore } from "@/modules/update/store/update.store";

@@ -37,7 +37,8 @@
 </template>
 
 <script setup lang="ts">
-import { useExternalLinkDialog } from "@/composables/dialog/useExternalLinkDialog";
+import { summonDialog } from "@/components/dialogs/summonDialog";
+import { openExternal } from "@/composables/useExternalLinkInterceptor";
 import type { HTMLAttributes } from "vue";
 import { computed } from "vue";
 import { RouterLink, type RouteLocationRaw } from "vue-router";
@@ -63,8 +64,6 @@ interface LinkProps {
 defineOptions({
   inheritAttrs: false,
 });
-
-const { openDialog } = useExternalLinkDialog();
 
 const props = withDefaults(defineProps<LinkProps>(), {
   target: "_self",
@@ -107,8 +106,14 @@ const handleExternalClick = (event: MouseEvent) => {
 
   if (props.confirmExternal && normalizedHref.value) {
     event.preventDefault();
-    openDialog(normalizedHref.value);
+    confirmAndOpen(normalizedHref.value);
   }
+};
+
+const confirmAndOpen = (url: string) => {
+  summonDialog("externalLink", { url }, { key: `external-link:${url}` })
+    .then(confirmed => (confirmed ? openExternal(url) : undefined))
+    .catch(() => undefined);
 };
 
 const computedTarget = computed((): TargetType => props.target);

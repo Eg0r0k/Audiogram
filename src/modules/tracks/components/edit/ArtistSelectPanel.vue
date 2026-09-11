@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { refDebounced } from "@vueuse/core";
 import { keepPreviousData, useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
@@ -70,8 +70,11 @@ const search = ref("");
 const debouncedSearch = refDebounced(search, 200);
 const normalizedSearch = computed(() => debouncedSearch.value.trim().replace(/\s+/g, " "));
 
-const initialNames: readonly string[] = props.payload.selectedNames ?? [];
-const selectedNames = ref<string[]>([...initialNames]);
+const initialNames = computed<readonly string[]>(() => props.payload.selectedNames ?? []);
+const selectedNames = ref<string[]>([]);
+watch(initialNames, (names) => {
+  selectedNames.value = [...names];
+}, { immediate: true });
 const isSelectedName = (name: string) => selectedNames.value.some(item => identityKey(item) === identityKey(name));
 
 const toggleName = (name: string) => {
@@ -93,12 +96,12 @@ const suggestions = computed(() =>
 
 // Confirm follows "something changed", not "something selected": clearing
 // the last artist is a valid outcome (the track becomes artist-less).
-const isDirty = computed(() => !sameArtistNames(selectedNames.value, initialNames));
+const isDirty = computed(() => !sameArtistNames(selectedNames.value, initialNames.value));
 
 // The picker opens on the first of the track's current artists in list order.
-const initialNameKeys = new Set(initialNames.map(identityKey));
+const initialNameKeys = computed(() => new Set(initialNames.value.map(identityKey)));
 const revealKey = computed(() =>
-  suggestions.value.find(artist => initialNameKeys.has(identityKey(artist.name)))?.id ?? null,
+  suggestions.value.find(artist => initialNameKeys.value.has(identityKey(artist.name)))?.id ?? null,
 );
 
 const canCreate = computed(() =>

@@ -1,4 +1,5 @@
 import {
+  computed,
   defineComponent,
   h,
   inject,
@@ -48,7 +49,7 @@ interface SummonedDialogInstance {
   id: number;
   key: string | undefined;
   component: Component;
-  props: Record<string, unknown>;
+  props: object;
   controller: SummonedDialogController<unknown>;
   promise: Promise<unknown>;
 }
@@ -74,7 +75,7 @@ export interface SummonDialogOptions {
  */
 export const summonComponent = <TResult = void>(
   component: Component,
-  props: Record<string, unknown> = {},
+  props: object = {},
   options: SummonDialogOptions = {},
 ): Promise<TResult | undefined> => {
   const existing = options.key
@@ -145,7 +146,11 @@ const SummonedDialog = defineComponent({
     },
   },
   setup(props) {
-    provide(summonedDialogKey, props.instance.controller);
+    provide(summonedDialogKey, {
+      open: computed(() => props.instance.controller.open.value),
+      resolve: value => props.instance.controller.resolve(value),
+      dismiss: () => props.instance.controller.dismiss(),
+    });
     return () => h(props.instance.component, {
       ...props.instance.props,
       "open": props.instance.controller.open.value,

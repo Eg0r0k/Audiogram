@@ -146,34 +146,6 @@
     >
       <EmptyDescription>{{ t("common.import.empty") }}</EmptyDescription>
     </Empty>
-
-    <Dialog
-      :open="isCancelDialogOpen"
-      @update:open="handleCancelDialogOpenChange"
-    >
-      <DialogContent class="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{{ t("common.import.status.cancelTitle") }}</DialogTitle>
-          <DialogDescription>{{ t("common.import.status.cancelDescription") }}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button
-            variant="ghost-primary"
-            :disabled="isCancelling"
-            @click="continueImport"
-          >
-            {{ t("common.import.status.continueImport") }}
-          </Button>
-          <Button
-            variant="destructive-link"
-            :disabled="isCancelling"
-            @click="confirmCancelImport"
-          >
-            {{ t("common.import.status.confirmCancel") }}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   </div>
 </template>
 
@@ -183,7 +155,7 @@ import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useImport, type ImportFileItem, type ImportFileStatus } from "@/modules/library/composables/useImport";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { summonDialog } from "@/components/dialogs/summonDialog";
 import { Empty, EmptyDescription } from "@/components/ui/empty";
 import { Item, ItemContent, ItemMedia, ItemSubtitle, ItemTitle } from "@/components/ui/item";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -225,7 +197,6 @@ const {
 } = useImport();
 
 const activeFilter = ref<FilterKey>("all");
-const isCancelDialogOpen = ref(false);
 
 const processingName = computed(() =>
   isRunning.value ? files.value[current.value]?.name : undefined,
@@ -272,19 +243,15 @@ const togglePause = () => {
   else pauseImport();
 };
 
-const requestCancel = () => {
+// Pauses for the question and resumes unless the user confirmed the cancel.
+const requestCancel = async () => {
   if (isRunning.value && !isPaused.value) pauseImport();
-  isCancelDialogOpen.value = true;
-};
-
-const handleCancelDialogOpenChange = (open: boolean) => {
-  isCancelDialogOpen.value = open;
-  if (!open && isRunning.value && !isCancelling.value) resumeImport();
-};
-
-const continueImport = () => {
-  isCancelDialogOpen.value = false;
-  resumeImport();
+  const confirmed = await summonDialog("cancelImport", {}, { key: "cancel-import" });
+  if (confirmed) {
+    confirmCancelImport();
+    return;
+  }
+  if (isRunning.value && !isCancelling.value) resumeImport();
 };
 
 const finish = () => {
@@ -303,7 +270,6 @@ onUnmounted(() => {
 
 const confirmCancelImport = () => {
   cancelImport();
-  isCancelDialogOpen.value = false;
   finish();
 };
 

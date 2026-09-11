@@ -18,6 +18,7 @@ function makeEvent(overrides: Partial<ListenEventEntity> = {}): ListenEventEntit
     trackDuration: 200,
     completed: true,
     skipped: false,
+    origin: "user",
     ...overrides,
   };
 }

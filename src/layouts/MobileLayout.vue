@@ -1,6 +1,5 @@
 ﻿<template>
   <div
-    ref="dropZoneRef"
     class="relative flex bg-muted dark:bg-card flex-col h-dvh overflow-hidden antialiased pt-[env(safe-area-inset-top,0px)] pr-[env(safe-area-inset-right,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)]"
   >
     <WindowToolbar class="toolbar" />

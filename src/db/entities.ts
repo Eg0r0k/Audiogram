@@ -1,4 +1,5 @@
 import type { AlbumId, ArtistId, PlaylistId, RadioStationId, SidebarFolderId, TagId, TrackId } from "@/types/ids";
+import type { ComponentWeights } from "@/modules/recommendations/lib/scoring";
 
 export enum TrackSource {
   LOCAL_INTERNAL = "local_internal",
@@ -112,6 +113,16 @@ export interface TrackEntity {
   replayPeak?: number;
 }
 
+/**
+ * "autoplay" means the queue itself appended and started this track (see
+ * `resolveListenOrigin`); every deliberate play — including one that happens
+ * to land on a recommended entry — is "user".
+ */
+export type ListenOrigin = "user" | "autoplay";
+
+/** How an autoplay pick was chosen: by rank, or from the exploration slot. */
+export type ListenPick = "rank" | "explore";
+
 export interface ListenEventEntity {
   id: string;
   trackId: TrackId;
@@ -122,6 +133,9 @@ export interface ListenEventEntity {
   trackDuration: number;
   completed: boolean;
   skipped: boolean;
+  origin: ListenOrigin;
+  /** Set for autoplay picks only. */
+  pick?: ListenPick;
 }
 
 export type CoverOwnerType = "album" | "playlist" | "artist" | "track";
@@ -203,4 +217,16 @@ export interface TrackChapterEntity {
   trackId: TrackId;
   chapters: TrackChapterMark[];
   updatedAt: number;
+}
+
+/** Single row, keyed "weights" — the recommender's currently trained model. */
+export interface RecommenderModelEntity {
+  id: "weights";
+  weights: ComponentWeights;
+  /** Semantics of the feature vector the weights were fitted on; a mismatch means "no model". */
+  featureVersion?: number;
+  trainedAt: number;
+  examples: number;
+  positives: number;
+  negatives: number;
 }

@@ -87,13 +87,21 @@ describe("useQueueSourceLink", () => {
     expect(useQueueSourceLink().link.value).toBeNull();
   });
 
-  it.each<QueueSource["type"]>(["search", "manual", "history", "recommendation", "external", "unknown"])(
+  it.each<QueueSource["type"]>(["search", "manual", "history", "external", "unknown"])(
     "is null for a %s origin, which has no page",
     (type) => {
       setSource({ type } as QueueSource);
       expect(useQueueSourceLink().link.value).toBeNull();
     },
   );
+
+  it("labels a recommended track without a page to go to", () => {
+    setSource({ type: "autoplay", pick: "rank" });
+    expect(useQueueSourceLink().link.value).toEqual({ label: "queue.fromRecommendations" });
+
+    setSource({ type: "recommendation" });
+    expect(useQueueSourceLink().link.value).toEqual({ label: "queue.fromRecommendations" });
+  });
 
   it("names a library album through its row lookup", () => {
     rows["album:a1"] = { title: "Discovery" };

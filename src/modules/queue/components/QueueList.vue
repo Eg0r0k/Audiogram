@@ -27,11 +27,16 @@
             <template v-if="sourceLink">
               <span class="shrink-0">{{ t("queue.upNextFrom") }}</span>
               <Link
+                v-if="sourceLink.to"
                 :to="sourceLink.to"
                 class="min-w-0 truncate hover:underline"
               >
                 {{ sourceLink.label }}
               </Link>
+              <span
+                v-else
+                class="min-w-0 truncate"
+              >{{ sourceLink.label }}</span>
             </template>
             <span v-else>{{ t("queue.upNext") }}</span>
           </div>

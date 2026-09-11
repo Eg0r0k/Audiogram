@@ -3,6 +3,7 @@ import { useI18n } from "vue-i18n";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import type { SidebarFolderEntity } from "@/db/entities";
 import { normalizeFolderName, validateFolderName } from "@/modules/library/lib/folderName";
+import { summonDialog } from "@/components/dialogs/summonDialog";
 import type { FolderLibraryItemType, LibraryFolderEntry, LibraryItem } from "@/modules/library/types";
 
 interface UseLibrarySidebarFoldersOptions {
@@ -29,10 +30,6 @@ export function useLibrarySidebarFolders({
   const { t } = useI18n();
 
   const activeFolderId = activeSidebarFolderId;
-  const isFolderNameDialogOpen = ref(false);
-  /** What the name dialog opens with; the dialog owns the edited value. */
-  const folderName = ref("");
-  const editingFolderId = ref<string | null>(null);
 
   const rightPanel = useRightPanelStore();
 
@@ -49,11 +46,6 @@ export function useLibrarySidebarFolders({
     folders.value.find((folder: SidebarFolderEntity) => folder.id === activeFolderId.value) ?? null,
   );
 
-  const folderNameDialogTitle = computed(() => editingFolderId.value
-    ? t("library.folder.rename")
-    : t("library.folder.create"),
-  );
-
   const folderDepth = computed<0 | 1>(() => (activeFolder.value ? 1 : 0));
 
   function openFolder(folderId: string) {
@@ -64,34 +56,24 @@ export function useLibrarySidebarFolders({
     activeFolderId.value = null;
   };
 
-  function openCreateFolderDialog() {
-    editingFolderId.value = null;
-    folderName.value = t("library.folder.newFolder");
-    isFolderNameDialogOpen.value = true;
+  /** The dialog validates; the guard backs it up before the write. */
+  const askFolderName = async (initialName: string, title: string): Promise<string | null> => {
+    const rawName = await summonDialog("folderName", { initialName, title }, { key: "folder-name" });
+    if (!rawName || validateFolderName(rawName)) return null;
+    return normalizeFolderName(rawName);
+  };
+
+  async function openCreateFolderDialog() {
+    const name = await askFolderName(t("library.folder.newFolder"), t("library.folder.create"));
+    if (name) await createFolder(name);
   }
 
-  function openRenameFolderDialog(folderId: string) {
+  async function openRenameFolderDialog(folderId: string) {
     const folder = folders.value.find((folder: SidebarFolderEntity) => folder.id === folderId);
     if (!folder) return;
 
-    editingFolderId.value = folderId;
-    folderName.value = folder.name;
-    isFolderNameDialogOpen.value = true;
-  }
-
-  /** `rawName` comes from the dialog already validated; the guard backs it up. */
-  async function submitFolderName(rawName: string) {
-    if (validateFolderName(rawName)) return;
-    const name = normalizeFolderName(rawName);
-
-    if (editingFolderId.value) {
-      await renameFolder(editingFolderId.value, name);
-    }
-    else {
-      await createFolder(name);
-    }
-
-    isFolderNameDialogOpen.value = false;
+    const name = await askFolderName(folder.name, t("library.folder.rename"));
+    if (name) await renameFolder(folderId, name);
   }
 
   /**
@@ -135,15 +117,11 @@ export function useLibrarySidebarFolders({
     closeFolder,
     deleteSidebarFolder,
     folderDepth,
-    folderName,
-    folderNameDialogTitle,
-    isFolderNameDialogOpen,
     openCreateFolderDialog,
     openFolder,
     openFolderPicker,
     openRenameFolderDialog,
     removeItemFromActiveFolder,
     renameActiveFolder,
-    submitFolderName,
   };
 }

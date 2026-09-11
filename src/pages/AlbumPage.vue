@@ -43,7 +43,7 @@
                 :is-library-entity="!!album"
                 @play="handlePlayAll"
                 @shuffle="handleShuffle"
-                @edit="showEditDialog = true"
+                @edit="openEditDialog"
                 @delete="openDeleteDialog"
                 @add-to-queue="handleAddToQueue"
               >
@@ -96,18 +96,11 @@
         :album-id="album?.id"
       />
     </template>
-
-    <EditAlbumDialog
-      v-model:open="showEditDialog"
-      :album="album"
-      :current-cover-url="coverUrl"
-      @save="handleSave"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, useTemplateRef } from "vue";
+import { computed, ref, useTemplateRef } from "vue";
 import { sourceKindOf } from "@/modules/sources/lib/display";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
@@ -124,10 +117,10 @@ import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdo
 import IconLoader2 from "~icons/tabler/loader-2";
 import { useAlbumPage } from "@/modules/albums/composables/useAlbumPage";
 import { getAlbumPageData } from "@/queries/album.queries";
-import EditAlbumDialog from "@/modules/albums/components/dialogs/EditAlbumDialog.vue";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 import { summonDialog } from "@/components/dialogs/summonDialog";
+import { useEditAlbumDialog } from "@/modules/albums/composables/useEditAlbumDialog";
 import IconPlus from "~icons/tabler/plus";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
@@ -136,13 +129,6 @@ import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
 import { getLogger } from "@/lib/logger";
-
-interface AlbumChanges {
-  title?: string;
-  description?: string;
-  coverBlob?: Blob;
-  removeCover?: boolean;
-}
 
 const { t } = useI18n();
 const playerStore = usePlayerStore();
@@ -170,7 +156,7 @@ const {
   isFetchingNextPage,
 } = useAlbumPage(sortKey);
 
-const showEditDialog = ref(false);
+const editAlbum = useEditAlbumDialog();
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
 
 const errorMessage = computed(() => {
@@ -251,16 +237,18 @@ async function handleDelete(deleteTracks: boolean) {
   }
 }
 
-async function handleSave(changes: AlbumChanges) {
-  try {
-    await updateAlbum(changes);
-    showEditDialog.value = false;
-  }
-  catch (e) {
-    const message = e instanceof Error ? e.message : t("album.updateFailed");
-    toast.error(message);
-  }
-}
+const openEditDialog = () => {
+  if (!album.value) return;
+  editAlbum(album.value, coverUrl.value, async (changes) => {
+    try {
+      await updateAlbum(changes);
+    }
+    catch (e) {
+      toast.error(e instanceof Error ? e.message : t("album.updateFailed"));
+      throw e;
+    }
+  }).catch(() => undefined);
+};
 
 const scrollableRef = useTemplateRef("scrollableRef");
 // Declared after the page state it reads: the hook evaluates `ready`

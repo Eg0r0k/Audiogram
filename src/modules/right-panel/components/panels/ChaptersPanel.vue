@@ -212,13 +212,13 @@ const importError = ref<string | null>(null);
 // the autosave below may already have written the draft.
 let editSnapshot: TrackChapterMark[] = [];
 
-const chapterSchema = object({
+const chapterSchema = computed(() => object({
   time: pipe(number(), minValue(0), maxValue(props.track.duration)),
   title: string(),
-});
+}));
 
 const isFormValid = computed(() =>
-  draft.value.every(ch => safeParse(chapterSchema, { time: ch.time, title: ch.title }).success),
+  draft.value.every(ch => safeParse(chapterSchema.value, { time: ch.time, title: ch.title }).success),
 );
 
 const toPayload = (list: DraftChapter[]): TrackChapterMark[] => [...list]

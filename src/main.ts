@@ -27,6 +27,8 @@ import { sources } from "@/modules/sources/registry";
 import { ytSourceProvider } from "@/modules/youtube/source-provider";
 import { registerAutoplaySource } from "@/modules/queue/lib/queue-autoplay";
 import { getRecommendations } from "@/modules/recommendations/service/recommender.service";
+import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
+import { invalidateWeightsCache } from "@/modules/recommendations/service/recommender-model.service";
 
 await initLogging();
 
@@ -51,6 +53,8 @@ if (dbOpen.isErr()) {
 // ask the registry: persisted stores resolve sources on first use.
 sources.register(ytSourceProvider);
 registerAutoplaySource(getRecommendations);
+statsService.onChange(markRecommenderContextDirty);
+statsService.onListenRecorded(markRecommenderContextDirty);
 
 const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate);
@@ -82,6 +86,10 @@ statsService.onChange(() => {
   );
 });
 onAllDataCleared(resetSearchIndex);
+onAllDataCleared(markRecommenderContextDirty);
+// The full wipe took the recommenderModels row too; the cached weights would
+// otherwise keep the deleted model active until reload.
+onAllDataCleared(invalidateWeightsCache);
 
 // Download queue: requeue interrupted jobs, sweep temp orphans, resume.
 // No-op outside Tauri. Failures must not block app startup.

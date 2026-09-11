@@ -1,7 +1,7 @@
 <template>
   <Dialog
     :open="open"
-    @update:open="emit('update:open', $event)"
+    @update:open="value => emit('update:open', value)"
   >
     <DialogContent class="sm:max-w-sm">
       <DialogHeader>
@@ -14,13 +14,13 @@
       <DialogFooter class="gap-2">
         <Button
           variant="ghost-primary"
-          @click="emit('update:open', false)"
+          @click="dismiss"
         >
           {{ $t("common.cancel") }}
         </Button>
         <Button
           variant="destructive-link"
-          @click="emit('discard')"
+          @click="resolve(true)"
         >
           {{ $t("track.edit.discard") }}
         </Button>
@@ -39,11 +39,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useSummonedDialog } from "@/components/dialogs/summon";
 
 defineProps<{ open: boolean }>();
 
 const emit = defineEmits<{
   "update:open": [open: boolean];
-  "discard": [];
 }>();
+
+const { resolve, dismiss } = useSummonedDialog<true>();
 </script>

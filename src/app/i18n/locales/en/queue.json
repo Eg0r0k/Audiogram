@@ -5,6 +5,7 @@
   "nowPlaying": "Now Playing",
   "upNext": "Up Next",
   "upNextFrom": "Up next from:",
+  "fromRecommendations": "Recommendations",
   "added": "Added to queue",
   "addFailed": "Could not add to the queue",
   "drag": "Drag to reorder",

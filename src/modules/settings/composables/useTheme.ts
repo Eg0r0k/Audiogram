@@ -117,5 +117,4 @@ export const useTheme = () => {
   };
 };
 
-applyTheme(resolvedTheme.value);
-watch(resolvedTheme, applyTheme);
+watch(resolvedTheme, applyTheme, { immediate: true });

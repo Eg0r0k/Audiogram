@@ -9,12 +9,13 @@ import type {
   OfflineCopyEntity,
   PlaylistEntity,
   RadioStationEntity,
+  RecommenderModelEntity,
   SidebarFolderEntity,
   TagEntity,
   TrackChapterEntity,
   TrackEntity,
 } from "./entities";
-import { upgradeToV10, upgradeToV12, upgradeToV14 } from "./migrations";
+import { upgradeToV10, upgradeToV12, upgradeToV14, upgradeToV15 } from "./migrations";
 import type { DbError } from "./errors/db.errors";
 import { toDbError } from "./errors/db.errors";
 import { getLogger } from "@/lib/logger";
@@ -35,6 +36,7 @@ export class AppDatabase extends Dexie {
   trackChapters!: Table<TrackChapterEntity, TrackId>;
   offlineCopies!: Table<OfflineCopyEntity, TrackId>;
   downloadJobs!: Table<DownloadJobEntity, string>;
+  recommenderModels!: Table<RecommenderModelEntity, "weights">;
 
   constructor() {
     super("AudiogramDB");
@@ -93,6 +95,12 @@ export class AppDatabase extends Dexie {
 
     this.version(14).stores({}).upgrade(upgradeToV14);
 
+    // listenEvents keeps its v13 index list — `origin` is filtered in memory,
+    // and every read already loads events in full.
+    this.version(15).stores({
+      recommenderModels: "&id",
+    }).upgrade(upgradeToV15);
+
     this.tracks = this.table("tracks");
     this.artists = this.table("artists");
     this.albums = this.table("albums");
@@ -106,6 +114,7 @@ export class AppDatabase extends Dexie {
     this.trackChapters = this.table("trackChapters");
     this.offlineCopies = this.table("offlineCopies");
     this.downloadJobs = this.table("downloadJobs");
+    this.recommenderModels = this.table("recommenderModels");
   }
 }
 

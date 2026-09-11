@@ -1,14 +1,17 @@
 import { watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import type { Track } from "@/modules/player/types";
-import { useSelection, type UseSelectionOptions } from "@/composables/useSelection";
+import { useSelection, type SelectionDragOptions, type UseSelectionOptions } from "@/composables/useSelection";
+
+export type TrackSelectionTouchOptions = Pick<SelectionDragOptions, "canStartTouch" | "suppressContextMenu">;
 
 export function useTrackSelection(
   tracks: Ref<Track[]> | ComputedRef<Track[]>,
   containerRef: Ref<HTMLElement | null>,
-  options: UseSelectionOptions = {},
+  options: UseSelectionOptions & TrackSelectionTouchOptions = {},
 ) {
-  const selection = useSelection(tracks, options);
+  const { canStartTouch, suppressContextMenu, ...selectionOptions } = options;
+  const selection = useSelection(tracks, selectionOptions);
 
   watch(
     containerRef,
@@ -19,6 +22,8 @@ export function useTrackSelection(
         rowSelector: "[data-track-id]",
         idDataKey: "trackId",
         indexDataKey: "trackIndex",
+        canStartTouch,
+        suppressContextMenu,
       });
 
       onCleanup(cleanup);

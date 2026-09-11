@@ -1,197 +1,83 @@
-import type { AudioFeaturesEntity, TrackEntity } from "@/db/entities";
-import { trackRepository } from "@/db/repositories";
-import { audioFeaturesRepository } from "@/db/repositories/audioFeatures.repository";
-import { normalize } from "@/lib/math";
+import type { ListenPick, TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
-import { buildCoOccurrenceMatrix, buildSessions } from "./session-builder.service";
-import { statsRepository } from "@/db/repositories/stats.repository";
-
-interface FeatureVector {
-  bpm: number; // raw / 250
-  energy: number; // 0–1
-  spectralCentroid: number; // raw / 8000
-  danceability: number; // 0–1
-  key: number; // raw / 11
-  mode: number; // 0 or 1
-}
-
-export function toVector(f: AudioFeaturesEntity) {
-  return {
-    bpm: normalize(f.bpm, 250),
-    energy: f.energy,
-    spectralCentroid: normalize(f.spectralCentroid, 8000),
-    danceability: f.danceability,
-    key: normalize(f.key, 11),
-    mode: f.mode,
-  };
-}
-
-async function getRecentlyPlayedIds(count: number): Promise<TrackId[]> {
-  const eventsResult = await statsRepository.findAllEvents();
-  if (eventsResult.isErr()) return [];
-
-  const events = eventsResult.value;
-  const seen = new Set<TrackId>();
-  const result: TrackId[] = [];
-
-  const ordered = [...events].sort((a, b) => b.startedAt - a.startedAt);
-  for (const e of ordered) {
-    if (seen.has(e.trackId)) continue;
-    seen.add(e.trackId);
-    result.push(e.trackId);
-    if (result.length >= count) break;
-  }
-
-  return result;
-}
-
-function euclideanSimilarity(a: FeatureVector, b: FeatureVector): number {
-  const keys = Object.keys(a) as (keyof FeatureVector)[];
-  let sumSq = 0;
-  for (const k of keys) {
-    const diff = a[k] - b[k];
-    sumSq += diff * diff;
-  }
-  const maxDist = Math.sqrt(keys.length);
-  const dist = Math.sqrt(sumSq);
-  return 1 - dist / maxDist;
-}
-
-type Weights = {
-  audioSimilarity: number;
-  coOccurrence: number;
-  completionRate: number;
-  recencyScore: number;
-  likedBonus: number;
-};
-
-const WEIGHTS: Weights = {
-  audioSimilarity: 0.30,
-  coOccurrence: 0.30,
-  completionRate: 0.20,
-  recencyScore: 0.05,
-  likedBonus: 0.15,
-};
-const RECENCY_DECAY_DAYS = 30;
+import { adaptiveExploreShare, exploreAllowedAfter } from "../lib/explore-policy";
+import { DEFAULT_MMR_OPTIONS } from "../lib/rank";
+import { scoreCandidates, type Breakdown, type CandidateInput, type SeedInput } from "../lib/scoring";
+import { buildSlate, DEFAULT_EXPLORE_SHARE, exploreEligibility, type SlateCandidate } from "../lib/slate";
+import { getRecommenderContext } from "./recommender-context.service";
+import { ensureModelFresh, getActiveWeights } from "./recommender-model.service";
 
 export interface ScoredTrack {
   trackId: TrackId;
   track: TrackEntity;
   score: number;
-  breakdown: {
-    audioSimilarity: number;
-    coOccurrence: number;
-    completionRate: number;
-    recencyScore: number;
-    likedBonus: number;
-  };
+  breakdown: Breakdown;
+  pick: ListenPick;
 }
+
+export interface RecommendationDeps {
+  rng: () => number;
+  now: number;
+}
+
+/** Tracks played this recently are excluded from candidates alongside the seed. */
+export const RECENT_EXCLUDE = 3;
 
 export const getRecommendations = async (
   sourceTrackId: TrackId,
   limit = 8,
   additionalExcludeIds: TrackId[] = [],
+  deps: Partial<RecommendationDeps> = {},
 ): Promise<ScoredTrack[]> => {
-  const allIdsResult = await trackRepository.findAllIds();
-  if (allIdsResult.isErr()) return [];
+  const rng = deps.rng ?? Math.random;
+  // Fresh clock: the cached context can be hours old, but recency tiers must
+  // score against "now", not the context's build time.
+  const now = deps.now ?? Date.now();
 
-  const recentlyPlayedIds = await getRecentlyPlayedIds(5);
-  const excludeSet = new Set([sourceTrackId, ...recentlyPlayedIds, ...additionalExcludeIds]);
-  const candidateIds = allIdsResult.value.filter(id => !excludeSet.has(id));
-  if (candidateIds.length === 0) return [];
+  const ctx = await getRecommenderContext();
+  const seedTrack = ctx.tracks.get(sourceTrackId);
+  if (!seedTrack) return [];
 
-  const [
-    sourceFeaturesResult,
-    candidateFeaturesResult,
-    candidateTracksResult,
-    sessions,
-    allEventsResult,
-  ] = await Promise.all([
-    audioFeaturesRepository.findById(sourceTrackId),
-    audioFeaturesRepository.findManyByIds(candidateIds),
-    trackRepository.findByIds(candidateIds),
-    buildSessions(),
-    statsRepository.findAllEvents(),
-  ]);
+  const excluded = new Set<TrackId>(additionalExcludeIds);
+  excluded.add(sourceTrackId);
+  for (const id of ctx.recentlyPlayed.slice(0, RECENT_EXCLUDE)) excluded.add(id);
 
-  if (candidateTracksResult.isErr()) return [];
-
-  const allEvents = allEventsResult.isOk() ? allEventsResult.value : [];
-
-  const coMatrix = buildCoOccurrenceMatrix(sessions);
-  const sourcePairs = coMatrix.get(sourceTrackId) ?? new Map<TrackId, number>();
-  const maxCoOcc = sourcePairs.size > 0 ? Math.max(...sourcePairs.values()) : 1;
-
-  const completionStats = new Map<TrackId, { completed: number; total: number }>();
-  for (const event of allEvents) {
-    if (event.skipped) continue;
-    const s = completionStats.get(event.trackId) ?? { completed: 0, total: 0 };
-    s.total++;
-    if (event.completed) s.completed++;
-    completionStats.set(event.trackId, s);
+  const candidates: CandidateInput[] = [];
+  for (const [id, track] of ctx.tracks) {
+    if (excluded.has(id)) continue;
+    candidates.push({ track, features: ctx.features.get(id) ?? null });
   }
+  if (candidates.length === 0) return [];
 
-  const featuresMap = new Map(
-    (candidateFeaturesResult.isOk() ? candidateFeaturesResult.value : [])
-      .map(f => [f.trackId, f]),
-  );
-  const tracksMap = new Map(candidateTracksResult.value.map(t => [t.id, t]));
+  const weights = await getActiveWeights();
+  const seed: SeedInput = { track: seedTrack, features: ctx.features.get(sourceTrackId) ?? null };
+  const scoringCtx = { ...ctx, now };
+  const scored = scoreCandidates(scoringCtx, seed, candidates, weights);
 
-  const sourceVector = sourceFeaturesResult.isOk() && sourceFeaturesResult.value
-    ? toVector(sourceFeaturesResult.value)
-    : null;
+  const slateCandidates = scored.map(c => ({
+    trackId: c.track.id,
+    artistIds: c.track.artistIds,
+    albumId: c.track.albumId,
+    score: c.score,
+    track: c.track,
+    breakdown: c.breakdown,
+  } satisfies SlateCandidate));
 
-  const now = Date.now();
-  const decayMs = RECENCY_DECAY_DAYS * 86_400_000;
-  const scored: ScoredTrack[] = [];
+  const slate = buildSlate(slateCandidates, {
+    limit,
+    exploreShare: adaptiveExploreShare(ctx.events, DEFAULT_EXPLORE_SHARE),
+    mmr: DEFAULT_MMR_OPTIONS,
+    allowExplore: exploreAllowedAfter(ctx.events),
+    isExploreEligible: exploreEligibility(ctx, now),
+    rng,
+  });
 
-  for (const candidateId of candidateIds) {
-    const track = tracksMap.get(candidateId);
-    if (!track) continue;
-
-    const candidateFeatures = featuresMap.get(candidateId);
-    const audioSimilarity = sourceVector && candidateFeatures
-      ? euclideanSimilarity(sourceVector, toVector(candidateFeatures))
-      : 0;
-
-    const rawCoOcc = sourcePairs.get(candidateId) ?? 0;
-    const coOccurrence = maxCoOcc > 0 ? rawCoOcc / maxCoOcc : 0;
-
-    const stats = completionStats.get(candidateId);
-    const completionRate = stats && stats.total > 0
-      ? stats.completed / stats.total
-      : 0.5;
-
-    const recencyScore = !track.lastPlayedAt
-      ? 0.6
-      : Math.exp(-(now - track.lastPlayedAt) / decayMs);
-
-    const likedBonus = track.likedAt ? 1.0 : 0.0;
-
-    let w = { ...WEIGHTS };
-    if (!sourceVector || !candidateFeatures) {
-      const extra = WEIGHTS.audioSimilarity / 4;
-      w = {
-        audioSimilarity: 0,
-        coOccurrence: WEIGHTS.coOccurrence + extra,
-        completionRate: WEIGHTS.completionRate + extra,
-        recencyScore: WEIGHTS.recencyScore + extra,
-        likedBonus: WEIGHTS.likedBonus + extra,
-      };
-    }
-    scored.push({
-      trackId: candidateId,
-      track,
-      score:
-        audioSimilarity * w.audioSimilarity
-        + coOccurrence * w.coOccurrence
-        + completionRate * w.completionRate
-        + recencyScore * w.recencyScore
-        + likedBonus * w.likedBonus,
-      breakdown: { audioSimilarity, coOccurrence, completionRate, recencyScore, likedBonus },
-    });
-  }
-
-  scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, limit);
+  ensureModelFresh().catch(() => {});
+  return slate.map(({ item, pick }) => ({
+    trackId: item.trackId,
+    track: item.track,
+    score: item.score,
+    breakdown: item.breakdown,
+    pick,
+  }));
 };

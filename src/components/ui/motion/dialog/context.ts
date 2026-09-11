@@ -3,7 +3,7 @@ import type { InjectionKey, Ref } from "vue";
 export type MorphingDialogContext = {
   isOpen: Ref<boolean>;
   setIsOpen: (value: boolean) => void;
-  uniqueId: string;
+  uniqueId: Readonly<Ref<string>>;
   triggerRef: Ref<HTMLButtonElement | null>;
 };
 
