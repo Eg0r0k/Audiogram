@@ -19,6 +19,7 @@ export type AccentColor = (typeof ACCENT_COLOR_VALUES)[number];
 export const AppearanceSettingsSchema = object({
   theme: optional(picklist(["light", "dark", "system"] as const), "system"),
   accentColor: optional(picklist(ACCENT_COLOR_VALUES), "blue"),
+  contrast: optional(picklist(["system", "off", "on"] as const), "system"),
 });
 
 export type AppearanceSettings = InferOut<typeof AppearanceSettingsSchema>;

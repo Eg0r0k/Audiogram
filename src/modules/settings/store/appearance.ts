@@ -1,5 +1,6 @@
 import { useTheme } from "../composables/useTheme";
 import { useAccentColor } from "../composables/useAccentColor";
+import { CONTRAST_MODES, useContrast } from "../composables/useContrast";
 import { ACCENT_COLOR_OPTIONS } from "../accent-colors";
 
 export type Theme = "system" | "light" | "dark";
@@ -18,8 +19,14 @@ export const THEME_OPTIONS: ThemeOption[] = [
 export function useAppearanceSettings() {
   const { mode, resolvedTheme, isDark, changeTheme, toggleTheme } = useTheme();
   const { accentColor, customAccentColor, setAccentColor, setCustomAccentColor } = useAccentColor();
+  const { mode: contrast, isHighContrast, changeContrast } = useContrast();
 
   return {
+    contrast,
+    isHighContrast,
+    contrastModes: CONTRAST_MODES,
+    setContrast: changeContrast,
+
     theme: mode,
     activeTheme: resolvedTheme,
     isDark,

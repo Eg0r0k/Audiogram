@@ -114,6 +114,12 @@
       "system": "System",
       "light": "Light",
       "dark": "Dark"
+    },
+    "contrast": "Contrast",
+    "contrastModes": {
+      "system": "System",
+      "off": "Off",
+      "on": "On"
     }
   },
   "audio": {

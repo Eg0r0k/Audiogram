@@ -30,6 +30,35 @@
     </SettingsGroup>
 
     <SettingsGroup>
+      <div class="px-4">
+        <div class=" text-primary font-medium mb-1">
+          {{ $t("settings.appearance.contrast") }}
+        </div>
+      </div>
+      <RadioGroup
+        :model-value="contrast"
+        @update:model-value="(val) => setContrast(val as ContrastMode)"
+      >
+        <Item
+          v-for="option in contrastModes"
+          :key="option"
+          class="cursor-pointer"
+          @click="setContrast(option)"
+        >
+          <RadioGroupItem
+            :id="`contrast-${option}`"
+            :value="option"
+          />
+          <ItemContent>
+            <ItemTitle>
+              {{ $t(`settings.appearance.contrastModes.${option}`) }}
+            </ItemTitle>
+          </ItemContent>
+        </Item>
+      </RadioGroup>
+    </SettingsGroup>
+
+    <SettingsGroup>
       <div class="px-4 py-4">
         <div class="mb-3 text-primary font-medium">
           {{ $t("settings.appearance.accentColor") }}
@@ -98,11 +127,13 @@ import AccentColorPicker from "@/modules/settings/components/AccentColorPicker.v
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
 import { useAppearanceSettings } from "@/modules/settings/store/appearance";
+import type { ContrastMode } from "@/modules/settings/composables/useContrast";
 import { useZoom } from "@/modules/settings/composables/useZoom";
 import { platformCaps } from "@/lib/environment/platformCaps";
 
 const {
   theme, themes, setTheme,
+  contrast, contrastModes, setContrast,
   accentColor, accentColors, setAccentColor,
   customAccentColor, setCustomAccentColor,
 } = useAppearanceSettings();
