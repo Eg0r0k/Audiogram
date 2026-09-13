@@ -43,16 +43,12 @@ export interface LikedTracksPageData {
   tracks: Track[];
 }
 
-export interface TracksIndexPageData {
-  tracks: Track[];
-  total: number;
-  totalDuration: number;
-}
-
 export interface PaginatedTracksResult {
   tracks: Track[];
   nextOffset: number | null;
   total: number;
+  /** Seconds across every match; only a search inside a collection knows it up front. */
+  totalDuration?: number;
 }
 
 export interface PaginatedAlbumsResult {
@@ -65,4 +61,5 @@ export interface PaginatedPlaylistTracksResult {
   tracks: Track[];
   nextOffset: number | null;
   total: number;
+  totalDuration?: number;
 }

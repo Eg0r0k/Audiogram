@@ -4,7 +4,7 @@
   >
     <template v-if="isLoading">
       <div class="flex items-center justify-center h-full">
-        <IconLoader2 class="size-8 animate-spin text-muted-foreground" />
+        <Spinner class="size-8 text-muted-foreground" />
       </div>
     </template>
 
@@ -31,9 +31,11 @@
         >
           <template #before>
             <MediaHero
+              v-model:filter="searchQuery"
               :data="artistData"
               :has-tracks="tracks.length > 0"
               :is-library-entity="!!artist"
+              :filterable="!!artist"
               @play="handlePlayAll"
               @shuffle="handleShuffle"
               @edit="openEditDialog"
@@ -155,12 +157,13 @@ import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback
 import type { QueueSource } from "@/modules/queue/types";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
+import { Spinner } from "@/components/ui/spinner";
 import IconChevronRight from "~icons/tabler/chevron-right";
-import IconLoader2 from "~icons/tabler/loader-2";
 import IconPlus from "~icons/tabler/plus";
 
 import { useArtistPage } from "@/modules/artists/composables/useArtistPage";
 import { getArtistPageData } from "@/queries/artist.queries";
+import { searchArtistTracks } from "@/queries/track.queries";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 import { summonDialog } from "@/components/dialogs/summonDialog";
@@ -193,6 +196,7 @@ const { openMenu } = useTrackMenu();
 const { isPinned, deleteItem: deleteLibraryItem } = useLibrary();
 const { playAlbum } = usePlayAlbum();
 const sortKey = ref<TrackSortKey | null>(null);
+const searchQuery = ref("");
 const artistId = computed(() => route.params.id as string);
 
 const {
@@ -202,6 +206,7 @@ const {
   playlistItems,
   tracks,
   canSort,
+  normalizedSearchQuery,
   artistData,
   coverUrl,
   trackCount,
@@ -216,7 +221,7 @@ const {
   hasNextTrackPage,
   isTracksLoading,
   isFetchingNextTrackPage,
-} = useArtistPage(sortKey);
+} = useArtistPage(sortKey, searchQuery);
 
 const editArtist = useEditArtistDialog();
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
@@ -280,6 +285,10 @@ const {
   loadAll: async () => {
     const row = artist.value;
     if (!row) return [];
+    const query = normalizedSearchQuery.value;
+    if (query) {
+      return (await searchArtistTracks(row.id, query, 0, Infinity, sortKey.value)).tracks;
+    }
     return (await getArtistPageData(row.id, sortKey.value)).tracks;
   },
 });

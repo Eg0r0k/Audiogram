@@ -66,10 +66,11 @@ vi.mock("@/modules/search/service/buildDocuments", () => ({
 import { upsertSearchDocuments } from "@/modules/search/service/searchIndex";
 import { queryKeys } from "@/queries/query-keys";
 import * as cache from "../cache";
+import type { LibrarySummaryData } from "../types";
 import {
-  getTracksIndexPageData,
   getLikedTracksPageData,
   getLikedTracksPaginated,
+  getTracksPaginated,
   toggleTrackLikeAndSync,
   updateTrackMetadataAndSync,
 } from "../track.queries";
@@ -139,9 +140,8 @@ describe("track.queries", () => {
     repositories.artistRepository.findByIds.mockResolvedValue(ok([artist]));
     repositories.albumRepository.findByIds.mockResolvedValue(ok([albumA, albumB]));
     repositories.trackRepository.countAll.mockResolvedValue(ok(2));
-    repositories.trackRepository.sumDurationAll.mockResolvedValue(ok(200));
 
-    const result = await getTracksIndexPageData("album_asc");
+    const result = await getTracksPaginated(0, "", 50, "album_asc");
 
     expect(repositories.trackRepository.findAllSortedPaginated).toHaveBeenCalledWith("album_asc", 0, 50);
     expect(result.tracks.map(track => track.id)).toEqual([trackA.id, trackB.id]);
@@ -314,29 +314,6 @@ describe("track.queries", () => {
     });
   });
 
-  describe("getTracksIndexPageData aggregate gating", () => {
-    beforeEach(() => {
-      repositories.artistRepository.findByIds.mockResolvedValue(ok([]));
-      repositories.albumRepository.findByIds.mockResolvedValue(ok([]));
-      repositories.trackRepository.findAllSortedPaginated.mockResolvedValue(ok([]));
-      repositories.trackRepository.countAll.mockResolvedValue(ok(0));
-      repositories.trackRepository.sumDurationAll.mockResolvedValue(ok(0));
-    });
-
-    it("computes sumDurationAll on the first page (offset 0)", async () => {
-      await getTracksIndexPageData("date_added_desc", "", 0, 50);
-
-      expect(repositories.trackRepository.sumDurationAll).toHaveBeenCalledOnce();
-    });
-
-    it("does not compute sumDurationAll on later pages (offset 50)", async () => {
-      const result = await getTracksIndexPageData("date_added_desc", "", 50, 50);
-
-      expect(repositories.trackRepository.sumDurationAll).not.toHaveBeenCalled();
-      expect(result.totalDuration).toBe(0);
-    });
-  });
-
   describe("updateTrackMetadataAndSync album by title", () => {
     const artist: ArtistEntity = {
       id: "artist-1" as ArtistId,
@@ -387,6 +364,18 @@ describe("track.queries", () => {
       isLiked: false,
     };
 
+    const summaryWith = (albums: AlbumEntity[]): LibrarySummaryData => ({
+      artists: [{ ...artist, trackCount: 1 }],
+      albums: albums.map(album => ({ ...album, trackCount: 0 })),
+      playlists: [],
+      folders: [],
+      likedCount: 0,
+    });
+
+    const summaryAlbums = (client: QueryClient) =>
+      client.getQueryData<LibrarySummaryData>(queryKeys.library.summary())!.albums
+        .map(({ trackCount: _trackCount, ...album }) => album);
+
     let queryClient: QueryClient;
 
     beforeEach(() => {
@@ -412,9 +401,9 @@ describe("track.queries", () => {
     it("creates a new album row when no identity match exists", async () => {
       repositories.albumRepository.findByArtistId.mockResolvedValue(ok([existingAlbum]));
       repositories.albumRepository.create.mockResolvedValue(ok("new-album" as AlbumId));
-      // Seed the albums list cache like a previously-visited Albums page would,
-      // so the point-sync has something to patch.
-      queryClient.setQueryData(queryKeys.albums.all(), [existingAlbum]);
+      // Seed the sidebar's summary like a mounted library would, so the
+      // point-sync has something to patch.
+      queryClient.setQueryData(queryKeys.library.summary(), summaryWith([existingAlbum]));
 
       const next = await updateTrackMetadataAndSync(queryClient, track, {
         title: track.title,
@@ -432,9 +421,9 @@ describe("track.queries", () => {
       const created = repositories.albumRepository.create.mock.calls[0][0] as AlbumEntity;
       expect(next.albumId).toBe(created.id);
 
-      // The new album must be immediately visible in the Albums list cache,
-      // not only reachable after a reload.
-      expect(queryClient.getQueryData(queryKeys.albums.all())).toEqual([existingAlbum, created]);
+      // The new album must be immediately visible in the sidebar, not only
+      // reachable after a reload.
+      expect(summaryAlbums(queryClient)).toEqual([existingAlbum, created]);
 
       // And it must be searchable without waiting for a full reindex.
       expect(upsertSearchDocuments).toHaveBeenCalledWith([{
@@ -447,7 +436,7 @@ describe("track.queries", () => {
 
     it("does not upsert an album search document or list cache when reusing an existing album", async () => {
       repositories.albumRepository.findByArtistId.mockResolvedValue(ok([existingAlbum]));
-      queryClient.setQueryData(queryKeys.albums.all(), [existingAlbum]);
+      queryClient.setQueryData(queryKeys.library.summary(), summaryWith([existingAlbum]));
 
       await updateTrackMetadataAndSync(queryClient, track, {
         title: track.title,
@@ -457,7 +446,7 @@ describe("track.queries", () => {
 
       expect(repositories.albumRepository.create).not.toHaveBeenCalled();
       expect(upsertSearchDocuments).not.toHaveBeenCalledWith([expect.objectContaining({ type: "album" })]);
-      expect(queryClient.getQueryData(queryKeys.albums.all())).toEqual([existingAlbum]);
+      expect(summaryAlbums(queryClient)).toEqual([existingAlbum]);
     });
 
     it("hands a track-owned cover over to the newly assigned album", async () => {
@@ -473,7 +462,8 @@ describe("track.queries", () => {
             ? { id: "c1", ownerType, ownerId, blob: coverBlob, mimeType: "image/webp", addedAt: 1, updatedAt: 1 }
             : undefined),
       );
-      repositories.coverRepository.upsertOwnerCover.mockResolvedValue(ok("c1"));
+      repositories.coverRepository.upsertOwnerCover.mockImplementation(async (ownerType: string, ownerId: string, blob: Blob) =>
+        ok({ id: "c1", ownerType, ownerId, blob, mimeType: blob.type, addedAt: 2, updatedAt: 2 }));
       repositories.coverRepository.deleteByOwner.mockResolvedValue(ok(undefined));
 
       await updateTrackMetadataAndSync(queryClient, { ...track, albumId: albumless.albumId }, {
@@ -584,7 +574,8 @@ describe("track.queries", () => {
             ? { id: "c1", ownerType, ownerId, blob: coverBlob, mimeType: "image/webp", addedAt: 1, updatedAt: 1 }
             : undefined),
       );
-      repositories.coverRepository.upsertOwnerCover.mockResolvedValue(ok("c2"));
+      repositories.coverRepository.upsertOwnerCover.mockImplementation(async (ownerType: string, ownerId: string, blob: Blob) =>
+        ok({ id: "c2", ownerType, ownerId, blob, mimeType: blob.type, addedAt: 2, updatedAt: 2 }));
 
       await updateTrackMetadataAndSync(queryClient, track, {
         title: track.title,

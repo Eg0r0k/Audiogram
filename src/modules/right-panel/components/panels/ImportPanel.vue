@@ -107,9 +107,9 @@
           :class="file.name === processingName ? 'bg-primary/5' : ''"
         >
           <ItemMedia>
-            <IconLoader2
+            <Spinner
               v-if="file.status === 'pending'"
-              class="size-5 shrink-0 animate-spin text-muted-foreground"
+              class="size-5 shrink-0 text-muted-foreground"
             />
             <IconCheck
               v-else-if="file.status === 'ok'"
@@ -164,9 +164,9 @@ import RightPanelHeader from "@/modules/right-panel/components/RightPanelHeader.
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { routeLocation } from "@/app/router/route-locations";
 import { getLogger } from "@/lib/logger";
+import { Spinner } from "@/components/ui/spinner";
 import IconCheck from "~icons/tabler/check";
 import IconMinus from "~icons/tabler/minus";
-import IconLoader2 from "~icons/tabler/loader-2";
 import IconAlertCircle from "~icons/tabler/alert-circle";
 import IconPlay from "~icons/audiogram/play-rounded";
 import IconPause from "~icons/audiogram/pause-rounded";

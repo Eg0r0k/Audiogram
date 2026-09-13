@@ -34,8 +34,8 @@
           :exit="{ opacity: 0, rotate: 60, scale: 0.7 }"
           :transition="headerTransition"
         >
-          <DropdownMenu>
-            <DropdownMenuTrigger as-child>
+          <ResponsiveMenu>
+            <ResponsiveMenuTrigger>
               <Button
                 variant="ghost"
                 size="icon-lg"
@@ -52,37 +52,37 @@
                   class="size-6"
                 />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
+            </ResponsiveMenuTrigger>
+            <ResponsiveMenuContent
               class="w-52 bg-popover/50 backdrop-blur-[50px]"
               align="start"
             >
-              <DropdownMenuGroup>
-                <DropdownMenuItem @click="goFavorite">
+              <ResponsiveMenuGroup>
+                <ResponsiveMenuItem @click="goFavorite">
                   <IconBookmark class="size-5.5" />
                   {{ t("nav.favorite") }}
-                </DropdownMenuItem>
+                </ResponsiveMenuItem>
 
-                <DropdownMenuItem @click="goStats">
+                <ResponsiveMenuItem @click="goStats">
                   <IconChartBar class="size-5.5" />
                   {{ t("nav.stats") }}
-                </DropdownMenuItem>
+                </ResponsiveMenuItem>
 
-                <DropdownMenuItem @click="goSettings">
+                <ResponsiveMenuItem @click="goSettings">
                   <IconSettings class="size-5.5" />
                   {{ t("nav.settings") }}
-                </DropdownMenuItem>
+                </ResponsiveMenuItem>
 
-                <DropdownMenuItem @click="openDownloadsPanel">
+                <ResponsiveMenuItem @click="openDownloadsPanel">
                   <IconDownload class="size-5.5" />
                   {{ t("nav.downloads") }}
                   <span
                     v-if="hasActiveDownloads"
                     class="ml-auto text-xs text-primary"
                   >{{ activeDownloadsCount }}</span>
-                </DropdownMenuItem>
+                </ResponsiveMenuItem>
 
-                <DropdownMenuItem
+                <ResponsiveMenuItem
                   v-if="importOpen"
                   @click="openImportPanel"
                 >
@@ -92,20 +92,20 @@
                     class="ml-auto text-xs"
                     :class="importErrorCount > 0 && !importRunning ? 'text-destructive' : 'text-primary'"
                   >{{ importMenuStatus }}</span>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem @click="handleThemeToggle">
+                </ResponsiveMenuItem>
+              </ResponsiveMenuGroup>
+              <ResponsiveMenuSeparator />
+              <ResponsiveMenuGroup>
+                <ResponsiveMenuItem @click="handleThemeToggle">
                   <component
                     :is="themeIcon"
                     class="size-5.5"
                   />
                   {{ t("nav.changeTheme") }}
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                </ResponsiveMenuItem>
+              </ResponsiveMenuGroup>
+            </ResponsiveMenuContent>
+          </ResponsiveMenu>
         </Motion>
       </AnimatePresence>
     </div>
@@ -210,11 +210,17 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  ResponsiveMenu,
+  ResponsiveMenuContent,
+  ResponsiveMenuGroup,
+  ResponsiveMenuItem,
+  ResponsiveMenuSeparator,
+  ResponsiveMenuTrigger,
+} from "@/components/ui/responsive-menu";
 import {
   InputGroup,
   InputGroupAddon,

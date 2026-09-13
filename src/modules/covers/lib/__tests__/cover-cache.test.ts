@@ -4,15 +4,26 @@ const repo = vi.hoisted(() => ({
   findByOwners: vi.fn(),
 }));
 vi.mock("@/queries/cover.queries", () => ({
-  getCoverBlobsByOwners: (type: string, ids: string[]) => repo.findByOwners(type, ids),
+  getCoversByOwners: (type: string, ids: string[]) => repo.findByOwners(type, ids),
 }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ warn: vi.fn() }) }));
 
 import { createCoverCache } from "../cover-cache";
 
 const blob = (name: string) => new Blob([name], { type: "image/jpeg" });
+const row = (name: string, updatedAt = 1) => ({ blob: blob(name), updatedAt });
 const album = (id: string) => ({ ownerType: "album" as const, ownerId: id });
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+
+type Rows = Map<string, { blob: Blob; updatedAt: number }>;
+
+const deferred = () => {
+  let resolve!: (rows: Rows) => void;
+  const promise = new Promise<Rows>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+};
 
 describe("cover cache", () => {
   let revoked: string[];
@@ -24,7 +35,7 @@ describe("cover cache", () => {
     URL.revokeObjectURL = vi.fn((url: string) => { revoked.push(url); });
     repo.findByOwners.mockReset();
     repo.findByOwners.mockImplementation(async (_type: string, ids: string[]) =>
-      new Map(ids.filter(id => !id.startsWith("none")).map(id => [id, blob(id)])),
+      new Map(ids.filter(id => !id.startsWith("none")).map(id => [id, row(id)])),
     );
   });
 
@@ -78,15 +89,15 @@ describe("cover cache", () => {
     expect(cache.entryFor(album("a"))?.url).toBe("blob:1");
   });
 
-  it("publishes a written cover at once and keeps the URL for an unchanged blob", async () => {
+  it("publishes a written cover at once and keeps the URL for an unchanged row", async () => {
     const cache = createCoverCache();
     cache.acquire(album("a"));
     await flush();
     const first = cache.entryFor(album("a"))!;
 
-    const edited = blob("edited");
+    const edited = row("edited", 2);
     cache.set(album("a"), edited);
-    expect(cache.entryFor(album("a"))?.blob).toBe(edited);
+    expect(cache.entryFor(album("a"))?.blob).toBe(edited.blob);
     expect(cache.entryFor(album("a"))?.url).toBe("blob:2");
     expect(revoked).toContain(first.url);
 
@@ -98,6 +109,26 @@ describe("cover cache", () => {
     expect(repo.findByOwners).toHaveBeenCalledTimes(1);
   });
 
+  // A library-wide invalidation (import, folder sync) re-reads every held
+  // owner. Dexie hands back a fresh Blob instance each time; the row itself
+  // has not changed, so the URL every <img> shows must not change either.
+  it("a re-read of an unchanged row keeps the URL, a newer row replaces it", async () => {
+    const cache = createCoverCache();
+    cache.acquire(album("a"));
+    await flush();
+
+    cache.invalidate(album("a"));
+    await flush();
+    expect(cache.entryFor(album("a"))?.url).toBe("blob:1");
+    expect(revoked).toEqual([]);
+
+    repo.findByOwners.mockImplementation(async () => new Map([["a", row("newer", 2)]]));
+    cache.invalidate(album("a"));
+    await flush();
+    expect(cache.entryFor(album("a"))?.url).toBe("blob:2");
+    expect(revoked).toEqual(["blob:1"]);
+  });
+
   it("re-reads a held owner on invalidate and forgets an idle one", async () => {
     const cache = createCoverCache();
     const release = cache.acquire(album("a"));
@@ -105,6 +136,9 @@ describe("cover cache", () => {
     await flush();
     release();
 
+    repo.findByOwners.mockImplementation(async (_type: string, ids: string[]) =>
+      new Map(ids.map(id => [id, row(`${id}-2`, 2)])),
+    );
     cache.invalidate(album("a"));
     cache.invalidate(album("b"));
     await flush();
@@ -129,5 +163,74 @@ describe("cover cache", () => {
     expect(cache.size).toBe(1);
     expect(repo.findByOwners).toHaveBeenCalledTimes(1);
     expect(repo.findByOwners.mock.calls[0][1]).toEqual(["b"]);
+  });
+
+  describe("a read that overlaps a write", () => {
+    // The read started before the write, so its answer describes the row as
+    // it was. Landing after the write it must not undo it.
+    it("a write made while the owner is being read wins over the read's answer", async () => {
+      const cache = createCoverCache();
+      const read = deferred();
+      repo.findByOwners.mockImplementationOnce(() => read.promise);
+      cache.acquire(album("a"));
+      await flush();
+
+      const written = row("written", 5);
+      cache.set(album("a"), written);
+      read.resolve(new Map([["a", row("stale", 1)]]));
+      await flush();
+
+      expect(cache.entryFor(album("a"))?.blob).toBe(written.blob);
+    });
+
+    it("an invalidation made while the owner is being read schedules another read", async () => {
+      const cache = createCoverCache();
+      const first = deferred();
+      repo.findByOwners.mockImplementationOnce(() => first.promise);
+      cache.acquire(album("a"));
+      await flush();
+
+      cache.invalidate(album("a"));
+      first.resolve(new Map([["a", row("stale", 1)]]));
+      await flush();
+
+      expect(repo.findByOwners).toHaveBeenCalledTimes(2);
+      expect(cache.entryFor(album("a"))?.blob).toEqual(blob("a"));
+      expect(cache.entryFor(album("a"))?.updatedAt).toBe(1);
+    });
+
+    it("invalidateAll reaches an owner whose read is in flight", async () => {
+      const cache = createCoverCache();
+      const first = deferred();
+      repo.findByOwners.mockImplementationOnce(() => first.promise);
+      cache.acquire(album("a"));
+      await flush();
+
+      cache.invalidateAll();
+      first.resolve(new Map());
+      await flush();
+
+      expect(repo.findByOwners).toHaveBeenCalledTimes(2);
+      expect(cache.entryFor(album("a"))?.url).toBe("blob:1");
+    });
+
+    it("a later acquire after a superseded read still gets an answer", async () => {
+      const cache = createCoverCache();
+      const first = deferred();
+      repo.findByOwners.mockImplementationOnce(() => first.promise);
+      const release = cache.acquire(album("a"));
+      await flush();
+
+      cache.set(album("a"), row("written", 5));
+      first.resolve(new Map());
+      await flush();
+      release();
+      cache.invalidate(album("a"));
+      expect(cache.entryFor(album("a"))).toBeUndefined();
+
+      cache.acquire(album("a"));
+      await flush();
+      expect(cache.entryFor(album("a"))?.blob).toEqual(blob("a"));
+    });
   });
 });

@@ -22,7 +22,7 @@ import { db } from "@/db";
 import { ensurePinned } from "@/modules/tracks/service/ensurePinned";
 import { buildAllSearchDocuments } from "@/modules/search/service/buildDocuments";
 import { getLibrarySummary } from "../library.queries";
-import { getTracksIndexPageData } from "../track.queries";
+import { getIndexTotalDuration, getTracksPaginated } from "../track.queries";
 import { getArtistPageData } from "../artist.queries";
 
 const dto: SourceTrackDTO = {
@@ -48,10 +48,10 @@ describe("shadow rows stay invisible to library surfaces (integration)", () => {
     expect(summary.albums).toHaveLength(0);
     expect(summary.artists).toHaveLength(0);
 
-    const indexPage = await getTracksIndexPageData("date_added_desc");
+    const indexPage = await getTracksPaginated(0, "", 50, "date_added_desc");
     expect(indexPage.tracks).toHaveLength(0);
     expect(indexPage.total).toBe(0);
-    expect(indexPage.totalDuration).toBe(0);
+    expect(await getIndexTotalDuration()).toBe(0);
 
     const documents = await buildAllSearchDocuments();
     expect(documents).toHaveLength(0);
@@ -66,10 +66,10 @@ describe("shadow rows stay invisible to library surfaces (integration)", () => {
     expect(summary.artists.map(artist => artist.id)).toEqual([ndArtistId("artist1")]);
     expect(summary.artists[0]?.trackCount).toBe(1);
 
-    const indexPage = await getTracksIndexPageData("date_added_desc");
+    const indexPage = await getTracksPaginated(0, "", 50, "date_added_desc");
     expect(indexPage.tracks.map(track => track.id)).toEqual([dto.id]);
     expect(indexPage.total).toBe(1);
-    expect(indexPage.totalDuration).toBe(240);
+    expect(await getIndexTotalDuration()).toBe(240);
 
     const documents = await buildAllSearchDocuments();
     expect(documents.map(document => document.id).sort()).toEqual([

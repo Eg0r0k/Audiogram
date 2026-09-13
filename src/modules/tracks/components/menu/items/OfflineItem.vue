@@ -6,7 +6,7 @@
       v-if="activeJob"
       @click="emit('cancelDownload')"
     >
-      <IconLoader class="size-5.5 animate-spin" />
+      <Spinner class="size-5.5" />
       {{ $t("track.contextMenu.cancelDownload") }}{{ progressSuffix }}
     </component>
 
@@ -32,9 +32,9 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { Spinner } from "@/components/ui/spinner";
 import IconDownload from "~icons/tabler/download";
 import IconCloudOff from "~icons/tabler/cloud-off";
-import IconLoader from "~icons/tabler/loader-2";
 import { useDownloadsStore } from "@/modules/downloads/store/downloads.store";
 import type { TrackMenuCaps } from "@/modules/tracks/composables/useTrackMenuCaps";
 import type { TrackId } from "@/types/ids";

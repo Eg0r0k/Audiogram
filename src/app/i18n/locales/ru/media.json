@@ -16,5 +16,7 @@
     "downloadAlbum": "Скачать альбом",
     "downloadPlaylist": "Скачать плейлист"
   },
-  "nothingToDownload": "Нечего скачивать"
+  "nothingToDownload": "Нечего скачивать",
+  "filter": "Фильтр",
+  "filterClear": "Очистить фильтр"
 }

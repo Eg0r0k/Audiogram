@@ -3,11 +3,11 @@ import type { ToasterProps } from "vue-sonner";
 import { Toaster as Sonner } from "vue-sonner";
 import { cn } from "@/lib/utils";
 
+import { Spinner } from "@/components/ui/spinner";
 import IconCheck from "~icons/tabler/circle-check-filled";
 import IconInfoCircle from "~icons/tabler/info-circle-filled";
 import IconAlertTriangle from "~icons/tabler/alert-triangle-filled";
 import IconCircleX from "~icons/tabler/circle-x-filled";
-import IconLoader2 from "~icons/tabler/loader-2";
 import IconX from "~icons/tabler/x";
 
 const props = defineProps<ToasterProps>();
@@ -34,7 +34,7 @@ const props = defineProps<ToasterProps>();
     </template>
     <template #loading-icon>
       <div>
-        <IconLoader2 class="size-5 animate-spin" />
+        <Spinner class="size-5" />
       </div>
     </template>
     <template #close-icon>

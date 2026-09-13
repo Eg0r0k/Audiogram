@@ -1,18 +1,24 @@
 <template>
-  <component :is="LayoutComponent">
-    <RouterView v-slot="{ Component, route }">
-      <SlideTransition
-        :depth="route.meta.depth"
-        history-aware
-      >
-        <component
-          :is="Component"
-          :key="route.fullPath"
-          class="page-wrapper bg-canvas"
-        />
-      </SlideTransition>
-    </RouterView>
-  </component>
+  <TooltipProvider
+    :delay-duration="150"
+    :skip-delay-duration="300"
+    disable-hoverable-content
+  >
+    <component :is="LayoutComponent">
+      <RouterView v-slot="{ Component, route }">
+        <SlideTransition
+          :depth="route.meta.depth"
+          history-aware
+        >
+          <component
+            :is="Component"
+            :key="route.fullPath"
+            class="page-wrapper bg-canvas"
+          />
+        </SlideTransition>
+      </RouterView>
+    </component>
+  </TooltipProvider>
   <WhatsNewDialog />
   <DialogSummonHost />
   <NetworkStatusToast />
@@ -29,6 +35,7 @@
 <script setup lang="ts">
 import "vue-sonner/style.css";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { type Component as VueComponent, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import DefaultLayout from "@/layouts/DefaultLayout.vue";

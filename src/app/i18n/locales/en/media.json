@@ -16,5 +16,7 @@
     "downloadAlbum": "Download album",
     "downloadPlaylist": "Download playlist"
   },
-  "nothingToDownload": "Nothing to download"
+  "nothingToDownload": "Nothing to download",
+  "filter": "Filter",
+  "filterClear": "Clear filter"
 }

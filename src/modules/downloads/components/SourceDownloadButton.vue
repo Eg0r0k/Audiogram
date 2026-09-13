@@ -1,14 +1,10 @@
 <template>
-  <!-- A finished copy renders no button: the check next to the title
-       (TrackExpanded) is the downloaded indicator. -->
   <Button
     v-if="!hasCopy"
     size="icon-sm"
     variant="ghost"
     class="shrink-0 rounded-full text-muted-foreground hover:text-foreground transition-opacity"
     :class="[
-      // Idle fades in on row hover like the like/dots actions; an active
-      // download stays visible.
       activeJob ? '' : 'opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100',
     ]"
     :disabled="!!activeJob"
@@ -16,14 +12,16 @@
     :title="label"
     @click.stop="download"
   >
-    <IconLoader
-      v-if="activeJob"
-      class="size-4.5 animate-spin"
-    />
-    <IconDownload
-      v-else
-      class="size-4.5"
-    />
+    <BlurSwapTransition :state="activeJob ? 'loading' : 'idle'">
+      <Spinner
+        v-if="activeJob"
+        class="size-4.5"
+      />
+      <IconDownload
+        v-else
+        class="size-4.5"
+      />
+    </BlurSwapTransition>
   </Button>
 </template>
 
@@ -32,17 +30,13 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useQuery } from "@tanstack/vue-query";
 import { Button } from "@/components/ui/button";
+import BlurSwapTransition from "@/components/transitions/BlurSwapTransition.vue";
 import type { SourceTrackDTO } from "@/modules/sources/types";
 import { offlineCopyQueries } from "@/queries/offlineCopy.queries";
 import { downloadDtoWithFeedback } from "../downloadFeedback";
 import { useDownloadsStore } from "../store/downloads.store";
+import { Spinner } from "@/components/ui/spinner";
 import IconDownload from "~icons/tabler/download";
-import IconLoader from "~icons/tabler/loader-2";
-
-//
-// Row action for any remote catalog row (ND, YT — M5): jobs go through the
-// shared download manager (pin → queue → offline copy).
-//
 
 const props = defineProps<{
   /** Source DTO of the remote row. */

@@ -20,9 +20,9 @@
           :disabled="isChecking"
           @click="retry"
         >
-          <IconLoader2
+          <Spinner
             v-if="isChecking"
-            class="size-4 animate-spin"
+            class="size-4"
           />
           {{ $t("source.health.retry") }}
         </Button>
@@ -43,8 +43,8 @@ import { computed, ref, watchEffect } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import IconAlertTriangle from "~icons/tabler/alert-triangle";
-import IconLoader2 from "~icons/tabler/loader-2";
 import { ROUTE_NAMES } from "@/app/router/route-names";
 import { getLogger } from "@/lib/logger";
 import type { SourceKind } from "@/types/track-ref";

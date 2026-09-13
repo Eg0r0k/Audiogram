@@ -15,6 +15,11 @@ const props = withDefaults(
 );
 const emits = defineEmits<TooltipContentEmits>();
 
+// reka marks a tooltip opened inside the provider's `skipDelayDuration`
+// window (right after another one closed) with `data-state="instant-open"`:
+// that one skips the entrance animation too, so hopping between neighbouring
+// triggers reads as one tooltip moving, not a chain of fade-ins.
+
 const delegatedProps = computed(() => {
   // `class` is applied by this component, not forwarded; dropped by name
   // rather than by an unused rest-destructuring binding.
@@ -33,8 +38,9 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
       v-bind="{ ...forwarded, ...$attrs }"
       :class="cn(
         'z-50 w-fit max-w-64 overflow-hidden rounded-md bg-card px-3 py-1.5 text-xs text-card-foreground shadow-md',
-        'animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
+        'origin-(--reka-tooltip-content-transform-origin) duration-150 ease-standard animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
         'data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+        'data-[state=instant-open]:animation-duration-0',
         props.class,
       )"
     >

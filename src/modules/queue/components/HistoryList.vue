@@ -1,10 +1,9 @@
 <template>
   <div class="flex h-full min-h-0 flex-col bg-background">
     <template v-if="isLoading">
-      <TrackRowLoading
-        :rows="8"
-        class="mt-2 bg-card px-2"
-      />
+      <div class="flex flex-1 items-center justify-center bg-card mt-2">
+        <Spinner class="size-10 text-muted-foreground" />
+      </div>
     </template>
 
     <template v-else-if="isEmpty">
@@ -44,7 +43,7 @@
 <script setup lang="ts">
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
-import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
+import { Spinner } from "@/components/ui/spinner";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import HistoryEmpty from "./HistoryEmpty.vue";

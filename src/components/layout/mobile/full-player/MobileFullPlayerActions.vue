@@ -29,8 +29,8 @@
     >
       <IconPlaylist class="size-6" />
     </Button>
-    <DropdownMenu>
-      <DropdownMenuTrigger as-child>
+    <ResponsiveMenu>
+      <ResponsiveMenuTrigger>
         <Button
           size="icon"
           variant="ghost"
@@ -42,46 +42,46 @@
             :class="isSleepTimerActive ? 'text-primary' : ''"
           />
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
+      </ResponsiveMenuTrigger>
+      <ResponsiveMenuContent
         align="end"
         class="w-52"
       >
-        <DropdownMenuLabel class="text-xs text-muted-foreground font-medium">
+        <ResponsiveMenuLabel class="text-xs text-muted-foreground font-medium">
           {{ statusText }}
-        </DropdownMenuLabel>
-        <DropdownMenuItem
+        </ResponsiveMenuLabel>
+        <ResponsiveMenuItem
           v-for="preset in presets"
           :key="preset.minutes"
           @click="setTimer(preset.minutes)"
         >
           <IconClockHour4 class="size-5" />
           {{ $t("common.minutesShort", { count: preset.minutes }) }}
-        </DropdownMenuItem>
+        </ResponsiveMenuItem>
         <template v-if="isSleepTimerActive">
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
+          <ResponsiveMenuSeparator />
+          <ResponsiveMenuItem
             variant="destructive"
             @click="cancelSleepTimer()"
           >
             <IconPlayerStop class="size-5" />
             {{ $t("player.cancelSleepTimer") }}
-          </DropdownMenuItem>
+          </ResponsiveMenuItem>
         </template>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </ResponsiveMenuContent>
+    </ResponsiveMenu>
   </div>
 </template>
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  ResponsiveMenu,
+  ResponsiveMenuContent,
+  ResponsiveMenuItem,
+  ResponsiveMenuLabel,
+  ResponsiveMenuSeparator,
+  ResponsiveMenuTrigger,
+} from "@/components/ui/responsive-menu";
 import { useCurrentPlayerTrack } from "@/modules/player/composables/useCurrentPlayerTrack";
 import { useSleepTimer } from "@/modules/player/composables/useSleepTimer";
 import { useCurrentTrackPanels } from "@/modules/right-panel/composables/useCurrentTrackPanels";

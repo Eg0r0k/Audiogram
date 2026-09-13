@@ -160,3 +160,26 @@ describe("searchEngine mutations", () => {
     expect(response.totalDuration).toBe(300);
   });
 });
+
+describe("searchEngine within", () => {
+  const build = () => {
+    const engine = createSearchEngine();
+    engine.build([
+      track("t1", "Blue Monday"),
+      track("t2", "Blue Sky"),
+      track("t3", "Red"),
+    ]);
+    return engine;
+  };
+
+  it("keeps only hits whose entity is in the set", () => {
+    const response = build().search("blue", "track", { within: new Set(["t2"]) });
+
+    expect(response.total).toBe(1);
+    expect(response.results.map(r => r.entityId)).toEqual(["t2"]);
+  });
+
+  it("is a no-op without the set", () => {
+    expect(build().search("blue", "track").total).toBe(2);
+  });
+});

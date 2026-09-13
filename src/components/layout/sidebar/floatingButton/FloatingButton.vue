@@ -3,53 +3,53 @@
     :show="show"
     :inline="inline"
   >
-    <DropdownMenu>
-      <DropdownMenuTrigger as-child>
+    <ResponsiveMenu>
+      <ResponsiveMenuTrigger>
         <Button class="size-12 rounded-full shadow-lg">
           <IconPlus class="size-6" />
         </Button>
-      </DropdownMenuTrigger>
+      </ResponsiveMenuTrigger>
 
-      <DropdownMenuContent
+      <ResponsiveMenuContent
         :side-offset="10"
         class="bg-popover/50 backdrop-blur-[50px]"
         align="end"
         side="top"
       >
-        <DropdownMenuGroup>
-          <DropdownMenuItem @click="handleImportTracks">
+        <ResponsiveMenuGroup>
+          <ResponsiveMenuItem @click="handleImportTracks">
             <IconImport class="size-5.5" />
             {{ $t("common.import.button") }}
-          </DropdownMenuItem>
+          </ResponsiveMenuItem>
 
-          <DropdownMenuItem @click="createArtist">
+          <ResponsiveMenuItem @click="createArtist">
             <IconUserPlus class="size-5.5" />
             {{ $t("common.createArtist") }}
-          </DropdownMenuItem>
+          </ResponsiveMenuItem>
 
-          <DropdownMenuItem @click="createAlbum">
+          <ResponsiveMenuItem @click="createAlbum">
             <IconAlbum class="size-5.5" />
             {{ $t("common.createAlbum") }}
-          </DropdownMenuItem>
+          </ResponsiveMenuItem>
 
-          <DropdownMenuItem @click="createPlaylist">
+          <ResponsiveMenuItem @click="createPlaylist">
             <IconPlaylist class="size-5.5" />
             {{ $t("track.contextMenu.createPlaylist") }}
-          </DropdownMenuItem>
+          </ResponsiveMenuItem>
 
-          <DropdownMenuItem @click="emit('createFolder')">
+          <ResponsiveMenuItem @click="emit('createFolder')">
             <IconFolderPlus class="size-5.5" />
             {{ $t("library.folder.create") }}
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          </ResponsiveMenuItem>
+        </ResponsiveMenuGroup>
+      </ResponsiveMenuContent>
+    </ResponsiveMenu>
   </FloatingActionButton>
 </template>
 
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { ResponsiveMenu, ResponsiveMenuTrigger, ResponsiveMenuContent, ResponsiveMenuGroup, ResponsiveMenuItem } from "@/components/ui/responsive-menu";
 import IconPlus from "~icons/tabler/plus";
 import IconImport from "~icons/tabler/file-import";
 import IconAlbum from "~icons/tabler/album";

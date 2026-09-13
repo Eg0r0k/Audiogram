@@ -225,6 +225,32 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     }
   }
 
+  /** Keys only — the set a search inside the album is scoped to. Same rows `countByAlbumId` counts. */
+  async findIdsByAlbumId(albumId: AlbumId): Promise<Result<TrackId[], Error>> {
+    try {
+      const ids = await this.table.where("albumId").equals(albumId).primaryKeys();
+      return ok(ids);
+    }
+    catch (error) {
+      return err(toDbError(error));
+    }
+  }
+
+  /** Keys only, library members like `countByArtistId`. */
+  async findIdsByArtistId(artistId: ArtistId): Promise<Result<TrackId[], Error>> {
+    try {
+      const ids = await this.table
+        .where("artistIds")
+        .equals(artistId)
+        .and(track => this.isLibraryMember(track))
+        .primaryKeys();
+      return ok(ids);
+    }
+    catch (error) {
+      return err(toDbError(error));
+    }
+  }
+
   async countByArtistIds(artistIds: ArtistId[]): Promise<Result<Map<ArtistId, number>, Error>> {
     try {
       const counts = new Map<ArtistId, number>();
@@ -489,6 +515,17 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
         .above(0)
         .each((track) => { total += track.duration; });
       return ok(total);
+    }
+    catch (error) {
+      return err(toDbError(error));
+    }
+  }
+
+  /** Keys only — the set a search inside the liked list is scoped to. */
+  async findLikedIds(): Promise<Result<TrackId[], Error>> {
+    try {
+      const ids = await this.table.where("likedAt").above(0).primaryKeys();
+      return ok(ids);
     }
     catch (error) {
       return err(toDbError(error));

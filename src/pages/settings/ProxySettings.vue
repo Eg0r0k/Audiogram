@@ -116,9 +116,9 @@
         :disabled="!canTest || isTesting"
         @click="handleTest"
       >
-        <IconLoader2
+        <Spinner
           v-if="isTesting"
-          class="size-6 animate-spin"
+          class="size-6"
         />
         <IconPlugConnected
           v-else
@@ -167,7 +167,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import IconLoader2 from "~icons/tabler/loader-2";
+import { Spinner } from "@/components/ui/spinner";
 import IconPlugConnected from "~icons/tabler/plug-connected";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";

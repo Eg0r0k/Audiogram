@@ -2,6 +2,7 @@ import { IS_OVERLAY_SCROLL_SUPPORTED } from "@/lib/environment/overlayScrollSupp
 import IS_TOUCH_SUPPORTED from "@/lib/environment/touchSupport";
 import { IS_MOBILE_SAFARI, IS_SAFARI } from "@/lib/environment/userAgent";
 import { ref, computed, onMounted, onUnmounted, type MaybeRefOrGetter, type Ref, nextTick, toValue } from "vue";
+import { useWheelInertia, WHEEL_INERTIA_ENABLED } from "./useWheelInertia";
 
 export interface ScrollableOptions {
   direction?: MaybeRefOrGetter<"vertical" | "horizontal">;
@@ -199,6 +200,8 @@ export default function useScrollable(
   }
 
   const isScrollLocked = ref(false);
+  const wheelInertia = useWheelInertia(containerRef, () => isScrollLocked.value);
+  const useWheelDrift = () => WHEEL_INERTIA_ENABLED && direction() === "vertical" && !IS_TOUCH_SUPPORTED;
 
   const preventLockedScroll = (e: Event) => {
     e.preventDefault();
@@ -368,6 +371,9 @@ export default function useScrollable(
     if (direction() === "horizontal" && !IS_TOUCH_SUPPORTED) {
       container.addEventListener("wheel", handleWheel, { passive: false });
     }
+    if (useWheelDrift()) {
+      container.addEventListener("wheel", wheelInertia.onWheel, { passive: false });
+    }
 
     if (USE_OWN_SCROLL) {
       updateThumb();
@@ -393,6 +399,10 @@ export default function useScrollable(
 
     if (direction() === "horizontal" && !IS_TOUCH_SUPPORTED) {
       container.removeEventListener("wheel", handleWheel);
+    }
+    if (useWheelDrift()) {
+      container.removeEventListener("wheel", wheelInertia.onWheel);
+      wheelInertia.cancel();
     }
 
     if (USE_OWN_SCROLL) {

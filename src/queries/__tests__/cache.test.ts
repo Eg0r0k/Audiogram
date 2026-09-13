@@ -20,15 +20,12 @@ import type { ArtistId, AlbumId, PlaylistId, TrackId } from "@/types/ids";
 const createMockQueryClient = (): QueryClient => {
   return {
     getQueryData: vi.fn(),
+    getQueriesData: vi.fn(() => []),
     setQueryData: vi.fn(),
     setQueriesData: vi.fn(),
     removeQueries: vi.fn(),
   } as unknown as QueryClient;
 };
-
-function getQueryDataMock(queryClient: QueryClient) {
-  return queryClient.getQueryData as unknown as Mock;
-}
 
 function setQueriesDataMock(queryClient: QueryClient) {
   return queryClient.setQueriesData as unknown as Mock;
@@ -61,18 +58,13 @@ describe("cache utils", () => {
   });
 
   describe("removeArtistCaches", () => {
-    it("should remove artist caches", () => {
+    it("removes the whole subtree under the artist's id", () => {
       const artistId = "artist-1" as ArtistId;
 
       removeArtistCaches(queryClient, artistId);
 
       expect(queryClient.removeQueries).toHaveBeenCalledWith({
         queryKey: queryKeys.artists.detail(artistId),
-        exact: true,
-      });
-      expect(queryClient.removeQueries).toHaveBeenCalledWith({
-        queryKey: queryKeys.artists.page(artistId),
-        exact: true,
       });
     });
   });
@@ -97,7 +89,7 @@ describe("cache utils", () => {
   });
 
   describe("removeAlbumCaches", () => {
-    it("should remove album caches", () => {
+    it("removes the whole subtree under the album's id", () => {
       const albumId = "album-1" as AlbumId;
       const artistId = "artist-1" as ArtistId;
 
@@ -105,15 +97,6 @@ describe("cache utils", () => {
 
       expect(queryClient.removeQueries).toHaveBeenCalledWith({
         queryKey: queryKeys.albums.detail(albumId),
-        exact: true,
-      });
-      expect(queryClient.removeQueries).toHaveBeenCalledWith({
-        queryKey: queryKeys.albums.page(albumId),
-        exact: true,
-      });
-      expect(queryClient.removeQueries).toHaveBeenCalledWith({
-        queryKey: queryKeys.albums.tracks(albumId),
-        exact: true,
       });
     });
   });
@@ -138,22 +121,13 @@ describe("cache utils", () => {
   });
 
   describe("removePlaylistCaches", () => {
-    it("should remove playlist caches", () => {
+    it("removes the whole subtree under the playlist's id", () => {
       const playlistId = "playlist-1" as PlaylistId;
 
       removePlaylistCaches(queryClient, playlistId);
 
       expect(queryClient.removeQueries).toHaveBeenCalledWith({
         queryKey: queryKeys.playlists.detail(playlistId),
-        exact: true,
-      });
-      expect(queryClient.removeQueries).toHaveBeenCalledWith({
-        queryKey: queryKeys.playlists.page(playlistId),
-        exact: true,
-      });
-      expect(queryClient.removeQueries).toHaveBeenCalledWith({
-        queryKey: queryKeys.playlists.tracks(playlistId),
-        exact: true,
       });
     });
   });
@@ -191,16 +165,12 @@ describe("cache utils", () => {
         isLiked: true,
       };
 
-      getQueryDataMock(queryClient).mockImplementation((key: unknown) => {
-        if (JSON.stringify(key).includes("tracks")) {
-          return [trackEntity];
-        }
-        return undefined;
-      });
-
       syncTrackLikeCaches(queryClient, trackEntity, track);
 
-      expect(queryClient.setQueryData).toHaveBeenCalled();
+      expect(queryClient.setQueryData).toHaveBeenCalledWith(
+        queryKeys.tracks.detail(trackEntity.id),
+        trackEntity,
+      );
     });
 
     it("should update infinite liked tracks queries when liking a track", () => {
@@ -236,7 +206,6 @@ describe("cache utils", () => {
         isLiked: true,
       };
 
-      getQueryDataMock(queryClient).mockImplementation(() => undefined);
       setQueriesDataMock(queryClient).mockImplementation(() => undefined);
 
       syncTrackLikeCaches(queryClient, trackEntity, track);
@@ -289,7 +258,6 @@ describe("cache utils", () => {
         { id: "track-2" as TrackId, title: "Existing Track", isLiked: true, duration: 200 },
       ];
 
-      getQueryDataMock(queryClient).mockImplementation(() => undefined);
 
       const setQueriesDataCalls: { filters: unknown; updater: (data: unknown) => unknown }[] = [];
       setQueriesDataMock(queryClient).mockImplementation((filters: unknown, updater: (data: unknown) => unknown) => {
@@ -353,7 +321,6 @@ describe("cache utils", () => {
         { id: "track-2" as TrackId, title: "Existing Track", isLiked: true, duration: 200 },
       ];
 
-      getQueryDataMock(queryClient).mockImplementation(() => undefined);
 
       const setQueriesDataCalls: { filters: unknown; updater: (data: unknown) => unknown }[] = [];
       setQueriesDataMock(queryClient).mockImplementation((filters: unknown, updater: (data: unknown) => unknown) => {
@@ -492,9 +459,6 @@ describe("cache utils", () => {
     it("should remove tracks from all caches", () => {
       const trackIds = ["track-1" as TrackId, "track-2" as TrackId];
 
-      getQueryDataMock(queryClient).mockImplementation(() => {
-        return { pages: [], pageParams: [] };
-      });
       setQueriesDataMock(queryClient).mockReturnValue(undefined);
 
       removeTracksFromCaches(queryClient, trackIds);

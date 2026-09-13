@@ -1,4 +1,5 @@
 {
+  "menuTitle": "Menu",
   "import": {
     "button": "Import tracks",
     "toLibrary": "Import to library",

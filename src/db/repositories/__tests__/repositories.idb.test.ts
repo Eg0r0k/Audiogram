@@ -107,9 +107,10 @@ describe("coverRepository.upsertOwnerCover", () => {
     const first = await trackOf(coverRepository.upsertOwnerCover("playlist", "p1", new Blob(["a"])));
     const second = await trackOf(coverRepository.upsertOwnerCover("playlist", "p1", new Blob(["bb"], { type: "image/png" })));
 
-    expect(second).toBe(first);
+    expect(second.id).toBe(first.id);
+    expect(second.updatedAt).toBeGreaterThanOrEqual(first.updatedAt);
     expect(await db.covers.count()).toBe(1);
-    expect((await db.covers.get(first))?.mimeType).toBe("image/png");
+    expect((await db.covers.get(first.id))?.mimeType).toBe("image/png");
   });
 });
 

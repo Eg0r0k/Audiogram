@@ -66,9 +66,9 @@
           :disabled="isSaving || !isReady"
           @click="handleSave"
         >
-          <IconLoader2
+          <Spinner
             v-if="isSaving"
-            class="mr-2 size-4 animate-spin"
+            class="mr-2 size-4"
           />
           {{ $t("common.save") }}
         </Button>
@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onUnmounted, ref, useTemplateRef } from "vue";
+import { computed, defineAsyncComponent, h, onUnmounted, ref, useTemplateRef } from "vue";
 import { useI18n } from "vue-i18n";
 import type Cropper from "cropperjs";
 
@@ -92,8 +92,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { useSummonedDialog } from "@/components/dialogs/summon";
+import { Spinner } from "@/components/ui/spinner";
 import IconAlertCircle from "~icons/tabler/alert-circle";
-import IconLoader2 from "~icons/tabler/loader-2";
 import IconPhoto from "~icons/tabler/photo";
 import { requestFiles } from "@/lib/files/requestFiles";
 import { IMAGE_MIME_TYPES } from "@/types/media";
@@ -136,10 +136,11 @@ const VueCropper = defineAsyncComponent({
     await import("cropperjs/dist/cropper.css");
     return import("vue-cropperjs");
   },
-  loadingComponent: {
-    template: "<div class=\"flex h-full w-full items-center justify-center text-muted-foreground\"><icon-loader class=\"animate-spin size-8\" /></div>",
-    components: { IconLoader: IconLoader2 },
-  },
+  loadingComponent: () => h(
+    "div",
+    { class: "flex h-full w-full items-center justify-center text-muted-foreground" },
+    h(Spinner, { class: "size-8" }),
+  ),
   delay: 200,
 });
 

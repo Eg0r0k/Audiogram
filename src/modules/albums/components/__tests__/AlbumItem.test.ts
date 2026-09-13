@@ -13,7 +13,7 @@ vi.mock("@/modules/library/composables/useLibrary", () => ({
 }));
 vi.mock("@/modules/library/composables/useLibraryMenu", () => ({
   canOpenLibraryMenu: () => true,
-  useLibraryMenu: () => ({ openMenu: vi.fn() }),
+  useLibraryMenu: () => ({ openMenu: vi.fn(), activeItem: { value: null }, isContextMenuOpen: { value: false } }),
 }));
 vi.mock("@/modules/player/composables/usePlaybackState", () => ({
   usePlaybackState: () => ({ isActiveSource: ref(false), isPlaying: ref(false), isLoading: ref(false) }),

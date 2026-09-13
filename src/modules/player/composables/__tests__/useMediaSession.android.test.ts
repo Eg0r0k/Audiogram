@@ -24,9 +24,9 @@ vi.mock("@/queries/track.queries", () => ({
 
 const getCoverBlobMock = vi.hoisted(() => vi.fn());
 vi.mock("@/queries/cover.queries", () => ({
-  getCoverBlobsByOwners: async (type: string, ids: string[]) => {
+  getCoversByOwners: async (type: string, ids: string[]) => {
     const found = await Promise.all(ids.map(async id => [id, await getCoverBlobMock(type, id)] as const));
-    return new Map(found.filter(([, blob]) => blob).map(([id, blob]) => [id, blob as Blob]));
+    return new Map(found.filter(([, blob]) => blob).map(([id, blob]) => [id, { blob: blob as Blob, updatedAt: 1 }]));
   },
 }));
 
