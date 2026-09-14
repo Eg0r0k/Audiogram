@@ -108,7 +108,6 @@ export function useStorageSettings() {
     isClearing.value = true;
     try {
       await clearFoldersData();
-      await queryClient.invalidateQueries({ queryKey: queryKeys.folders.all() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() });
       await refresh();
     }

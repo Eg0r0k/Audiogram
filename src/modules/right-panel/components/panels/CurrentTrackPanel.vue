@@ -167,8 +167,8 @@
             </div>
 
             <div
-              class="flex flex-col min-w-0 gap-1 p-2  rounded-sm"
-              :style="contentCoverStyle"
+              class="flex flex-col min-w-0 gap-1 p-2 rounded-sm bg-[color-mix(in_oklch,var(--cover-color)_25%,black)] transition-[background-color] duration-900 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+              :style="{ '--cover-color': playerColor.hsl }"
             >
               <div class="flex items-center justify-between gap-3 pl-2">
                 <div>
@@ -260,11 +260,10 @@ import {
   MorphingDialogClose,
 } from "@/components/ui/motion/dialog";
 
+// The colour lands ~400 ms after a track change (useMobilePlayerColor delays
+// extraction past the cover slide); the block crossfades to it in 900 ms,
+// matching the mobile full-player background.
 const { color: playerColor } = useMobilePlayerColor();
-
-const contentCoverStyle = computed(() => ({
-  background: `color-mix(in oklch, ${playerColor.value.hsl} 25%, black)`,
-}));
 const queueStore = useQueueStore();
 const rightPanel = useRightPanelStore();
 const router = useRouter();

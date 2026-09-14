@@ -2,14 +2,15 @@
 import type { HTMLAttributes } from "vue";
 import { computed, useAttrs } from "vue";
 import { cn } from "@/lib/utils";
+import type { DrawerMenuRowVariants } from ".";
+import { drawerMenuRowVariants } from ".";
 import { useDrawerMenuClose } from "./context";
-import { drawerMenuRowClass } from "./row";
 
 defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(defineProps<{
   class?: HTMLAttributes["class"];
-  variant?: "default" | "destructive";
+  variant?: DrawerMenuRowVariants["variant"];
   disabled?: boolean;
 }>(), {
   class: undefined,
@@ -48,12 +49,7 @@ const onClick = (event: MouseEvent) => {
     :data-variant="variant"
     :disabled="disabled || undefined"
     v-bind="passthrough"
-    :class="cn(
-      drawerMenuRowClass,
-      'data-[variant=destructive]:text-destructive data-[variant=destructive]:*:[svg]:!text-destructive',
-      'data-[variant=destructive]:hover:bg-destructive/10 data-[variant=destructive]:active:bg-destructive/10 dark:data-[variant=destructive]:hover:bg-destructive/20 dark:data-[variant=destructive]:active:bg-destructive/20',
-      props.class,
-    )"
+    :class="cn(drawerMenuRowVariants({ variant }), props.class)"
     @click="onClick"
   >
     <slot />

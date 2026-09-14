@@ -1,3 +1,4 @@
+import { Hct } from "@material/material-color-utilities";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -8,46 +9,27 @@ import {
   rgbToOklab,
   rgbToOklch,
 } from "../color";
-import {
-  adjustAccentColor,
-  DEFAULT_ACCENT_ADJUST,
-} from "../color-normalization";
-import {
-  analyzeImageData,
-  analyzeWithCanvas,
-  MIN_OPAQUE_PIXELS,
-} from "../canvas-analyzer";
+import { analyzeWithCanvas, imageDataToArgb } from "../canvas-analyzer";
+import { extractSeeds, FALLBACK_SEED, paletteFromSeed } from "../material-palette";
 
-/** Build an RGBA buffer of `size`x`size` from a per-pixel colour function. */
-function makeImage(
-  size: number,
-  fn: (x: number, y: number, i: number) => [number, number, number, number],
-): Uint8ClampedArray {
-  const data = new Uint8ClampedArray(size * size * 4);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const idx = y * size + x;
-      const i = idx * 4;
-      const [r, g, b, a] = fn(x, y, idx);
-      data[i] = r;
-      data[i + 1] = g;
-      data[i + 2] = b;
-      data[i + 3] = a;
+const hueDiff = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+const argb = (r: number, g: number, b: number) =>
+  ((0xff << 24) | (r << 16) | (g << 8) | b) >>> 0;
+
+/** `count` copies of each colour, interleaved so order carries no information. */
+const pixelsOf = (...parts: Array<[color: number, count: number]>) => {
+  const out: number[] = [];
+  const total = parts.reduce((sum, [, n]) => sum + n, 0);
+  for (let i = 0; i < total; i++) {
+    for (const [color, count] of parts) {
+      if (i < count) out.push(color);
     }
   }
-  return data;
-}
+  return out;
+};
 
-const oklchOf = (hex: string) => {
-  const { r, g, b } = hexToRgb(hex);
-  return rgbToOklch(r, g, b);
-};
-const hueDiff = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
-const saturationOf = (hex: string) => {
-  const { r, g, b } = hexToRgb(hex);
-  return rgbToHsl(r, g, b).s;
-};
-const BLUE_HUE = 262; // OKLCH hue of a typical sRGB blue
+const ORANGE = argb(230, 120, 20);
+const BLUE = argb(30, 90, 200);
 
 describe("color math (color.ts)", () => {
   it("parses hex and reports achromatic conversions", () => {
@@ -79,104 +61,89 @@ describe("color math (color.ts)", () => {
   });
 });
 
-describe("adjustAccentColor (vivid, pleasing OKLCH adjustment)", () => {
-  it("preserves hue for every colour family", () => {
-    for (const [r, g, b] of [
-      [51, 102, 204],
-      [230, 20, 20],
-      [245, 220, 150],
-      [60, 10, 10],
-      [40, 160, 90],
-    ] as const) {
-      const src = rgbToOklch(r, g, b);
-      const out = oklchOf(adjustAccentColor(src));
-      expect(hueDiff(out.h, src.h)).toBeLessThan(2.5);
+describe("extractSeeds (Celebi quantization + Score)", () => {
+  it("is deterministic for the same pixel array", () => {
+    const pixels = pixelsOf([ORANGE, 700], [BLUE, 300]);
+    expect(extractSeeds(pixels)).toEqual(extractSeeds([...pixels]));
+  });
+
+  it("ranks the dominant hue of a 70/30 two-colour image first", () => {
+    const seeds = extractSeeds(pixelsOf([ORANGE, 700], [BLUE, 300]));
+    expect(seeds.length).toBeGreaterThan(0);
+    const first = Hct.fromInt(seeds[0]);
+    const orangeHue = Hct.fromInt(ORANGE).hue;
+    const blueHue = Hct.fromInt(BLUE).hue;
+    expect(hueDiff(first.hue, orangeHue)).toBeLessThan(hueDiff(first.hue, blueHue));
+  });
+
+  it("returns at most four seeds", () => {
+    const pixels = pixelsOf(
+      [ORANGE, 200],
+      [BLUE, 200],
+      [argb(40, 180, 80), 200],
+      [argb(200, 40, 160), 200],
+      [argb(240, 220, 40), 200],
+      [argb(40, 200, 220), 200],
+    );
+    expect(extractSeeds(pixels).length).toBeLessThanOrEqual(4);
+  });
+
+  // A black-and-white cover must not yield Google Blue or any invented hue.
+  it("returns nothing for grey pixels and the fallback seed is neutral", () => {
+    const greys: number[] = [];
+    for (let i = 0; i < 1000; i++) {
+      const g = (i * 37) % 256;
+      greys.push(argb(g, g, g));
     }
+    expect(extractSeeds(greys)).toEqual([]);
+    expect(FALLBACK_SEED).toBe(0xff535353);
+    expect(() => paletteFromSeed(FALLBACK_SEED)).not.toThrow();
+    expect(Hct.fromInt(paletteFromSeed(FALLBACK_SEED).background).chroma).toBeLessThan(5);
   });
 
-  it("targets the configured fraction of the maximum displayable chroma", () => {
-    const out = oklchOf(adjustAccentColor(rgbToOklch(51, 102, 204)));
-    const maxChroma = clampChromaToGamut(out.L, 0.4, out.h);
-    expect(out.C).toBeGreaterThanOrEqual(DEFAULT_ACCENT_ADJUST.vividness * maxChroma - 0.01);
-    expect(out.C).toBeLessThanOrEqual(maxChroma + 0.01);
-  });
-
-  it("rescues a washed-out colour into a vivid one (fixes dullness)", () => {
-    const src = rgbToOklch(120, 130, 160); // muted blue-grey, C ~= 0.05
-    const out = oklchOf(adjustAccentColor(src));
-    expect(out.C).toBeGreaterThan(0.15); // dramatically more saturated
-    expect(hueDiff(out.h, src.h)).toBeLessThan(4);
-  });
-
-  it("keeps a genuinely neutral extraction grey", () => {
-    expect(saturationOf(adjustAccentColor({ L: 0.6, C: 0, h: 0 }))).toBe(0);
-  });
-
-  it("clamps lightness into the legible band", () => {
-    const dark = oklchOf(adjustAccentColor(rgbToOklch(60, 10, 10)));
-    expect(dark.L).toBeGreaterThanOrEqual(DEFAULT_ACCENT_ADJUST.minLightness - 1e-3);
-    const light = oklchOf(adjustAccentColor(rgbToOklch(245, 220, 150)));
-    expect(light.L).toBeLessThanOrEqual(DEFAULT_ACCENT_ADJUST.maxLightness + 1e-3);
+  it("returns nothing for an empty pixel array", () => {
+    expect(extractSeeds([])).toEqual([]);
   });
 });
 
-describe("analyzeImageData (salient accent extraction)", () => {
-  const SIZE = 16;
+describe("paletteFromSeed (tonal roles)", () => {
+  const PURPLE = 0xff7985e1;
 
-  it("returns null when there are too few opaque pixels", () => {
-    const data = makeImage(SIZE, (_x, _y, i) =>
-      (i === 0 ? [30, 90, 200, 255] : [0, 0, 0, 0]));
-    expect(analyzeImageData(data, SIZE)).toBeNull();
-    expect(MIN_OPAQUE_PIXELS).toBeGreaterThan(1);
+  it("keeps the seed hue and lands the background on tone 42", () => {
+    const palette = paletteFromSeed(PURPLE);
+    const seed = Hct.fromInt(PURPLE);
+    const bg = Hct.fromInt(palette.background);
+    expect(palette.seed).toBe(PURPLE);
+    expect(hueDiff(bg.hue, seed.hue)).toBeLessThan(3);
+    expect(bg.tone).toBeCloseTo(42, 0);
   });
 
-  it("extracts the dominant colourful hue of a solid cover", () => {
-    const data = makeImage(SIZE, () => [51, 102, 204, 255]);
-    const accent = analyzeImageData(data, SIZE)!;
-    expect(hueDiff(accent.h, BLUE_HUE)).toBeLessThan(10);
-    expect(accent.C).toBeGreaterThan(0.15);
+  it("places accent, onAccent, text and textMuted on their tones", () => {
+    const palette = paletteFromSeed(PURPLE);
+    expect(Hct.fromInt(palette.accent).tone).toBeCloseTo(80, 0);
+    expect(Hct.fromInt(palette.onAccent).tone).toBeCloseTo(20, 0);
+    expect(Hct.fromInt(palette.text).tone).toBeCloseTo(95, 0);
+    expect(Hct.fromInt(palette.textMuted).tone).toBeCloseTo(80, 0);
+    expect(Hct.fromInt(palette.text).chroma).toBeLessThan(Hct.fromInt(palette.accent).chroma);
   });
 
-  // The core fix: the salient colour wins, not the largest dull region.
-  it("picks a small vivid accent over a large muted field", () => {
-    // ~6% vivid blue block, ~44% muted beige field, rest white
-    const data = makeImage(SIZE, (x, y) => {
-      if (x < 5 && y < 3) return [30, 90, 200, 255]; // vivid blue accent
-      if (x < 12) return [170, 140, 110, 255]; // large muted beige field
-      return [245, 245, 245, 255]; // white
-    });
-    const accent = analyzeImageData(data, SIZE)!;
-    expect(hueDiff(accent.h, BLUE_HUE)).toBeLessThan(15); // blue, not beige
+  it("scales background chroma by chromaMultiplier", () => {
+    const full = Hct.fromInt(paletteFromSeed(PURPLE, { chromaMultiplier: 1 }).background);
+    const muted = Hct.fromInt(paletteFromSeed(PURPLE, { chromaMultiplier: 0.33 }).background);
+    expect(muted.chroma).toBeLessThan(full.chroma);
+    expect(hueDiff(muted.hue, full.hue)).toBeLessThan(3);
   });
+});
 
-  // The user's case: mostly white with a small blue accent -> blue background.
-  it("finds a small accent on an otherwise white cover", () => {
-    const data = makeImage(SIZE, (x, y) =>
-      (x >= 6 && x <= 9 && y >= 6 && y <= 9
-        ? [30, 90, 200, 255]
-        : [245, 245, 246, 255]));
-    const accent = analyzeImageData(data, SIZE)!;
-    expect(hueDiff(accent.h, BLUE_HUE)).toBeLessThan(15);
-    expect(accent.C).toBeGreaterThan(0.1);
-  });
-
-  // Regression: a black-and-white cover with a few coloured (compression-noise)
-  // pixels must NOT yield a spurious hue — it was returning green.
-  it("returns neutral for a monochrome cover with sub-threshold colour noise", () => {
-    const data = makeImage(32, (_x, _y, i) => {
-      if (i < 5) return [30, 200, 60, 255]; // 5/1024 ~= 0.5% vivid green specks
-      const g = (i * 37) % 256;
-      return [g, g, g, 255];
-    });
-    const accent = analyzeImageData(data, 32)!;
-    expect(accent.C).toBe(0); // neutral, not green
-  });
-
-  it("returns a neutral accent for a fully monochrome cover", () => {
-    const data = makeImage(SIZE, () => [130, 130, 130, 255]);
-    const accent = analyzeImageData(data, SIZE)!;
-    expect(accent.C).toBe(0);
-    expect(accent.L).toBeGreaterThan(0.5);
+describe("imageDataToArgb", () => {
+  it("packs opaque RGBA pixels into ARGB and skips translucent ones", () => {
+    const data = new Uint8ClampedArray([
+      230, 120, 20, 255,
+      30, 90, 200, 128,
+      0, 0, 0, 127,
+      10, 20, 30, 0,
+    ]);
+    expect(imageDataToArgb(data)).toEqual([ORANGE, BLUE]);
   });
 });
 
@@ -208,7 +175,8 @@ describe("analyzeWithCanvas request mode", () => {
   const loadWith = async (url: string) => {
     stubImage();
     vi.spyOn(console, "error").mockImplementation(() => {});
-    await analyzeWithCanvas(url);
+    const result = await analyzeWithCanvas(url);
+    expect(result).toBeNull();
     return created[0]?.crossOrigin ?? null;
   };
 

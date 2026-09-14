@@ -16,9 +16,9 @@
     {{ $t('media.contextMenu.downloadPlaylist') }}
   </component>
 
-  <component :is="Separator" />
-
   <template v-if="isOwner">
+    <component :is="Separator" />
+
     <component
       :is="Item"
       @click="actions.edit"

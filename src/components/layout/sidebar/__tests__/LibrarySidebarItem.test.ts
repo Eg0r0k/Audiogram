@@ -10,7 +10,7 @@ import LibrarySidebarItem from "../library-item/LibrarySidebarItem.vue";
 const openMenuMock = vi.hoisted(() => vi.fn());
 vi.mock("@/modules/library/composables/useLibraryMenu", () => ({
   canOpenLibraryMenu: () => true,
-  useLibraryMenu: () => ({ openMenu: openMenuMock }),
+  useLibraryMenu: () => ({ openMenu: openMenuMock, activeItem: { value: null }, isContextMenuOpen: { value: false } }),
 }));
 
 vi.mock("@/db/repositories", () => ({

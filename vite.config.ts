@@ -175,5 +175,10 @@ export default defineConfig({
       ],
     },
     setupFiles: ["./src/test/setup.ts"],
+    server: {
+      deps: {
+        inline: ["@material/material-color-utilities"],
+      },
+    },
   },
 });

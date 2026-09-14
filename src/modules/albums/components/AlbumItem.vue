@@ -1,10 +1,11 @@
 <template>
   <div
     v-ripple
-    class="group select-none cursor-pointer rounded-lg p-2 outline-none transition-colors hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50"
+    class="group select-none cursor-pointer rounded-lg p-2 outline-none transition-colors hover:bg-accent/60 data-[menu-open]:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50"
     :class="fluid ? 'w-full min-w-0' : 'w-40 shrink-0 sm:w-44'"
     data-library-item
     :data-library-menu="canOpenLibraryMenu(item) ? undefined : 'none'"
+    :data-menu-open="isMenuSelected || undefined"
     data-media-context
     role="button"
     tabindex="0"
@@ -28,7 +29,7 @@
         class="pin-button absolute left-2 top-2 rounded-full bg-card/80 text-foreground shadow-md backdrop-blur-sm hover:bg-card"
         :class="item.isPinned
           ? 'translate-y-0 opacity-100'
-          : '-translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-100'"
+          : '-translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 group-data-[menu-open]:translate-y-0 group-data-[menu-open]:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-100'"
         :aria-label="pinLabel"
         :aria-pressed="item.isPinned"
         @click.prevent.stop="handleTogglePin"
@@ -49,7 +50,7 @@
         class="play-button absolute bottom-2 right-2 size-11 rounded-full shadow-lg"
         :class="isActiveSource
           ? 'translate-y-0 opacity-100'
-          : 'translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-100'"
+          : 'translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 group-data-[menu-open]:translate-y-0 group-data-[menu-open]:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-100'"
         @click.prevent.stop="handlePlay"
         @keydown.enter.stop
       >
@@ -115,8 +116,14 @@ const emit = defineEmits<{
 const router = useRouter();
 const { t } = useI18n();
 const playerStore = usePlayerStore();
-const { openMenu } = useLibraryMenu();
+const { openMenu, activeItem, isContextMenuOpen } = useLibraryMenu();
 const { togglePin } = useLibrary();
+
+const isMenuSelected = computed(() =>
+  isContextMenuOpen.value
+  && activeItem.value?.id === props.item.id
+  && activeItem.value.type === props.item.type,
+);
 
 // Pins live in the local library store, so a catalog card has nothing to pin.
 const canPin = computed(() => !props.item.isCatalog);

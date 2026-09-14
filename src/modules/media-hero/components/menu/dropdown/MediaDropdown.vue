@@ -1,6 +1,6 @@
 <template>
-  <DropdownMenu>
-    <DropdownMenuTrigger as-child>
+  <ResponsiveMenu>
+    <ResponsiveMenuTrigger>
       <Button
         class="rounded-full text-white"
         size="icon-lg"
@@ -10,8 +10,8 @@
           class="size-5"
         />
       </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent
+    </ResponsiveMenuTrigger>
+    <ResponsiveMenuContent
       class="w-60"
       align="start"
     >
@@ -19,16 +19,16 @@
         :is="contextComponent"
         v-bind="contextProps"
       />
-    </DropdownMenuContent>
-  </DropdownMenu>
+    </ResponsiveMenuContent>
+  </ResponsiveMenu>
 </template>
 
 <script setup lang="ts">
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-} from "@/components/ui/dropdown-menu";
+  ResponsiveMenu,
+  ResponsiveMenuContent,
+  ResponsiveMenuTrigger,
+} from "@/components/ui/responsive-menu";
 import Button from "@/components/ui/button/Button.vue";
 import { computed, type Component } from "vue";
 import { useMediaContext } from "@/modules/media-hero/composables/useMediaContext";
@@ -37,10 +37,10 @@ import AlbumContext from "../contexts/AlbumContext.vue";
 import ArtistContext from "../contexts/ArtistContext.vue";
 import IconDots from "~icons/tabler/dots";
 import PlaylistContext from "../contexts/PlaylistContext.vue";
-import { dropdownMenuComponents, provideMenuComponents } from "@/modules/media-hero/composables/useMenuComponents";
+import { provideMenuComponents, responsiveMenuComponents } from "@/modules/media-hero/composables/useMenuComponents";
 import LikedContext from "../contexts/LikedContext.vue";
 
-provideMenuComponents(dropdownMenuComponents);
+provideMenuComponents(responsiveMenuComponents);
 
 interface Props {
   context?: MediaContext;

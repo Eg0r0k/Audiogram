@@ -107,3 +107,23 @@ describe("CurrentTrackPanel import CTA", () => {
     expect(screen.queryByRole("button", { name: "Import to library" })).toBeNull();
   });
 });
+
+describe("CurrentTrackPanel cover colour", () => {
+  beforeEach(() => {
+    i18n.global.locale.value = "en";
+  });
+
+  // The colour arrives ~400 ms after the track change; without a transition
+  // the "Up Next" block snaps from neutral to the cover colour.
+  it("crossfades the up-next block background when the cover colour lands", () => {
+    renderPanel(libraryTrack());
+
+    const block = screen.getByText("Up Next").closest("div.rounded-sm") as HTMLElement | null;
+    expect(block).not.toBeNull();
+    expect(block!.getAttribute("style")).toContain("--cover-color: 0 0% 0%");
+    expect(block!.className).toContain("bg-[color-mix(in_oklch,var(--cover-color)_25%,black)]");
+    expect(block!.className).toContain("transition-[background-color]");
+    expect(block!.className).toContain("duration-900");
+    expect(block!.className).toContain("motion-reduce:transition-none");
+  });
+});

@@ -20,6 +20,7 @@
           :padding-top="8"
           :padding-bottom="8"
           :get-item-key="getItemKey"
+          animate-reorder
           class="flex-1 bg-card mt-2"
         >
           <template #default="{ item, index }">

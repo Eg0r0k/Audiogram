@@ -1,27 +1,28 @@
 <template>
-  <ContextMenu>
+  <ResponsiveContextMenu>
     <div
       ref="triggerGuardRef"
       class="contents"
     >
-      <ContextMenuTrigger
-        as-child
-        :disabled="disabled"
-      >
+      <ResponsiveContextMenuTrigger :disabled="disabled">
         <slot />
-      </ContextMenuTrigger>
+      </ResponsiveContextMenuTrigger>
     </div>
-    <ContextMenuContent class="w-60 bg-popover/50 backdrop-blur-[50px] ">
+    <ResponsiveMenuContent class="w-60 bg-popover/50 backdrop-blur-[50px]">
       <component
         :is="contextComponent"
         v-bind="contextProps"
       />
-    </ContextMenuContent>
-  </ContextMenu>
+    </ResponsiveMenuContent>
+  </ResponsiveContextMenu>
 </template>
 
 <script setup lang="ts">
-import { ContextMenu, ContextMenuTrigger, ContextMenuContent } from "@/components/ui/context-menu";
+import {
+  ResponsiveContextMenu,
+  ResponsiveContextMenuTrigger,
+  ResponsiveMenuContent,
+} from "@/components/ui/responsive-menu";
 import { useEventListener } from "@vueuse/core";
 import { computed, useTemplateRef, type Component } from "vue";
 import { useMediaContext } from "@/modules/media-hero/composables/useMediaContext";
@@ -31,9 +32,9 @@ import PlaylistContext from "../contexts/PlaylistContext.vue";
 import LikedContext from "../contexts/LikedContext.vue";
 
 import type { MediaContext } from "../types";
-import { contextMenuComponents, provideMenuComponents } from "@/modules/media-hero/composables/useMenuComponents";
+import { provideMenuComponents, responsiveMenuComponents } from "@/modules/media-hero/composables/useMenuComponents";
 
-provideMenuComponents(contextMenuComponents);
+provideMenuComponents(responsiveMenuComponents);
 
 const props = withDefaults(defineProps<{
   context?: MediaContext;

@@ -1,5 +1,5 @@
 <template>
-  <ContextMenuItem @select="props.onTogglePin">
+  <ResponsiveMenuItem @select="props.onTogglePin">
     <IconPinFilled
       v-if="item.isPinned"
       class="size-5  text-primary"
@@ -9,21 +9,21 @@
       class="size-5 "
     />
     {{ item.isPinned ? 'Unpin album' : 'Pin album' }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 
-  <ContextMenuItem
-    class="text-destructive focus:text-destructive"
+  <ResponsiveMenuItem
+    variant="destructive"
     @select="props.onDelete"
   >
     <IconTrash class="size-5 " />
     Delete album
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 </template>
 
 <script setup lang="ts">
 import {
-  ContextMenuItem,
-} from "@/components/ui/context-menu";
+  ResponsiveMenuItem,
+} from "@/components/ui/responsive-menu";
 import type { LibraryItem } from "@/modules/library/types";
 import IconPinFilled from "~icons/tabler/pin-filled";
 import IconPin from "~icons/tabler/pin";

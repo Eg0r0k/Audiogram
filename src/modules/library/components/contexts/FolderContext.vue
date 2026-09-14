@@ -1,30 +1,30 @@
 <template>
-  <ContextMenuItem @select="props.openFolder">
+  <ResponsiveMenuItem @select="props.openFolder">
     <IconFolderOpen class="size-5" />
     {{ $t("library.folder.open") }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 
-  <ContextMenuItem @select="props.addToFolder">
+  <ResponsiveMenuItem @select="props.addToFolder">
     <IconFolderPlus class="size-5" />
     {{ $t("library.folder.addItems") }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 
-  <ContextMenuItem @select="props.renameFolder">
+  <ResponsiveMenuItem @select="props.renameFolder">
     <IconPencil class="size-5" />
     {{ $t("library.folder.rename") }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 
-  <ContextMenuItem
-    class="text-destructive focus:text-destructive"
+  <ResponsiveMenuItem
+    variant="destructive"
     @select="props.deleteFolder"
   >
     <IconTrash class="size-5" />
     {{ $t("library.folder.delete") }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 </template>
 
 <script setup lang="ts">
-import { ContextMenuItem } from "@/components/ui/context-menu";
+import { ResponsiveMenuItem } from "@/components/ui/responsive-menu";
 import IconFolderOpen from "~icons/tabler/folder-open";
 import IconFolderPlus from "~icons/tabler/folder-plus";
 import IconPencil from "~icons/tabler/pencil";

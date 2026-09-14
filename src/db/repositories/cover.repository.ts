@@ -62,12 +62,12 @@ class CoverRepository {
     ownerType: CoverOwnerType,
     ownerId: string,
     blob: Blob,
-  ): Promise<Result<string, Error>> {
+  ): Promise<Result<CoverEntity, Error>> {
     try {
       // find + write inside one transaction: two concurrent upserts for the
       // same owner would otherwise both miss and the second add() would hit
       // the unique [ownerType+ownerId] key.
-      const id = await db.transaction("rw", db.covers, async () => {
+      const stored = await db.transaction("rw", db.covers, async (): Promise<CoverEntity> => {
         const now = Date.now();
         const mimeType = blob.type || "image/jpeg";
         const existing = await db.covers
@@ -77,23 +77,23 @@ class CoverRepository {
 
         if (existing) {
           await db.covers.update(existing.id, { blob, mimeType, updatedAt: now });
-          return existing.id;
+          return { ...existing, blob, mimeType, updatedAt: now };
         }
 
-        const freshId = crypto.randomUUID();
-        await db.covers.add({
-          id: freshId,
+        const fresh: CoverEntity = {
+          id: crypto.randomUUID(),
           ownerType,
           ownerId,
           blob,
           mimeType,
           addedAt: now,
           updatedAt: now,
-        });
-        return freshId;
+        };
+        await db.covers.add(fresh);
+        return fresh;
       });
 
-      return ok(id);
+      return ok(stored);
     }
     catch (error) {
       return err(toDbError(error));
@@ -103,21 +103,21 @@ class CoverRepository {
   async upsertAlbumCover(
     albumId: AlbumId,
     blob: Blob,
-  ): Promise<Result<string, Error>> {
+  ): Promise<Result<CoverEntity, Error>> {
     return this.upsertOwnerCover("album", albumId, blob);
   }
 
   async upsertPlaylistCover(
     playlistId: PlaylistId,
     blob: Blob,
-  ): Promise<Result<string, Error>> {
+  ): Promise<Result<CoverEntity, Error>> {
     return this.upsertOwnerCover("playlist", playlistId, blob);
   }
 
   async upsertArtistCover(
     artistId: ArtistId,
     blob: Blob,
-  ): Promise<Result<string, Error>> {
+  ): Promise<Result<CoverEntity, Error>> {
     return this.upsertOwnerCover("artist", artistId, blob);
   }
 

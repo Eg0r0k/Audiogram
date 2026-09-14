@@ -10,6 +10,7 @@
       :data-disabled="isDisabled || undefined"
       :data-join-top="joinTop || undefined"
       :data-join-bottom="joinBottom || undefined"
+      :data-menu-open="isMenuSelected || undefined"
       :class="styles.root({ state: rowState })"
       @click="handleClick"
       @keypress.enter="handleClick"
@@ -177,7 +178,7 @@
           </span>
           <span class="hidden size-8 [@media(hover:none)]:block" />
         </div>
-        <span :class="[styles.duration, !isSelecting && 'group-hover:hidden']">
+        <span :class="[styles.duration, !isSelecting && 'group-hover:hidden group-data-[menu-open]:hidden']">
           <!-- Remote YT rows can have unknown durations (0) — blank beats a fake 0:00. -->
           {{ track.duration > 0 ? formatDuration(track.duration) : "" }}
         </span>
@@ -199,7 +200,7 @@
                 'rounded-full transition-opacity',
                 isLiked
                   ? 'text-primary hover:text-primary opacity-100'
-                  : 'text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100',
+                  : 'text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 group-data-[menu-open]:opacity-100 [@media(hover:none)]:opacity-100',
               ]"
               @click.stop="toggle"
             >
@@ -216,7 +217,7 @@
             <Button
               variant="ghost"
               size="icon-sm"
-              class="rounded-full opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
+              class="rounded-full opacity-0 group-hover:opacity-100 group-data-[menu-open]:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
               @click.stop="onDotsClick"
             >
               <IconDots class="size-4" />
@@ -270,6 +271,7 @@ const styles = {
       variants: {
         state: {
           default: "hover:bg-muted/50",
+          menu: "bg-muted/50",
           active: "bg-primary/10 hover:bg-primary/15",
           selected: "bg-accent/80 hover:bg-accent/90",
         },
@@ -349,8 +351,9 @@ const router = useRouter();
 // misclick surface — there they collapse into the plain artist line.
 const { isMobileLayout } = useDeviceLayout();
 const { locale } = useI18n();
-const { openDropdown } = useTrackMenu();
+const { openDropdown, isMenuOpenFor } = useTrackMenu();
 const { toggleTrackLike } = useToggleTrackLike();
+const isMenuSelected = computed(() => isMenuOpenFor(props.track, { target: props.menuTarget }));
 
 const coverUrl = useTrackRowCover(() => props.track, () => props.coverSrc);
 
@@ -390,6 +393,7 @@ const artists = computed(() => {
 const rowState = computed(() => {
   if (props.isSelected) return "selected" as const;
   if (isActivePlayback.value) return "active" as const;
+  if (isMenuSelected.value) return "menu" as const;
   return "default" as const;
 });
 

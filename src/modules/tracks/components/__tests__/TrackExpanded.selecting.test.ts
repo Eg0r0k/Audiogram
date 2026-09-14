@@ -16,7 +16,7 @@ vi.mock("vue-router", () => ({
   useRoute: () => ({}),
 }));
 vi.mock("@/modules/tracks/composables/useTrackMenu", () => ({
-  useTrackMenu: () => ({ openDropdown: vi.fn() }),
+  useTrackMenu: () => ({ openDropdown: vi.fn(), isMenuOpenFor: () => false }),
 }));
 vi.mock("@/modules/tracks/composables/useToggleTrackLike", () => ({
   useToggleTrackLike: () => ({ toggleTrackLike: vi.fn() }),

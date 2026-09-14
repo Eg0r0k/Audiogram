@@ -1,6 +1,7 @@
+import { hexFromArgb } from "@material/material-color-utilities";
 import { analyzeWithCanvas } from "@/lib/color/canvas-analyzer";
 import { hexToRgb, rgbToHsl } from "@/lib/color/color";
-import { adjustAccentColor } from "@/lib/color/color-normalization";
+import { extractSeeds, paletteFromSeed } from "@/lib/color/material-palette";
 import { ref } from "vue";
 
 export interface ColorResult {
@@ -8,6 +9,10 @@ export interface ColorResult {
   rgb: string;
   hsl: string;
   isDark: boolean;
+  /** Ranked cover seeds (hex), dominant first. Absent on fallback. */
+  seeds?: string[];
+  /** Tonal roles of the top seed (hex). Absent on fallback. */
+  palette?: { accent: string; onAccent: string; text: string; textMuted: string };
 }
 
 export interface UseImageColorOptions {
@@ -36,12 +41,25 @@ export async function getColorFromImage(
 ): Promise<ColorResult> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
-  const accent = await analyzeWithCanvas(imageUrl);
-  if (accent) {
-    return buildColorResult(adjustAccentColor(accent));
+  const pixels = await analyzeWithCanvas(imageUrl);
+  const seeds = pixels ? extractSeeds(pixels) : [];
+  if (seeds.length > 0) {
+    const palette = paletteFromSeed(seeds[0]);
+    return {
+      ...buildColorResult(hexFromArgb(palette.background)),
+      seeds: seeds.map(hexFromArgb),
+      palette: {
+        accent: hexFromArgb(palette.accent),
+        onAccent: hexFromArgb(palette.onAccent),
+        text: hexFromArgb(palette.text),
+        textMuted: hexFromArgb(palette.textMuted),
+      },
+    };
   }
 
-  console.warn("[useImageColor] Extraction failed, using fallback:", opts.fallback);
+  if (!pixels) {
+    console.warn("[useImageColor] Extraction failed, using fallback:", opts.fallback);
+  }
   return buildColorResult(opts.fallback);
 }
 

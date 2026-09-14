@@ -34,10 +34,14 @@
       <div
         v-if="isFullPlayerOpen"
         class="fixed z-40 top-(--toolbar-height) bottom-0 left-0 right-0 full-player-bg"
-        :style="{ '--player-bg': playerColor.hsl }"
+        :style="{
+          '--player-bg': playerColor.hsl,
+          '--player-accent': playerColor.palette?.accent ?? 'var(--primary)',
+          '--player-on-accent': playerColor.palette?.onAccent ?? 'var(--primary-foreground)',
+        }"
       >
         <MobileFullPlayer
-          class="h-full"
+          class="h-full full-player-accent"
           @close="isFullPlayerOpen = false"
         />
       </div>
@@ -127,24 +131,44 @@ const { isDragging } = useFileDrop({
   initial-value: transparent;
 }
 
+@property --player-accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
+@property --player-on-accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
 .full-player-bg {
   background: linear-gradient(
     to bottom,
     var(--player-bg),
     color-mix(in srgb, var(--player-bg) 20%, black)
   );
-  transition: --player-bg 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    --player-bg 900ms cubic-bezier(0.16, 1, 0.3, 1),
+    --player-accent 900ms cubic-bezier(0.16, 1, 0.3, 1),
+    --player-on-accent 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.full-player-accent {
+  --primary: var(--player-accent);
+  --primary-foreground: var(--player-on-accent);
 }
 
 .full-player-enter-active {
-  transition-property: transform, opacity, --player-bg;
+  transition-property: transform, opacity, --player-bg, --player-accent, --player-on-accent;
   transition-timing-function: var(--ease-drawer);
   transition-duration: 350ms;
   will-change: transform, opacity;
 }
 
 .full-player-leave-active {
-  transition-property: transform, opacity, --player-bg;
+  transition-property: transform, opacity, --player-bg, --player-accent, --player-on-accent;
   transition-timing-function: var(--ease-drawer);
   transition-duration: 350ms;
   will-change: transform, opacity;

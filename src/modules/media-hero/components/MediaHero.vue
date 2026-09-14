@@ -21,56 +21,60 @@
         @play="$emit('play')"
       />
 
-      <div class="relative mx-auto flex min-h-[265px] w-full max-w-page flex-col items-center gap-5 px-4 pb-6 pt-[72px] text-center @lg:flex-row @lg:items-end @lg:gap-7 @lg:px-7 @lg:pb-7 @lg:text-left">
-        <div class="w-full max-w-44 mb-auto shrink-0 @sm:max-w-52 @lg:max-w-[232px]">
-          <MediaHeroImage
-            :src="data.image"
-            :alt="data.title"
-            :rounded="isArtist(data)"
-            :editable="canEdit"
-            :fallback-src="fallbackSrc"
-            @edit="$emit('edit')"
-          />
+      <div class="relative mx-auto w-full max-w-page px-4 pb-6 pt-[72px] @lg:px-7 @lg:pb-7">
+        <div class="flex flex-col items-center gap-5 text-center @lg:flex-row @lg:items-center @lg:gap-7 @lg:text-left">
+          <div class="w-full max-w-44 shrink-0 @sm:max-w-52 @lg:max-w-[232px]">
+            <MediaHeroImage
+              :src="data.image"
+              :alt="data.title"
+              :rounded="isArtist(data)"
+              :editable="canEdit"
+              :fallback-src="fallbackSrc"
+              @edit="$emit('edit')"
+            />
+          </div>
+
+          <div class="flex select-none min-w-0 w-full flex-col items-center text-white @lg:items-start">
+            <span class="mb-1 text-xs font-medium opacity-90 @sm:text-sm">
+              {{ typeLabel }}
+            </span>
+
+            <h1
+              class="w-full wrap-break-word text-balance font-black leading-none tracking-tight text-3xl @sm:text-4xl @md:text-5xl @xl:text-6xl"
+            >
+              {{ data.title }}
+            </h1>
+
+            <MediaHeroMeta
+              class="mt-3 text-white font-medium"
+              :data="data"
+            />
+
+            <p
+              v-if="descriptionText"
+              class="mt-3 max-w-2xl text-sm leading-6 text-white/80 line-clamp-3 @lg:max-w-none"
+            >
+              {{ descriptionText }}
+            </p>
+          </div>
         </div>
 
-        <div class="flex select-none min-w-0 w-full flex-col items-center text-white @lg:items-start">
-          <span class="mb-1 text-xs font-medium opacity-90 @sm:text-sm">
-            {{ typeLabel }}
-          </span>
-
-          <h1
-            class="w-full wrap-break-word text-balance font-black leading-none tracking-tight text-3xl @sm:text-4xl @md:text-5xl @xl:text-6xl"
-          >
-            {{ data.title }}
-          </h1>
-
-          <MediaHeroMeta
-            class="mt-3 text-white font-medium"
-            :data="data"
-          />
-
-          <p
-            v-if="descriptionText"
-            class="mt-3 max-w-2xl text-sm leading-6 text-white/80 line-clamp-3 @lg:max-w-none"
-          >
-            {{ descriptionText }}
-          </p>
-
-          <MediaHeroActions
-            class="mt-5 w-full @lg:mt-6"
-            :type="data.type"
-            :source="heroSource"
-            :has-tracks="props.hasTracks"
-            :is-playlist-owner="isPlaylist(data) ? data.isOwner : undefined"
-            :show-menu="hasMenuItems"
-            @play="$emit('play')"
-            @shuffle="$emit('shuffle')"
-          >
-            <template #actions>
-              <slot name="actions" />
-            </template>
-          </MediaHeroActions>
-        </div>
+        <MediaHeroActions
+          v-model:filter="filter"
+          class="mt-6"
+          :type="data.type"
+          :source="heroSource"
+          :has-tracks="props.hasTracks"
+          :is-playlist-owner="isPlaylist(data) ? data.isOwner : undefined"
+          :show-menu="hasMenuItems"
+          :filterable="props.filterable"
+          @play="$emit('play')"
+          @shuffle="$emit('shuffle')"
+        >
+          <template #actions>
+            <slot name="actions" />
+          </template>
+        </MediaHeroActions>
       </div>
     </div>
   </MediaContextMenu>
@@ -107,9 +111,14 @@ const props = withDefaults(defineProps<{
    * with no Dexie row, so editing/deleting it would write nowhere.
    */
   isLibraryEntity?: boolean;
+  /** Shows the track filter; the page narrows its list by the `filter` model. */
+  filterable?: boolean;
 }>(), {
   isLibraryEntity: true,
+  filterable: false,
 });
+
+const filter = defineModel<string>("filter", { default: "" });
 
 const emit = defineEmits<{
   edit: [];

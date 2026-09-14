@@ -1,21 +1,27 @@
+import { Hct, hexFromArgb } from "@material/material-color-utilities";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { OKLCH } from "@/lib/color/color";
+import { paletteFromSeed } from "@/lib/color/material-palette";
 
-// Mock the analyser so orchestration is deterministic without a real canvas.
+// Mock the canvas sampler so orchestration is deterministic without a real
+// canvas; quantization, scoring and the tonal palette run for real.
 const { analyzeWithCanvas } = vi.hoisted(() => ({
-  analyzeWithCanvas: vi.fn<(url: string) => Promise<OKLCH | null>>(),
+  analyzeWithCanvas: vi.fn<(url: string) => Promise<number[] | null>>(),
 }));
 
 vi.mock("@/lib/color/canvas-analyzer", () => ({ analyzeWithCanvas }));
 
 import { getColorFromImage, useImageColor } from "../useImageColor";
 
-// Raw extracted OKLCH values and the hex the vivid adjustment produces.
-const BLUE: OKLCH = { L: 0.5324825595, C: 0.1678655044, h: 262.293047 };
-const BLUE_HEX = "#2465ea";
-const RED: OKLCH = { L: 0.532, C: 0.145, h: 28.5434 };
-const RED_HEX = "#c92f26";
+const hueDiff = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+const argbFromHex = (hex: string) => (0xff000000 | Number.parseInt(hex.slice(1), 16)) >>> 0;
+
+const BLUE = 0xff1e5ac8;
+const RED = 0xffc92f26;
+const solid = (color: number, count = 500) => Array.from({ length: count }, () => color);
+
+const BLUE_HEX = hexFromArgb(paletteFromSeed(BLUE).background);
+const RED_HEX = hexFromArgb(paletteFromSeed(RED).background);
 
 beforeEach(() => {
   analyzeWithCanvas.mockReset();
@@ -27,19 +33,46 @@ afterEach(() => {
 });
 
 describe("getColorFromImage", () => {
-  it("adjusts the extracted accent, keeping it vivid and matching the cover", async () => {
-    analyzeWithCanvas.mockResolvedValue(BLUE);
+  it("uses the tone-42 tonal background of the top seed as the result colour", async () => {
+    analyzeWithCanvas.mockResolvedValue(solid(BLUE));
 
     const result = await getColorFromImage("blob:cover");
 
     expect(result.hex).toBe(BLUE_HEX);
-    expect(result.rgb).toBe("rgb(36, 101, 234)");
-    expect(result.hsl).toBe("hsl(220, 82%, 53%)");
-    expect(result.isDark).toBe(false);
+    expect(hueDiff(Hct.fromInt(BLUE).hue, Hct.fromInt(argbFromHex(result.hex)).hue)).toBeLessThan(3);
+    expect(Hct.fromInt(argbFromHex(result.hex)).tone).toBeCloseTo(42, 0);
+    expect(result.rgb).toMatch(/^rgb\(\d+, \d+, \d+\)$/);
+    expect(result.hsl).toMatch(/^hsl\(\d+, \d+%, \d+%\)$/);
+    expect(result.isDark).toBe(true);
   });
 
-  it("returns the fallback colour when extraction yields nothing", async () => {
+  it("exposes the ranked seeds and the tonal roles of the top seed", async () => {
+    analyzeWithCanvas.mockResolvedValue(solid(BLUE));
+
+    const result = await getColorFromImage("blob:cover");
+    const palette = paletteFromSeed(BLUE);
+
+    expect(result.seeds).toEqual([hexFromArgb(BLUE)]);
+    expect(result.palette).toEqual({
+      accent: hexFromArgb(palette.accent),
+      onAccent: hexFromArgb(palette.onAccent),
+      text: hexFromArgb(palette.text),
+      textMuted: hexFromArgb(palette.textMuted),
+    });
+  });
+
+  it("returns the fallback colour when the sampler yields nothing", async () => {
     analyzeWithCanvas.mockResolvedValue(null);
+
+    const result = await getColorFromImage("blob:cover");
+
+    expect(result.hex).toBe("#535353");
+    expect(result.seeds).toBeUndefined();
+    expect(result.palette).toBeUndefined();
+  });
+
+  it("returns the fallback colour for a grey cover instead of an invented hue", async () => {
+    analyzeWithCanvas.mockResolvedValue(solid(0xff808080));
 
     const result = await getColorFromImage("blob:cover");
 
@@ -64,7 +97,7 @@ describe("useImageColor", () => {
   });
 
   it("toggles isLoading around extraction and stores the result", async () => {
-    analyzeWithCanvas.mockResolvedValue(BLUE);
+    analyzeWithCanvas.mockResolvedValue(solid(BLUE));
     const { color, isLoading, extractColor } = useImageColor();
 
     const p = extractColor("blob:cover");
@@ -75,7 +108,7 @@ describe("useImageColor", () => {
   });
 
   it("resetColor restores the fallback and clears error", async () => {
-    analyzeWithCanvas.mockResolvedValue(BLUE);
+    analyzeWithCanvas.mockResolvedValue(solid(BLUE));
     const { color, error, extractColor, resetColor } = useImageColor();
 
     await extractColor("blob:cover");
@@ -99,9 +132,9 @@ describe("useImageColor", () => {
   // The request guard: when extractions overlap, the LAST requested cover wins
   // regardless of settle order, so a slow older cover can never clobber it.
   it("the newest requested cover wins even if an older one settles later", async () => {
-    const resolvers: Array<(v: OKLCH | null) => void> = [];
+    const resolvers: Array<(v: number[] | null) => void> = [];
     analyzeWithCanvas.mockImplementation(
-      () => new Promise<OKLCH | null>((resolve) => {
+      () => new Promise<number[] | null>((resolve) => {
         resolvers.push(resolve);
       }),
     );
@@ -111,11 +144,11 @@ describe("useImageColor", () => {
     const first = extractColor("blob:old"); // requested first, resolves LAST
     const second = extractColor("blob:new"); // requested last, resolves FIRST
 
-    resolvers[1](RED); // newer cover finishes first
+    resolvers[1](solid(RED)); // newer cover finishes first
     await second;
     expect(color.value.hex).toBe(RED_HEX);
 
-    resolvers[0](BLUE); // older cover finishes later — must be ignored
+    resolvers[0](solid(BLUE)); // older cover finishes later — must be ignored
     await first;
     expect(color.value.hex).toBe(RED_HEX);
   });

@@ -7,6 +7,7 @@ import { provideMenuComponents, type MenuComponents } from "../../../composables
 import type { MediaActions } from "../types";
 import AlbumContext from "../contexts/AlbumContext.vue";
 import ArtistContext from "../contexts/ArtistContext.vue";
+import PlaylistContext from "../contexts/PlaylistContext.vue";
 
 //
 // "Изменить"/"Удалить" write to a Dexie row. Live catalog entities (an ND
@@ -81,5 +82,36 @@ describe("media-hero menus for catalog entities", () => {
 
     expect(screen.queryByText("Edit")).toBeNull();
     expect(screen.queryByText("Delete")).toBeNull();
+  });
+});
+
+// The separator only introduces the owner block; a catalog (YT/ND) playlist
+// has no owner block, and a separator with nothing after it is a bug.
+describe("playlist menu separator", () => {
+  const renderPlaylist = (isOwner: boolean) => {
+    const i18n = createI18n({ legacy: false, locale: "en", missingWarn: false, fallbackWarn: false, messages: { en: {} } });
+    return render({
+      components: { Ctx: PlaylistContext as never },
+      props: { actions: { type: Object, required: true }, isOwner: Boolean },
+      setup() {
+        provideMenuComponents(stubComponents);
+      },
+      template: "<Ctx :actions=\"actions\" :is-owner=\"isOwner\" />",
+    }, {
+      props: { actions: actions(isOwner), isOwner },
+      global: { plugins: [i18n] },
+    });
+  };
+
+  it("renders no separator for a playlist the user does not own", () => {
+    const { container } = renderPlaylist(false);
+
+    expect(container.querySelector("hr")).toBeNull();
+  });
+
+  it("separates the owner block from the shared items", () => {
+    const { container } = renderPlaylist(true);
+
+    expect(container.querySelectorAll("hr")).toHaveLength(1);
   });
 });

@@ -38,7 +38,7 @@
 
   <NavigationItems
     :artist-ids="track.artistIds"
-    :album-name="track.albumName"
+    :album-id="track.albumId"
     @go-to-artist="actions.goToArtist"
     @go-to-album="actions.goToAlbum"
   />

@@ -1,5 +1,5 @@
 <template>
-  <ContextMenuItem
+  <ResponsiveMenuItem
     v-if="canTogglePin"
     @select="props.togglePin"
   >
@@ -12,48 +12,48 @@
       class="size-5"
     />
     {{ item.isPinned ? pinOffLabel : pinOnLabel }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 
-  <ContextMenuItem @select="props.addToQueue">
+  <ResponsiveMenuItem @select="props.addToQueue">
     <IconList class="size-5" />
     {{ $t("track.contextMenu.addToQueue") }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 
-  <ContextMenuItem @select="props.createPlaylist">
+  <ResponsiveMenuItem @select="props.createPlaylist">
     <IconPlus class="size-5" />
     {{ $t("track.contextMenu.createPlaylist") }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 
-  <ContextMenuItem
+  <ResponsiveMenuItem
     v-if="props.moveToFolder"
     @select="props.moveToFolder"
   >
     <IconFolder class="size-5" />
     {{ $t("library.folder.moveToFolder") }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 
-  <ContextMenuItem
+  <ResponsiveMenuItem
     v-if="props.removeFromFolder"
     @select="props.removeFromFolder"
   >
     <IconFolderMinus class="size-5" />
     {{ $t("library.folder.removeFromFolder") }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 
-  <ContextMenuItem
+  <ResponsiveMenuItem
     v-if="props.deleteItem"
-    class="text-destructive focus:text-destructive"
+    variant="destructive"
     @select="props.deleteItem"
   >
     <IconTrash class="size-5" />
     {{ deleteLabel }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { ContextMenuItem } from "@/components/ui/context-menu";
+import { ResponsiveMenuItem } from "@/components/ui/responsive-menu";
 import type { LibraryItem } from "@/modules/library/types";
 import IconList from "~icons/tabler/list";
 import IconPinFilled from "~icons/tabler/pin-filled";

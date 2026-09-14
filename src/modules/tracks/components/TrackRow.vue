@@ -6,6 +6,7 @@
     tabindex="0"
     data-track-row
     :data-compact="compact"
+    :data-menu-open="isMenuSelected || undefined"
     :class="[
       styles.root,
       rowStateClass, dimmed && 'opacity-50',
@@ -48,29 +49,31 @@
           showOverlay ? 'opacity-100' : 'opacity-0',
         ]"
       >
-        <IconLoader
-          v-if="isTrackLoading"
-          class="size-4 animate-spin text-white drop-shadow-md"
-        />
+        <BlurSwapTransition :state="overlayState">
+          <Spinner
+            v-if="overlayState === 'loading'"
+            class="size-4 text-white drop-shadow-md"
+          />
 
-        <span
-          v-else-if="showsPlayback && !isRowHovered"
-          class="playing-pulse-dot"
-        >
-          <span />
-          <span />
-          <span />
-        </span>
+          <span
+            v-else-if="overlayState === 'pulse'"
+            class="playing-pulse-dot"
+          >
+            <span />
+            <span />
+            <span />
+          </span>
 
-        <IconPause
-          v-else-if="showsPlayback && isRowHovered"
-          class="size-4 text-white drop-shadow-md"
-        />
+          <IconPause
+            v-else-if="overlayState === 'pause'"
+            class="size-4 text-white drop-shadow-md"
+          />
 
-        <IconPlay
-          v-else
-          class="size-4 text-white drop-shadow-md"
-        />
+          <IconPlay
+            v-else
+            class="size-4 text-white drop-shadow-md"
+          />
+        </BlurSwapTransition>
       </div>
     </div>
 
@@ -107,7 +110,7 @@
         'rounded-full transition-opacity',
         isLiked
           ? 'opacity-100 text-primary hover:text-primary'
-          : 'opacity-0 text-muted-foreground sm:group-hover:opacity-100 [@media(hover:none)]:opacity-100 hover:text-foreground'
+          : 'opacity-0 text-muted-foreground group-hover:opacity-100 group-data-[menu-open]:opacity-100 [@media(hover:none)]:opacity-100 hover:text-foreground'
       ]"
       @click.stop="toggle"
     >
@@ -146,15 +149,16 @@ import { cva } from "class-variance-authority";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import { computed, useTemplateRef } from "vue";
 import { useElementHover } from "@vueuse/core";
+import { Spinner } from "@/components/ui/spinner";
 import IconDots from "~icons/tabler/dots";
 import IconGripVertical from "~icons/tabler/grip-vertical";
 import IconLike from "~icons/tabler/heart";
 import IconLikedFilled from "~icons/tabler/heart-filled";
 import IconPlay from "~icons/audiogram/play-rounded";
 import IconPause from "~icons/audiogram/pause-rounded";
-import IconLoader from "~icons/tabler/loader-2";
 
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
+import BlurSwapTransition from "@/components/transitions/BlurSwapTransition.vue";
 import { formatDuration } from "@/lib/format/time";
 import { isEphemeralTrack, type PlayerTrack, type Track } from "@/modules/player/types";
 import type { TrackContext } from "@/modules/tracks/components/menu/type";
@@ -240,6 +244,12 @@ const isTrackLoading = computed(() => {
   return isCurrentTrack.value && playerStore.showLoadingIndicator;
 });
 const showOverlay = computed(() => isCurrentTrack.value || isRowHovered.value);
+
+const overlayState = computed(() => {
+  if (isTrackLoading.value) return "loading";
+  if (!showsPlayback.value) return "play";
+  return isRowHovered.value ? "pause" : "pulse";
+});
 const isLiked = computed(() => props.track.isLiked);
 
 // Like writes to the library row — remote catalog rows (sourceDto) and
@@ -292,24 +302,17 @@ const styles = {
   info: "flex-1 min-w-0 flex flex-col group-data-[compact=true]:flex-row group-data-[compact=true]:items-baseline group-data-[compact=true]:gap-2",
   title: "font-medium truncate text-base group-data-[compact=true]:text-sm hover:underline",
   artist: "flex items-center text-muted-foreground truncate text-sm group-data-[compact=true]:text-xs",
-  duration: "text-muted-foreground font-medium text-sm group-data-[compact=true]:text-xs hidden sm:block sm:group-hover:hidden [@media(hover:none)]:hidden",
-  dots: "absolute rounded-full transition-opacity opacity-0 [@media(hover:none)]:opacity-100 sm:group-hover:opacity-100",
+  duration: "text-muted-foreground font-medium text-sm group-data-[compact=true]:text-xs hidden sm:block sm:group-hover:hidden sm:group-data-[menu-open]:hidden [@media(hover:none)]:hidden",
+  dots: "absolute rounded-full transition-opacity opacity-0 [@media(hover:none)]:opacity-100 group-hover:opacity-100 group-data-[menu-open]:opacity-100",
 };
 
-const {
-  openMenu,
-  openDropdown,
-  activeTrack,
-  isDropdownOpen,
-  isContextMenuOpen,
-} = useTrackMenu();
+const { openMenu, openDropdown, isMenuOpenFor } = useTrackMenu();
 
 const resolvedMenuIndex = computed(() => props.menuIndex ?? props.index);
 
-const isMenuSelected = computed(() => {
-  return (isDropdownOpen.value || isContextMenuOpen.value)
-    && activeTrack.value?.id === props.track.id;
-});
+const isMenuSelected = computed(() =>
+  isMenuOpenFor(props.track, { target: props.menuTarget, queueItemId: props.queueItemId }),
+);
 
 const isActivePlayback = computed(() => props.highlighted || isCurrentTrack.value);
 

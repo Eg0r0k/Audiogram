@@ -3,8 +3,8 @@
 import type { HTMLAttributes } from "vue";
 import IconCheck from "~icons/tabler/check";
 import { cn } from "@/lib/utils";
+import { drawerMenuRowVariants } from ".";
 import { useDrawerMenuClose } from "./context";
-import { drawerMenuRowClass } from "./row";
 
 const props = defineProps<{
   checked?: boolean;
@@ -34,7 +34,7 @@ const onClick = () => {
     :aria-checked="checked === true"
     :data-state="checked ? 'checked' : 'unchecked'"
     :disabled="disabled || undefined"
-    :class="cn(drawerMenuRowClass, props.class)"
+    :class="cn(drawerMenuRowVariants(), props.class)"
     @click="onClick"
   >
     <slot />

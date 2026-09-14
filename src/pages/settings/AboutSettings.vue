@@ -53,9 +53,9 @@
         :title="updateStore.error?.message"
         @click="updateStore.check()"
       >
-        <IconLoader2
+        <Spinner
           v-if="updateStore.status === 'checking'"
-          class="size-6 animate-spin"
+          class="size-6"
         />
         <IconCheck
           v-else-if="updateStore.status === 'up-to-date'"
@@ -83,9 +83,9 @@
             >
               {{ $t("settings.about.newBadge") }}
             </span>
-            <IconLoader2
+            <Spinner
               v-if="isOpening"
-              class="size-4 animate-spin text-muted-foreground"
+              class="size-4 text-muted-foreground"
             />
             <IconChevronRight
               v-else
@@ -99,9 +99,9 @@
         @click="handleExportLogs"
       >
         <template #action>
-          <IconLoader2
+          <Spinner
             v-if="isExporting"
-            class="size-4 animate-spin text-muted-foreground"
+            class="size-4 text-muted-foreground"
           />
 
           <IconDownload
@@ -166,12 +166,12 @@
 </template>
 
 <script setup lang="ts">
+import { Spinner } from "@/components/ui/spinner";
 import IconGithub from "~icons/tabler/brand-github-filled";
 import IconTelegram from "~icons/tabler/brand-telegram";
 import IconChevronRight from "~icons/tabler/chevron-right";
 import IconExternalLink from "~icons/tabler/external-link";
 import IconBarBell from "~icons/tabler/brand-among-us";
-import IconLoader2 from "~icons/tabler/loader-2";
 import IconDownload from "~icons/tabler/download";
 import IconCloudDownload from "~icons/tabler/cloud-download";
 import IconCheck from "~icons/tabler/check";

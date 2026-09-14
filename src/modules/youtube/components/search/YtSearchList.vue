@@ -32,7 +32,7 @@
 
       <template #loader>
         <div class="flex justify-center py-6">
-          <IconLoader class="size-5 animate-spin text-muted-foreground" />
+          <Spinner class="size-5 text-muted-foreground" />
         </div>
       </template>
 
@@ -74,7 +74,7 @@ import type { SearchResultItem } from "@/modules/search/types";
 import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
 import { useYtSearchResults } from "../../composables/useYtSearchResults";
 import { youtubeErrorMessage } from "../../lib/errors";
-import IconLoader from "~icons/tabler/loader-2";
+import { Spinner } from "@/components/ui/spinner";
 
 //
 // One chip's results, paged. Track hits render as the shared row (they play
