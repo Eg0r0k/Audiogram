@@ -4,16 +4,16 @@
   overflow: hidden;
   border-radius: inherit;
   pointer-events: none;
-  --ripple-duration: 0.6s;
+  --ripple-duration: 0.3s;
   --ripple-start-scale: 0;
   --ripple-end-scale: 2;
   --ripple-color: currentColor;
-  --ripple-max-opacity: 0.16;
+  --ripple-max-opacity: 0.1;
 }
 
 @media only screen and (max-width: 925px) {
   .v-ripple {
-    --ripple-duration: 0.35s;
+    --ripple-duration: 0.25s;
     --ripple-start-scale: 0.27;
   }
 }

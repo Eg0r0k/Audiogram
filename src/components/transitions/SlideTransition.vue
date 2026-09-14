@@ -129,9 +129,14 @@ watch(transitionSources, (next, prev) => {
 </script>
 <style>
 :root {
-  --transition-duration: 0.35s;
-  --parallax-offset: -20%;
-  --overlay-brightness: 0.7;
+  /* tweb navigation slide. Material standard curve: slow start, soft landing.
+     The global --ease-standard is easeOut and covers most of the distance on
+     frame one, which reads as a jump. Back is shorter than forward. */
+  --slide-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --slide-duration-in: 0.3s;
+  --slide-duration-out: 0.25s;
+  --parallax-offset: -25%;
+  --overlay-brightness: 0.8;
 }
 
 .slide-transition-container {
@@ -162,17 +167,17 @@ watch(transitionSources, (next, prev) => {
    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
 }
 
+/* The grid already stacks both pages in one cell; switching to
+   position:absolute here forced a layout on the first frame of motion. */
 .slide-left-enter-active,
-.slide-left-leave-active,
+.slide-left-leave-active {
+  transition: transform var(--slide-duration-in) var(--slide-easing),
+              filter var(--slide-duration-in) var(--slide-easing);
+}
 .slide-right-enter-active,
 .slide-right-leave-active {
-  transition: transform var(--transition-duration) var(--ease-standard),
-              filter var(--transition-duration) var(--ease-standard);
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  transition: transform var(--slide-duration-out) var(--slide-easing),
+              filter var(--slide-duration-out) var(--slide-easing);
 }
 .slide-left-enter-from {
   transform: translate3d(100%, 0, 0);
