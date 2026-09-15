@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { QueryClient, QueryObserver } from "@tanstack/vue-query";
+import { InfiniteQueryObserver, QueryClient, QueryObserver } from "@tanstack/vue-query";
 import { settleLibraryReads } from "../cache";
 import { queryKeys } from "../query-keys";
 
@@ -69,6 +69,41 @@ describe("settleLibraryReads", () => {
     read.releaseStaleRead();
     await until(() => queryClient.getQueryData(key) === "after the write");
     read.unsubscribe();
+  });
+
+  // The list asked for its next page and is waiting on it; a re-read of the
+  // loaded pages alone leaves it with the same row count, and the scroller
+  // only asks again once that count changes.
+  it("re-issues the next page a mounted list was fetching when the write landed", async () => {
+    const queryClient = new QueryClient();
+    const key = queryKeys.tracks.indexInfinite("date_added_desc");
+    const gate = deferred<void>();
+    let reads = 0;
+    const observer = new InfiniteQueryObserver(queryClient, {
+      queryKey: key,
+      initialPageParam: 0,
+      getNextPageParam: (last: { rows: string; next: number | null }) => last.next,
+      queryFn: async ({ pageParam }) => {
+        reads += 1;
+        if (pageParam === 1 && reads === 2) {
+          await gate.promise;
+          return { rows: "page 1 before the write", next: null };
+        }
+        return { rows: `page ${pageParam}`, next: pageParam === 0 ? 1 : null };
+      },
+    });
+    const unsubscribe = observer.subscribe(() => {});
+    await until(() => observer.getCurrentResult().data?.pages.length === 1);
+    observer.fetchNextPage();
+    await tick();
+    expect(queryClient.isFetching({ queryKey: key })).toBe(1);
+
+    await settleLibraryReads(queryClient);
+    gate.resolve();
+    await until(() => observer.getCurrentResult().data?.pages.length === 2);
+
+    expect(observer.getCurrentResult().data?.pages[1].rows).toBe("page 1");
+    unsubscribe();
   });
 
   it("does not touch a remote catalog read", async () => {

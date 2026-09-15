@@ -23,6 +23,7 @@ import {
   invalidateForArtistMutation,
   removeAlbumCaches,
   removeArtistCaches,
+  settleLibraryReads,
   syncArtistCaches,
   updateCoverCache,
   removeCoverCache,
@@ -179,11 +180,6 @@ export async function getArtistAlbumsPaginated(
 }
 
 export const artistQueries = {
-  all: () =>
-    queryOptions({
-      queryKey: queryKeys.artists.all(),
-      queryFn: getArtists,
-    }),
   detail: (artistId: ArtistId, enabled = true) =>
     queryOptions({
       queryKey: queryKeys.artists.detail(artistId),
@@ -199,21 +195,6 @@ export const artistQueries = {
     queryOptions({
       queryKey: queryKeys.artists.libraryRow(artistId),
       queryFn: artistId ? () => getArtistLibraryRow(artistId) : skipToken,
-    }),
-  page: (artistId: ArtistId) =>
-    queryOptions({
-      queryKey: queryKeys.artists.page(artistId),
-      queryFn: () => getArtistPageData(artistId),
-    }),
-  tracksPageInfinite: (artistId: ArtistId, pageParam: number, sortKey: TrackSortKey | null = null) =>
-    queryOptions({
-      queryKey: [...queryKeys.artists.tracksPage(artistId, sortKey), pageParam],
-      queryFn: () => getArtistTracksPaginated(artistId, pageParam, PAGE_SIZE, sortKey),
-    }),
-  albumsPageInfinite: (artistId: ArtistId, pageParam: number) =>
-    queryOptions({
-      queryKey: [...queryKeys.artists.albums(artistId), pageParam],
-      queryFn: () => getArtistAlbumsPaginated(artistId, pageParam),
     }),
 } as const;
 
@@ -231,6 +212,7 @@ export async function createArtistAndSync(
   };
 
   await unwrapResult(artistRepository.create(artist));
+  await settleLibraryReads(queryClient);
   syncArtistCaches(queryClient, artist);
   await upsertSearchDocuments([buildArtistDoc(artist)]);
 
@@ -267,8 +249,8 @@ export async function updateArtistAndSync(
   changes: ArtistChanges,
 ) {
   if (changes.coverBlob) {
-    await unwrapResult(coverRepository.upsertArtistCover(currentArtist.id, changes.coverBlob));
-    updateCoverCache("artist", currentArtist.id, changes.coverBlob);
+    const stored = await unwrapResult(coverRepository.upsertArtistCover(currentArtist.id, changes.coverBlob));
+    updateCoverCache("artist", currentArtist.id, stored);
   }
   else if (changes.removeCover) {
     await unwrapResult(coverRepository.deleteArtistCover(currentArtist.id));
@@ -301,6 +283,7 @@ export async function updateArtistAndSync(
     });
     if (txResult.isErr()) throw txResult.error;
 
+    await settleLibraryReads(queryClient);
     syncArtistCaches(queryClient, nextArtist);
 
     const [albums, tracks] = await Promise.all([
@@ -317,7 +300,7 @@ export async function updateArtistAndSync(
     await upsertSearchDocuments(searchDocuments);
   }
 
-  await invalidateForArtistMutation(queryClient, {
+  invalidateForArtistMutation(queryClient, {
     kind: "change",
     artistId: currentArtist.id,
   });
@@ -403,6 +386,7 @@ export async function deleteArtistAndSync(
   );
   if (txResult.isErr()) throw txResult.error;
 
+  await settleLibraryReads(queryClient);
   await syncAfterTrackPurge(
     queryClient,
     cascadeTracks ? affectedTrackIds : [],
@@ -428,8 +412,8 @@ export async function deleteArtistAndSync(
   removeArtistCaches(queryClient, artistEntity.id);
   removeCoverCache("artist", artistEntity.id);
 
-  await invalidateForArtistMutation(queryClient, {
+  invalidateForArtistMutation(queryClient, {
     kind: "removal",
-    albumIds: albums.map(album => album.id),
+    playlistIds: txResult.value.map(({ next }) => next.id),
   });
 }

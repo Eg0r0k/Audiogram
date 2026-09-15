@@ -5,81 +5,100 @@ import type {
   PlaylistEntity,
   TrackEntity,
 } from "@/db/entities";
-import { queryKeys } from "@/queries/query-keys";
+import { keyMatchers, queryKeys } from "@/queries/query-keys";
 import type { Track } from "@/modules/player/types";
 import type { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
-import type { InfiniteData, QueryClient } from "@tanstack/vue-query";
-import { patchTrackEntityLike, patchTrackLike, removeById, upsertById } from "./shared";
+import type { InfiniteData, InvalidateQueryFilters, Query, QueryClient } from "@tanstack/vue-query";
+import { removeById, upsertById } from "./shared";
 import type {
-  AlbumPageData,
-  ArtistPageData,
   LibrarySummaryData,
-  LikedTracksPageData,
   PaginatedAlbumsResult,
   PaginatedTracksResult,
-  PlaylistPageData,
-  TracksIndexPageData,
 } from "./types";
 import { coverCache } from "@/modules/covers/lib/cover-cache";
+import type { CoverRow } from "./cover.queries";
 import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 
-function setQueryDataIfPresent<T>(
+//
+// Point-syncs write the outcome of a mutation into the caches a mounted view
+// reads, so the change shows before any re-read lands. An entity's own row
+// (`detail`) is written unconditionally and seeds the next mount; every
+// other key — the summary, `playlists.all`, the stats rows, the offset-paged
+// lists matched by `keyMatchers` — is patched only while it already holds
+// data. Whatever a patch cannot place is re-read through the invalidation
+// registry at the bottom.
+//
+
+type TrackPages = InfiniteData<PaginatedTracksResult>;
+
+type QueryKeyMatch = (key: readonly unknown[]) => boolean;
+
+// `setQueryData` builds an entry for a key it has never seen; answering
+// `undefined` for one keeps a patch to the keys that already hold data.
+const setQueryDataIfPresent = <T>(
   queryClient: QueryClient,
   queryKey: readonly unknown[],
   updater: (data: T) => T,
-) {
+) => {
   queryClient.setQueryData<T | undefined>(queryKey, old =>
     old === undefined ? old : updater(old),
   );
-}
+};
 
-function setQueriesDataIfPresent<T>(
+const setQueriesDataIfPresent = <T>(
   queryClient: QueryClient,
-  filters: Parameters<QueryClient["setQueriesData"]>[0],
+  match: QueryKeyMatch,
   updater: (data: T) => T,
-) {
-  queryClient.setQueriesData<T | undefined>(filters, (old) => {
-    if (old === undefined) return old;
-    const result = updater(old);
-    return result;
-  });
-}
-
-function patchLikedTotalDuration(queryClient: QueryClient, delta: number) {
-  if (delta === 0) return;
-  setQueryDataIfPresent<number>(queryClient, queryKeys.tracks.likedTotalDuration(), current =>
-    Math.max(0, current + delta),
+) => {
+  queryClient.setQueriesData<T | undefined>(
+    { predicate: query => match(query.queryKey) },
+    old => (old === undefined ? old : updater(old)),
   );
-}
+};
 
-function sortLikedTracksDesc(tracks: readonly TrackEntity[]) {
-  return [...tracks].sort((left, right) => (right.likedAt ?? 0) - (left.likedAt ?? 0));
-}
+/** Moves the two liked aggregates (the summary's count, the cached duration sum) by a delta each. */
+const patchLikedAggregates = (queryClient: QueryClient, countDelta: number, durationDelta: number) => {
+  if (countDelta !== 0) {
+    setQueryDataIfPresent<LibrarySummaryData>(queryClient, queryKeys.library.summary(), data => ({
+      ...data,
+      likedCount: Math.max(0, data.likedCount + countDelta),
+    }));
+  }
+  if (durationDelta !== 0) {
+    setQueryDataIfPresent<number>(queryClient, queryKeys.tracks.likedTotalDuration(), current =>
+      Math.max(0, current + durationDelta),
+    );
+  }
+};
 
-// Cache updaters are dispatched by key predicates; a mis-scoped predicate could
-// hand a page updater the wrong cache shape (e.g. a scalar aggregate). Guard the
-// shape and no-op instead of crashing.
-function isPagedData(data: unknown): boolean {
-  return Array.isArray((data as { pages?: unknown } | null | undefined)?.pages);
-}
+// A matcher may be widened by mistake onto a key holding another shape (a
+// scalar aggregate, an entity row); a page patch must then leave it alone.
+const isPagedData = (data: unknown): boolean =>
+  Array.isArray((data as { pages?: unknown } | null | undefined)?.pages);
 
 /**
  * Pages are offset-paged over Dexie: a row added or dropped in place shifts
  * everything after it, so the next fetch must start where the cached rows
- * now end, not where the server said they ended.
+ * now end, not where the page said they ended when it was read.
  */
-function recountOffsets<P extends { tracks: unknown[]; nextOffset: number | null }>(pages: P[]): P[] {
+const recountOffsets = <P extends { nextOffset: number | null }>(
+  pages: P[],
+  rowsOf: (page: P) => readonly unknown[],
+): P[] => {
   let offset = 0;
   return pages.map((page) => {
-    offset += page.tracks.length;
+    offset += rowsOf(page).length;
     return page.nextOffset === null ? page : { ...page, nextOffset: offset };
   });
-}
+};
 
-function mapInfiniteTrackPages(
-  data: InfiniteData<PaginatedTracksResult>,
+const trackRowsOf = (page: PaginatedTracksResult) => page.tracks;
+const albumRowsOf = (page: PaginatedAlbumsResult) => page.albums;
+
+const mapInfiniteTrackPages = (
+  data: TrackPages,
   mapTracks: (tracks: Track[]) => Track[],
-): InfiniteData<PaginatedTracksResult> {
+): TrackPages => {
   if (!isPagedData(data)) return data;
   return {
     ...data,
@@ -88,48 +107,85 @@ function mapInfiniteTrackPages(
       tracks: mapTracks(page.tracks),
     })),
   };
-}
+};
 
-function removeTracksFromInfinitePages(
-  data: InfiniteData<PaginatedTracksResult>,
+const replaceTrackRow = (nextTrack: Track) => (tracks: Track[]) =>
+  tracks.map(track => (track.id === nextTrack.id ? nextTrack : track));
+
+// A flat id lookup holds the same rows as a page; a row change reaches it too.
+const patchTrackRowLists = (queryClient: QueryClient, nextTrack: Track) => {
+  setQueriesDataIfPresent<Track[]>(queryClient, keyMatchers.trackRows, tracks =>
+    Array.isArray(tracks) ? replaceTrackRow(nextTrack)(tracks) : tracks,
+  );
+};
+
+const removeTracksFromInfinitePages = (
+  data: TrackPages,
   trackIdSet: ReadonlySet<string>,
-): InfiniteData<PaginatedTracksResult> {
+): TrackPages => {
   if (!isPagedData(data)) return data;
-  const removedTracks = data.pages
-    .flatMap(page => page.tracks)
-    .filter(track => trackIdSet.has(track.id));
+  let removedCount = 0;
+  const pages = data.pages.map((page) => {
+    const tracks = page.tracks.filter(track => !trackIdSet.has(track.id));
+    removedCount += page.tracks.length - tracks.length;
+    return { ...page, tracks };
+  });
+  if (removedCount === 0) return data;
 
-  const removedCount = removedTracks.length;
+  return {
+    ...data,
+    pages: recountOffsets(pages.map(page => ({
+      ...page,
+      total: Math.max(0, page.total - removedCount),
+    })), trackRowsOf),
+  };
+};
 
+const countTracksInInfinitePages = (data: TrackPages, added: number): TrackPages => {
+  if (!isPagedData(data) || added === 0) return data;
+  return {
+    ...data,
+    pages: data.pages.map(page => ({ ...page, total: page.total + added })),
+  };
+};
+
+// New rows go at the end of the list, which is only cached once the last page
+// is in. Until then the rows live on a page not yet read and only the total
+// can be moved.
+const appendTracksToInfinitePages = (data: TrackPages, tracks: readonly Track[]): TrackPages => {
+  if (!isPagedData(data)) return data;
+  const counted = countTracksInInfinitePages(data, tracks.length);
+  const lastIndex = counted.pages.length - 1;
+  if (lastIndex < 0 || counted.pages[lastIndex].nextOffset !== null) return counted;
+  const lastPage = counted.pages[lastIndex];
+  return {
+    ...counted,
+    pages: [
+      ...counted.pages.slice(0, lastIndex),
+      { ...lastPage, tracks: [...lastPage.tracks, ...tracks] },
+    ],
+  };
+};
+
+// The album is the artist's own, so the shelf's total drops even while its
+// row sits on a page not yet read.
+const removeAlbumFromInfinitePages = (
+  data: InfiniteData<PaginatedAlbumsResult>,
+  albumId: AlbumId,
+): InfiniteData<PaginatedAlbumsResult> => {
+  if (!isPagedData(data)) return data;
   return {
     ...data,
     pages: recountOffsets(data.pages.map(page => ({
       ...page,
-      tracks: page.tracks.filter(track => !trackIdSet.has(track.id)),
-      total: Math.max(0, page.total - removedCount),
-    }))),
-  };
-}
-
-function removeAlbumFromInfinitePages(
-  data: InfiniteData<PaginatedAlbumsResult>,
-  albumId: AlbumId,
-): InfiniteData<PaginatedAlbumsResult> {
-  if (!isPagedData(data)) return data;
-  return {
-    ...data,
-    pages: data.pages.map(page => ({
-      ...page,
       albums: page.albums.filter(album => album.id !== albumId),
       total: Math.max(0, page.total - 1),
-    })),
+    })), albumRowsOf),
   };
-}
+};
 
-function patchInfiniteLikedPages(
-  data: InfiniteData<PaginatedTracksResult>,
-  nextTrack: Track,
-): InfiniteData<PaginatedTracksResult> {
+// The default liked order is likedAt desc, so a fresh like is the first row.
+const patchInfiniteLikedPages = (data: TrackPages, nextTrack: Track): TrackPages => {
   if (!isPagedData(data)) return data;
   const totalDelta = nextTrack.isLiked ? 1 : -1;
 
@@ -143,36 +199,59 @@ function patchInfiniteLikedPages(
         tracks: nextTrack.isLiked && index === 0 ? [nextTrack, ...withoutCurrent] : withoutCurrent,
         total: Math.max(0, page.total + totalDelta),
       };
-    })),
+    }), trackRowsOf),
   };
-}
+};
 
-function patchTracksIndexPages(
-  queryClient: QueryClient,
-  updater: (data: TracksIndexPageData) => TracksIndexPageData,
-) {
-  setQueriesDataIfPresent<TracksIndexPageData>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "tracks"
-        && query.queryKey[1] === "index"
-        && query.queryKey[2] !== "infinite"
-        && query.queryKey[2] !== "totalDuration",
-    },
-    data => (Array.isArray((data as { tracks?: unknown }).tracks) ? updater(data) : data),
-  );
-}
+const LIBRARY_ROOTS: ReadonlySet<unknown> = new Set([
+  "library",
+  "tracks",
+  "albums",
+  "artists",
+  "playlists",
+  "offlineCopies",
+]);
 
-export function syncArtistCaches(queryClient: QueryClient, artist: ArtistEntity) {
-  setQueryDataIfPresent<ArtistEntity[]>(queryClient, queryKeys.artists.all(), artists =>
-    upsertById(artists, artist),
+const isLibraryRead = (query: Query) => LIBRARY_ROOTS.has(query.queryKey[0]);
+
+/**
+ * Cancels every library read still in flight and re-issues the mounted ones.
+ * Call right after a mutation's last Dexie write and before its point-sync:
+ * a read that started before the write answers with the pre-write rows and
+ * would land on top of the patch. Invalidation alone does not cover that —
+ * its refetch joins a read that has no data yet and clears `isInvalidated`
+ * on the stale answer. Remote and stats roots are left alone: the former are
+ * network requests, the latter share one `fetchQuery` whose cancellation
+ * would surface as an error in every aggregate awaiting it.
+ */
+export const settleLibraryReads = async (queryClient: QueryClient): Promise<void> => {
+  const overlapped = new Set(
+    queryClient.getQueryCache().findAll({ predicate: isLibraryRead, fetchStatus: "fetching" }),
   );
+  if (overlapped.size === 0) return;
+
+  // A refetch re-reads the loaded pages only. A list cancelled mid
+  // `fetchNextPage` keeps its row count, and the scroller asks for more
+  // again only once that count changes — so the page it wanted is fetched
+  // for it once the loaded ones are back.
+  const nextPages = [...overlapped].flatMap((query) => {
+    const fetchMore = query.state.fetchMeta?.fetchMore;
+    return fetchMore ? [[query, fetchMore] as const] : [];
+  });
+
+  const filter = { predicate: (query: Query) => overlapped.has(query) };
+  await queryClient.cancelQueries(filter);
+  queryClient.refetchQueries({ ...filter, type: "active" })
+    .then(() => {
+      for (const [query, fetchMore] of nextPages) {
+        if (query.isActive()) query.fetch(undefined, { meta: { fetchMore } }).catch(() => {});
+      }
+    })
+    .catch(() => {});
+};
+
+export const syncArtistCaches = (queryClient: QueryClient, artist: ArtistEntity) => {
   queryClient.setQueryData(queryKeys.artists.detail(artist.id), artist);
-  setQueryDataIfPresent<ArtistPageData>(queryClient, queryKeys.artists.page(artist.id), data => ({
-    ...data,
-    artist,
-  }));
   setQueryDataIfPresent<LibrarySummaryData>(
     queryClient,
     queryKeys.library.summary(),
@@ -184,12 +263,10 @@ export function syncArtistCaches(queryClient: QueryClient, artist: ArtistEntity)
       }),
     }),
   );
-}
+};
 
-export function removeArtistCaches(queryClient: QueryClient, artistId: ArtistId) {
-  setQueryDataIfPresent<ArtistEntity[]>(queryClient, queryKeys.artists.all(), artists =>
-    removeById(artists, artistId),
-  );
+/** Drops the artist from the summary and every key cached under its id. */
+export const removeArtistCaches = (queryClient: QueryClient, artistId: ArtistId) => {
   setQueryDataIfPresent<LibrarySummaryData>(
     queryClient,
     queryKeys.library.summary(),
@@ -198,27 +275,11 @@ export function removeArtistCaches(queryClient: QueryClient, artistId: ArtistId)
       artists: removeById(data.artists, artistId),
     }),
   );
-  queryClient.removeQueries({ queryKey: queryKeys.artists.detail(artistId), exact: true });
-  queryClient.removeQueries({ queryKey: queryKeys.artists.page(artistId), exact: true });
-}
+  queryClient.removeQueries({ queryKey: queryKeys.artists.detail(artistId) });
+};
 
-export function syncAlbumCaches(queryClient: QueryClient, album: AlbumEntity) {
-  setQueryDataIfPresent<AlbumEntity[]>(queryClient, queryKeys.albums.all(), albums =>
-    upsertById(albums, album),
-  );
+export const syncAlbumCaches = (queryClient: QueryClient, album: AlbumEntity) => {
   queryClient.setQueryData(queryKeys.albums.detail(album.id), album);
-  setQueryDataIfPresent<AlbumPageData>(queryClient, queryKeys.albums.page(album.id), data => ({
-    ...data,
-    album,
-  }));
-  setQueryDataIfPresent<ArtistPageData>(
-    queryClient,
-    queryKeys.artists.page(album.artistId),
-    data => ({
-      ...data,
-      albums: upsertById(data.albums, album),
-    }),
-  );
   setQueryDataIfPresent<LibrarySummaryData>(
     queryClient,
     queryKeys.library.summary(),
@@ -230,24 +291,14 @@ export function syncAlbumCaches(queryClient: QueryClient, album: AlbumEntity) {
       }),
     }),
   );
-}
+};
 
-export function removeAlbumCaches(
+/** Drops the album from its artist's shelf, the summary and every key cached under its id. */
+export const removeAlbumCaches = (
   queryClient: QueryClient,
   albumId: AlbumId,
   artistId: ArtistId,
-) {
-  setQueryDataIfPresent<AlbumEntity[]>(queryClient, queryKeys.albums.all(), albums =>
-    removeById(albums, albumId),
-  );
-  setQueryDataIfPresent<ArtistPageData>(
-    queryClient,
-    queryKeys.artists.page(artistId),
-    data => ({
-      ...data,
-      albums: removeById(data.albums, albumId),
-    }),
-  );
+) => {
   setQueryDataIfPresent<InfiniteData<PaginatedAlbumsResult>>(
     queryClient,
     queryKeys.artists.albums(artistId),
@@ -261,24 +312,14 @@ export function removeAlbumCaches(
       albums: removeById(data.albums, albumId),
     }),
   );
-  queryClient.removeQueries({ queryKey: queryKeys.albums.detail(albumId), exact: true });
-  queryClient.removeQueries({ queryKey: queryKeys.albums.page(albumId), exact: true });
-  queryClient.removeQueries({ queryKey: queryKeys.albums.tracks(albumId), exact: true });
-}
+  queryClient.removeQueries({ queryKey: queryKeys.albums.detail(albumId) });
+};
 
-export function syncPlaylistCaches(queryClient: QueryClient, playlist: PlaylistEntity) {
+export const syncPlaylistCaches = (queryClient: QueryClient, playlist: PlaylistEntity) => {
   setQueryDataIfPresent<PlaylistEntity[]>(queryClient, queryKeys.playlists.all(), playlists =>
     upsertById(playlists, playlist),
   );
   queryClient.setQueryData(queryKeys.playlists.detail(playlist.id), playlist);
-  setQueryDataIfPresent<PlaylistPageData>(
-    queryClient,
-    queryKeys.playlists.page(playlist.id),
-    data => ({
-      ...data,
-      playlist,
-    }),
-  );
   setQueryDataIfPresent<LibrarySummaryData>(
     queryClient,
     queryKeys.library.summary(),
@@ -287,9 +328,10 @@ export function syncPlaylistCaches(queryClient: QueryClient, playlist: PlaylistE
       playlists: upsertById(data.playlists, playlist),
     }),
   );
-}
+};
 
-export function removePlaylistCaches(queryClient: QueryClient, playlistId: PlaylistId) {
+/** Drops the playlist from the lists, the summary and every key cached under its id. */
+export const removePlaylistCaches = (queryClient: QueryClient, playlistId: PlaylistId) => {
   setQueryDataIfPresent<PlaylistEntity[]>(queryClient, queryKeys.playlists.all(), playlists =>
     removeById(playlists, playlistId),
   );
@@ -301,178 +343,107 @@ export function removePlaylistCaches(queryClient: QueryClient, playlistId: Playl
       playlists: removeById(data.playlists, playlistId),
     }),
   );
-  queryClient.removeQueries({ queryKey: queryKeys.playlists.detail(playlistId), exact: true });
-  queryClient.removeQueries({ queryKey: queryKeys.playlists.page(playlistId), exact: true });
-  queryClient.removeQueries({ queryKey: queryKeys.playlists.tracks(playlistId), exact: true });
-}
+  queryClient.removeQueries({ queryKey: queryKeys.playlists.detail(playlistId) });
+};
 
-export function updateCoverCache(
+/** The owner's cover row was written (`null`: deleted); publishes it without a re-read. */
+export const updateCoverCache = (
   ownerType: CoverOwnerType,
   ownerId: string,
-  blob: Blob | null,
-) {
-  coverCache.set({ ownerType, ownerId }, blob);
-}
+  row: CoverRow | null,
+) => {
+  coverCache.set({ ownerType, ownerId }, row);
+};
 
 /** A cover row is gone (its owner was deleted or re-parented). */
-export function removeCoverCache(ownerType: CoverOwnerType, ownerId: string) {
+export const removeCoverCache = (ownerType: CoverOwnerType, ownerId: string) => {
   coverCache.invalidate({ ownerType, ownerId });
-}
+};
 
-export function syncPlaylistTrackRemoval(
+// ── Paged track lists ─────────────────────────────────────────────────────
+
+/** Drops the rows from every loaded page of the playlist, whatever its sort. */
+export const syncPlaylistTracksRemoval = (
   queryClient: QueryClient,
   playlistId: PlaylistId,
-  trackId: string,
-) {
-  setQueryDataIfPresent<PlaylistPageData>(
+  trackIds: ReadonlySet<string>,
+) => {
+  setQueriesDataIfPresent<TrackPages>(
     queryClient,
-    queryKeys.playlists.page(playlistId),
-    data => ({
-      ...data,
-      playlist: {
-        ...data.playlist,
-        trackIds: data.playlist.trackIds.filter(id => id !== trackId),
-      },
-      tracks: data.tracks.filter(track => track.id !== trackId),
-    }),
+    keyMatchers.tracksPagesOfEntity("playlists", playlistId),
+    data => removeTracksFromInfinitePages(data, trackIds),
   );
+};
 
-  setQueryDataIfPresent<InfiniteData<PaginatedTracksResult>>(
+/**
+ * Appends the rows to the playlist's own order, where they are known to go
+ * last; a sorted page only learns the new total and is re-read for the rows.
+ * `tracks` must be the rows the repository actually appended (no duplicates).
+ */
+export const syncPlaylistTracksAddition = (
+  queryClient: QueryClient,
+  playlistId: PlaylistId,
+  tracks: readonly Track[],
+) => {
+  if (tracks.length === 0) return;
+  setQueryDataIfPresent<TrackPages>(
     queryClient,
     queryKeys.playlists.tracksPage(playlistId),
-    (data) => {
-      let removedCount = 0;
-
-      const nextData = mapInfiniteTrackPages(data, (tracks) => {
-        const nextTracks = tracks.filter(track => track.id !== trackId);
-        removedCount += tracks.length - nextTracks.length;
-        return nextTracks;
-      });
-
-      if (removedCount === 0) {
-        return data;
-      }
-
-      return {
-        ...nextData,
-        pages: nextData.pages.map(page => ({
-          ...page,
-          total: Math.max(0, page.total - removedCount),
-        })),
-      };
-    },
+    data => appendTracksToInfinitePages(data, tracks),
   );
-}
-
-export function syncPlaylistTrackAddition(
-  queryClient: QueryClient,
-  playlistId: PlaylistId,
-  track: Track,
-) {
-  setQueryDataIfPresent<PlaylistPageData>(
+  setQueriesDataIfPresent<TrackPages>(
     queryClient,
-    queryKeys.playlists.page(playlistId),
-    (data) => {
-      if (data.playlist.trackIds.includes(track.id)) {
-        return data;
-      }
-
-      return {
-        ...data,
-        playlist: {
-          ...data.playlist,
-          trackIds: [...data.playlist.trackIds, track.id],
-        },
-        tracks: [...data.tracks, track],
-      };
-    },
+    keyMatchers.sortedTracksPagesOfEntity("playlists", playlistId),
+    data => countTracksInInfinitePages(data, tracks.length),
   );
-}
+};
 
-export function removeTracksFromCaches(
+// The liked count and duration are cached aggregates; a deleted liked row's
+// share is only known from the liked pages loaded so far. A liked track
+// deleted before its page was read leaves both alone until the re-read.
+// Returns duration by id, one entry per liked row found.
+const likedRowsAmong = (queryClient: QueryClient, trackIdSet: ReadonlySet<string>): ReadonlyMap<string, number> => {
+  const durationById = new Map<string, number>();
+  for (const [, data] of queryClient.getQueriesData<TrackPages>({ predicate: query => keyMatchers.likedPages(query.queryKey) })) {
+    if (!data || !isPagedData(data)) continue;
+    for (const page of data.pages) {
+      for (const track of page.tracks) {
+        if (trackIdSet.has(track.id)) durationById.set(track.id, track.duration);
+      }
+    }
+  }
+  return durationById;
+};
+
+/** Drops the rows from every loaded page of every track list in one pass over the cache. */
+export const removeTracksFromCaches = (
   queryClient: QueryClient,
   trackIds: readonly string[],
-) {
+) => {
   markRecommenderContextDirty();
   const trackIdSet = new Set(trackIds);
+  const likedRows = likedRowsAmong(queryClient, trackIdSet);
 
-  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.tracks.all(), tracks =>
-    tracks.filter(track => !trackIdSet.has(track.id)),
-  );
-  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.tracks.liked(), tracks =>
-    tracks.filter(track => !trackIdSet.has(track.id)),
-  );
-  setQueryDataIfPresent<LikedTracksPageData>(
+  setQueriesDataIfPresent<TrackPages>(
     queryClient,
-    queryKeys.tracks.likedPage(),
-    data => ({
-      ...data,
-      tracks: data.tracks.filter(track => !trackIdSet.has(track.id)),
-    }),
+    keyMatchers.trackPages,
+    data => removeTracksFromInfinitePages(data, trackIdSet),
   );
-  const likedInfinite = queryClient.getQueryData<InfiniteData<PaginatedTracksResult>>(
-    queryKeys.tracks.likedPageInfinite(),
-  );
-  if (likedInfinite) {
-    // Durations come from the cached liked pages (only pages loaded so far); a liked
-    // track deleted before its page was loaded contributes 0 here — see report.
-    const removedLikedDuration = likedInfinite.pages
-      .flatMap(page => page.tracks)
-      .filter(track => trackIdSet.has(track.id))
-      .reduce((sum, track) => sum + track.duration, 0);
-    queryClient.setQueryData(
-      queryKeys.tracks.likedPageInfinite(),
-      removeTracksFromInfinitePages(likedInfinite, trackIdSet),
-    );
-    patchLikedTotalDuration(queryClient, -removedLikedDuration);
-  }
-  setQueriesDataIfPresent<PlaylistPageData>(
+  patchLikedAggregates(
     queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "playlists" && query.queryKey[2] === "page",
-    },
-    data => ({
-      ...data,
-      tracks: data.tracks.filter(track => !trackIdSet.has(track.id)),
-    }),
+    -likedRows.size,
+    -[...likedRows.values()].reduce((sum, duration) => sum + duration, 0),
   );
-  setQueriesDataIfPresent<ArtistPageData>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "artists" && query.queryKey[2] === "page",
-    },
-    data => ({
-      ...data,
-      tracks: data.tracks.filter(track => !trackIdSet.has(track.id)),
-    }),
-  );
-  setQueriesDataIfPresent<AlbumPageData>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "albums" && query.queryKey[2] === "page",
-    },
-    data => ({
-      ...data,
-      tracks: data.tracks.filter(track => !trackIdSet.has(track.id)),
-    }),
-  );
-}
+};
 
-function patchStatsTrackCaches(
+const patchStatsTrackCaches = (
   queryClient: QueryClient,
   nextTrackEntity: TrackEntity,
   nextTrack: Track,
-) {
+) => {
   setQueriesDataIfPresent<{ track: Track }[]>(
     queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "stats"
-        && (query.queryKey[1] === "topTracks" || query.queryKey[1] === "recentHistory"),
-    },
+    key => key[0] === "stats" && (key[1] === "topTracks" || key[1] === "recentHistory"),
     entries => entries.map(entry =>
       entry.track.id === nextTrack.id ? { ...entry, track: nextTrack } : entry,
     ),
@@ -480,423 +451,114 @@ function patchStatsTrackCaches(
 
   setQueriesDataIfPresent<TrackEntity[]>(
     queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "stats" && query.queryKey[1] === "topTracksMeta",
-    },
+    key => key[0] === "stats" && key[1] === "topTracksMeta",
     tracks => tracks.map(track =>
       track.id === nextTrackEntity.id ? nextTrackEntity : track,
     ),
   );
-}
+};
 
-export function syncTrackLikeCaches(
+/**
+ * A like moves the row into (or out of) the default liked page and flips it
+ * in place everywhere else. A sorted liked page cannot place the row — see
+ * `invalidateForTrackMutation("like")`.
+ */
+export const syncTrackLikeCaches = (
   queryClient: QueryClient,
   nextTrackEntity: TrackEntity,
   nextTrack: Track,
-) {
+) => {
   markRecommenderContextDirty();
-  const likedAt = nextTrackEntity.likedAt;
+  const sign = nextTrack.isLiked ? 1 : -1;
 
   patchStatsTrackCaches(queryClient, nextTrackEntity, nextTrack);
-
   queryClient.setQueryData(queryKeys.tracks.detail(nextTrackEntity.id), nextTrackEntity);
-  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.tracks.all(), tracks =>
-    tracks.map(track =>
-      track.id === nextTrackEntity.id ? patchTrackEntityLike(track, likedAt) : track,
-    ),
-  );
-  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.albums.tracks(nextTrackEntity.albumId), tracks =>
-    tracks.map(track =>
-      track.id === nextTrackEntity.id ? patchTrackEntityLike(track, likedAt) : track,
-    ),
-  );
-  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.artists.tracks(nextTrackEntity.artistIds[0]), tracks =>
-    tracks.map(track =>
-      track.id === nextTrackEntity.id ? patchTrackEntityLike(track, likedAt) : track,
-    ),
-  );
 
-  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.tracks.liked(), (tracks) => {
-    const withoutCurrent = removeById(tracks, nextTrackEntity.id);
-
-    if (!likedAt) {
-      return withoutCurrent;
-    }
-
-    return sortLikedTracksDesc([nextTrackEntity, ...withoutCurrent]);
-  });
-
-  setQueryDataIfPresent<LibrarySummaryData>(
+  patchLikedAggregates(queryClient, sign, sign * nextTrack.duration);
+  setQueriesDataIfPresent<TrackPages>(
     queryClient,
-    queryKeys.library.summary(),
-    data => ({
-      ...data,
-      likedCount: Math.max(0, data.likedCount + (likedAt ? 1 : -1)),
-    }),
-  );
-
-  // Only the default (likedAt desc) page knows where a liked row goes; the
-  // sorted pages are re-read — see invalidateForTrackMutation "like".
-  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "tracks"
-        && query.queryKey[1] === "liked"
-        && query.queryKey[2] === "page"
-        && query.queryKey[3] === "infinite"
-        && query.queryKey.length === 4,
-    },
+    keyMatchers.likedDefaultPage,
     data => patchInfiniteLikedPages(data, nextTrack),
   );
-
-  patchLikedTotalDuration(
+  setQueriesDataIfPresent<TrackPages>(
     queryClient,
-    nextTrack.isLiked ? nextTrack.duration : -nextTrack.duration,
+    key => keyMatchers.trackPages(key) && !keyMatchers.likedPages(key),
+    data => mapInfiniteTrackPages(data, replaceTrackRow(nextTrack)),
   );
+  patchTrackRowLists(queryClient, nextTrack);
+};
 
-  setQueryDataIfPresent<LikedTracksPageData>(
-    queryClient,
-    queryKeys.tracks.likedPage(),
-    (data) => {
-      const withoutCurrent = data.tracks.filter(track => track.id !== nextTrack.id);
-
-      return {
-        ...data,
-        tracks: nextTrack.isLiked ? [nextTrack, ...withoutCurrent] : withoutCurrent,
-      };
-    },
-  );
-
-  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "playlists"
-        && query.queryKey[2] === "tracks"
-        && query.queryKey[3] === "page",
-    },
-    (data) => {
-      return mapInfiniteTrackPages(data, tracks =>
-        tracks.map(track =>
-          track.id === nextTrack.id ? nextTrack : track,
-        ),
-      );
-    },
-  );
-
-  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "albums"
-        && query.queryKey[2] === "tracks"
-        && query.queryKey[3] === "page",
-    },
-    (data) => {
-      return mapInfiniteTrackPages(data, tracks =>
-        tracks.map(track =>
-          track.id === nextTrack.id ? nextTrack : track,
-        ),
-      );
-    },
-  );
-
-  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "artists"
-        && query.queryKey[2] === "tracks"
-        && query.queryKey[3] === "page",
-    },
-    (data) => {
-      return mapInfiniteTrackPages(data, tracks =>
-        tracks.map(track =>
-          track.id === nextTrack.id ? nextTrack : track,
-        ),
-      );
-    },
-  );
-
-  setQueriesDataIfPresent<PlaylistPageData>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "playlists" && query.queryKey[2] === "page",
-    },
-    data => ({
-      ...data,
-      tracks: data.tracks.map(track =>
-        track.id === nextTrack.id ? patchTrackLike(track, nextTrack.isLiked) : track,
-      ),
-    }),
-  );
-
-  patchTracksIndexPages(queryClient, data => ({
-    ...data,
-    tracks: data.tracks.map(track =>
-      track.id === nextTrack.id ? nextTrack : track,
-    ),
-  }));
-
-  // The all-music page reads ["tracks","index","infinite",...] — without this
-  // patch its rows keep a stale isLiked until refetch.
-  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "tracks"
-        && query.queryKey[1] === "index"
-        && query.queryKey[2] === "infinite",
-    },
-    data => mapInfiniteTrackPages(data, tracks =>
-      tracks.map(track => (track.id === nextTrack.id ? nextTrack : track)),
-    ),
-  );
-
-  setQueryDataIfPresent<ArtistPageData>(
-    queryClient,
-    queryKeys.artists.page(nextTrack.artistIds[0]),
-    data => ({
-      ...data,
-      tracks: data.tracks.map(track =>
-        track.id === nextTrack.id ? patchTrackLike(track, nextTrack.isLiked) : track,
-      ),
-    }),
-  );
-
-  setQueryDataIfPresent<AlbumPageData>(
-    queryClient,
-    queryKeys.albums.page(nextTrack.albumId),
-    data => ({
-      ...data,
-      tracks: data.tracks.map(track =>
-        track.id === nextTrack.id ? patchTrackLike(track, nextTrack.isLiked) : track,
-      ),
-    }),
-  );
-}
-
-export function syncTrackMetadataCaches(
+/** Replaces the row wherever it is loaded; a list whose order the change may affect is re-read by the caller. */
+export const syncTrackMetadataCaches = (
   queryClient: QueryClient,
   nextTrackEntity: TrackEntity,
   nextTrack: Track,
-) {
+) => {
   markRecommenderContextDirty();
   queryClient.setQueryData(queryKeys.tracks.detail(nextTrackEntity.id), nextTrackEntity);
-
   patchStatsTrackCaches(queryClient, nextTrackEntity, nextTrack);
-
-  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.tracks.all(), tracks =>
-    tracks.map(track =>
-      track.id === nextTrackEntity.id ? nextTrackEntity : track,
-    ),
-  );
-  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.tracks.liked(), tracks =>
-    tracks.map(track =>
-      track.id === nextTrackEntity.id ? nextTrackEntity : track,
-    ),
-  );
-  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.albums.tracks(nextTrackEntity.albumId), tracks =>
-    tracks.map(track =>
-      track.id === nextTrackEntity.id ? nextTrackEntity : track,
-    ),
-  );
-  setQueryDataIfPresent<TrackEntity[]>(queryClient, queryKeys.artists.tracks(nextTrackEntity.artistIds[0]), tracks =>
-    tracks.map(track =>
-      track.id === nextTrackEntity.id ? nextTrackEntity : track,
-    ),
-  );
-
-  setQueryDataIfPresent<LikedTracksPageData>(
+  setQueriesDataIfPresent<TrackPages>(
     queryClient,
-    queryKeys.tracks.likedPage(),
-    data => ({
-      ...data,
-      tracks: data.tracks.map(track =>
-        track.id === nextTrack.id ? nextTrack : track,
-      ),
-    }),
+    keyMatchers.trackPages,
+    data => mapInfiniteTrackPages(data, replaceTrackRow(nextTrack)),
   );
-
-  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "tracks"
-        && query.queryKey[1] === "liked"
-        && query.queryKey[2] === "page"
-        && query.queryKey[3] === "infinite",
-    },
-    data => mapInfiniteTrackPages(data, tracks =>
-      tracks.map(track =>
-        track.id === nextTrack.id ? nextTrack : track,
-      ),
-    ),
-  );
-
-  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "playlists"
-        && query.queryKey[2] === "tracks"
-        && query.queryKey[3] === "page",
-    },
-    data => mapInfiniteTrackPages(data, tracks =>
-      tracks.map(track =>
-        track.id === nextTrack.id ? nextTrack : track,
-      ),
-    ),
-  );
-
-  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "albums"
-        && query.queryKey[2] === "tracks"
-        && query.queryKey[3] === "page",
-    },
-    data => mapInfiniteTrackPages(data, tracks =>
-      tracks.map(track =>
-        track.id === nextTrack.id ? nextTrack : track,
-      ),
-    ),
-  );
-
-  setQueriesDataIfPresent<InfiniteData<PaginatedTracksResult>>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "artists"
-        && query.queryKey[2] === "tracks"
-        && query.queryKey[3] === "page",
-    },
-    data => mapInfiniteTrackPages(data, tracks =>
-      tracks.map(track =>
-        track.id === nextTrack.id ? nextTrack : track,
-      ),
-    ),
-  );
-
-  setQueriesDataIfPresent<PlaylistPageData>(
-    queryClient,
-    {
-      predicate: query =>
-        query.queryKey[0] === "playlists" && query.queryKey[2] === "page",
-    },
-    data => ({
-      ...data,
-      tracks: data.tracks.map(track =>
-        track.id === nextTrack.id ? nextTrack : track,
-      ),
-    }),
-  );
-  setQueryDataIfPresent<ArtistPageData>(
-    queryClient,
-    queryKeys.artists.page(nextTrack.artistIds[0]),
-    data => ({
-      ...data,
-      tracks: data.tracks.map(track =>
-        track.id === nextTrack.id ? nextTrack : track,
-      ),
-    }),
-  );
-  setQueryDataIfPresent<AlbumPageData>(
-    queryClient,
-    queryKeys.albums.page(nextTrack.albumId),
-    data => ({
-      ...data,
-      tracks: data.tracks.map(track =>
-        track.id === nextTrack.id ? nextTrack : track,
-      ),
-    }),
-  );
-}
+  patchTrackRowLists(queryClient, nextTrack);
+};
 
 // ── Invalidation registry ─────────────────────────────────────────────────
 // Each affected-key group is named once; invalidateFor*Mutation composes
-// them per mutation kind.
+// them per mutation kind. Rows carry denormalized names (artist, albumName),
+// so a rename reaches every paged track list, not only the entity's own.
 
-type InvalidationFilter = Parameters<QueryClient["invalidateQueries"]>[0];
+type InvalidationFilter = InvalidateQueryFilters;
 
-/** Таблица «сущность → фабрики затронутых ключей». */
+const byKey = (queryKey: readonly unknown[]): InvalidationFilter => ({ queryKey });
+
+const byMatch = (match: QueryKeyMatch): InvalidationFilter => ({
+  predicate: query => match(query.queryKey),
+});
+
 const affectedKeys = {
   library: {
-    summary: (): InvalidationFilter[] => [{ queryKey: queryKeys.library.summary() }],
+    summary: (): InvalidationFilter[] => [byKey(queryKeys.library.summary())],
   },
   tracks: {
-    all: (): InvalidationFilter[] => [{ queryKey: queryKeys.tracks.all() }],
-    /** Every page of the region-scoped tracks index (any sort / search). */
-    indexPages: (): InvalidationFilter[] => [{
-      predicate: query => query.queryKey[0] === "tracks" && query.queryKey[1] === "index",
-    }],
-    likedPage: (): InvalidationFilter[] => [{ queryKey: queryKeys.tracks.likedPage() }],
-    likedPages: (): InvalidationFilter[] => [
-      { queryKey: queryKeys.tracks.likedPage() },
-      { queryKey: queryKeys.tracks.likedPageInfinite() },
-    ],
-    likedTotalDuration: (): InvalidationFilter[] => [
-      { queryKey: queryKeys.tracks.likedTotalDuration() },
-    ],
-    /** Liked pages under a sort key; the default page is patched in place instead. */
-    likedSortedPages: (): InvalidationFilter[] => [{
-      predicate: query =>
-        query.queryKey[0] === "tracks"
-        && query.queryKey[1] === "liked"
-        && query.queryKey[2] === "page"
-        && query.queryKey[3] === "infinite"
-        && query.queryKey.length > 4,
-    }],
+    /** Every track read: the index and liked pages, the rows, the id lookups, the pickers' search. */
+    all: (): InvalidationFilter[] => [byKey(queryKeys.tracks.all())],
+    likedSortedPages: (): InvalidationFilter[] => [byMatch(keyMatchers.likedSortedPages)],
   },
   albums: {
-    all: (): InvalidationFilter[] => [{ queryKey: queryKeys.albums.all() }],
-    pages: (
-      ids: readonly AlbumId[],
-      opts: { totalDuration?: boolean } = {},
-    ): InvalidationFilter[] =>
-      ids.flatMap(id => [
-        { queryKey: queryKeys.albums.page(id) },
-        { queryKey: queryKeys.albums.tracksPage(id) },
-        ...(opts.totalDuration ? [{ queryKey: queryKeys.albums.totalDuration(id) }] : []),
-      ]),
-    anyPage: (): InvalidationFilter[] => [{
-      predicate: query => query.queryKey[0] === "albums" && query.queryKey[2] === "page",
-    }],
+    all: (): InvalidationFilter[] => [byKey(queryKeys.albums.all())],
+    /** Everything cached under these albums. */
+    of: (ids: readonly AlbumId[]): InvalidationFilter[] => ids.map(id => byKey(queryKeys.albums.detail(id))),
+    tracksPages: (): InvalidationFilter[] => [byMatch(keyMatchers.tracksPagesOf("albums"))],
   },
   artists: {
-    all: (): InvalidationFilter[] => [{ queryKey: queryKeys.artists.all() }],
-    pages: (ids: readonly ArtistId[]): InvalidationFilter[] =>
-      ids.flatMap(id => [
-        { queryKey: queryKeys.artists.page(id) },
-        { queryKey: queryKeys.artists.tracksPage(id) },
-      ]),
-    albumsOf: (id: ArtistId): InvalidationFilter[] => [{ queryKey: queryKeys.artists.albums(id) }],
+    all: (): InvalidationFilter[] => [byKey(queryKeys.artists.all())],
+    /** Everything cached under these artists, their album shelves included. */
+    of: (ids: readonly ArtistId[]): InvalidationFilter[] => ids.map(id => byKey(queryKeys.artists.detail(id))),
+    /** The album rows the artist page renders; nothing patches a title into them. */
+    albumShelves: (ids: readonly ArtistId[]): InvalidationFilter[] => ids.map(id => byKey(queryKeys.artists.albums(id))),
+    tracksPages: (): InvalidationFilter[] => [byMatch(keyMatchers.tracksPagesOf("artists"))],
   },
   playlists: {
-    all: (): InvalidationFilter[] => [{ queryKey: queryKeys.playlists.all() }],
-    pages: (
-      ids: readonly PlaylistId[],
-      opts: { tracksPage?: boolean } = { tracksPage: true },
-    ): InvalidationFilter[] =>
-      ids.flatMap(id => [
-        { queryKey: queryKeys.playlists.detail(id) },
-        { queryKey: queryKeys.playlists.page(id) },
-        ...(opts.tracksPage === false ? [] : [{ queryKey: queryKeys.playlists.tracksPage(id) }]),
-        { queryKey: queryKeys.playlists.totalDuration(id) },
-      ]),
-    anyPage: (): InvalidationFilter[] => [{
-      predicate: query => query.queryKey[0] === "playlists" && query.queryKey[2] === "page",
-    }],
+    all: (): InvalidationFilter[] => [byKey(queryKeys.playlists.all())],
+    /** Everything cached under these playlists. */
+    of: (ids: readonly PlaylistId[]): InvalidationFilter[] => ids.map(id => byKey(queryKeys.playlists.detail(id))),
+    tracksPages: (): InvalidationFilter[] => [byMatch(keyMatchers.tracksPagesOf("playlists"))],
   },
 } as const;
 
-function runInvalidations(queryClient: QueryClient, filters: InvalidationFilter[]) {
-  return Promise.all(filters.map(filter => queryClient.invalidateQueries(filter))).then(() => {});
-}
+/**
+ * Marks the filters stale at once; the re-read of mounted queries runs in
+ * the background. A mutation does not wait for it: the point-sync already
+ * shows the change, and a re-read of every loaded page of every mounted list
+ * would otherwise hold `isPending` (and any navigation chained on it) for
+ * as long as the slowest list.
+ */
+const runInvalidations = (queryClient: QueryClient, filters: InvalidationFilter[]) => {
+  for (const filter of filters) queryClient.invalidateQueries(filter).catch(() => {});
+};
 
 export type TrackMutationCtx
   = | { kind: "relations" }
@@ -909,10 +571,7 @@ export type TrackMutationCtx
       playlistIds: readonly PlaylistId[];
     };
 
-export function invalidateForTrackMutation(
-  queryClient: QueryClient,
-  ctx: TrackMutationCtx,
-): Promise<void> {
+export const invalidateForTrackMutation = (queryClient: QueryClient, ctx: TrackMutationCtx) => {
   markRecommenderContextDirty();
   switch (ctx.kind) {
     case "like":
@@ -922,119 +581,94 @@ export function invalidateForTrackMutation(
       return runInvalidations(queryClient, [
         ...affectedKeys.library.summary(),
         ...affectedKeys.tracks.all(),
-        ...affectedKeys.tracks.indexPages(),
         ...affectedKeys.albums.all(),
         ...affectedKeys.artists.all(),
         ...affectedKeys.playlists.all(),
       ]);
     case "metadata":
-      return runInvalidations(queryClient, [
-        ...affectedKeys.artists.pages(ctx.artistIds),
-        ...affectedKeys.tracks.likedPages(),
-        ...affectedKeys.albums.pages(ctx.albumIds, { totalDuration: true }),
-        ...affectedKeys.tracks.indexPages(),
-        ...affectedKeys.playlists.anyPage(),
-      ]);
-    case "removal":
+      // The summary carries per-album and per-artist track counts.
       return runInvalidations(queryClient, [
         ...affectedKeys.library.summary(),
-        // The albums/artists prefix filters above already match every per-id
-        // key; a whole-library delete would otherwise scan the cache once per id.
+        ...affectedKeys.tracks.all(),
+        ...affectedKeys.artists.of(ctx.artistIds),
+        ...affectedKeys.albums.of(ctx.albumIds),
+        ...affectedKeys.playlists.tracksPages(),
+      ]);
+    case "removal":
+      // The album and artist roots cover every per-id key at once; a
+      // whole-library delete would otherwise scan the cache once per id.
+      return runInvalidations(queryClient, [
+        ...affectedKeys.library.summary(),
+        ...affectedKeys.tracks.all(),
         ...affectedKeys.albums.all(),
         ...affectedKeys.artists.all(),
-        ...affectedKeys.playlists.pages(ctx.playlistIds),
-        ...affectedKeys.tracks.indexPages(),
-        // The point-patch above only reaches the default-sort liked page.
-        ...affectedKeys.tracks.likedPages(),
-        ...affectedKeys.tracks.likedTotalDuration(),
+        ...affectedKeys.playlists.of(ctx.playlistIds),
       ]);
   }
-}
+};
 
+// `playlistIds` of a removal: the playlists a cascade delete dropped rows
+// from. Their duration sums are aggregates the point-sync cannot move.
 export type AlbumMutationCtx
-  = | { kind: "titleChange" }
-    | { kind: "removal"; artistId: ArtistId };
+  = | { kind: "titleChange"; albumId: AlbumId; artistId: ArtistId }
+    | { kind: "creation"; artistId: ArtistId }
+    | { kind: "removal"; artistId: ArtistId; playlistIds: readonly PlaylistId[] };
 
-export function invalidateForAlbumMutation(
-  queryClient: QueryClient,
-  ctx: AlbumMutationCtx,
-): Promise<void> {
+export const invalidateForAlbumMutation = (queryClient: QueryClient, ctx: AlbumMutationCtx) => {
   switch (ctx.kind) {
     case "titleChange":
-      // Intentionally only likedPage — the point-sync already patched the rows.
       return runInvalidations(queryClient, [
-        ...affectedKeys.tracks.likedPage(),
-        ...affectedKeys.tracks.indexPages(),
-        ...affectedKeys.playlists.anyPage(),
+        ...affectedKeys.tracks.all(),
+        ...affectedKeys.albums.of([ctx.albumId]),
+        ...affectedKeys.artists.albumShelves([ctx.artistId]),
+        ...affectedKeys.artists.tracksPages(),
+        ...affectedKeys.playlists.tracksPages(),
+      ]);
+    case "creation":
+      return runInvalidations(queryClient, [
+        ...affectedKeys.artists.of([ctx.artistId]),
       ]);
     case "removal":
       return runInvalidations(queryClient, [
         ...affectedKeys.library.summary(),
         ...affectedKeys.tracks.all(),
-        ...affectedKeys.tracks.likedPages(),
-        ...affectedKeys.tracks.likedTotalDuration(),
-        ...affectedKeys.artists.pages([ctx.artistId]),
-        ...affectedKeys.artists.albumsOf(ctx.artistId),
-        ...affectedKeys.tracks.indexPages(),
-        ...affectedKeys.playlists.anyPage(),
+        ...affectedKeys.artists.of([ctx.artistId]),
+        ...affectedKeys.playlists.of(ctx.playlistIds),
+        ...affectedKeys.playlists.tracksPages(),
       ]);
   }
-}
+};
 
 export type ArtistMutationCtx
   = | { kind: "change"; artistId: ArtistId }
-    | { kind: "removal"; albumIds: readonly AlbumId[] };
+    | { kind: "removal"; playlistIds: readonly PlaylistId[] };
 
-export function invalidateForArtistMutation(
-  queryClient: QueryClient,
-  ctx: ArtistMutationCtx,
-): Promise<void> {
+export const invalidateForArtistMutation = (queryClient: QueryClient, ctx: ArtistMutationCtx) => {
   switch (ctx.kind) {
     case "change":
       return runInvalidations(queryClient, [
-        ...affectedKeys.artists.pages([ctx.artistId]),
-        ...affectedKeys.tracks.likedPages(),
-        ...affectedKeys.tracks.likedTotalDuration(),
-        ...affectedKeys.tracks.indexPages(),
-        ...affectedKeys.albums.anyPage(),
-        ...affectedKeys.playlists.anyPage(),
+        ...affectedKeys.tracks.all(),
+        ...affectedKeys.artists.of([ctx.artistId]),
+        ...affectedKeys.albums.tracksPages(),
+        ...affectedKeys.playlists.tracksPages(),
       ]);
     case "removal":
+      // The artist's own albums were removed from the cache by the caller.
+      // Tracks credited to a second artist keep that one, on that artist's
+      // album: those pages carry the joined artist name and change too.
       return runInvalidations(queryClient, [
         ...affectedKeys.library.summary(),
         ...affectedKeys.tracks.all(),
-        ...affectedKeys.tracks.likedPages(),
-        ...affectedKeys.tracks.likedTotalDuration(),
-        ...affectedKeys.albums.pages(ctx.albumIds),
-        ...affectedKeys.tracks.indexPages(),
-        ...affectedKeys.playlists.anyPage(),
+        ...affectedKeys.albums.tracksPages(),
+        ...affectedKeys.artists.tracksPages(),
+        ...affectedKeys.playlists.of(ctx.playlistIds),
+        ...affectedKeys.playlists.tracksPages(),
       ]);
   }
-}
+};
 
-export type PlaylistMutationCtx
-  = | { kind: "trackRemoval"; playlistId: PlaylistId }
-    | { kind: "trackAddition"; playlistId: PlaylistId }
-    | { kind: "bulkAddition"; playlistId: PlaylistId };
+export type PlaylistMutationCtx = { kind: "tracksChange"; playlistId: PlaylistId };
 
-export function invalidateForPlaylistMutation(
-  queryClient: QueryClient,
-  ctx: PlaylistMutationCtx,
-): Promise<void> {
-  switch (ctx.kind) {
-    case "trackRemoval":
-      return runInvalidations(queryClient, affectedKeys.playlists.pages([ctx.playlistId]));
-    case "trackAddition":
-      // Intentionally skips tracksPage — the point-sync patches the row.
-      return runInvalidations(
-        queryClient,
-        affectedKeys.playlists.pages([ctx.playlistId], { tracksPage: false }),
-      );
-    case "bulkAddition":
-      return runInvalidations(queryClient, [
-        ...affectedKeys.library.summary(),
-        ...affectedKeys.playlists.all(),
-        ...affectedKeys.playlists.pages([ctx.playlistId]),
-      ]);
-  }
-}
+export const invalidateForPlaylistMutation = (queryClient: QueryClient, ctx: PlaylistMutationCtx) => {
+  runInvalidations(queryClient, affectedKeys.playlists.of([ctx.playlistId]));
+};

@@ -18,6 +18,7 @@ import { queryOptions, skipToken, type QueryClient } from "@tanstack/vue-query";
 import {
   invalidateForAlbumMutation,
   removeAlbumCaches,
+  settleLibraryReads,
   syncAlbumCaches,
   updateCoverCache,
   removeCoverCache,
@@ -44,10 +45,6 @@ export interface AlbumChanges {
   description?: string;
   coverBlob?: Blob;
   removeCover?: boolean;
-}
-
-export async function getAlbums() {
-  return unwrapResult(albumRepository.findPinned());
 }
 
 export async function getAlbumByIdOrThrow(albumId: AlbumId) {
@@ -152,11 +149,6 @@ async function getAlbumTrackEntities(albumId: AlbumId, sortKey: TrackSortKey | n
 }
 
 export const albumQueries = {
-  all: () =>
-    queryOptions({
-      queryKey: queryKeys.albums.all(),
-      queryFn: getAlbums,
-    }),
   detail: (albumId: AlbumId, enabled = true) =>
     queryOptions({
       queryKey: queryKeys.albums.detail(albumId),
@@ -172,16 +164,6 @@ export const albumQueries = {
     queryOptions({
       queryKey: queryKeys.albums.libraryRow(albumId),
       queryFn: albumId ? () => getAlbumLibraryRow(albumId) : skipToken,
-    }),
-  page: (albumId: AlbumId) =>
-    queryOptions({
-      queryKey: queryKeys.albums.page(albumId),
-      queryFn: () => getAlbumPageData(albumId),
-    }),
-  tracksPageInfinite: (albumId: AlbumId, pageParam: number, sortKey: TrackSortKey | null = null) =>
-    queryOptions({
-      queryKey: [...queryKeys.albums.tracksPage(albumId, sortKey), pageParam],
-      queryFn: () => getAlbumTracksPaginated(albumId, pageParam, PAGE_SIZE, sortKey),
     }),
   totalDuration: (albumId: AlbumId, enabled = true) =>
     queryOptions({
@@ -207,7 +189,9 @@ export async function createAlbumAndSync(
   };
 
   await unwrapResult(albumRepository.create(album));
+  await settleLibraryReads(queryClient);
   syncAlbumCaches(queryClient, album);
+  invalidateForAlbumMutation(queryClient, { kind: "creation", artistId });
   await upsertSearchDocuments([await buildAlbumDocFromDb(album)]);
 
   return album;
@@ -223,8 +207,8 @@ export async function updateAlbumAndSync(
   let updatedTracks: TrackEntity[] = [];
 
   if (changes.coverBlob) {
-    await unwrapResult(coverRepository.upsertAlbumCover(currentAlbum.id, changes.coverBlob));
-    updateCoverCache("album", currentAlbum.id, changes.coverBlob);
+    const stored = await unwrapResult(coverRepository.upsertAlbumCover(currentAlbum.id, changes.coverBlob));
+    updateCoverCache("album", currentAlbum.id, stored);
   }
   else if (changes.removeCover) {
     await unwrapResult(coverRepository.deleteAlbumCover(currentAlbum.id));
@@ -248,6 +232,7 @@ export async function updateAlbumAndSync(
 
     updatedTracks = await unwrapResult(trackRepository.findByAlbumId(currentAlbum.id));
 
+    await settleLibraryReads(queryClient);
     syncAlbumCaches(queryClient, nextAlbum);
     didUpdateAlbum = true;
   }
@@ -262,7 +247,11 @@ export async function updateAlbumAndSync(
 
     await upsertSearchDocuments(searchDocuments);
 
-    await invalidateForAlbumMutation(queryClient, { kind: "titleChange" });
+    invalidateForAlbumMutation(queryClient, {
+      kind: "titleChange",
+      albumId: currentAlbum.id,
+      artistId: currentAlbum.artistId,
+    });
   }
 
   return nextAlbum;
@@ -314,6 +303,7 @@ export async function deleteAlbumAndSync(
   );
   if (txResult.isErr()) throw txResult.error;
 
+  await settleLibraryReads(queryClient);
   await syncAfterTrackPurge(
     queryClient,
     cascadeTracks ? trackIds : [],
@@ -332,8 +322,9 @@ export async function deleteAlbumAndSync(
 
   removeCoverCache("album", albumEntity.id);
 
-  await invalidateForAlbumMutation(queryClient, {
+  invalidateForAlbumMutation(queryClient, {
     kind: "removal",
     artistId: albumEntity.artistId,
+    playlistIds: txResult.value.map(({ next }) => next.id),
   });
 }

@@ -17,6 +17,7 @@ const createMockQueryClient = (): QueryClient => {
     invalidateQueries: vi.fn().mockResolvedValue(undefined),
     getQueryData: vi.fn(),
     setQueryData: vi.fn(),
+    getQueryCache: () => ({ findAll: () => [] }),
   };
   return mocks as unknown as QueryClient;
 };

@@ -20,9 +20,10 @@ import {
   invalidateForPlaylistMutation,
   invalidateForTrackMutation,
   removePlaylistCaches,
+  settleLibraryReads,
   syncPlaylistCaches,
-  syncPlaylistTrackAddition,
-  syncPlaylistTrackRemoval,
+  syncPlaylistTracksAddition,
+  syncPlaylistTracksRemoval,
   updateCoverCache,
   removeCoverCache,
 } from "./cache";
@@ -176,16 +177,6 @@ export const playlistQueries = {
       queryKey: queryKeys.playlists.libraryRow(playlistId),
       queryFn: playlistId ? () => getPlaylistLibraryRow(playlistId) : skipToken,
     }),
-  page: (playlistId: PlaylistId) =>
-    queryOptions({
-      queryKey: queryKeys.playlists.page(playlistId),
-      queryFn: () => getPlaylistPageData(playlistId),
-    }),
-  tracksPageInfinite: (playlistId: PlaylistId, pageParam: number, sortKey: TrackSortKey | null = null) =>
-    queryOptions({
-      queryKey: [...queryKeys.playlists.tracksPage(playlistId, sortKey), pageParam],
-      queryFn: () => getPlaylistTracksPaginated(playlistId, pageParam, PAGE_SIZE, sortKey),
-    }),
   totalDuration: (playlistId: PlaylistId, enabled = true) =>
     queryOptions({
       queryKey: queryKeys.playlists.totalDuration(playlistId),
@@ -205,6 +196,7 @@ export async function createPlaylistAndSync(queryClient: QueryClient, name = "Ne
   };
 
   await unwrapResult(playlistRepository.create(playlist));
+  await settleLibraryReads(queryClient);
   syncPlaylistCaches(queryClient, playlist);
   await upsertSearchDocuments([buildPlaylistDoc(playlist)]);
 
@@ -220,11 +212,11 @@ export async function updatePlaylistAndSync(
   let didUpdatePlaylist = false;
 
   if (changes.coverBlob) {
-    await unwrapResult(coverRepository.upsertPlaylistCover(
+    const stored = await unwrapResult(coverRepository.upsertPlaylistCover(
       currentPlaylist.id,
       changes.coverBlob,
     ));
-    updateCoverCache("playlist", currentPlaylist.id, changes.coverBlob);
+    updateCoverCache("playlist", currentPlaylist.id, stored);
   }
   else if (changes.removeCover) {
     await unwrapResult(coverRepository.deletePlaylistCover(currentPlaylist.id));
@@ -249,21 +241,13 @@ export async function updatePlaylistAndSync(
     };
 
     await unwrapResult(playlistRepository.update(currentPlaylist.id, updateData));
+    await settleLibraryReads(queryClient);
     syncPlaylistCaches(queryClient, nextPlaylist);
     didUpdatePlaylist = true;
   }
 
   if (didUpdatePlaylist) {
     await upsertSearchDocuments([buildPlaylistDoc(nextPlaylist)]);
-
-    queryClient.setQueryData(queryKeys.playlists.page(currentPlaylist.id), (data: PlaylistPageData | undefined) =>
-      data
-        ? {
-            ...data,
-            playlist: nextPlaylist,
-          }
-        : data,
-    );
   }
 
   return nextPlaylist;
@@ -301,6 +285,7 @@ export async function deletePlaylistAndSync(
   );
   if (txResult.isErr()) throw txResult.error;
 
+  await settleLibraryReads(queryClient);
   // This playlist is gone — re-syncing its caches would put it back.
   await syncAfterTrackPurge(queryClient, trackIds, txResult.value, copies, [currentPlaylist.id]);
   await removeSearchDocuments([`playlist:${currentPlaylist.id}`]);
@@ -311,7 +296,7 @@ export async function deletePlaylistAndSync(
   if (trackIds.length > 0) {
     // A playlist's tracks span arbitrary albums and artists, and the purge may
     // have GC'd any of them — nothing narrower than the full sweep is safe.
-    await invalidateForTrackMutation(queryClient, { kind: "relations" });
+    invalidateForTrackMutation(queryClient, { kind: "relations" });
   }
 }
 
@@ -320,19 +305,15 @@ export async function removeTrackFromPlaylistAndSync(
   playlistId: PlaylistId,
   trackId: string,
 ) {
-  const playlist = await getPlaylistByIdOrThrow(playlistId);
-
   await unwrapResult(playlistRepository.removeTrack(playlistId, trackId as never));
-
-  const nextPlaylist: PlaylistEntity = {
-    ...playlist,
-    trackIds: playlist.trackIds.filter(id => id !== trackId),
-    updatedAt: Date.now(),
-  };
+  // The row is read back after the write, not derived from a read before
+  // it: another change to the same playlist may have landed in between.
+  const nextPlaylist = await getPlaylistByIdOrThrow(playlistId);
+  await settleLibraryReads(queryClient);
 
   syncPlaylistCaches(queryClient, nextPlaylist);
-  syncPlaylistTrackRemoval(queryClient, playlistId, trackId);
-  await invalidateForPlaylistMutation(queryClient, { kind: "trackRemoval", playlistId });
+  syncPlaylistTracksRemoval(queryClient, playlistId, new Set([trackId]));
+  invalidateForPlaylistMutation(queryClient, { kind: "tracksChange", playlistId });
 
   return nextPlaylist;
 }
@@ -342,23 +323,7 @@ export async function addTrackToPlaylistAndSync(
   playlistId: PlaylistId,
   track: Track,
 ) {
-  const playlist = await getPlaylistByIdOrThrow(playlistId);
-
-  await unwrapResult(playlistRepository.addTrack(playlistId, track.id));
-
-  const nextPlaylist: PlaylistEntity = {
-    ...playlist,
-    trackIds: playlist.trackIds.includes(track.id)
-      ? playlist.trackIds
-      : [...playlist.trackIds, track.id],
-    updatedAt: Date.now(),
-  };
-
-  syncPlaylistCaches(queryClient, nextPlaylist);
-  syncPlaylistTrackAddition(queryClient, playlistId, track);
-  await invalidateForPlaylistMutation(queryClient, { kind: "trackAddition", playlistId });
-
-  return nextPlaylist;
+  return addTracksToPlaylistAndSync(queryClient, playlistId, [track]);
 }
 
 export async function addTracksToPlaylistAndSync(
@@ -366,25 +331,16 @@ export async function addTracksToPlaylistAndSync(
   playlistId: PlaylistId,
   tracks: Track[],
 ) {
-  const playlist = await getPlaylistByIdOrThrow(playlistId);
-
   // One row write for the whole batch; the repository reports which ids
-  // were actually appended so the caches only get those.
+  // were actually appended so the page patch only gets those.
   const added = await unwrapResult(playlistRepository.addTracks(playlistId, tracks.map(track => track.id)));
+  const nextPlaylist = await getPlaylistByIdOrThrow(playlistId);
+  await settleLibraryReads(queryClient);
   const addedSet = new Set(added);
-  for (const track of tracks) {
-    if (addedSet.has(track.id)) syncPlaylistTrackAddition(queryClient, playlistId, track);
-  }
-
-  const nextPlaylist: PlaylistEntity = {
-    ...playlist,
-    trackIds: [...playlist.trackIds, ...added],
-    updatedAt: Date.now(),
-  };
 
   syncPlaylistCaches(queryClient, nextPlaylist);
-
-  await invalidateForPlaylistMutation(queryClient, { kind: "bulkAddition", playlistId });
+  syncPlaylistTracksAddition(queryClient, playlistId, tracks.filter(track => addedSet.has(track.id)));
+  invalidateForPlaylistMutation(queryClient, { kind: "tracksChange", playlistId });
 
   return nextPlaylist;
 }

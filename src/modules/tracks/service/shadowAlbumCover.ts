@@ -34,9 +34,9 @@ export async function ensureShadowCover(
     const blob = await response.blob();
     if (blob.size === 0) return;
 
-    await unwrapResult(coverRepository.upsertOwnerCover(ownerType, ownerId, blob));
+    const stored = await unwrapResult(coverRepository.upsertOwnerCover(ownerType, ownerId, blob));
     // Surfaces mounted before the fetch landed hold a cached null.
-    updateCoverCache(ownerType, ownerId, blob);
+    updateCoverCache(ownerType, ownerId, stored);
   }
   catch (error) {
     getLogger().warn(`[Covers] Shadow cover failed for ${ownerType} ${ownerId}: ${String(error)}`);

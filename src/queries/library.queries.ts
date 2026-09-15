@@ -9,6 +9,7 @@ import { queryKeys } from "@/queries/query-keys";
 import { coverCache } from "@/modules/covers/lib/cover-cache";
 import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
+import { settleLibraryReads } from "./cache";
 import { unwrapResult } from "./shared";
 import type { LibrarySummaryData } from "./types";
 
@@ -62,6 +63,9 @@ export const libraryQueries = {
  */
 export const invalidateLibraryData = async (queryClient: QueryClient): Promise<void> => {
   markRecommenderContextDirty();
+  // A first-load read has no data to cancel; invalidation would join it and
+  // take its pre-write answer for the refetch.
+  await settleLibraryReads(queryClient);
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.artists.all() }),

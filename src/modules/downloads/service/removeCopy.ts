@@ -3,7 +3,7 @@ import { offlineCopyRepository } from "@/db/repositories";
 import { storageService } from "@/db/storage";
 import { getLogger } from "@/lib/logger";
 import { queryClient } from "@/queries/client";
-import { queryKeys } from "@/queries/query-keys";
+import { syncOfflineCopyCache } from "@/queries/offlineCopy.queries";
 import { unwrapResult } from "@/queries/shared";
 import type { TrackId } from "@/types/ids";
 
@@ -18,7 +18,7 @@ export async function cleanupOfflineCopyFiles(copies: readonly OfflineCopyEntity
     if (deleted.isErr()) {
       getLogger().warn(`[Downloads] Failed to delete offline copy file: ${deleted.error.message}`);
     }
-    queryClient.setQueryData(queryKeys.offlineCopies.detail(copy.trackId), null);
+    await syncOfflineCopyCache(queryClient, copy.trackId, null);
   }
 }
 

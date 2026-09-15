@@ -3,6 +3,7 @@ import {
   albumRepository,
   artistRepository,
   coverRepository,
+  playlistRepository,
   trackRepository,
 } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
@@ -19,10 +20,11 @@ import { queryKeys } from "@/queries/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { Track } from "@/modules/player/types";
 import { AlbumId as createAlbumId, ArtistId as createArtistId } from "@/types/ids";
-import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
-import { queryOptions, type QueryClient } from "@tanstack/vue-query";
+import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
+import { queryOptions, skipToken, type QueryClient } from "@tanstack/vue-query";
 import {
   invalidateForTrackMutation,
+  settleLibraryReads,
   syncAlbumCaches,
   syncArtistCaches,
   syncTrackLikeCaches,
@@ -38,7 +40,7 @@ import {
   trackCascadeTables,
   type TrackPurgeSyncOptions,
 } from "./track-cascade";
-import type { LikedTracksPageData, PaginatedTracksResult, TracksIndexPageData } from "./types";
+import type { LikedTracksPageData, PaginatedTracksResult } from "./types";
 import { getAlbumByIdOrThrow } from "./album.queries";
 import { getArtistByIdOrThrow } from "./artist.queries";
 import { dedupeArtistNames, identityKey } from "@/lib/artist-names";
@@ -126,9 +128,12 @@ async function findOrCreateArtists(queryClient: QueryClient, names: string[]) {
   return artists;
 }
 
-async function invalidateTrackRelations(queryClient: QueryClient) {
-  await invalidateForTrackMutation(queryClient, { kind: "relations" });
-}
+// Every row of the batch may have moved between lists; nothing narrower than
+// the full sweep is safe, and per-row patches would be O(rows × pages).
+const invalidateTrackRelations = async (queryClient: QueryClient) => {
+  await settleLibraryReads(queryClient);
+  invalidateForTrackMutation(queryClient, { kind: "relations" });
+};
 
 export async function getLikedTracks() {
   return unwrapResult(trackRepository.findLiked());
@@ -146,43 +151,6 @@ export async function getLikedTracksPageData(sortKey: TrackSortKey | null = null
 
   return {
     tracks: mappedTracks,
-  };
-}
-
-export async function getTracksIndexPageData(
-  sortKey: TrackSortKey,
-  searchQuery = "",
-  offset = 0,
-  limit = 50,
-): Promise<TracksIndexPageData> {
-  const normalizedSearchQuery = searchQuery.trim();
-
-  if (normalizedSearchQuery.length > 0) {
-    const searchResult = await searchIndexedTracks(normalizedSearchQuery, 0, undefined);
-
-    // Search matches come from the worker index. We re-apply ordering through Dexie
-    // so the visible list still follows an indexed database sort instead of in-memory sorting.
-    const rawTracks = await unwrapResult(
-      trackRepository.findSortedByIds(searchResult.tracks.map(track => track.id), sortKey),
-    );
-
-    return {
-      tracks: await loadTrackRelations(rawTracks),
-      total: searchResult.total,
-      totalDuration: searchResult.totalDuration,
-    };
-  }
-
-  const [rawTracks, total, totalDuration] = await Promise.all([
-    unwrapResult(trackRepository.findAllSortedPaginated(sortKey, offset, limit)),
-    unwrapResult(trackRepository.countAll()),
-    offset === 0 ? unwrapResult(trackRepository.sumDurationAll()) : Promise.resolve(0),
-  ]);
-
-  return {
-    tracks: await loadTrackRelations(rawTracks),
-    total,
-    totalDuration,
   };
 }
 
@@ -217,21 +185,11 @@ export const trackQueries = {
       queryKey: queryKeys.tracks.detail(trackId),
       queryFn: () => getTrackEntityById(trackId),
     }),
-  liked: () =>
+  /** The rows behind a list of ids, in Dexie order; parked on skipToken for an empty list. */
+  byIds: (ids: readonly TrackId[]) =>
     queryOptions({
-      queryKey: queryKeys.tracks.liked(),
-      queryFn: getLikedTracks,
-    }),
-  likedPage: () =>
-    queryOptions({
-      queryKey: queryKeys.tracks.likedPage(),
-      queryFn: () => getLikedTracksPageData(),
-    }),
-  index: (sortKey: TrackSortKey, searchQuery = "") =>
-    queryOptions({
-      queryKey: queryKeys.tracks.index(sortKey, searchQuery),
-      queryFn: () => getTracksIndexPageData(sortKey, searchQuery),
-      staleTime: Infinity,
+      queryKey: queryKeys.tracks.byIds(ids),
+      queryFn: ids.length > 0 ? () => getTracksByIds(ids) : skipToken,
     }),
   indexTotalDuration: (searchQuery = "") =>
     queryOptions({
@@ -302,6 +260,80 @@ export async function searchTracksPaginated(
   };
 }
 
+/**
+ * A search scoped to one collection's rows: hits are filtered inside the
+ * index by `ids`, then paged like `searchTracksPaginated` — relevance order
+ * unless a sort is chosen, in which case every hit is re-sorted first.
+ * `Infinity` as the limit takes every hit (the queue loader).
+ */
+export const searchTracksWithin = async (
+  ids: readonly TrackId[],
+  query: string,
+  offset: number,
+  limit = PAGE_SIZE,
+  sortKey: TrackSortKey | null = null,
+): Promise<PaginatedTracksResult> => {
+  if (ids.length === 0) return { tracks: [], nextOffset: null, total: 0 };
+
+  const response = await searchDocuments(query, "track", { offset: 0, within: new Set(ids) });
+  const hitIds = response.results.map(item => item.entityId as TrackId);
+  const total = hitIds.length;
+  const end = offset + limit;
+  const nextOffset = end < total ? end : null;
+
+  const totalDuration = response.totalDuration;
+
+  if (sortKey) {
+    const sorted = await unwrapResult(trackRepository.findSortedByIds(hitIds, sortKey));
+    return { tracks: await loadTrackRelations(sorted.slice(offset, end)), nextOffset, total, totalDuration };
+  }
+
+  return { tracks: await getTracksByIdsSorted(hitIds.slice(offset, end), null), nextOffset, total, totalDuration };
+};
+
+export const searchAlbumTracks = async (
+  albumId: AlbumId,
+  query: string,
+  offset: number,
+  limit = PAGE_SIZE,
+  sortKey: TrackSortKey | null = null,
+): Promise<PaginatedTracksResult> => {
+  const ids = await unwrapResult(trackRepository.findIdsByAlbumId(albumId));
+  return searchTracksWithin(ids, query, offset, limit, sortKey);
+};
+
+export const searchArtistTracks = async (
+  artistId: ArtistId,
+  query: string,
+  offset: number,
+  limit = PAGE_SIZE,
+  sortKey: TrackSortKey | null = null,
+): Promise<PaginatedTracksResult> => {
+  const ids = await unwrapResult(trackRepository.findIdsByArtistId(artistId));
+  return searchTracksWithin(ids, query, offset, limit, sortKey);
+};
+
+export const searchLikedTracks = async (
+  query: string,
+  offset: number,
+  limit = PAGE_SIZE,
+  sortKey: TrackSortKey | null = null,
+): Promise<PaginatedTracksResult> => {
+  const ids = await unwrapResult(trackRepository.findLikedIds());
+  return searchTracksWithin(ids, query, offset, limit, sortKey);
+};
+
+export const searchPlaylistTracks = async (
+  playlistId: PlaylistId,
+  query: string,
+  offset: number,
+  limit = PAGE_SIZE,
+  sortKey: TrackSortKey | null = null,
+): Promise<PaginatedTracksResult> => {
+  const playlist = await unwrapResult(playlistRepository.findById(playlistId));
+  return searchTracksWithin(playlist?.trackIds ?? [], query, offset, limit, sortKey);
+};
+
 export async function getTracksPaginated(
   offset: number,
   searchQuery = "",
@@ -331,9 +363,9 @@ export async function getAllTracksForQueue(sortKey: TrackSortKey | null, searchQ
   return loadTrackRelations(rawTracks);
 }
 
-export async function getTracksByIds(ids: TrackId[]): Promise<Track[]> {
+export async function getTracksByIds(ids: readonly TrackId[]): Promise<Track[]> {
   if (ids.length === 0) return [];
-  const entities = await unwrapResult(trackRepository.findByIds(ids));
+  const entities = await unwrapResult(trackRepository.findByIds([...ids]));
   return loadTrackRelations(entities);
 }
 
@@ -372,7 +404,7 @@ export async function setTracksLikedAndSync(
     ? await unwrapResult(trackRepository.likeMany(ids, Date.now()))
     : await unwrapResult(trackRepository.unlikeMany(ids));
 
-  await invalidateForTrackMutation(queryClient, { kind: "relations" });
+  await invalidateTrackRelations(queryClient);
   return changed;
 }
 
@@ -399,6 +431,7 @@ export async function deleteTracksAndSync(
   if (txResult.isErr()) throw txResult.error;
   const removals = txResult.value;
 
+  await settleLibraryReads(queryClient);
   await syncAfterTrackPurge(queryClient, trackIds, removals, copies, [], options);
   const idSet = new Set<string>(trackIds);
   queryClient.removeQueries({
@@ -408,7 +441,7 @@ export async function deleteTracksAndSync(
     removeCoverCache("track", id);
   }
 
-  await invalidateForTrackMutation(queryClient, {
+  invalidateForTrackMutation(queryClient, {
     kind: "removal",
     albumIds: unique(tracks.map(track => track.albumId).filter(Boolean)),
     artistIds: unique(tracks.flatMap(track => track.artistIds)),
@@ -547,6 +580,7 @@ export async function toggleTrackLikeAndSync(
   const likedAt = nextValue ? Date.now() : undefined;
 
   await unwrapResult(trackRepository.setLiked(track.id, nextValue));
+  await settleLibraryReads(queryClient);
 
   const nextTrackEntity: TrackEntity = {
     ...currentTrack,
@@ -555,7 +589,7 @@ export async function toggleTrackLikeAndSync(
   const nextTrack: Track = { ...track, isLiked: nextValue };
 
   syncTrackLikeCaches(queryClient, nextTrackEntity, nextTrack);
-  await invalidateForTrackMutation(queryClient, { kind: "like" });
+  invalidateForTrackMutation(queryClient, { kind: "like" });
 
   return nextTrack;
 }
@@ -572,6 +606,7 @@ export async function attachTrackLyricsAndSync(
   }
 
   await unwrapResult(trackRepository.setLyricsPath(track.id, lyricsPath));
+  await settleLibraryReads(queryClient);
 
   const nextTrackEntity: TrackEntity = {
     ...currentTrack,
@@ -674,6 +709,7 @@ export async function updateTrackMetadataAndSync(
     trackNo: nextTrackNo,
     diskNo: nextDiskNo,
   }));
+  await settleLibraryReads(queryClient);
 
   // An album-less track resolves its cover from its own id; once it joins an
   // album that owner stops being consulted, so the embedded art must follow —
@@ -683,8 +719,8 @@ export async function updateTrackMetadataAndSync(
     if (trackCover) {
       const albumCover = await unwrapResult(coverRepository.findByOwner("album", album.id));
       if (!albumCover) {
-        await unwrapResult(coverRepository.upsertOwnerCover("album", album.id, trackCover.blob));
-        updateCoverCache("album", album.id, trackCover.blob);
+        const stored = await unwrapResult(coverRepository.upsertOwnerCover("album", album.id, trackCover.blob));
+        updateCoverCache("album", album.id, stored);
       }
       await unwrapResult(coverRepository.deleteByOwner("track", currentTrack.id));
       removeCoverCache("track", currentTrack.id);
@@ -699,8 +735,8 @@ export async function updateTrackMetadataAndSync(
     if (!trackCover) {
       const albumCover = await unwrapResult(coverRepository.findByOwner("album", currentTrack.albumId));
       if (albumCover) {
-        await unwrapResult(coverRepository.upsertOwnerCover("track", currentTrack.id, albumCover.blob));
-        updateCoverCache("track", currentTrack.id, albumCover.blob);
+        const stored = await unwrapResult(coverRepository.upsertOwnerCover("track", currentTrack.id, albumCover.blob));
+        updateCoverCache("track", currentTrack.id, stored);
       }
     }
   }
@@ -720,7 +756,7 @@ export async function updateTrackMetadataAndSync(
 
   await upsertSearchDocuments([await buildTrackDocFromDb(nextTrackEntity)]);
 
-  await invalidateForTrackMutation(queryClient, {
+  invalidateForTrackMutation(queryClient, {
     kind: "metadata",
     artistIds: unique([...currentTrack.artistIds, ...nextArtistIds]),
     albumIds: unique([currentTrack.albumId, nextAlbumId].filter(Boolean)),

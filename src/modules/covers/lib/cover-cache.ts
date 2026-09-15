@@ -1,6 +1,6 @@
 import { shallowReactive } from "vue";
 import type { CoverOwnerType } from "@/db/entities";
-import { getCoverBlobsByOwners } from "@/queries/cover.queries";
+import { getCoversByOwners, type CoverRow } from "@/queries/cover.queries";
 import { getLogger } from "@/lib/logger";
 
 //
@@ -21,6 +21,12 @@ import { getLogger } from "@/lib/logger";
 // same points that used to feed vue-query — so there is no second copy to
 // keep in sync.
 //
+// A read and a write can overlap: a batch that started before the write
+// answers with the row as it was. A `set`/`invalidate` made while a batch is
+// out bumps the owner's version, and a batch only stores an answer for the
+// version it started with; a superseded answer is dropped and the owner is
+// read again if anyone still holds it.
+//
 
 const MAX_IDLE = 64;
 
@@ -32,6 +38,8 @@ export interface CoverOwnerRef {
 export interface CoverEntry {
   url: string;
   blob: Blob;
+  /** The row's `updatedAt`: a re-read that returns the same stamp keeps the URL. */
+  updatedAt: number;
 }
 
 const keyOf = (owner: CoverOwnerRef) => `${owner.ownerType}:${owner.ownerId}`;
@@ -46,8 +54,18 @@ export const createCoverCache = (options: { maxIdle?: number } = {}) => {
   // Insertion order is the LRU order of owners nobody holds.
   const idle = new Set<string>();
   const pending = new Map<string, CoverOwnerRef>();
-  const inflight = new Set<string>();
+  // key → version the in-flight batch started with.
+  const inflight = new Map<string, number>();
+  // A version only tells a landing batch whether it was superseded, so one
+  // is kept just while a batch is out for the key.
+  const versions = new Map<string, number>();
   let flushScheduled = false;
+
+  const versionOf = (key: string) => versions.get(key) ?? 0;
+
+  const bump = (key: string) => {
+    if (inflight.has(key)) versions.set(key, versionOf(key) + 1);
+  };
 
   const drop = (key: string) => {
     idle.delete(key);
@@ -64,15 +82,33 @@ export const createCoverCache = (options: { maxIdle?: number } = {}) => {
     }
   };
 
-  const store = (key: string, blob: Blob | null | undefined) => {
+  // The same row again keeps its URL, so an <img> showing it is not asked
+  // to reload. A re-read (after a library-wide invalidation) hands back a
+  // fresh Blob of the same row, so it is the stamp that tells; a write is
+  // the current row by definition and the stamp cannot tell — it is in
+  // milliseconds and two writes to one owner can share it.
+  const isSameRow = (previous: CoverEntry, row: CoverRow, written: boolean) =>
+    written ? previous.blob === row.blob : previous.updatedAt === row.updatedAt;
+
+  const store = (key: string, row: CoverRow | null, written = false) => {
     const previous = entries.get(key);
-    // The same Blob instance again (a write that re-stored what was there)
-    // keeps its URL, so an <img> showing it is not asked to reload.
-    if (blob && previous && previous.blob === blob) return;
-    entries.set(key, blob ? { url: URL.createObjectURL(blob), blob } : null);
+    if (previous === null && row === null) return;
+    if (previous && row && isSameRow(previous, row, written)) return;
+    entries.set(key, row ? { url: URL.createObjectURL(row.blob), blob: row.blob, updatedAt: row.updatedAt } : null);
     // A consumer switches to the new URL on its next render; the decoded
     // image it already painted does not depend on the old URL staying valid.
     if (previous) URL.revokeObjectURL(previous.url);
+  };
+
+  const settle = (key: string, started: number, answer: CoverRow | null | undefined) => {
+    const current = versionOf(key);
+    if (inflight.get(key) === started) inflight.delete(key);
+    if (!inflight.has(key)) versions.delete(key);
+    // Superseded by a write or an invalidation made while the batch was out:
+    // that one has already stored, or scheduled, the current row.
+    if (current !== started) return;
+    if (answer !== undefined) store(key, answer);
+    if (!refs.has(key) && entries.has(key)) idle.add(key);
   };
 
   const flush = async () => {
@@ -80,28 +116,32 @@ export const createCoverCache = (options: { maxIdle?: number } = {}) => {
     const batch = [...pending.values()];
     pending.clear();
     const byType = new Map<CoverOwnerType, string[]>();
+    const started = new Map<string, number>();
     for (const owner of batch) {
       const key = keyOf(owner);
-      inflight.add(key);
+      const version = versionOf(key);
+      inflight.set(key, version);
+      started.set(key, version);
       const ids = byType.get(owner.ownerType) ?? [];
       ids.push(owner.ownerId);
       byType.set(owner.ownerType, ids);
     }
     await Promise.all([...byType.entries()].map(async ([ownerType, ids]) => {
-      let blobs: Map<string, Blob>;
+      let rows: Map<string, CoverRow>;
       try {
-        blobs = await getCoverBlobsByOwners(ownerType, ids);
+        rows = await getCoversByOwners(ownerType, ids);
       }
       catch (error) {
         getLogger().warn(`[Covers] Batch lookup failed: ${String(error)}`);
-        for (const id of ids) inflight.delete(`${ownerType}:${id}`);
+        for (const id of ids) {
+          const key = `${ownerType}:${id}`;
+          settle(key, started.get(key)!, undefined);
+        }
         return;
       }
       for (const id of ids) {
         const key = `${ownerType}:${id}`;
-        inflight.delete(key);
-        store(key, blobs.get(id) ?? null);
-        if (!refs.has(key)) idle.add(key);
+        settle(key, started.get(key)!, rows.get(id) ?? null);
       }
       trimIdle();
     }));
@@ -116,6 +156,18 @@ export const createCoverCache = (options: { maxIdle?: number } = {}) => {
         flush().catch(error => getLogger().warn(`[Covers] Batch lookup failed: ${String(error)}`));
       });
     }
+  };
+
+  // The row changed under a batch already out for it: that batch's answer is
+  // stale, so it is dropped on landing and no longer blocks a new read.
+  const supersede = (key: string) => {
+    bump(key);
+    inflight.delete(key);
+  };
+
+  const reread = (key: string, owner: CoverOwnerRef) => {
+    supersede(key);
+    enqueue(key, owner);
   };
 
   const release = (key: string) => {
@@ -154,11 +206,12 @@ export const createCoverCache = (options: { maxIdle?: number } = {}) => {
   /** `undefined` while unresolved, `null` for an owner without a cover. */
   const entryFor = (owner: CoverOwnerRef): CoverEntry | null | undefined => entries.get(keyOf(owner));
 
-  /** The owner's cover was written: publish it right away, no re-read. */
-  const set = (owner: CoverOwnerRef, blob: Blob | null) => {
+  /** The owner's cover was written: publish the stored row right away, no re-read. */
+  const set = (owner: CoverOwnerRef, row: CoverRow | null) => {
     const key = keyOf(owner);
     owners.set(key, owner);
-    store(key, blob);
+    bump(key);
+    store(key, row, true);
     if (!refs.has(key)) {
       idle.delete(key);
       idle.add(key);
@@ -170,18 +223,24 @@ export const createCoverCache = (options: { maxIdle?: number } = {}) => {
   const invalidate = (owner: CoverOwnerRef) => {
     const key = keyOf(owner);
     if (refs.has(key)) {
-      enqueue(key, owner);
+      reread(key, owner);
       return;
     }
+    supersede(key);
     if (entries.has(key)) drop(key);
   };
 
   /** The library changed wholesale (import, rescan, clear). */
   const invalidateAll = () => {
     for (const key of [...idle]) drop(key);
+    // A batch out for an owner released before it landed: nobody waits for
+    // its answer, and it describes the old library.
+    for (const key of [...inflight.keys()]) {
+      if (!refs.has(key)) supersede(key);
+    }
     for (const key of refs.keys()) {
       const owner = owners.get(key);
-      if (owner) enqueue(key, owner);
+      if (owner) reread(key, owner);
     }
   };
 
@@ -191,9 +250,12 @@ export const createCoverCache = (options: { maxIdle?: number } = {}) => {
     set,
     invalidate,
     invalidateAll,
-    /** Test seam. */
+    /** Test seams. */
     get size() {
       return entries.size;
+    },
+    get trackedVersions() {
+      return versions.size;
     },
   };
 };

@@ -109,6 +109,22 @@ describe("cover cache", () => {
     expect(repo.findByOwners).toHaveBeenCalledTimes(1);
   });
 
+  // The repository stamps `updatedAt` in milliseconds, so two writes to one
+  // owner can carry the same stamp; a written row is the current row either
+  // way and must show.
+  it("publishes a written row whose stamp matches the shown one but whose blob differs", async () => {
+    const cache = createCoverCache();
+    cache.acquire(album("a"));
+    await flush();
+
+    cache.set(album("a"), row("first", 7));
+    const second = row("second", 7);
+    cache.set(album("a"), second);
+
+    expect(cache.entryFor(album("a"))?.blob).toBe(second.blob);
+    expect(cache.entryFor(album("a"))?.url).toBe("blob:3");
+  });
+
   // A library-wide invalidation (import, folder sync) re-reads every held
   // owner. Dexie hands back a fresh Blob instance each time; the row itself
   // has not changed, so the URL every <img> shows must not change either.
@@ -165,6 +181,20 @@ describe("cover cache", () => {
     expect(repo.findByOwners.mock.calls[0][1]).toEqual(["b"]);
   });
 
+  // A version only tells a landing batch whether it was superseded; kept
+  // past that it would grow with every owner ever written or invalidated.
+  it("forgets an owner's version once no batch is out for it", async () => {
+    const cache = createCoverCache();
+    const release = cache.acquire(album("a"));
+    await flush();
+
+    cache.set(album("a"), row("written", 2));
+    release();
+    cache.invalidate(album("a"));
+
+    expect(cache.trackedVersions).toBe(0);
+  });
+
   describe("a read that overlaps a write", () => {
     // The read started before the write, so its answer describes the row as
     // it was. Landing after the write it must not undo it.
@@ -212,6 +242,45 @@ describe("cover cache", () => {
 
       expect(repo.findByOwners).toHaveBeenCalledTimes(2);
       expect(cache.entryFor(album("a"))?.url).toBe("blob:1");
+    });
+
+    // The row unmounted before its batch landed, the owner was invalidated
+    // meanwhile, and the row is back. The stale answer must be dropped and
+    // the owner read again — not left with no entry and nothing pending.
+    it("an invalidation of an owner nobody holds, read in flight, lets a re-mount read it again", async () => {
+      const cache = createCoverCache();
+      const first = deferred();
+      repo.findByOwners.mockImplementationOnce(() => first.promise);
+      const release = cache.acquire(album("a"));
+      await flush();
+      release();
+
+      cache.invalidate(album("a"));
+      cache.acquire(album("a"));
+      first.resolve(new Map([["a", row("stale", 1)]]));
+      await flush();
+
+      expect(repo.findByOwners).toHaveBeenCalledTimes(2);
+      expect(cache.entryFor(album("a"))?.blob).toEqual(blob("a"));
+    });
+
+    it("invalidateAll drops the answer of an owner nobody holds whose read is in flight", async () => {
+      const cache = createCoverCache();
+      const first = deferred();
+      repo.findByOwners.mockImplementationOnce(() => first.promise);
+      const release = cache.acquire(album("a"));
+      await flush();
+      release();
+
+      cache.invalidateAll();
+      first.resolve(new Map([["a", row("stale", 1)]]));
+      await flush();
+      expect(cache.entryFor(album("a"))).toBeUndefined();
+
+      cache.acquire(album("a"));
+      await flush();
+      expect(repo.findByOwners).toHaveBeenCalledTimes(2);
+      expect(cache.entryFor(album("a"))?.blob).toEqual(blob("a"));
     });
 
     it("a later acquire after a superseded read still gets an answer", async () => {

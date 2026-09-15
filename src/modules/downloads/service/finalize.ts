@@ -4,7 +4,7 @@ import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
 import { getLogger } from "@/lib/logger";
 import { queryClient } from "@/queries/client";
-import { queryKeys } from "@/queries/query-keys";
+import { syncOfflineCopyCache } from "@/queries/offlineCopy.queries";
 import { unwrapResult } from "@/queries/shared";
 import { parseTrackRef } from "@/types/track-ref";
 
@@ -45,7 +45,7 @@ export async function finalizeOfflineCopy(
     downloadedAt: Date.now(),
   };
   await unwrapResult(offlineCopyRepository.upsert(copy));
-  queryClient.setQueryData(queryKeys.offlineCopies.detail(job.trackId), copy);
+  await syncOfflineCopyCache(queryClient, job.trackId, copy);
 
   // importFile copies rather than moves — drop the temp source so the yt
   // cache / downloads-tmp don't hold finished files until the next sweep.

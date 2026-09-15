@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryObserver } from "@tanstack/vue-query";
 import {
   invalidateForAlbumMutation,
@@ -117,9 +117,73 @@ describe("invalidateForAlbumMutation: titleChange", () => {
   it("reaches the paged track lists of artists and playlists, whose rows carry the album title", async () => {
     const queryClient = seed(pagedTrackLists);
 
-    await invalidateForAlbumMutation(queryClient, { kind: "titleChange", albumId });
+    await invalidateForAlbumMutation(queryClient, { kind: "titleChange", albumId, artistId });
 
     expectStale(queryClient, pagedTrackLists);
+  });
+
+  // The artist page's shelf renders album rows of its own; nothing patches
+  // the title into them.
+  it("reaches the artist's album shelf", async () => {
+    const shelf = queryKeys.artists.albums(artistId);
+    const queryClient = seed([shelf]);
+
+    await invalidateForAlbumMutation(queryClient, { kind: "titleChange", albumId, artistId });
+
+    expectStale(queryClient, [shelf]);
+  });
+});
+
+// A cascade delete drops rows from playlists; their cached duration sums are
+// aggregates nothing patches.
+describe("removal of an album or an artist reaches the playlists that lost rows", () => {
+  const playlistAggregates = [
+    queryKeys.playlists.totalDuration(playlistId),
+    queryKeys.playlists.detail(playlistId),
+  ];
+
+  it("album removal", async () => {
+    const queryClient = seed(playlistAggregates);
+
+    await invalidateForAlbumMutation(queryClient, { kind: "removal", artistId, playlistIds: [playlistId] });
+
+    expectStale(queryClient, playlistAggregates);
+  });
+
+  it("artist removal", async () => {
+    const queryClient = seed(playlistAggregates);
+
+    await invalidateForArtistMutation(queryClient, { kind: "removal", playlistIds: [playlistId] });
+
+    expectStale(queryClient, playlistAggregates);
+  });
+});
+
+describe("invalidateForArtistMutation: removal", () => {
+  // The artist's albums are removed from the cache before this runs; a
+  // per-album invalidation would scan the whole cache once per album for
+  // nothing.
+  it("does not issue a per-album invalidation", async () => {
+    const artistPage = queryKeys.artists.tracksPage(artistId);
+    const queryClient = seed([artistPage]);
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+
+    await invalidateForArtistMutation(queryClient, { kind: "removal", playlistIds: [] });
+
+    const perAlbum = invalidateQueries.mock.calls.filter(([filter]) => filter?.queryKey?.[0] === "albums");
+    expect(perAlbum).toEqual([]);
+    expectStale(queryClient, [artistPage]);
+  });
+
+  // A track credited to the deleted artist and a second one lives on the
+  // second artist's album; that page's rows carry the joined artist name.
+  it("reaches the paged track lists of albums that stay, whose rows carry the artist name", async () => {
+    const otherAlbumPage = queryKeys.albums.tracksPage(AlbumId("al-of-other-artist"), "title_asc");
+    const queryClient = seed([otherAlbumPage]);
+
+    await invalidateForArtistMutation(queryClient, { kind: "removal", playlistIds: [] });
+
+    expectStale(queryClient, [otherAlbumPage]);
   });
 });
 
