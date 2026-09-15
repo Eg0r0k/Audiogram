@@ -11,6 +11,8 @@ export type QueueSource
     | { type: "manual" }
     | { type: "recommendation" }
     | { type: "autoplay"; pick?: ListenPick }
+    /** An endless station a source feeds and reads feedback from (Yandex "My Wave"). */
+    | { type: "radio"; station: string }
     | { type: "liked" }
     | { type: "allMedia" }
     | { type: "external" }
@@ -50,6 +52,8 @@ export function isSameQueueSource(left: QueueSource, right: QueueSource): boolea
       return "playlistId" in right && left.playlistId === right.playlistId;
     case "artist":
       return "artistId" in right && left.artistId === right.artistId;
+    case "radio":
+      return "station" in right && left.station === right.station;
     case "liked":
     case "allMedia":
     case "history":

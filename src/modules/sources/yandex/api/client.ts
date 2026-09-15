@@ -12,6 +12,7 @@ import type {
   YmRequestPayload,
   YmSearchResult,
   YmSearchType,
+  YmStationTracks,
   YmTrack,
 } from "./types";
 
@@ -75,5 +76,20 @@ export const ymApi = {
     ymRequest<YmSearchResult>({
       path: "/search",
       query: { text, type, page: String(page), nocorrect: "false" },
+    }),
+
+  /** A station chain; `queue` is the last track heard, so the chain continues from it. */
+  stationTracks: (station: string, queue?: string) =>
+    ymRequest<YmStationTracks>({
+      path: `/rotor/station/${station}/tracks`,
+      query: { settings2: "true", ...(queue ? { queue } : {}) },
+    }),
+
+  stationFeedback: (station: string, batchId: string | null, form: Record<string, string>) =>
+    ymRequest<unknown>({
+      method: "POST",
+      path: `/rotor/station/${station}/feedback`,
+      ...(batchId ? { query: { "batch-id": batchId } } : {}),
+      form,
     }),
 };

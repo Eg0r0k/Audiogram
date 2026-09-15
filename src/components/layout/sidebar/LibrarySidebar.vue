@@ -52,6 +52,14 @@
           class="mx-2 mt-2"
         />
 
+        <div
+          v-if="catalogKind === 'ym'"
+          class="mt-2"
+          :class="isCompact ? 'flex justify-center' : 'mx-2'"
+        >
+          <YmWaveButton :compact="isCompact" />
+        </div>
+
         <LibraryContextMenu
           :inside-folder="!!activeFolder"
           @delete="handleDeleteItem"
@@ -177,6 +185,7 @@ import { useCurrentSourceStore } from "@/modules/sources/store/currentSource.sto
 import { useCatalogLibraryItems } from "@/modules/sources/composables/useCatalogLibraryItems";
 import { catalogFilters } from "@/modules/sources/lib/catalog-filters";
 import SourceHealthNotice from "@/modules/sources/components/SourceHealthNotice.vue";
+import YmWaveButton from "@/modules/sources/yandex/components/YmWaveButton.vue";
 
 const {
   pinnedItems,

@@ -184,6 +184,21 @@ export interface YmLikedPlaylist {
   timestamp?: string;
 }
 
+/** One entry of a station chain (`/rotor/station/{station}/tracks`). */
+export interface YmStationSequenceItem {
+  type?: string;
+  track: YmTrack;
+  liked?: boolean;
+}
+
+export interface YmStationTracks {
+  id?: { type: string; tag: string };
+  sequence: YmStationSequenceItem[];
+  /** Names the chain in feedback (`batch-id`). */
+  batchId?: string;
+  pumpkin?: boolean;
+}
+
 export interface YmAccountStatus {
   account?: { uid?: number; login?: string; displayName?: string; fullName?: string };
   plus?: { hasPlus?: boolean };

@@ -242,7 +242,7 @@ export const ymSourceProvider: SourceProvider = {
     if (!trackId) return notYm("track", id);
     return withSession(ctx =>
       ymApi.tracks([trackId]).andThen((tracks) => {
-        const track: YmTrack | undefined = tracks.at(0);
+        const track: YmTrack | undefined = tracks.length > 0 ? tracks[0] : undefined;
         if (!track) return errAsync<never, SourceError>({ kind: "NOT_FOUND", message: `Track ${trackId} is unknown to Yandex` });
         return okAsync(mapYmTrack(track, ctx));
       }),

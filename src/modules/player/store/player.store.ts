@@ -8,7 +8,7 @@ import {
 } from "../types";
 import { statsService } from "@/services/stats.service";
 import { useEventBus } from "@vueuse/core";
-import { trackChangedEvent, trackEndedEvent } from "../lib/player-events";
+import { listenEndedEvent, trackChangedEvent, trackEndedEvent } from "../lib/player-events";
 import { createListenSession } from "../lib/listen-session";
 import { createPlaybackEngine, type PlaybackEngine } from "../lib/playback-engine";
 import { createFadeController } from "../lib/fade-controller";
@@ -46,6 +46,14 @@ export const usePlayerStore = defineStore("player", () => {
 
   const trackChangedBus = useEventBus(trackChangedEvent);
   const trackEndedBus = useEventBus(trackEndedEvent);
+  const listenEndedBus = useEventBus(listenEndedEvent);
+  // The announced library track whose listen has not ended yet. A natural
+  // end is announced by the lifecycle (completed) before the queue advances;
+  // its event clears this so the advance's own stop does not report a skip.
+  let _listenOpenFor: PlayerTrack | null = null;
+  listenEndedBus.on(({ track }) => {
+    if (_listenOpenFor?.id === track.id) _listenOpenFor = null;
+  });
 
   const currentTime = ref(0);
   // null until the loaded media reports its length — a track switch, a
@@ -91,6 +99,7 @@ export const usePlayerStore = defineStore("player", () => {
 
   const announceTrack = (track: PlayerTrack | null) => {
     _trackAnnounced = track !== null;
+    _listenOpenFor = isLibraryTrack(track) ? track : null;
     trackChangedBus.emit(track);
   };
 
@@ -209,6 +218,15 @@ export const usePlayerStore = defineStore("player", () => {
     if (engine.value) listenSession.sample(engine.value.currentTime);
     statsService.stopListening(listenSession.seconds(), options)
       .catch(err => getLogger().error(`[Stats] ${String(err)}`));
+    const ended = _listenOpenFor;
+    if (ended) {
+      _listenOpenFor = null;
+      listenEndedBus.emit({
+        track: ended,
+        seconds: listenSession.seconds(),
+        reason: options.completed ? "completed" : "skipped",
+      });
+    }
   };
 
   const clearCurrentTrack = () => {

@@ -14,3 +14,18 @@ export const trackChangedEvent: EventBusKey<PlayerTrack | null> = Symbol("player
 
 /** The engine played the current track to its end. */
 export const trackEndedEvent: EventBusKey<void> = Symbol("player:trackEnded");
+
+export interface ListenEndedPayload {
+  track: PlayerTrack;
+  /** Seconds actually heard (engine-clock deltas, seeks excluded). */
+  seconds: number;
+  reason: "completed" | "skipped";
+}
+
+/**
+ * A library track's listen is over — it played to its end, or something
+ * else took the player first. One event per announced track; consumers
+ * that care about the outcome of a listen (a radio's feedback) subscribe
+ * here instead of reconstructing it from trackChanged/trackEnded.
+ */
+export const listenEndedEvent: EventBusKey<ListenEndedPayload> = Symbol("player:listenEnded");
