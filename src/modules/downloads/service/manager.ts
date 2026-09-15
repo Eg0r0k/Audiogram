@@ -55,7 +55,7 @@ function runtimeOf(job: DownloadJobEntity): DownloadRuntime {
 }
 
 function isRetriable(error: SourceError): boolean {
-  return error.kind === "NETWORK" || error.kind === "UNKNOWN";
+  return error.kind === "NETWORK" || error.kind === "UNKNOWN" || error.kind === "RATE_LIMITED";
 }
 
 /**
@@ -265,7 +265,9 @@ async function failJob(job: DownloadJobEntity, error: SourceError): Promise<void
       attempts,
       error: error.message,
     }));
-    retryAt.set(job.id, Date.now() + RETRY_BASE_MS * 2 ** (attempts - 1));
+    // A source that named its own wait (429 Retry-After) is not asked sooner.
+    const backoff = Math.max(RETRY_BASE_MS * 2 ** (attempts - 1), error.retryAfterMs ?? 0);
+    retryAt.set(job.id, Date.now() + backoff);
     store.upsert(runtimeOf({ ...job, attempts }));
     getLogger().warn(`[Downloads] Retry ${attempts}/${MAX_ATTEMPTS} for ${job.trackId}: ${error.message}`);
     return;

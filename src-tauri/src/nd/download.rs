@@ -1,125 +1,30 @@
 //! Offline-copy downloads: `nd_download` streams the original file into the
-//! temp dir with progress and polled cancellation.
-
-use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+//! temp dir through the shared `remote_download` machinery.
 
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime};
-use tokio::io::AsyncWriteExt;
 
-use super::config::{NdConfig, NdState};
+use super::config::NdState;
+use crate::remote_download::{
+    fetch_to_tmp, tmp_dir, DownloadEvent, DownloadRegistry, DownloadRequest, DownloadResult,
+};
 
-/// Where `nd_download` writes before the JS side moves the finished file
-/// into offline storage via `importFile`. Orphans (crashed downloads) are
-/// swept by the download manager before its first job starts.
-const DOWNLOAD_TMP_SUBDIR: &str = "downloads-tmp";
-
-/// Progress emitted at most every this many bytes — chunks are tiny.
-const PROGRESS_EMIT_STEP: u64 = 256 * 1024;
-
-/// In-flight ND downloads by song id — cancellation flags consumed by
-/// `nd_download_cancel`. The manager guarantees one active job per track, so
-/// the song id is the natural key (job ids stay a JS concept).
-#[derive(Default)]
-pub struct NdDownloadRegistry(Mutex<HashMap<String, Arc<AtomicBool>>>);
-
-/// A registered download. The id leaves the registry when this drops — on
-/// success, error and panic alike — so no code path can leave a track stuck
-/// as "already in progress".
-struct DownloadSlot<'a> {
-    registry: &'a NdDownloadRegistry,
-    id: String,
-    cancelled: Arc<AtomicBool>,
-}
-
-impl Drop for DownloadSlot<'_> {
-    fn drop(&mut self) {
-        if let Ok(mut map) = self.registry.0.lock() {
-            map.remove(&self.id);
-        }
-    }
-}
-
-impl NdDownloadRegistry {
-    fn register(&self, id: &str) -> Result<DownloadSlot<'_>, String> {
-        let mut map = self.0.lock().map_err(|_| "registry poisoned".to_string())?;
-        if map.contains_key(id) {
-            return Err("download already in progress".into());
-        }
-        let cancelled = Arc::new(AtomicBool::new(false));
-        map.insert(id.to_owned(), Arc::clone(&cancelled));
-        Ok(DownloadSlot {
-            registry: self,
-            id: id.to_owned(),
-            cancelled,
-        })
-    }
-
-    fn cancel(&self, id: &str) -> bool {
-        let Ok(map) = self.0.lock() else {
-            return false;
-        };
-        match map.get(id) {
-            Some(flag) => {
-                flag.store(true, Ordering::SeqCst);
-                true
-            }
-            None => false,
-        }
-    }
-}
-
-/// Same wire shape as `YtDownloadEvent` — the download manager is
-/// source-agnostic over `{ type, data }` progress events.
-#[derive(Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase", tag = "type", content = "data")]
-pub enum NdDownloadEvent {
-    Progress { downloaded: u64, total: Option<u64> },
-}
-
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct NdDownloadResult {
-    /// Absolute path of the finished temp file.
-    pub path: String,
-    /// Extension the file was written with (normalized lowercase).
-    pub ext: String,
-}
-
-fn ext_from_content_type(content_type: &str) -> Option<&'static str> {
-    match content_type.split(';').next().unwrap_or("").trim() {
-        "audio/flac" | "audio/x-flac" => Some("flac"),
-        "audio/mpeg" => Some("mp3"),
-        "audio/mp4" | "audio/m4a" | "audio/x-m4a" => Some("m4a"),
-        "audio/ogg" | "application/ogg" => Some("ogg"),
-        "audio/opus" => Some("opus"),
-        "audio/wav" | "audio/x-wav" => Some("wav"),
-        "audio/aac" => Some("aac"),
-        _ => None,
-    }
-}
-
-fn normalized_suffix(suffix: Option<&str>) -> Option<String> {
-    let s = suffix?.trim().to_ascii_lowercase();
-    if s.is_empty() || s.len() > 8 || !s.chars().all(|c| c.is_ascii_alphanumeric()) {
-        return None;
-    }
-    Some(s)
+/// Registry key: the same raw id under another source is another download.
+fn registry_key(song_id: &str) -> String {
+    format!("nd:{song_id}")
 }
 
 /// Downloads the whole original file (`stream.view?format=raw`) into
-/// `downloads-tmp/<songId>.<ext>`, streaming progress over the channel.
-/// Cancellation is polled between chunks; a cancelled download removes its
-/// partial file and errors with "cancelled". Logs carry only the song id.
+/// `downloads-tmp/<songId>.<ext>`, streaming progress over the channel. A
+/// cancelled download removes its partial file and errors with "cancelled".
+/// Logs carry only the song id.
 #[tauri::command]
 pub async fn nd_download<R: Runtime>(
     app: AppHandle<R>,
     song_id: String,
     suffix: Option<String>,
-    on_progress: Channel<NdDownloadEvent>,
-) -> Result<NdDownloadResult, String> {
+    on_progress: Channel<DownloadEvent>,
+) -> Result<DownloadResult, String> {
     if !crate::ids::is_plain_id(&song_id) {
         return Err("invalid song id".into());
     }
@@ -127,13 +32,20 @@ pub async fn nd_download<R: Runtime>(
         return Err("nd source is not configured".into());
     };
 
-    let registry = app.state::<NdDownloadRegistry>();
-    let slot = registry.register(&song_id)?;
-    let result = download_to_tmp(
-        &app,
-        &config,
-        &song_id,
-        suffix,
+    let registry = app.state::<DownloadRegistry>();
+    let slot = registry.register(&registry_key(&song_id))?;
+    let url = config.rest_url("stream.view", &song_id, "&format=raw");
+    let client = crate::proxy::http_client(&app)?;
+    let tmp = tmp_dir(&app)?;
+    let result = fetch_to_tmp(
+        &client,
+        &tmp,
+        DownloadRequest {
+            url: &url,
+            headers: &[],
+            file_stem: &song_id,
+            suffix: suffix.as_deref(),
+        },
         &on_progress,
         &slot.cancelled,
     )
@@ -149,154 +61,11 @@ pub async fn nd_download<R: Runtime>(
     result
 }
 
-async fn download_to_tmp<R: Runtime>(
-    app: &AppHandle<R>,
-    config: &NdConfig,
-    song_id: &str,
-    suffix: Option<String>,
-    on_progress: &Channel<NdDownloadEvent>,
-    cancelled: &AtomicBool,
-) -> Result<NdDownloadResult, String> {
-    let url = config.rest_url("stream.view", song_id, "&format=raw");
-    let client = crate::proxy::http_client(app)?;
-    let mut resp = client.get(&url).send().await.map_err(|e| {
-        // reqwest errors can embed the URL (auth token) — never propagate it.
-        format!("request failed: {}", e.without_url())
-    })?;
-
-    let status = resp.status().as_u16();
-    if status != 200 {
-        return Err(format!("upstream status {status}"));
-    }
-
-    let ext = normalized_suffix(suffix.as_deref())
-        .or_else(|| {
-            resp.headers()
-                .get(reqwest::header::CONTENT_TYPE)
-                .and_then(|v| v.to_str().ok())
-                .and_then(ext_from_content_type)
-                .map(str::to_owned)
-        })
-        .unwrap_or_else(|| "bin".to_owned());
-    let total = resp.content_length();
-
-    let tmp_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join(DOWNLOAD_TMP_SUBDIR);
-    tokio::fs::create_dir_all(&tmp_dir)
-        .await
-        .map_err(|e| e.to_string())?;
-    let path = tmp_dir.join(format!("{song_id}.{ext}"));
-
-    let mut file = tokio::fs::File::create(&path)
-        .await
-        .map_err(|e| e.to_string())?;
-    let written = copy_body(&mut resp, &mut file, on_progress, cancelled, total).await;
-    // Waits for the blocking pool's in-flight write and closes the handle —
-    // Windows refuses to delete a file that is still open.
-    drop(file.into_std().await);
-
-    // A half-written file must never survive, whatever stopped the copy
-    // (cancellation, a dropped connection, a full disk).
-    let downloaded = match written {
-        Ok(downloaded) => downloaded,
-        Err(e) => {
-            let _ = tokio::fs::remove_file(&path).await;
-            return Err(e);
-        }
-    };
-
-    let _ = on_progress.send(NdDownloadEvent::Progress {
-        downloaded,
-        total: Some(downloaded),
-    });
-    Ok(NdDownloadResult {
-        path: path.to_string_lossy().into_owned(),
-        ext,
-    })
-}
-
-/// Streams the response body into `file`, polling `cancelled` between
-/// chunks. Async fs on purpose: a 250 MB FLAC landing on a slow disk through
-/// `std::fs` would pin a runtime worker for seconds — the same runtime the
-/// loopback media server answers the player from.
-async fn copy_body(
-    resp: &mut reqwest::Response,
-    file: &mut tokio::fs::File,
-    on_progress: &Channel<NdDownloadEvent>,
-    cancelled: &AtomicBool,
-    total: Option<u64>,
-) -> Result<u64, String> {
-    let mut downloaded: u64 = 0;
-    let mut last_emitted: u64 = 0;
-
-    loop {
-        if cancelled.load(Ordering::SeqCst) {
-            return Err("cancelled".into());
-        }
-        let chunk = match resp.chunk().await {
-            Ok(Some(chunk)) => chunk,
-            Ok(None) => break,
-            Err(e) => return Err(format!("download failed: {}", e.without_url())),
-        };
-        file.write_all(&chunk).await.map_err(|e| e.to_string())?;
-        downloaded += chunk.len() as u64;
-        if downloaded - last_emitted >= PROGRESS_EMIT_STEP {
-            last_emitted = downloaded;
-            let _ = on_progress.send(NdDownloadEvent::Progress { downloaded, total });
-        }
-    }
-
-    file.flush().await.map_err(|e| e.to_string())?;
-    Ok(downloaded)
-}
-
 /// Flags the in-flight download as cancelled; the download loop notices
 /// between chunks. Idempotent — cancelling a download that already finished
 /// (a routine race with the completion event) is a no-op.
 #[tauri::command]
 pub fn nd_download_cancel<R: Runtime>(app: AppHandle<R>, song_id: String) {
-    app.state::<NdDownloadRegistry>().cancel(&song_id);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_slot_blocks_a_second_download_of_the_same_id_until_dropped() {
-        let registry = NdDownloadRegistry::default();
-
-        let slot = registry.register("s1").expect("first registration");
-        assert!(registry.register("s1").is_err());
-        assert!(registry.register("s2").is_ok());
-
-        drop(slot);
-        assert!(registry.register("s1").is_ok());
-    }
-
-    #[test]
-    fn cancel_flips_the_slot_flag_and_reports_unknown_ids() {
-        let registry = NdDownloadRegistry::default();
-        let slot = registry.register("s1").expect("registration");
-
-        assert!(registry.cancel("s1"));
-        assert!(slot.cancelled.load(Ordering::SeqCst));
-        assert!(!registry.cancel("nope"));
-    }
-
-    #[test]
-    fn ext_falls_back_from_suffix_to_content_type() {
-        assert_eq!(normalized_suffix(Some(" FLAC ")).as_deref(), Some("flac"));
-        assert_eq!(normalized_suffix(Some("way-too-long")), None);
-        assert_eq!(normalized_suffix(Some("../x")), None);
-        assert_eq!(normalized_suffix(None), None);
-        assert_eq!(
-            ext_from_content_type("audio/flac; charset=binary"),
-            Some("flac")
-        );
-        assert_eq!(ext_from_content_type("text/html"), None);
-    }
+    app.state::<DownloadRegistry>()
+        .cancel(&registry_key(&song_id));
 }

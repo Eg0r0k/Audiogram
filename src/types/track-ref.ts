@@ -1,7 +1,10 @@
+import { TrackSource } from "@/db/entities";
 import { AlbumId, ArtistId, PlaylistId, TrackId } from "./ids";
 
 // "radio" — M6
 export type SourceKind = "local" | "nd" | "yt";
+
+export type RemoteSourceKind = Exclude<SourceKind, "local">;
 
 //
 // Remote ids are branded composite strings ("nd:<songId>", "yt:<videoId>");
@@ -31,3 +34,28 @@ export const ndPlaylistId = (playlistId: string) => PlaylistId(`${ND_PREFIX}${pl
 export const ytAlbumId = (browseId: string) => AlbumId(`${YT_PREFIX}${browseId}`);
 export const ytArtistId = (channelId: string) => ArtistId(`${YT_PREFIX}${channelId}`);
 export const ytPlaylistId = (listId: string) => PlaylistId(`${YT_PREFIX}${listId}`);
+
+/** Source kind of any branded id string (track/album/artist/playlist). */
+export const sourceKindOfId = (id: string): SourceKind => parseTrackRef(id as TrackId).kind;
+
+/** The raw id the source knows the track by; null for a local ref. */
+export const remoteIdOf = (ref: TrackRef): string | null => {
+  switch (ref.kind) {
+    case "nd": return ref.songId;
+    case "yt": return ref.videoId;
+    case "local": return null;
+  }
+};
+
+const REMOTE_TRACK_SOURCE: Record<RemoteSourceKind, TrackSource> = {
+  nd: TrackSource.REMOTE_SUBSONIC,
+  yt: TrackSource.REMOTE_YT,
+};
+
+/** The persisted `TrackSource` a pinned row of this source carries. */
+export const remoteTrackSource = (kind: RemoteSourceKind): TrackSource => REMOTE_TRACK_SOURCE[kind];
+
+const REMOTE_TRACK_SOURCES = new Set<TrackSource>(Object.values(REMOTE_TRACK_SOURCE));
+
+/** Whether a persisted row belongs to a source provider (HLS radio does not). */
+export const isRemoteTrackSource = (source: TrackSource): boolean => REMOTE_TRACK_SOURCES.has(source);

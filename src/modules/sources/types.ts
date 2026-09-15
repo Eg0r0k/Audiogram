@@ -83,6 +83,24 @@ export interface SourceProvider {
   readonly isAvailable: boolean;
 
   /**
+   * How long resolving a stream URL may take before the player gives up.
+   * Optional: a source whose resolve is one cheap request keeps the default.
+   */
+  readonly resolveTimeoutMs?: number;
+  /**
+   * "live" (the default) searches as the user types; "submit" waits for a
+   * typing pause or Enter — for sources whose search fans out into several
+   * requests or is rate-limited.
+   */
+  readonly searchMode?: "live" | "submit";
+  /**
+   * The track's page at the source, for "open in …". The album is passed
+   * along because some sources have no track pages, only album pages.
+   * Optional; null when the source has no page to open right now.
+   */
+  externalUrl?(track: { id: TrackId; albumId?: AlbumId }): string | null;
+
+  /**
    * The cheapest request that proves the configured source answers — a
    * credential check, not a catalog read. Optional: a source with nothing to
    * configure has nothing to probe, and `isAvailable` already covers whether

@@ -687,12 +687,16 @@ describe("player.store", () => {
         format: {},
         downloadedAt: 0,
       }));
+      // The registry is consulted for the source's resolve deadline before
+      // the copy lookup; what must not happen is a stream resolution.
+      const resolveStreamUrl = vi.fn();
+      sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl });
       const store = usePlayerStore();
 
       await store.playPlayerTrack(remoteTrack());
 
       expect(storageMock.getAudioUrl).toHaveBeenCalledWith("offline/yt/dQw4w9WgXcQ.m4a");
-      expect(sourcesMock.forTrack).not.toHaveBeenCalled();
+      expect(resolveStreamUrl).not.toHaveBeenCalled();
     });
 
     it("falls back to the source stream when no offline copy exists", async () => {
@@ -2405,7 +2409,8 @@ describe("player.store", () => {
 
     it("gives a YouTube resolve a longer leash than a local file", async () => {
       const resolveStreamUrl = vi.fn(() => new ResultAsync(new Promise<never>(() => {})));
-      sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl });
+      // The leash is the provider's own declaration (ytSourceProvider.resolveTimeoutMs).
+      sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl, resolveTimeoutMs: 45_000 });
       offlineCopyMock.findById.mockResolvedValue(ok(undefined));
       const store = usePlayerStore();
 

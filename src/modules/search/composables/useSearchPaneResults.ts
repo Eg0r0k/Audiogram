@@ -71,13 +71,15 @@ const useLibraryResults = (enabled: ComputedRef<boolean>): SearchPaneResults => 
 
 /** A source's own search. Parks on skipToken while `kind` is null. */
 const useRemoteResults = (kind: ComputedRef<SourceKind | null>): SearchPaneResults => {
-  const { query } = useSearch();
+  const { query, submittedQuery, isSubmitMode } = useSearch();
   const { t } = useI18n();
 
   const debounced = refDebounced(computed(() => query.value.trim()), REMOTE_DEBOUNCE_MS);
-  const hasQuery = computed(() => kind.value !== null && debounced.value.length > 0);
+  // A submit-mode source only ever sees what was committed (pause or Enter).
+  const effective = computed(() => (isSubmitMode.value ? submittedQuery.value : debounced.value));
+  const hasQuery = computed(() => kind.value !== null && effective.value.length > 0);
 
-  const search = useSourceSearch(kind, computed(() => (kind.value ? debounced.value : "")));
+  const search = useSourceSearch(kind, computed(() => (kind.value ? effective.value : "")));
   const playlists = useSourcePlaylists(kind);
 
   const trackRows = computed<Track[]>(() =>
@@ -99,7 +101,7 @@ const useRemoteResults = (kind: ComputedRef<SourceKind | null>): SearchPaneResul
   });
 
   function matchPlaylists(resolved: SourceKind): SearchResultItem[] {
-    const q = debounced.value.toLowerCase();
+    const q = effective.value.toLowerCase();
     if (!q) return [];
     return (playlists.data.value ?? [])
       .filter(playlist => playlist.name.toLowerCase().includes(q))
@@ -110,7 +112,7 @@ const useRemoteResults = (kind: ComputedRef<SourceKind | null>): SearchPaneResul
   return {
     isLoading: computed(() => hasQuery.value && search.isLoading.value),
     hasQuery,
-    query: computed(() => debounced.value),
+    query: computed(() => effective.value),
     // A source returns groups, not a ranking — nothing to promote.
     top: computed(() => []),
     groups,

@@ -1,5 +1,7 @@
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { platformCaps } from "@/lib/environment/platformCaps";
+import type { TrackId } from "@/types/ids";
+import { ndTrackId, ytTrackId } from "@/types/track-ref";
 
 //
 // URL helpers for the loopback media server — the transport for all audio
@@ -130,6 +132,25 @@ export const ytVideoIdFromStreamUrl = (url: string | null | undefined): string |
   if (!path) return null;
   const match = /^yt\/([^?#]+)/.exec(path);
   return match ? match[1] : null;
+};
+
+/**
+ * The branded track id behind a proxied remote stream URL (see
+ * {@link proxyPathFromUrl}) — what an ephemeral stream entry would be as a
+ * library track. Null for local files, covers and anything not proxied.
+ */
+export const trackIdFromStreamUrl = (url: string | null | undefined): TrackId | null => {
+  const path = proxyPathFromUrl(url);
+  if (!path) return null;
+  const [route] = path.split("?", 1);
+
+  const yt = route.startsWith("yt/") ? route.slice("yt/".length) : null;
+  if (yt) return ytTrackId(yt);
+
+  const ndSong = route.startsWith("nd/song/") ? route.slice("nd/song/".length) : null;
+  if (ndSong) return ndTrackId(ndSong);
+
+  return null;
 };
 
 /**

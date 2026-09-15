@@ -7,6 +7,7 @@ export enum TrackSource {
   REMOTE_HLS = "remote_hls",
   REMOTE_SUBSONIC = "remote_subsonic",
   REMOTE_YT = "remote_yt",
+  REMOTE_YM = "remote_ym",
 }
 
 //

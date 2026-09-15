@@ -10,7 +10,10 @@
     :class="[
       styles.root,
       rowStateClass, dimmed && 'opacity-50',
+      isUnavailable && 'opacity-40 cursor-default hover:bg-transparent',
     ]"
+    :aria-disabled="isUnavailable || undefined"
+    :title="isUnavailable ? $t('track.unavailable') : undefined"
     @click="handleClick"
     @keypress="handleClick"
     @contextmenu="onContextMenu"
@@ -82,6 +85,10 @@
         :class="[styles.title, (highlighted || isCurrentTrack) && 'text-primary']"
       >
         {{ track.title }}
+        <span
+          v-if="isPreview"
+          class="ml-1.5 align-middle rounded px-1 py-px text-[10px] font-medium uppercase tracking-wide bg-muted text-muted-foreground"
+        >{{ $t("track.preview") }}</span>
       </div>
       <div :class="styles.artist">
         <template
@@ -252,6 +259,12 @@ const overlayState = computed(() => {
 });
 const isLiked = computed(() => props.track.isLiked);
 
+// What the source will serve for a catalog row (pinned rows carry no DTO
+// and count as fully available — the player finds out when it resolves).
+const availability = computed(() => props.track.sourceDto?.availability ?? "full");
+const isUnavailable = computed(() => availability.value === "unavailable");
+const isPreview = computed(() => availability.value === "preview");
+
 // Like writes to the library row — remote catalog rows (sourceDto) and
 // ephemeral streams have none. YT streams offer download instead; ND gets
 // its download button with the download manager (M4).
@@ -323,6 +336,7 @@ const rowStateClass = computed(() => {
 });
 
 const handleClick = () => {
+  if (isUnavailable.value) return;
   if (isCurrentTrack.value) {
     playerStore.togglePlay()
       .catch(error => getLogger().error(`[Player] Toggling playback failed: ${String(error)}`));

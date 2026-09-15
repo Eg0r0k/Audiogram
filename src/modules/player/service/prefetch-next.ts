@@ -1,12 +1,12 @@
 import { watch } from "vue";
 import { getLogger } from "@/lib/logger";
 import { platformCaps } from "@/lib/environment/platformCaps";
-import { ytVideoIdFromStreamUrl } from "@/lib/stream-url";
+import { trackIdFromStreamUrl } from "@/lib/stream-url";
 import { isTranscodeCandidatePath } from "@/lib/files/transcodeCandidates";
 import { offlineCopyRepository, trackRepository } from "@/db/repositories";
 import { storageService } from "@/db/storage";
 import { sources } from "@/modules/sources/registry";
-import { parseTrackRef, ytTrackId } from "@/types/track-ref";
+import { parseTrackRef } from "@/types/track-ref";
 import type { TrackId } from "@/types/ids";
 import { isLibraryTrack, type PlayerTrack, type RepeatMode } from "../types";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
@@ -51,10 +51,10 @@ export const nextPlaybackIndex = (
 /**
  * Reduces any queue track to the branded TrackId to prefetch, or null when
  * playback needs no warm-up (plain local files, file/path ephemerals, radio
- * URLs). Ephemeral YT tracks carry their video id inside the `stream://…/yt/…`
- * URL — rebuilt into a `yt:` id so they dispatch like library YT tracks.
- * Local tracks pass through only when the media server may need to transcode
- * them (ALAC/APE) — the first request pays a full decode otherwise.
+ * URLs). Ephemeral remote streams carry their source and id inside the
+ * proxied URL — rebuilt into a branded id so they dispatch like library
+ * tracks. Local tracks pass through only when the media server may need to
+ * transcode them (ALAC/APE) — the first request pays a full decode otherwise.
  */
 export const prefetchIdOf = (track: PlayerTrack | null | undefined): TrackId | null => {
   if (!track) return null;
@@ -67,8 +67,7 @@ export const prefetchIdOf = (track: PlayerTrack | null | undefined): TrackId | n
   }
 
   if (track.source.type !== "url") return null;
-  const videoId = ytVideoIdFromStreamUrl(track.source.url);
-  return videoId ? ytTrackId(videoId) : null;
+  return trackIdFromStreamUrl(track.source.url);
 };
 
 /**

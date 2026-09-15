@@ -30,6 +30,8 @@ mod media_server;
 
 mod nd;
 
+mod remote_download;
+
 mod transcode;
 
 mod proxy;
@@ -161,7 +163,7 @@ pub fn run() {
         .manage(proxy::ProxyState::default())
         .manage(nd::NdState::default())
         .manage(nd::NdAudioCache::default())
-        .manage(nd::NdDownloadRegistry::default())
+        .manage(remote_download::DownloadRegistry::default())
         .manage(media_state);
 
     #[cfg(desktop)]

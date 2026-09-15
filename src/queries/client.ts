@@ -13,9 +13,21 @@ const MAX_RETRIES = 2;
 const TERMINAL_SOURCE_ERRORS = new Set<SourceErrorKind>([
   "PARSE",
   "AUTH",
+  "FORBIDDEN",
   "NOT_FOUND",
   "CANCELLED",
 ]);
+
+/** The library's own default, restated so a Retry-After can override it. */
+const MAX_RETRY_DELAY_MS = 30_000;
+const defaultRetryDelay = (failureCount: number): number =>
+  Math.min(1000 * 2 ** failureCount, MAX_RETRY_DELAY_MS);
+
+/** A source that named its own wait (429 Retry-After) is not asked again sooner. */
+const retryDelay = (failureCount: number, error: unknown): number =>
+  (error instanceof SourceQueryError && error.retryAfterMs
+    ? error.retryAfterMs
+    : defaultRetryDelay(failureCount));
 
 /**
  * Only a source error can be transient, and only the source boundary
@@ -45,6 +57,7 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 1000 * 60 * 5,
       retry: shouldRetry,
+      retryDelay,
       refetchOnWindowFocus: false,
       // Reads are Dexie, not the network: the library default ("online")
       // pauses every query while navigator.onLine is false. Remote sources

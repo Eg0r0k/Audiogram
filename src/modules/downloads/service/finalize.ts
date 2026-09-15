@@ -6,7 +6,7 @@ import { getLogger } from "@/lib/logger";
 import { queryClient } from "@/queries/client";
 import { syncOfflineCopyCache } from "@/queries/offlineCopy.queries";
 import { unwrapResult } from "@/queries/shared";
-import { parseTrackRef } from "@/types/track-ref";
+import { parseTrackRef, remoteIdOf } from "@/types/track-ref";
 
 /**
  * Turns a finished temp download into an offline copy: the file moves into
@@ -24,10 +24,10 @@ export async function finalizeOfflineCopy(
   }
 
   const ref = parseTrackRef(job.trackId);
-  if (ref.kind === "local") {
+  const rawId = remoteIdOf(ref);
+  if (!rawId) {
     throw new Error("local tracks have no offline copies");
   }
-  const rawId = ref.kind === "nd" ? ref.songId : ref.videoId;
   const ext = file.path.split(".").pop()?.toLowerCase() || "bin";
 
   const imported = await storageService.importFile(file.path, `offline/${ref.kind}/${rawId}.${ext}`);

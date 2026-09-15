@@ -4,6 +4,9 @@
   "yt": "YouTube",
   "health": {
     "authFailed": "{source}: sign-in failed",
+    "forbidden": "{source}: no access — a subscription may be required",
+    "rateLimited": "{source}: too many requests, try again later",
+    "rateLimitedIn": "{source}: too many requests, try again in {seconds} s",
     "unreachable": "{source}: cannot be reached",
     "retry": "Check again",
     "settings": "Settings"

@@ -31,6 +31,13 @@ export interface SourceTrackDTO {
   discNo?: number;
   coverRef?: string;
   format?: AudioFormat;
+  /**
+   * What the source will actually serve: the whole track (the default), a
+   * short preview (no subscription), or nothing at all (region lock). Rows
+   * render the last two accordingly and the player refuses an unavailable
+   * one before any request is made.
+   */
+  availability?: "full" | "preview" | "unavailable";
 }
 
 export interface SourceAlbumDTO {
@@ -74,8 +81,12 @@ export interface SourcePage<T> {
 export type SourceErrorKind
   = | "UNAVAILABLE"
     | "AUTH"
+    /** Signed in, but not entitled — a subscription or a right the account lacks. */
+    | "FORBIDDEN"
     | "NETWORK"
     | "NOT_FOUND"
+    /** The source asked to slow down; `retryAfterMs` carries its wait when it named one. */
+    | "RATE_LIMITED"
     | "PARSE"
     | "CANCELLED"
     | "UNKNOWN";
@@ -83,4 +94,5 @@ export type SourceErrorKind
 export interface SourceError {
   kind: SourceErrorKind;
   message: string;
+  retryAfterMs?: number;
 }

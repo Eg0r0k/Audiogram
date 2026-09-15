@@ -2,7 +2,7 @@ import { isLibraryTrack, type PlayerTrack, type Track } from "@/modules/player/t
 import type { ContextActions, TrackMenuSubject } from "@/modules/tracks/components/menu/type";
 import { ensurePinned } from "@/modules/tracks/service/ensurePinned";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
-import type { ArtistId, PlaylistId, QueueItemId, TrackId } from "@/types/ids";
+import type { AlbumId, ArtistId, PlaylistId, QueueItemId, TrackId } from "@/types/ids";
 
 import { useQueryClient } from "@tanstack/vue-query";
 import { toast } from "vue-sonner";
@@ -28,8 +28,8 @@ import { invalidateLibraryData } from "@/queries/library.queries";
 import { getOfflineCopy } from "@/queries/offlineCopy.queries";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { parseTrackRef } from "@/types/track-ref";
-import { ytVideoIdFromStreamUrl } from "@/lib/stream-url";
-import { getNdConfig } from "@/modules/sources/navidrome/config";
+import { trackIdFromStreamUrl } from "@/lib/stream-url";
+import { sources } from "@/modules/sources";
 import {
   addTrackToPlaylistAndSync,
   removeTrackFromPlaylistAndSync,
@@ -333,34 +333,29 @@ export const useTrackContextActions = (
     }
   };
 
-  /** yt → the watch page; nd → the server page (wired with ND settings, M2). */
+  /** The track's page at its source; a playing stream names its source in the proxied URL. */
   const externalUrl = (): string | null => {
     const subject = toValue(options.subject);
-    if (subject?.kind === "ephemeral" && subject.track.source.type === "url") {
-      const videoId = ytVideoIdFromStreamUrl(subject.track.source.url);
-      return videoId ? `https://www.youtube.com/watch?v=${videoId}` : null;
-    }
-
     const current = toValue(track);
-    let id = null;
-    if (subject?.kind === "remote") id = subject.dto.id;
-    else if (isLibraryTrack(current)) id = current.id;
+
+    let id: TrackId | null = null;
+    let albumId: AlbumId | undefined;
+    if (subject?.kind === "ephemeral") {
+      id = subject.track.source.type === "url" ? trackIdFromStreamUrl(subject.track.source.url) : null;
+    }
+    else if (subject?.kind === "remote") {
+      id = subject.dto.id;
+      albumId = subject.dto.albumId;
+    }
+    else if (isLibraryTrack(current)) {
+      id = current.id;
+      albumId = current.albumId;
+    }
     if (!id) return null;
 
-    const ref = parseTrackRef(id);
-    if (ref.kind === "yt") return `https://www.youtube.com/watch?v=${ref.videoId}`;
-    if (ref.kind === "nd") {
-      const config = getNdConfig();
-      if (!config) return null;
-      let albumId;
-      if (subject?.kind === "remote") albumId = subject.dto.albumId;
-      else if (isLibraryTrack(current)) albumId = current.albumId;
-      const albumRef = albumId ? parseTrackRef(albumId as unknown as typeof id) : null;
-      return albumRef?.kind === "nd"
-        ? `${config.baseUrl}/app/#/album/${albumRef.songId}/show`
-        : config.baseUrl;
-    }
-    return null;
+    const kind = parseTrackRef(id).kind;
+    if (kind === "local") return null;
+    return sources.get(kind).externalUrl?.({ id, albumId }) ?? null;
   };
 
   const openExternal = async () => {

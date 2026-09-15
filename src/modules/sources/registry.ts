@@ -27,6 +27,11 @@ export const sources = {
     return sources.get(parseTrackRef(id).kind);
   },
 
+  /** The provider for a kind, or undefined when none is registered ("local" never is). */
+  find(kind: SourceKind): SourceProvider | undefined {
+    return providers[kind];
+  },
+
   /**
    * Every source compiled into this build, configured or not — settings has
    * to offer the one that is currently switched off, which is exactly the
