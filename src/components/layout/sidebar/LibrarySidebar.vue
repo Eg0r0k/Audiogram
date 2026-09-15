@@ -52,14 +52,6 @@
           class="mx-2 mt-2"
         />
 
-        <div
-          v-if="catalogKind === 'ym'"
-          class="mt-2"
-          :class="isCompact ? 'flex justify-center' : 'mx-2'"
-        >
-          <YmWaveButton :compact="isCompact" />
-        </div>
-
         <LibraryContextMenu
           :inside-folder="!!activeFolder"
           @delete="handleDeleteItem"
@@ -110,6 +102,7 @@
                   :item="item"
                   :compact="isCompact"
                   @open-folder="openFolder"
+                  @start-radio="startRadio"
                 />
               </template>
             </VirtualScrollable>
@@ -185,7 +178,7 @@ import { useCurrentSourceStore } from "@/modules/sources/store/currentSource.sto
 import { useCatalogLibraryItems } from "@/modules/sources/composables/useCatalogLibraryItems";
 import { catalogFilters } from "@/modules/sources/lib/catalog-filters";
 import SourceHealthNotice from "@/modules/sources/components/SourceHealthNotice.vue";
-import YmWaveButton from "@/modules/sources/yandex/components/YmWaveButton.vue";
+import { useYmRadio } from "@/modules/sources/yandex/composables/useYmRadio";
 
 const {
   pinnedItems,
@@ -248,6 +241,8 @@ const catalogKind = computed(() =>
 );
 const isCatalog = computed(() => catalogKind.value !== null);
 const catalog = useCatalogLibraryItems(catalogKind, activeFilter);
+// The station row of the Yandex catalog: the only row that plays instead of navigating.
+const { start: startRadio } = useYmRadio();
 
 const localItems = computed(() => activeFolder.value
   ? getFolderItems(activeFolder.value.id)

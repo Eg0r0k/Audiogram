@@ -18,7 +18,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   openFolder: [folderId: string];
+  startRadio: [station: string];
 }>();
+
+// Folders open in place and stations start playback: neither is a page, so
+// neither takes the route highlight.
+const isPageRow = computed(() => props.item.type !== "folder" && props.item.type !== "radio");
 
 const { openMenu, activeItem, isContextMenuOpen } = useLibraryMenu();
 const router = useRouter();
@@ -36,6 +41,10 @@ const { subtitle, coverOwnerType, coverOwnerId, isCurrentPlaybackSource }
 const handleClick = () => {
   if (props.item.type === "folder") {
     emit("openFolder", props.item.id);
+    return;
+  }
+  if (props.item.type === "radio") {
+    emit("startRadio", props.item.id);
     return;
   }
 
@@ -68,7 +77,7 @@ const handleClick = () => {
           <Item
             class="min-w-0 py-2 transition-colors pointer-events-none"
             :class="[
-              isExactActive && item.type !== 'folder'
+              isExactActive && isPageRow
                 ? 'bg-primary text-primary-foreground group-hover/row:bg-primary/95 group-data-[menu-open]/row:bg-primary/95'
                 : 'group-hover/row:bg-accent/60 group-data-[menu-open]/row:bg-accent/60',
               compact ? 'justify-center gap-0 px-2' : 'gap-3 px-3',
@@ -79,7 +88,7 @@ const handleClick = () => {
               :cover-owner-type="coverOwnerType"
               :cover-owner-id="coverOwnerId"
               :compact="compact"
-              :active="isExactActive && item.type !== 'folder'"
+              :active="isExactActive && isPageRow"
               :is-playback-source="isCurrentPlaybackSource"
             />
 
@@ -87,7 +96,7 @@ const handleClick = () => {
               v-if="!compact"
               :item="item"
               :subtitle="subtitle"
-              :active="isExactActive && item.type !== 'folder'"
+              :active="isExactActive && isPageRow"
               :is-playback-source="isCurrentPlaybackSource"
             />
           </Item>

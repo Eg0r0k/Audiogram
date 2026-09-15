@@ -333,9 +333,13 @@ pub async fn fetch_account(
         .find_map(|key| account[key].as_str())
         .unwrap_or_default()
         .to_owned();
+    // A family member of a Plus subscription gets whole tracks but reports
+    // hasPlus=false; the flag is informational (settings card), never a gate.
+    let has_plus = json["result"]["plus"]["hasPlus"].as_bool().unwrap_or(false)
+        || account["nonOwnerFamilyMember"].as_bool().unwrap_or(false);
     Ok(AccountInfo {
         uid,
-        has_plus: json["result"]["plus"]["hasPlus"].as_bool().unwrap_or(false),
+        has_plus,
         display_name,
     })
 }
@@ -652,6 +656,24 @@ mod tests {
         assert_eq!(account.uid, 42);
         assert!(account.has_plus);
         assert_eq!(account.display_name, "Tester");
+    }
+
+    #[tokio::test]
+    async fn a_family_member_counts_as_plus() {
+        // Recorded 2026-09-15: whole tracks are served, yet plus.hasPlus is false.
+        let upstream = spawn_upstream(|_req| {
+            json(
+                200,
+                r#"{"result":{"account":{"uid":42,"login":"tester","nonOwnerFamilyMember":true},"plus":{"hasPlus":false,"isTutorialCompleted":true}},"invocationInfo":{}}"#,
+            )
+        })
+        .await;
+
+        let account = fetch_account(&reqwest::Client::new(), &upstream, "tok-1")
+            .await
+            .expect("account");
+
+        assert!(account.has_plus);
     }
 
     #[tokio::test]

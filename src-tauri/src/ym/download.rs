@@ -19,9 +19,11 @@ fn registry_key(track_id: &str) -> String {
     format!("ym:{track_id}")
 }
 
-/// The download over explicit state so tests need no app handle. A
-/// subscription is checked before anything is resolved: without Plus the
-/// link would be a 30-second preview, which is not an offline copy.
+/// The download over explicit state so tests need no app handle. What the
+/// account is entitled to is whatever `download-info` offers for the track:
+/// a 30-second preview is refused, a whole track is saved. (The account's
+/// Plus flag is not consulted — it is false for family members who do get
+/// whole tracks.)
 pub(crate) async fn download_track(
     state: &YmState,
     links: &YmLinkCache,
@@ -31,14 +33,8 @@ pub(crate) async fn download_track(
     track_id: &str,
     on_progress: &Channel<DownloadEvent>,
 ) -> Result<DownloadResult, YmError> {
-    let Some(session) = state.session() else {
+    if state.session().is_none() {
         return Err(YmError::auth("not signed in to Yandex Music"));
-    };
-    if !session.has_plus {
-        return Err(YmError::new(
-            YmErrorKind::Forbidden,
-            "downloading needs a Yandex Plus subscription",
-        ));
     }
     let slot = registry.register(&registry_key(track_id))?;
 
@@ -144,7 +140,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn without_plus_the_download_is_forbidden_before_any_request() {
+    async fn without_a_session_nothing_is_requested() {
         let hits = Arc::new(AtomicUsize::new(0));
         let seen = Arc::clone(&hits);
         let upstream = spawn_upstream(move |_req| {
@@ -152,7 +148,7 @@ mod tests {
             http::Response::builder().status(200).body(Full::new(bytes::Bytes::new())).unwrap()
         })
         .await;
-        let state = state_with(&upstream, false);
+        let state = YmState::with_endpoints(&upstream, &upstream);
 
         let error = download_track(
             &state, &YmLinkCache::default(), &DownloadRegistry::default(),
@@ -161,8 +157,40 @@ mod tests {
         .await
         .unwrap_err();
 
-        assert_eq!(error.kind, YmErrorKind::Forbidden);
+        assert_eq!(error.kind, YmErrorKind::Auth);
         assert_eq!(hits.load(Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn a_whole_track_downloads_even_when_the_plus_flag_is_off() {
+        // The signed-in family member: hasPlus false, download-info not a preview.
+        let upstream = spawn_upstream(|_req| {
+            http::Response::builder()
+                .status(200)
+                .header("Content-Type", "application/octet-stream")
+                .body(Full::new(bytes::Bytes::from_static(b"mp3body")))
+                .unwrap()
+        })
+        .await;
+        let state = state_with(&upstream, false);
+        let links = YmLinkCache::default();
+        links.insert("40144", ResolvedTrack {
+            url: format!("{upstream}/full.mp3"),
+            preview: false,
+            codec: "mp3".into(),
+            bitrate: 192,
+        });
+        let tmp = temp();
+
+        let done = download_track(
+            &state, &links, &DownloadRegistry::default(),
+            &reqwest::Client::new(), &tmp, "40144", &silent_channel(),
+        )
+        .await
+        .expect("download");
+
+        assert_eq!(done.ext, "mp3");
+        let _ = std::fs::remove_dir_all(tmp);
     }
 
     #[tokio::test]

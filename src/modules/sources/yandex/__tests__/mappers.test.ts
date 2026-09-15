@@ -26,12 +26,9 @@ const playlist = playlistFixture.result as YmPlaylist;
 const search = searchFixture.result as YmSearchResult;
 const tracks = tracksFixture.result as YmTrack[];
 
-const WITH_PLUS = { hasPlus: true };
-const WITHOUT_PLUS = { hasPlus: false };
-
 describe("mapYmTrack", () => {
   it("brands the ids, joins the credits and keeps the album position", () => {
-    const dto = mapYmTrack(tracks[0], WITH_PLUS);
+    const dto = mapYmTrack(tracks[0]);
 
     expect(dto.id).toBe("ym:40144");
     expect(dto.title).toBe("Read Your Mind");
@@ -48,32 +45,27 @@ describe("mapYmTrack", () => {
   });
 
   it("keeps the %% placeholder in the cover ref for the media server to size", () => {
-    expect(mapYmTrack(tracks[1], WITH_PLUS).coverRef).toMatch(/\/%%$/);
+    expect(mapYmTrack(tracks[1]).coverRef).toMatch(/\/%%$/);
   });
 
-  it("a subscriber gets the whole track, everyone else the preview Yandex serves", () => {
-    // Recorded: availableFullWithoutPermission is false on every catalog track.
-    expect(mapYmTrack(tracks[0], WITH_PLUS).availability).toBe("full");
-    expect(mapYmTrack(tracks[0], WITHOUT_PLUS).availability).toBe("preview");
+  it("an available track is full — the catalog cannot tell a preview account from a family member", () => {
+    // Recorded: availableFullWithoutPermission is false on every catalog
+    // track, and the signed-in family member (hasPlus=false) gets whole tracks.
+    expect(mapYmTrack(tracks[0]).availability).toBe("full");
+    expect(ymAvailability({ ...tracks[2], availableFullWithoutPermission: true })).toBe("full");
   });
 
-  it("a locked track is unavailable whatever the subscription", () => {
+  it("a locked track is unavailable", () => {
     const locked = derived.lockedTrack as YmTrack;
 
-    expect(ymAvailability(locked, WITH_PLUS)).toBe("unavailable");
-    expect(mapYmTrack(locked, WITHOUT_PLUS).availability).toBe("unavailable");
-  });
-
-  it("a track Yandex gives away plays whole without Plus", () => {
-    const free: YmTrack = { ...tracks[2], availableFullWithoutPermission: true };
-
-    expect(ymAvailability(free, WITHOUT_PLUS)).toBe("full");
+    expect(ymAvailability(locked)).toBe("unavailable");
+    expect(mapYmTrack(locked).availability).toBe("unavailable");
   });
 
   it("appends the version to the title the way Yandex displays it", () => {
     const remaster: YmTrack = { ...tracks[0], version: "Remastered" };
 
-    expect(mapYmTrack(remaster, WITH_PLUS).title).toBe("Read Your Mind (Remastered)");
+    expect(mapYmTrack(remaster).title).toBe("Read Your Mind (Remastered)");
   });
 });
 
@@ -108,7 +100,7 @@ describe("mapYmAlbum", () => {
 
 describe("flattenAlbumTracks", () => {
   it("numbers discs and tracks by their place and hands the album down to every row", () => {
-    const rows = flattenAlbumTracks(album, WITHOUT_PLUS);
+    const rows = flattenAlbumTracks(album);
 
     expect(rows).toHaveLength(4);
     expect(rows.map(row => [row.discNo, row.trackNo])).toEqual([[1, 1], [1, 2], [1, 3], [1, 4]]);
@@ -118,20 +110,20 @@ describe("flattenAlbumTracks", () => {
       albumId: "ym:3328",
       albumTitle: "Private Room",
       coverRef: "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
-      availability: "preview",
+      availability: "full",
     });
   });
 
   it("a second disc continues the numbering from one", () => {
     const twoDiscs: YmAlbum = { ...album, volumes: [album.volumes![0].slice(0, 2), album.volumes![0].slice(2, 4)] };
 
-    const rows = flattenAlbumTracks(twoDiscs, WITH_PLUS);
+    const rows = flattenAlbumTracks(twoDiscs);
 
     expect(rows.map(row => [row.discNo, row.trackNo])).toEqual([[1, 1], [1, 2], [2, 1], [2, 2]]);
   });
 
   it("an album that came without volumes has no rows", () => {
-    expect(flattenAlbumTracks({ ...album, volumes: undefined }, WITH_PLUS)).toEqual([]);
+    expect(flattenAlbumTracks({ ...album, volumes: undefined })).toEqual([]);
   });
 });
 
@@ -166,7 +158,7 @@ describe("mapYmPlaylist", () => {
     const dto = mapYmPlaylist(derived.emptyPlaylist as YmPlaylist);
 
     expect(dto.trackCount).toBe(0);
-    expect(playlistTracks(derived.emptyPlaylist as YmPlaylist, WITH_PLUS)).toEqual([]);
+    expect(playlistTracks(derived.emptyPlaylist as YmPlaylist)).toEqual([]);
   });
 
   it("a mosaic cover uses its first tile", () => {
@@ -178,19 +170,19 @@ describe("mapYmPlaylist", () => {
 
 describe("playlistTracks", () => {
   it("maps the recorded entries and skips ones without a track body", () => {
-    const rows = playlistTracks(playlist, WITH_PLUS);
+    const rows = playlistTracks(playlist);
 
     expect(rows).toHaveLength(4);
     expect(rows[0]).toMatchObject({ id: "ym:38633712", title: "Группа крови", availability: "full" });
 
     const withStub: YmPlaylist = { ...playlist, tracks: [{ id: 1 }, ...playlist.tracks!] };
-    expect(playlistTracks(withStub, WITH_PLUS)).toHaveLength(4);
+    expect(playlistTracks(withStub)).toHaveLength(4);
   });
 });
 
 describe("search results", () => {
   it("every recorded section maps without inventing ids", () => {
-    expect(search.tracks!.results.map(track => mapYmTrack(track, WITH_PLUS).id)).toEqual(["ym:64072310", expect.stringMatching(/^ym:\d+$/), expect.stringMatching(/^ym:\d+$/)]);
+    expect(search.tracks!.results.map(track => mapYmTrack(track).id)).toEqual(["ym:64072310", expect.stringMatching(/^ym:\d+$/), expect.stringMatching(/^ym:\d+$/)]);
     expect(search.albums!.results.map(mapYmAlbum).every(dto => dto.id.startsWith("ym:"))).toBe(true);
     expect(search.artists!.results.map(mapYmArtist).filter(Boolean)).toHaveLength(2);
     expect(search.playlists!.results.map(mapYmPlaylist)[0].id).toMatch(/^ym:\d+:\d+$/);

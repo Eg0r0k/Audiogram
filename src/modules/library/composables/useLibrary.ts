@@ -50,7 +50,7 @@ export const useLibrary = () => {
   const navigateHomeIfViewingItem = (item: LibraryItem) => {
     const currentRoute = router.currentRoute.value;
 
-    if (item.type === "liked" || item.type === "allMedia" || item.type === "folder") return;
+    if (item.type === "liked" || item.type === "allMedia" || item.type === "folder" || item.type === "radio") return;
     if (currentRoute.name !== libraryItemRouteNames[item.type]) return;
     if (currentRoute.params.id !== item.id) return;
 

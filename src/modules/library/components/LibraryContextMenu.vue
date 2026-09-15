@@ -69,6 +69,8 @@ const contexts: Record<LibraryItem["type"], Component> = {
   liked: FavoriteContext,
   allMedia: FavoriteContext,
   folder: FolderContext,
+  // Never shown: a station row refuses the menu (canOpenLibraryMenu).
+  radio: FavoriteContext,
 };
 
 const contextComponent = computed(() => {
@@ -146,7 +148,7 @@ const guardLongPress = (event: PointerEvent) => {
 };
 
 const handleTogglePin = () => {
-  if (!activeItem.value || activeItem.value.type === "liked" || activeItem.value.type === "allMedia" || activeItem.value.type === "folder") return;
+  if (!activeItem.value || activeItem.value.type === "liked" || activeItem.value.type === "allMedia" || activeItem.value.type === "folder" || activeItem.value.type === "radio") return;
   togglePin(activeItem.value.type, activeItem.value.id);
 };
 

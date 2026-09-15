@@ -19,7 +19,8 @@
     "playlist": "Playlist",
     "liked": "Liked Songs",
     "allMedia": "All Music",
-    "folder": "Folder"
+    "folder": "Folder",
+    "radio": "Station"
   },
   "folder": {
     "create": "Create folder",

@@ -16,7 +16,7 @@ import type {
 } from "../types";
 import { mapYmError, ymApi } from "./api/client";
 import type { YmAlbum, YmArtist, YmPlaylist, YmSearchResult, YmTrack } from "./api/types";
-import { isYmAvailable, setYmHasPlus, ymHasPlus } from "./config";
+import { isYmAvailable, setYmHasPlus } from "./config";
 import {
   flattenAlbumTracks,
   mapYmAlbum,
@@ -25,7 +25,6 @@ import {
   mapYmTrack,
   playlistTracks,
   ymPlaylistOwnerUid,
-  type YmMapContext,
 } from "./mappers";
 
 const unavailable = <T>(): ResultAsync<T, SourceError> =>
@@ -48,8 +47,8 @@ const ymPlaylistRef = (id: PlaylistId): { owner: string; kind: string } | null =
   return { owner, kind };
 };
 
-const withSession = <T>(call: (ctx: YmMapContext) => ResultAsync<T, SourceError>): ResultAsync<T, SourceError> =>
-  (isYmAvailable() ? call({ hasPlus: ymHasPlus() }) : unavailable<T>());
+const withSession = <T>(call: () => ResultAsync<T, SourceError>): ResultAsync<T, SourceError> =>
+  (isYmAvailable() ? call() : unavailable<T>());
 
 /** Yandex refuses `page >= 100`; the tail past that is simply not offered. */
 const MAX_SEARCH_PAGE = 99;
@@ -89,8 +88,8 @@ const SEARCH_TYPE: Record<SourceSearchScope, "all" | "track" | "album" | "artist
   playlist: "playlist",
 };
 
-const hitsOf = (result: YmSearchResult, ctx: YmMapContext): SourceSearchHit[] => [
-  ...(result.tracks?.results ?? []).map((track): SourceSearchHit => ({ kind: "track", item: mapYmTrack(track, ctx) })),
+const hitsOf = (result: YmSearchResult): SourceSearchHit[] => [
+  ...(result.tracks?.results ?? []).map((track): SourceSearchHit => ({ kind: "track", item: mapYmTrack(track) })),
   ...(result.albums?.results ?? []).map((album): SourceSearchHit => ({ kind: "album", item: mapYmAlbum(album) })),
   ...artistsOf(result.artists?.results ?? []).map((item): SourceSearchHit => ({ kind: "artist", item })),
   ...(result.playlists?.results ?? []).map((playlist): SourceSearchHit => ({ kind: "playlist", item: mapYmPlaylist(playlist) })),
@@ -106,16 +105,15 @@ const hasMore = (result: YmSearchResult, page: number): boolean => {
 export const ymSourceProvider: SourceProvider = {
   id: "ym",
 
-  // Downloads follow the subscription: without Plus Yandex only serves
-  // 30-second previews, which are not worth an offline copy.
-  get capabilities() {
-    return {
-      artists: { list: true, open: true },
-      albums: { list: true, open: true },
-      playlists: { list: true, open: true },
-      search: true,
-      download: ymHasPlus(),
-    };
+  // Downloads are offered to every account; whether Yandex hands over a
+  // whole track or only a preview is decided per track when it is asked for
+  // (the Plus flag alone cannot tell — see ymAvailability).
+  capabilities: {
+    artists: { list: true, open: true },
+    albums: { list: true, open: true },
+    playlists: { list: true, open: true },
+    search: true,
+    download: true,
   },
 
   get isAvailable() {
@@ -166,10 +164,10 @@ export const ymSourceProvider: SourceProvider = {
   getAlbum(id) {
     const albumId = ymIdOf(id);
     if (!albumId) return notYm("album", id);
-    return withSession(ctx =>
+    return withSession(() =>
       ymApi.album(albumId).map(album => ({
         album: mapYmAlbum(album),
-        tracks: flattenAlbumTracks(album, ctx),
+        tracks: flattenAlbumTracks(album),
       })),
     );
   },
@@ -177,14 +175,14 @@ export const ymSourceProvider: SourceProvider = {
   getArtist(id) {
     const artistId = ymIdOf(id);
     if (!artistId) return notYm("artist", id);
-    return withSession(ctx =>
+    return withSession(() =>
       ymApi.artist(artistId).andThen((info) => {
         const artist = mapYmArtist(info.artist) ?? mapYmArtist({ ...info.artist, id: artistId });
         if (!artist) return errAsync<never, SourceError>({ kind: "PARSE", message: "brief-info returned no artist" });
         return okAsync({
           artist,
           albums: (info.albums ?? []).map(mapYmAlbum),
-          tracks: (info.popularTracks ?? []).map(track => mapYmTrack(track, ctx)),
+          tracks: (info.popularTracks ?? []).map(track => mapYmTrack(track)),
         });
       }),
     );
@@ -204,19 +202,19 @@ export const ymSourceProvider: SourceProvider = {
   getPlaylist(id) {
     const ref = ymPlaylistRef(id);
     if (!ref) return notYm("playlist", id);
-    return withSession(ctx =>
+    return withSession(() =>
       ymApi.playlist(ref.owner, ref.kind).map(playlist => ({
         playlist: mapYmPlaylist({ ...playlist, uid: ymPlaylistOwnerUid(playlist) ?? Number(ref.owner) }),
-        tracks: playlistTracks(playlist, ctx),
+        tracks: playlistTracks(playlist),
       })),
     );
   },
 
   search(q, types, p) {
     if (p.offset > 0) return okAsync({ tracks: [], albums: [], artists: [] });
-    return withSession(ctx =>
+    return withSession(() =>
       ymApi.search(q, "all", 0).map(result => ({
-        tracks: types.includes("track") ? (result.tracks?.results ?? []).slice(0, p.limit).map(track => mapYmTrack(track, ctx)) : [],
+        tracks: types.includes("track") ? (result.tracks?.results ?? []).slice(0, p.limit).map(track => mapYmTrack(track)) : [],
         albums: types.includes("album") ? (result.albums?.results ?? []).slice(0, p.limit).map(mapYmAlbum) : [],
         artists: types.includes("artist") ? artistsOf(result.artists?.results ?? []).slice(0, p.limit) : [],
       })),
@@ -229,9 +227,9 @@ export const ymSourceProvider: SourceProvider = {
     if (!Number.isInteger(page) || page < 0 || page > MAX_SEARCH_PAGE) {
       return errAsync({ kind: "PARSE", message: `Not a Yandex search cursor: ${cursor}` });
     }
-    return withSession(ctx =>
+    return withSession(() =>
       ymApi.search(q, SEARCH_TYPE[scope], page).map(result => ({
-        items: hitsOf(result, ctx),
+        items: hitsOf(result),
         cursor: hasMore(result, page) ? String(page + 1) : null,
       })),
     );
@@ -240,11 +238,11 @@ export const ymSourceProvider: SourceProvider = {
   getTrack(id) {
     const trackId = ymIdOf(id);
     if (!trackId) return notYm("track", id);
-    return withSession(ctx =>
+    return withSession(() =>
       ymApi.tracks([trackId]).andThen((tracks) => {
         const track: YmTrack | undefined = tracks.length > 0 ? tracks[0] : undefined;
         if (!track) return errAsync<never, SourceError>({ kind: "NOT_FOUND", message: `Track ${trackId} is unknown to Yandex` });
-        return okAsync(mapYmTrack(track, ctx));
+        return okAsync(mapYmTrack(track));
       }),
     );
   },
@@ -268,14 +266,11 @@ export const ymSourceProvider: SourceProvider = {
     return ResultAsync.fromPromise(invokeCommand(COMMANDS.ymPrefetch, { trackId }), mapYmError);
   },
 
-  /** Only a subscriber gets a whole track; a 30-second preview is not an offline copy. */
+  /** Rust refuses with FORBIDDEN when Yandex only offers a preview of the track. */
   downloadToFile(id, onProgress) {
     const trackId = ymIdOf(id);
     if (!trackId) return notYm("track", id);
     if (!isYmAvailable()) return unavailable<{ path: string }>();
-    if (!ymHasPlus()) {
-      return errAsync({ kind: "FORBIDDEN", message: "Downloading from Yandex Music needs a Plus subscription" });
-    }
     const channel = new Channel<DownloadEvent>();
     if (onProgress) channel.onmessage = onProgress;
     // A manager-initiated cancel rejects with kind CANCELLED like any other

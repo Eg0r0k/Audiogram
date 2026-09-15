@@ -90,11 +90,11 @@ describe("ymSourceProvider", () => {
       expect(ymSourceProvider.isAvailable).toBe(true);
     });
 
-    it("offers downloads only to a Plus account", () => {
+    it("offers downloads whatever the Plus flag says — a family member has none and still gets whole tracks", () => {
       expect(ymSourceProvider.capabilities.download).toBe(true);
 
       useYmAuthStore().applyStatus(NO_PLUS);
-      expect(ymSourceProvider.capabilities.download).toBe(false);
+      expect(ymSourceProvider.capabilities.download).toBe(true);
     });
   });
 
@@ -275,13 +275,14 @@ describe("ymSourceProvider", () => {
       expect(invokeCommand).toHaveBeenCalledWith("ym_prefetch", { trackId: "40144" });
     });
 
-    it("returns FORBIDDEN before calling Rust when the account has no Plus", async () => {
+    it("asks Rust to download even without the Plus flag; Rust refuses a preview, not an account", async () => {
       useYmAuthStore().applyStatus(NO_PLUS);
+      invokeCommand.mockRejectedValue({ kind: "FORBIDDEN", message: "Yandex offers only a preview of this track" });
 
       const result = await ymSourceProvider.downloadToFile(ymTrackId("40144"));
 
+      expect(invokeCommand).toHaveBeenCalledWith("ym_download", expect.objectContaining({ trackId: "40144" }));
       expect(result._unsafeUnwrapErr().kind).toBe("FORBIDDEN");
-      expect(invokeCommand).not.toHaveBeenCalled();
     });
 
     it("downloads through ym_download and reports the mp3 it produced", async () => {

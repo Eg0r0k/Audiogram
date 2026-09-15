@@ -13,11 +13,6 @@ import type { YmAlbum, YmArtist, YmPlaylist, YmTrack } from "./api/types";
 // media server route substitutes the size and adds the scheme.
 //
 
-export interface YmMapContext {
-  /** Whether the signed-in account plays whole tracks. */
-  hasPlus: boolean;
-}
-
 /** The album a track is mapped under, when the caller already knows it. */
 export interface YmAlbumContext {
   id: number | string;
@@ -40,18 +35,16 @@ export const mapYmArtistRef = (artist: YmArtist): SourceArtistRef => {
 };
 
 /**
- * What Yandex will serve: nothing for a locked track, the whole track for a
- * subscriber or a track Yandex gives away, a 30-second preview otherwise.
+ * A locked track (region, takedown) plays nothing. Whether the rest plays
+ * whole or as a 30-second preview is not knowable from the catalog: the
+ * account's Plus flag is false for family members who do get whole tracks,
+ * so only `download-info` (asked when the track plays) says.
  */
-export const ymAvailability = (track: YmTrack, ctx: YmMapContext): SourceTrackDTO["availability"] => {
-  if (track.available === false) return "unavailable";
-  if (ctx.hasPlus || track.availableFullWithoutPermission) return "full";
-  return "preview";
-};
+export const ymAvailability = (track: YmTrack): SourceTrackDTO["availability"] =>
+  (track.available === false ? "unavailable" : "full");
 
 export const mapYmTrack = (
   track: YmTrack,
-  ctx: YmMapContext,
   album: YmAlbumContext | undefined = track.albums?.[0],
 ): SourceTrackDTO => {
   const artists = (track.artists ?? []).map(mapYmArtistRef);
@@ -70,7 +63,7 @@ export const mapYmTrack = (
     discNo: position?.volume,
     coverRef,
     format: { codec: "mp3" },
-    availability: ymAvailability(track, ctx),
+    availability: ymAvailability(track),
   };
 };
 
@@ -118,11 +111,11 @@ export const mapYmPlaylist = (playlist: YmPlaylist): SourcePlaylistDTO => ({
  * position is the place in the list. The album itself supplies the cover
  * and title the track rows show.
  */
-export const flattenAlbumTracks = (album: YmAlbum, ctx: YmMapContext): SourceTrackDTO[] => {
+export const flattenAlbumTracks = (album: YmAlbum): SourceTrackDTO[] => {
   const albumContext: YmAlbumContext = { id: album.id, title: album.title, coverUri: album.coverUri };
   return (album.volumes ?? []).flatMap((volume, discIndex) =>
     volume.map((track, trackIndex) => ({
-      ...mapYmTrack(track, ctx, albumContext),
+      ...mapYmTrack(track, albumContext),
       discNo: discIndex + 1,
       trackNo: trackIndex + 1,
     })),
@@ -130,5 +123,5 @@ export const flattenAlbumTracks = (album: YmAlbum, ctx: YmMapContext): SourceTra
 };
 
 /** The playable rows of a playlist; entries without a track body are skipped. */
-export const playlistTracks = (playlist: YmPlaylist, ctx: YmMapContext): SourceTrackDTO[] =>
-  (playlist.tracks ?? []).flatMap(entry => (entry.track ? [mapYmTrack(entry.track, ctx)] : []));
+export const playlistTracks = (playlist: YmPlaylist): SourceTrackDTO[] =>
+  (playlist.tracks ?? []).flatMap(entry => (entry.track ? [mapYmTrack(entry.track)] : []));

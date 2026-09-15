@@ -1,5 +1,6 @@
 import { computed, type MaybeRefOrGetter, toValue } from "vue";
 import type { LibraryFilter, LibraryItem } from "@/modules/library/types";
+import { i18n } from "@/app/i18n";
 import { routeLocation } from "@/app/router/route-locations";
 import { getLogger } from "@/lib/logger";
 import type { SourceKind } from "@/types/track-ref";
@@ -7,6 +8,7 @@ import { sources } from "../registry";
 import type { SourceEntity } from "../types";
 import { THUMB_SIZE_LQ, THUMB_SIZE_ROW } from "@/lib/media/cover-sizes";
 import { sourceCoverUrl } from "../lib/display";
+import { MY_WAVE_STATION } from "../yandex/radio/radio-session";
 import { useSourceAlbumsInfinite, useSourceArtists, useSourcePlaylists } from "./useSourceCatalog";
 
 //
@@ -56,6 +58,25 @@ export function useCatalogLibraryItems(
 
     const active = toValue(filter);
     const result: LibraryItem[] = [];
+
+    // Yandex's station leads its catalog like Liked Songs leads the library:
+    // a system row that starts playback instead of opening a page. Its `to`
+    // is the folder rows' placeholder — the row intercepts the click.
+    if (resolved === "ym" && (active === "all" || active === "playlist")) {
+      result.push({
+        id: MY_WAVE_STATION,
+        type: "radio",
+        title: i18n.global.t("queue.myWave"),
+        subtitle: i18n.global.t("source.ym"),
+        isPinned: false,
+        isSystem: true,
+        isCatalog: true,
+        addedAt: 0,
+        updatedAt: 0,
+        to: "/",
+        rounded: true,
+      });
+    }
 
     if (active === "all" || active === "artist") {
       for (const artist of artistsQuery.data.value ?? []) {

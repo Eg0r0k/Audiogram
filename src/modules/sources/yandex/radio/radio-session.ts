@@ -9,7 +9,6 @@ import { parseTrackRef } from "@/types/track-ref";
 import type { TrackId } from "@/types/ids";
 import { ymApi } from "../api/client";
 import type { YmStationTracks } from "../api/types";
-import { ymHasPlus } from "../config";
 import { mapYmTrack } from "../mappers";
 import { ymSourceProvider } from "../provider";
 
@@ -30,7 +29,6 @@ const PREFETCH_AHEAD = 2;
 export interface RadioDeps {
   stationTracks: (station: string, queue?: string) => ResultAsync<YmStationTracks, SourceError>;
   stationFeedback: (station: string, batchId: string | null, form: Record<string, string>) => ResultAsync<unknown, SourceError>;
-  hasPlus: () => boolean;
   prefetch: (id: TrackId) => void;
   now: () => Date;
 }
@@ -38,7 +36,6 @@ export interface RadioDeps {
 const defaultDeps: RadioDeps = {
   stationTracks: ymApi.stationTracks,
   stationFeedback: ymApi.stationFeedback,
-  hasPlus: ymHasPlus,
   prefetch: (id) => {
     ymSourceProvider.prefetch?.(id)
       .match(
@@ -128,13 +125,12 @@ export const createYmRadioSession = (station: string = MY_WAVE_STATION, deps: Ra
   const fetchChain = (queue: string | undefined): ResultAsync<SourceTrackDTO[], SourceError> =>
     deps.stationTracks(station, queue).map((result) => {
       currentBatch = result.batchId ?? null;
-      const ctx = { hasPlus: deps.hasPlus() };
       if (result.sequence.length > 0) {
         lastTrackId = String(result.sequence[result.sequence.length - 1].track.id);
       }
       // Yandex may hand a locked track to a station; it never reaches the queue.
       const tracks = result.sequence
-        .map(item => mapYmTrack(item.track, ctx))
+        .map(item => mapYmTrack(item.track))
         .filter(dto => dto.availability !== "unavailable");
       for (const dto of tracks) batchOf.set(dto.id, currentBatch);
       for (const dto of tracks.slice(0, PREFETCH_AHEAD)) deps.prefetch(dto.id);

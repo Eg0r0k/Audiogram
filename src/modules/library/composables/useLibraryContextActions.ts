@@ -18,6 +18,7 @@ export function useLibraryContextActions() {
   const addToQueue = async (item: LibraryItem) => {
     switch (item.type) {
       case "artist":
+      case "radio":
         return;
 
       case "album": {

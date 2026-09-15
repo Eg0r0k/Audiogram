@@ -8,6 +8,7 @@ import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import IconFolder from "~icons/tabler/folder-filled";
 import IconPinFilled from "~icons/tabler/pin-filled";
 import IconVolume from "~icons/tabler/volume";
+import IconWave from "~icons/tabler/wave-sine";
 
 const props = defineProps<{
   item: LibraryItem;
@@ -41,6 +42,13 @@ const hasStaticImage = computed(() => !!props.item.image);
         class="size-full rounded-md bg-[#3d3d3d] text-primary flex items-center justify-center"
       >
         <IconFolder class="size-8" />
+      </div>
+
+      <div
+        v-else-if="item.type === 'radio'"
+        class="size-full rounded-full bg-linear-to-br from-primary to-primary/40 text-primary-foreground flex items-center justify-center"
+      >
+        <IconWave class="size-7" />
       </div>
 
       <EntityCoverImage

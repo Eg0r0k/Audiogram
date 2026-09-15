@@ -43,7 +43,6 @@ const makeDeps = () => {
   const deps: RadioDeps = {
     stationTracks: vi.fn(() => okAsync(chain("batch-1", recorded.slice(0, 2)))),
     stationFeedback: vi.fn(() => okAsync("ok")),
-    hasPlus: () => true,
     prefetch: vi.fn(),
     now: () => NOW,
   };
