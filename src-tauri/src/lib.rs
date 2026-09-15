@@ -167,6 +167,8 @@ pub fn run() {
         .manage(nd::NdAudioCache::default())
         .manage(remote_download::DownloadRegistry::default())
         .manage(ym::YmState::default())
+        .manage(ym::YmLinkCache::default())
+        .manage(ym::YmAudioCache::default())
         .manage(media_state);
 
     #[cfg(desktop)]
@@ -225,6 +227,9 @@ pub fn run() {
         ym::ym_auth_cancel,
         ym::ym_auth_logout,
         ym::ym_request,
+        ym::ym_prefetch,
+        ym::ym_download,
+        ym::ym_download_cancel,
     ]);
 
     #[cfg(mobile)]
@@ -244,6 +249,9 @@ pub fn run() {
         ym::ym_auth_cancel,
         ym::ym_auth_logout,
         ym::ym_request,
+        ym::ym_prefetch,
+        ym::ym_download,
+        ym::ym_download_cancel,
     ]);
 
     builder

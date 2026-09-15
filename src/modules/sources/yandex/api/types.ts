@@ -38,9 +38,9 @@ export interface YmRequestPayload {
   form?: Record<string, string>;
 }
 
-/** `ym_request` rejects with this shape (serialized `YmError`). */
+/** Every `ym_*` command rejects with this shape (serialized `YmError`). */
 export interface YmError {
-  kind: Extract<SourceErrorKind, "AUTH" | "FORBIDDEN" | "RATE_LIMITED" | "NOT_FOUND" | "NETWORK" | "UNAVAILABLE" | "UNKNOWN">;
+  kind: Extract<SourceErrorKind, "AUTH" | "FORBIDDEN" | "RATE_LIMITED" | "NOT_FOUND" | "NETWORK" | "UNAVAILABLE" | "CANCELLED" | "UNKNOWN">;
   message: string;
   retryAfterMs?: number;
 }

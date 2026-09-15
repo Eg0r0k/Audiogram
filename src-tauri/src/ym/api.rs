@@ -23,6 +23,8 @@ pub enum YmErrorKind {
     Network,
     /// The endpoint is off-limits here, or Yandex answered 5xx.
     Unavailable,
+    /// A download the user cancelled — the manager drops the job on this.
+    Cancelled,
     Unknown,
 }
 

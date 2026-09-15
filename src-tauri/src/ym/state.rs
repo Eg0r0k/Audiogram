@@ -133,6 +133,8 @@ impl StoredAuth {
 pub struct Endpoints {
     pub api: String,
     pub oauth: String,
+    /// Scheme of the signed track links (`https`; the test upstream is plain).
+    pub link_scheme: &'static str,
 }
 
 /// The device-flow poll in progress. The id tells a finished poll from the
@@ -168,8 +170,15 @@ impl YmState {
             endpoints: Endpoints {
                 api: api.trim_end_matches('/').to_owned(),
                 oauth: oauth.trim_end_matches('/').to_owned(),
+                link_scheme: "https",
             },
         }
+    }
+
+    #[cfg(test)]
+    pub fn with_link_scheme(mut self, scheme: &'static str) -> Self {
+        self.endpoints.link_scheme = scheme;
+        self
     }
 
     pub fn session(&self) -> Option<YmSession> {
@@ -270,7 +279,7 @@ pub fn remove_auth_file(path: &Path) {
 }
 
 /// Reads the stored session once per launch; later calls are free.
-pub fn load_session_if_needed<R: Runtime>(app: &AppHandle<R>) {
+pub(crate) fn load_session_if_needed<R: Runtime>(app: &AppHandle<R>) {
     let state = app.state::<YmState>();
     if state.loaded.swap(true, Ordering::SeqCst) {
         return;

@@ -20,7 +20,8 @@ mod server;
 #[cfg(test)]
 pub(crate) use primitives::new_token;
 pub(crate) use primitives::{
-    cors, file_extension, forward_stream, memory_range_response, status_response,
+    cors, file_extension, forward_image, forward_stream, memory_range_response, status_response,
+    ImageError,
 };
 pub use server::{bind_on_loopback, spawn};
 

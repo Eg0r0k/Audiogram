@@ -103,18 +103,6 @@ const hasMore = (result: YmSearchResult, page: number): boolean => {
     .some(section => section && section.results.length > 0 && (page + 1) * section.perPage < section.total);
 };
 
-/**
- * `ym_download` rejects with a serialized `YmError`; a manager-initiated
- * cancel rejects with the literal string "cancelled" from the shared
- * download loop — mapped onto kind "CANCELLED" here.
- */
-const mapDownloadError = (raw: unknown): SourceError => {
-  if (raw === "cancelled" || (raw instanceof Error && raw.message === "cancelled")) {
-    return { kind: "CANCELLED", message: "cancelled" };
-  }
-  return mapYmError(raw);
-};
-
 export const ymSourceProvider: SourceProvider = {
   id: "ym",
 
@@ -290,9 +278,11 @@ export const ymSourceProvider: SourceProvider = {
     }
     const channel = new Channel<DownloadEvent>();
     if (onProgress) channel.onmessage = onProgress;
+    // A manager-initiated cancel rejects with kind CANCELLED like any other
+    // YmError — the download manager drops the job on it.
     return ResultAsync.fromPromise(
       invokeCommand(COMMANDS.ymDownload, { trackId, onProgress: channel }),
-      mapDownloadError,
+      mapYmError,
     ).map(result => ({ path: result.path, format: { codec: result.ext } }));
   },
 

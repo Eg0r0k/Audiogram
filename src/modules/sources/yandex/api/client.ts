@@ -21,7 +21,7 @@ import type {
 //
 
 const KNOWN_KINDS: ReadonlySet<string> = new Set<SourceErrorKind>([
-  "AUTH", "FORBIDDEN", "RATE_LIMITED", "NOT_FOUND", "NETWORK", "UNAVAILABLE", "UNKNOWN",
+  "AUTH", "FORBIDDEN", "RATE_LIMITED", "NOT_FOUND", "NETWORK", "UNAVAILABLE", "CANCELLED", "UNKNOWN",
 ]);
 
 /** The rejection of `ym_request` (a serialized `YmError`) in the shared vocabulary. */

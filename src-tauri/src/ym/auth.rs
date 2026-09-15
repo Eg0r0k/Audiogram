@@ -206,9 +206,10 @@ pub async fn request_device_code(
 }
 
 fn oauth_error_message(body: &str, status: u16) -> String {
-    serde_json::from_str::<OauthError>(body)
-        .map(|e| e.error_description.unwrap_or(e.error))
-        .unwrap_or_else(|_| format!("oauth status {status}"))
+    serde_json::from_str::<OauthError>(body).map_or_else(
+        |_| format!("oauth status {status}"),
+        |e| e.error_description.unwrap_or(e.error),
+    )
 }
 
 async fn post_token(

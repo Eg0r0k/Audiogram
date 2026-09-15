@@ -216,6 +216,62 @@ pub(crate) fn memory_range_response(
 
 // ── Upstream forwarding ──────────────────────────────────────────────
 
+/// Why an image could not be passed through: the request itself, or an
+/// upstream that answered with something other than 200.
+pub(crate) enum ImageError {
+    Request(String),
+    Status(u16),
+}
+
+/// GET `url` and stream the image through with cacheable headers — the body
+/// every cover route shares. Covers are cacheable, unlike tokenized audio:
+/// the webview may keep them for a day, which kills the `<img>` remount
+/// re-fetch flicker. Errors never embed the URL.
+pub(crate) async fn forward_image(
+    client: &reqwest::Client,
+    url: &str,
+    origin: Option<&str>,
+) -> Result<http::Response<Body>, ImageError> {
+    use futures_util::TryStreamExt;
+
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| ImageError::Request(e.without_url().to_string()))?;
+    let status = response.status().as_u16();
+    if status != 200 {
+        return Err(ImageError::Status(status));
+    }
+
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("image/jpeg")
+        .to_owned();
+    let content_length = response
+        .headers()
+        .get(reqwest::header::CONTENT_LENGTH)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_owned);
+
+    let mut builder = cors(http::Response::builder().status(200), origin)
+        .header("Content-Type", content_type)
+        .header("Cache-Control", "public, max-age=86400");
+    if let Some(len) = content_length {
+        builder = builder.header("Content-Length", len);
+    }
+
+    let stream = response
+        .bytes_stream()
+        .map_err(|e| std::io::Error::other(e.without_url().to_string()))
+        .map_ok(hyper::body::Frame::data);
+    builder
+        .body(StreamBody::new(stream).boxed())
+        .map_err(|e| ImageError::Request(e.to_string()))
+}
+
 /// Caps any range to `max_span` bytes: `bytes=X-` (the media element's probe
 /// and seek form) and over-long explicit ranges become `bytes=X-(X+span-1)`.
 ///

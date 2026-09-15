@@ -294,7 +294,7 @@ describe("ymSourceProvider", () => {
     });
 
     it("maps a manager-initiated cancel onto CANCELLED", async () => {
-      invokeCommand.mockRejectedValue("cancelled");
+      invokeCommand.mockRejectedValue({ kind: "CANCELLED", message: "cancelled" });
 
       const result = await ymSourceProvider.downloadToFile(ymTrackId("40144"));
 
