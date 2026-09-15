@@ -1,0 +1,346 @@
+{
+  "result": {
+    "type": "track",
+    "page": 1,
+    "perPage": 20,
+    "text": "кино",
+    "tracks": {
+      "total": 43580,
+      "perPage": 20,
+      "order": 0,
+      "results": [
+        {
+          "id": 155119045,
+          "realId": "155119045",
+          "title": "Кино",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 228570,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 20843648,
+              "name": "BAPAY",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/9868087/d511f80c.p.20843648/%%",
+                "prefix": "d511f80c.p.20843648/"
+              },
+              "genres": [],
+              "disclaimers": [],
+              "cutoutCover": {
+                "uri": "avatars.yandex.net/get-music-content/17730916/619bca61.c.99219/%%"
+              }
+            },
+            {
+              "id": 6988160,
+              "name": "CAPTOWN",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/17696724/3ffc4df9.p.6988160/%%",
+                "prefix": "3ffc4df9.p.6988160/"
+              },
+              "genres": [],
+              "disclaimers": []
+            }
+          ],
+          "albums": [
+            {
+              "id": 43676687,
+              "title": "451 Fahrenheit",
+              "metaType": "music",
+              "contentWarning": "explicit",
+              "year": 2026,
+              "releaseDate": "2026-09-11T00:00:00+03:00",
+              "coverUri": "avatars.yandex.net/get-music-content/20974004/6e02bc4b.a.43676687-1/%%",
+              "ogImage": "avatars.yandex.net/get-music-content/20974004/6e02bc4b.a.43676687-1/%%",
+              "genre": "rusrap",
+              "trackCount": 11,
+              "likesCount": 165,
+              "recent": true,
+              "veryImportant": true,
+              "artists": [
+                {
+                  "id": 20843648,
+                  "name": "BAPAY",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-artist-photos",
+                    "uri": "avatars.yandex.net/get-music-content/9868087/d511f80c.p.20843648/%%",
+                    "prefix": "d511f80c.p.20843648/"
+                  },
+                  "genres": [],
+                  "disclaimers": [],
+                  "cutoutCover": {
+                    "uri": "avatars.yandex.net/get-music-content/17730916/619bca61.c.99219/%%"
+                  }
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [
+                131086105,
+                155119044,
+                155119045
+              ],
+              "disclaimers": [
+                "explicit",
+                "exclamationIcon:671a23afcec5646906723a52",
+                "descriptionText:67370c8e13b92b0a60256675"
+              ],
+              "listeningFinished": false,
+              "labels": [
+                "Infinity Music"
+              ],
+              "storageDir": "6e02bc4b.a.43676687-1",
+              "trackPosition": {
+                "volume": 1,
+                "index": 9
+              },
+              "regions": [
+                "RUSSIA",
+                "RUSSIA_PREMIUM"
+              ],
+              "availableRegions": []
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/20974004/6e02bc4b.a.43676687-1/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": true,
+            "hasAvailableTextLyrics": true
+          },
+          "type": "music"
+        },
+        {
+          "id": 126522425,
+          "realId": "126522425",
+          "title": "Кино",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 171420,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 22280637,
+              "name": "SYCHEWA",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-album-cover",
+                "uri": "avatars.yandex.net/get-music-content/10099790/82123a7e.a.31445076-1/%%",
+                "prefix": "82123a7e.a.31445076-1"
+              },
+              "genres": [],
+              "disclaimers": []
+            }
+          ],
+          "albums": [
+            {
+              "id": 31445076,
+              "title": "Кино",
+              "type": "single",
+              "metaType": "music",
+              "year": 2024,
+              "releaseDate": "2024-06-01T00:00:00+03:00",
+              "coverUri": "avatars.yandex.net/get-music-content/10099790/82123a7e.a.31445076-1/%%",
+              "ogImage": "avatars.yandex.net/get-music-content/10099790/82123a7e.a.31445076-1/%%",
+              "genre": "pop",
+              "trackCount": 1,
+              "likesCount": 838,
+              "recent": false,
+              "veryImportant": false,
+              "artists": [
+                {
+                  "id": 22280637,
+                  "name": "SYCHEWA",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-album-cover",
+                    "uri": "avatars.yandex.net/get-music-content/10099790/82123a7e.a.31445076-1/%%",
+                    "prefix": "82123a7e.a.31445076-1"
+                  },
+                  "genres": [],
+                  "disclaimers": []
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [],
+              "disclaimers": [],
+              "listeningFinished": false,
+              "labels": [
+                "SYCHEWA"
+              ],
+              "storageDir": "82123a7e.a.31445076-1",
+              "trackPosition": {
+                "volume": 1,
+                "index": 1
+              },
+              "regions": [
+                "RUSSIA",
+                "RUSSIA_PREMIUM"
+              ],
+              "availableRegions": []
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/10099790/82123a7e.a.31445076-1/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": false,
+            "hasAvailableTextLyrics": false
+          },
+          "type": "music"
+        },
+        {
+          "id": 133162326,
+          "realId": "133162326",
+          "title": "Кино",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 177050,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 18820894,
+              "name": "wtwice",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/10210263/d0049bc2.p.18820894/%%",
+                "prefix": "d0049bc2.p.18820894/"
+              },
+              "genres": [],
+              "disclaimers": []
+            },
+            {
+              "id": 23297821,
+              "name": "outtaluvv",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/17784780/60ef78a6.p.23297821/%%",
+                "prefix": "60ef78a6.p.23297821/"
+              },
+              "genres": [],
+              "disclaimers": [],
+              "cutoutCover": {
+                "uri": "avatars.yandex.net/get-music-content/20031403/23259b56.c.1002643/%%"
+              }
+            }
+          ],
+          "albums": [
+            {
+              "id": 41272015,
+              "title": "Кино",
+              "type": "single",
+              "metaType": "music",
+              "contentWarning": "explicit",
+              "year": 2024,
+              "releaseDate": "2024-11-29T00:00:00+03:00",
+              "coverUri": "avatars.yandex.net/get-music-content/17681324/fa9d0d05.a.41272015-1/%%",
+              "ogImage": "avatars.yandex.net/get-music-content/17681324/fa9d0d05.a.41272015-1/%%",
+              "genre": "rap",
+              "trackCount": 1,
+              "likesCount": 2,
+              "recent": false,
+              "veryImportant": false,
+              "artists": [
+                {
+                  "id": 18820894,
+                  "name": "wtwice",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-artist-photos",
+                    "uri": "avatars.yandex.net/get-music-content/10210263/d0049bc2.p.18820894/%%",
+                    "prefix": "d0049bc2.p.18820894/"
+                  },
+                  "genres": [],
+                  "disclaimers": []
+                },
+                {
+                  "id": 23297821,
+                  "name": "outtaluvv",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-artist-photos",
+                    "uri": "avatars.yandex.net/get-music-content/17784780/60ef78a6.p.23297821/%%",
+                    "prefix": "60ef78a6.p.23297821/"
+                  },
+                  "genres": [],
+                  "disclaimers": [],
+                  "cutoutCover": {
+                    "uri": "avatars.yandex.net/get-music-content/20031403/23259b56.c.1002643/%%"
+                  }
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [],
+              "disclaimers": [
+                "explicit",
+                "exclamationIcon:671a23afcec5646906723a52",
+                "descriptionText:67370c8e13b92b0a60256675"
+              ],
+              "listeningFinished": false,
+              "labels": [
+                "Этажи"
+              ],
+              "storageDir": "fa9d0d05.a.41272015-1",
+              "trackPosition": {
+                "volume": 1,
+                "index": 1
+              },
+              "regions": [
+                "RUSSIA",
+                "RUSSIA_PREMIUM"
+              ],
+              "availableRegions": []
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/17681324/fa9d0d05.a.41272015-1/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": true,
+            "hasAvailableTextLyrics": true
+          },
+          "type": "music"
+        }
+      ]
+    }
+  }
+}

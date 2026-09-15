@@ -1,0 +1,428 @@
+{
+  "result": {
+    "owner": {
+      "uid": 457553308,
+      "login": "yamusic-bestsongs",
+      "name": "Яндекс Музыка",
+      "sex": "unknown",
+      "verified": true
+    },
+    "uid": 457553308,
+    "kind": 41075,
+    "title": "Лучшее: КИНО",
+    "description": "КИНО: самые популярные треки",
+    "trackCount": 20,
+    "cover": {
+      "type": "pic",
+      "dir": "/get-music-user-playlist/10311229/s9xdf1jvxpHCJj/",
+      "version": "1709726510822",
+      "uri": "avatars.yandex.net/get-music-user-playlist/10311229/s9xdf1jvxpHCJj/%%?1709726510822",
+      "custom": true
+    },
+    "available": true,
+    "visibility": "public",
+    "durationMs": 5497250,
+    "tracks": [
+      {
+        "id": 38633712,
+        "originalIndex": 0,
+        "timestamp": "2026-08-31T16:45:31+00:00",
+        "track": {
+          "id": "38633712",
+          "realId": "38633712",
+          "title": "Группа крови",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 235100,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 41075,
+              "name": "КИНО",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+                "prefix": "c6d507c7.p.41075/"
+              },
+              "genres": [],
+              "disclaimers": []
+            }
+          ],
+          "albums": [
+            {
+              "id": 5307396,
+              "title": "Легенда",
+              "metaType": "music",
+              "contentWarning": "explicit",
+              "year": 2018,
+              "releaseDate": "2018-04-24T00:00:00+03:00",
+              "coverUri": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%",
+              "cover": {
+                "uri": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%"
+              },
+              "ogImage": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%",
+              "genre": "rusrock",
+              "trackCount": 85,
+              "likesCount": 207570,
+              "recent": false,
+              "veryImportant": false,
+              "artists": [
+                {
+                  "id": 41075,
+                  "name": "КИНО",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-artist-photos",
+                    "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+                    "prefix": "c6d507c7.p.41075/"
+                  },
+                  "genres": [],
+                  "disclaimers": []
+                }
+              ],
+              "labels": [
+                {
+                  "id": 1137247,
+                  "name": "Наследники В. Цоя & Г. Гурьянова"
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [
+                38633756,
+                38633712,
+                38634578
+              ],
+              "disclaimers": [
+                "explicit",
+                "exclamationIcon:671a23afcec5646906723a52",
+                "descriptionText:67370c8e13b92b0a60256675"
+              ],
+              "hasTrailer": false,
+              "trackPosition": {
+                "volume": 1,
+                "index": 3
+              }
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": true,
+            "hasAvailableTextLyrics": true
+          },
+          "type": "music"
+        }
+      },
+      {
+        "id": 38634578,
+        "originalIndex": 1,
+        "timestamp": "2026-08-31T16:45:31+00:00",
+        "track": {
+          "id": "38634578",
+          "realId": "38634578",
+          "title": "Пачка сигарет",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 266010,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 41075,
+              "name": "КИНО",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+                "prefix": "c6d507c7.p.41075/"
+              },
+              "genres": [],
+              "disclaimers": []
+            }
+          ],
+          "albums": [
+            {
+              "id": 5307396,
+              "title": "Легенда",
+              "metaType": "music",
+              "contentWarning": "explicit",
+              "year": 2018,
+              "releaseDate": "2018-04-24T00:00:00+03:00",
+              "coverUri": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%",
+              "cover": {
+                "uri": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%"
+              },
+              "ogImage": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%",
+              "genre": "rusrock",
+              "trackCount": 85,
+              "likesCount": 207570,
+              "recent": false,
+              "veryImportant": false,
+              "artists": [
+                {
+                  "id": 41075,
+                  "name": "КИНО",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-artist-photos",
+                    "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+                    "prefix": "c6d507c7.p.41075/"
+                  },
+                  "genres": [],
+                  "disclaimers": []
+                }
+              ],
+              "labels": [
+                {
+                  "id": 1137247,
+                  "name": "Наследники В. Цоя & Г. Гурьянова"
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [
+                38633756,
+                38633712,
+                38634578
+              ],
+              "disclaimers": [
+                "explicit",
+                "exclamationIcon:671a23afcec5646906723a52",
+                "descriptionText:67370c8e13b92b0a60256675"
+              ],
+              "hasTrailer": false,
+              "trackPosition": {
+                "volume": 1,
+                "index": 5
+              }
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": true,
+            "hasAvailableTextLyrics": true
+          },
+          "type": "music"
+        }
+      },
+      {
+        "id": 38633756,
+        "originalIndex": 2,
+        "timestamp": "2026-08-31T16:45:31+00:00",
+        "track": {
+          "id": "38633756",
+          "realId": "38633756",
+          "title": "Кончится лето",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 354670,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 41075,
+              "name": "КИНО",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+                "prefix": "c6d507c7.p.41075/"
+              },
+              "genres": [],
+              "disclaimers": []
+            }
+          ],
+          "albums": [
+            {
+              "id": 5307396,
+              "title": "Легенда",
+              "metaType": "music",
+              "contentWarning": "explicit",
+              "year": 2018,
+              "releaseDate": "2018-04-24T00:00:00+03:00",
+              "coverUri": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%",
+              "cover": {
+                "uri": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%"
+              },
+              "ogImage": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%",
+              "genre": "rusrock",
+              "trackCount": 85,
+              "likesCount": 207570,
+              "recent": false,
+              "veryImportant": false,
+              "artists": [
+                {
+                  "id": 41075,
+                  "name": "КИНО",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-artist-photos",
+                    "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+                    "prefix": "c6d507c7.p.41075/"
+                  },
+                  "genres": [],
+                  "disclaimers": []
+                }
+              ],
+              "labels": [
+                {
+                  "id": 1137247,
+                  "name": "Наследники В. Цоя & Г. Гурьянова"
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [
+                38633756,
+                38633712,
+                38634578
+              ],
+              "disclaimers": [
+                "explicit",
+                "exclamationIcon:671a23afcec5646906723a52",
+                "descriptionText:67370c8e13b92b0a60256675"
+              ],
+              "hasTrailer": false,
+              "trackPosition": {
+                "volume": 1,
+                "index": 51
+              }
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": true,
+            "hasAvailableTextLyrics": true
+          },
+          "type": "music"
+        }
+      },
+      {
+        "id": 38634573,
+        "originalIndex": 3,
+        "timestamp": "2026-08-31T16:45:31+00:00",
+        "track": {
+          "id": "38634573",
+          "realId": "38634573",
+          "title": "Звезда по имени Солнце",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 225660,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 41075,
+              "name": "КИНО",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+                "prefix": "c6d507c7.p.41075/"
+              },
+              "genres": [],
+              "disclaimers": []
+            }
+          ],
+          "albums": [
+            {
+              "id": 10030,
+              "title": "Звезда по имени Солнце",
+              "metaType": "music",
+              "year": 1989,
+              "releaseDate": "1989-08-29T00:00:00+04:00",
+              "coverUri": "avatars.yandex.net/get-music-content/5853241/bc8002a7.a.10030-10/%%",
+              "cover": {
+                "uri": "avatars.yandex.net/get-music-content/5853241/bc8002a7.a.10030-10/%%"
+              },
+              "ogImage": "avatars.yandex.net/get-music-content/5853241/bc8002a7.a.10030-10/%%",
+              "genre": "rusrock",
+              "trackCount": 9,
+              "likesCount": 91650,
+              "recent": false,
+              "veryImportant": false,
+              "artists": [
+                {
+                  "id": 41075,
+                  "name": "КИНО",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-artist-photos",
+                    "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+                    "prefix": "c6d507c7.p.41075/"
+                  },
+                  "genres": [],
+                  "disclaimers": []
+                }
+              ],
+              "labels": [
+                {
+                  "id": 5468362,
+                  "name": "Цой В.Р. (наследники)"
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [
+                38634573,
+                38634578
+              ],
+              "disclaimers": [],
+              "hasTrailer": false,
+              "backgroundImageUrl": "avatars.mds.yandex.net/get-music-misc/30221/10030.rnd-1333444964.playlist-branding/%%",
+              "trackPosition": {
+                "volume": 1,
+                "index": 2
+              }
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/5853241/bc8002a7.a.10030-10/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": true,
+            "hasAvailableTextLyrics": true
+          },
+          "type": "music"
+        }
+      }
+    ],
+    "modified": "2026-08-31T16:45:31+00:00"
+  }
+}

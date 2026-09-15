@@ -1,0 +1,18 @@
+{
+  "result": [
+    {
+      "codec": "mp3",
+      "gain": false,
+      "preview": true,
+      "downloadInfoUrl": "https://api.music.yandex.net/get-mp3/U2FsdGVkX1-W9sGRpxFF5GuhXHZyXwTwfbklFTqWIibNA9sjTnPaiVXCgn9APh8ACLvAiCcHIWP-0Gc0Lm-YW5sZ39mxPIMBaGqRH4I8GJuIPngK8jKinsuS8sClPcwhB-3zYYXowyxS555q-KQiJ9IC8-wRuXT9dspb0cTs5zuy-F2U93Y5QiDqKVmu5stRBVq8fD6NIj6ey4nQdcULFE_Nrkni753IE09YDeTzHFrTTwK9izfKXYXzJ7vt4pL-zV02mVmNG_WE1x-jNjAvADRUVZor6NZ3Aqgo8Y1u01BwmYIrvdqSMkPQdNPyzDONrAybPwqlHyXZVTW18W8rMq2lAP1H0uz6UU9167g3WaDksHT7vZpQZpREZn1_P4Epaa5X_-ntd1ov6u_QD3Fn9wWA13lK-PVT87RUsHRLA2SybQaCK86yAA03I6bcTdNYBrzAYk1pq__pFqAhNY0vxDLStsnY0MWXKlfnWy3fDtR854N5sUU1Fr7BrFTy8KH1TR-q13aHyAUER64iFO-zrMQZH6lW3Ur5SPxMnQZs0KbR04r55QlvBzaUMpfVL4spbRkXeJ6ldISu6tBiookt7V8crXnWZp1o6wo3k-kmoPYz9hlFM5AkPpvR3mDp0VczdQIrXS7jPYbcJ3ACWB1voWRC9DV2zjFw38H8euWh9phmbtxudjZmH2Ok6LUi7zrKbUT2fm32KAIN-3-SdsVhuBgoMA9FUV0VDm7lMzYUkCdEN7lI-qokauSM5ShjyNK9bm6E1-4KLeCJyo-AdMEWtK0bsM6LZVNroIgdC3qiyPf7citHg_VT20jZOpxtkJ9BlodP6hDbIHpvCiHyt0uIlKiPK1JAAz8uyDfTgwUfIYeMUmhTeKe71gsc0HIV1Y7m1AInDYWNl50tUP0vDLbN-xfeVqAWL91LmTZymakKUdM19d8pLnKmDnUrdJC-L7H47gqoIUQ5LG0GUV-Pc6HFnw?sign=4Gt_AoJmPlQthq8gWD_GyYrvUhyflKDqHSH0PjOMdIc&ts=1a0a5cc40fe",
+      "direct": false,
+      "bitrateInKbps": 128
+    }
+  ],
+  "invocationInfo": {
+    "hostname": "music-resource-provider-mobile-16.vla.yp-c.yandex.net",
+    "req-id": "1789487961732649-8567684125739816000",
+    "app-name": "music-resource-provider",
+    "exec-duration-millis": 12
+  }
+}

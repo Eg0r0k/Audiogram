@@ -1,0 +1,79 @@
+import { ResultAsync } from "neverthrow";
+import { COMMANDS, PlatformUnavailableError, invokeCommand } from "@/app/tauri-commands";
+import type { SourceError, SourceErrorKind } from "@/types/source-dto";
+import type {
+  YmAccountStatus,
+  YmAlbum,
+  YmArtistBriefInfo,
+  YmLikedAlbum,
+  YmLikedArtist,
+  YmLikedPlaylist,
+  YmPlaylist,
+  YmRequestPayload,
+  YmSearchResult,
+  YmSearchType,
+  YmTrack,
+} from "./types";
+
+//
+// Typed calls over `ym_request`. Every path is one the Rust allowlist knows;
+// `{uid}` is left for Rust to fill in — the frontend never handles the uid.
+//
+
+const KNOWN_KINDS: ReadonlySet<string> = new Set<SourceErrorKind>([
+  "AUTH", "FORBIDDEN", "RATE_LIMITED", "NOT_FOUND", "NETWORK", "UNAVAILABLE", "UNKNOWN",
+]);
+
+/** The rejection of `ym_request` (a serialized `YmError`) in the shared vocabulary. */
+export const mapYmError = (raw: unknown): SourceError => {
+  if (raw instanceof PlatformUnavailableError) return { kind: "UNAVAILABLE", message: raw.message };
+  if (typeof raw === "object" && raw !== null && "kind" in raw && "message" in raw) {
+    const error = raw as { kind: unknown; message: unknown; retryAfterMs?: unknown };
+    const kind = typeof error.kind === "string" && KNOWN_KINDS.has(error.kind)
+      ? error.kind as SourceErrorKind
+      : "UNKNOWN";
+    return {
+      kind,
+      message: String(error.message),
+      ...(typeof error.retryAfterMs === "number" ? { retryAfterMs: error.retryAfterMs } : {}),
+    };
+  }
+  const message = raw instanceof Error ? raw.message : String(raw);
+  return { kind: "UNKNOWN", message };
+};
+
+export const ymRequest = <T>(req: YmRequestPayload): ResultAsync<T, SourceError> =>
+  ResultAsync.fromPromise(
+    invokeCommand(COMMANDS.ymRequest, { req }) as Promise<T>,
+    mapYmError,
+  );
+
+export const ymApi = {
+  accountStatus: () => ymRequest<YmAccountStatus>({ path: "/account/status" }),
+
+  likedAlbums: () =>
+    ymRequest<YmLikedAlbum[]>({ path: "/users/{uid}/likes/albums", query: { rich: "true" } }),
+
+  likedArtists: () => ymRequest<YmLikedArtist[]>({ path: "/users/{uid}/likes/artists" }),
+
+  likedPlaylists: () => ymRequest<YmLikedPlaylist[]>({ path: "/users/{uid}/likes/playlists" }),
+
+  ownPlaylists: () => ymRequest<YmPlaylist[]>({ path: "/users/{uid}/playlists/list" }),
+
+  playlist: (ownerUid: string, kind: string) =>
+    ymRequest<YmPlaylist>({ path: `/users/${ownerUid}/playlists/${kind}` }),
+
+  album: (albumId: string) => ymRequest<YmAlbum>({ path: `/albums/${albumId}/with-tracks` }),
+
+  artist: (artistId: string) => ymRequest<YmArtistBriefInfo>({ path: `/artists/${artistId}/brief-info` }),
+
+  /** POST: a liked-tracks list can run to thousands of ids. */
+  tracks: (trackIds: readonly string[]) =>
+    ymRequest<YmTrack[]>({ method: "POST", path: "/tracks", form: { "track-ids": trackIds.join(",") } }),
+
+  search: (text: string, type: YmSearchType, page: number) =>
+    ymRequest<YmSearchResult>({
+      path: "/search",
+      query: { text, type, page: String(page), nocorrect: "false" },
+    }),
+};

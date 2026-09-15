@@ -50,6 +50,9 @@ export const COMMANDS = {
   ymAuthCancel: "ym_auth_cancel",
   ymAuthLogout: "ym_auth_logout",
   ymRequest: "ym_request",
+  ymPrefetch: "ym_prefetch",
+  ymDownload: "ym_download",
+  ymDownloadCancel: "ym_download_cancel",
   ytSearch: "yt_search",
   ytSearchContinue: "yt_search_continue",
   ytResolve: "yt_resolve",
@@ -99,6 +102,12 @@ export interface CommandMap {
   ym_auth_logout: { args: undefined; result: void };
   /** The `result` of the API envelope; the caller narrows it. */
   ym_request: { args: { req: YmRequestPayload }; result: unknown };
+  ym_prefetch: { args: { trackId: string }; result: void };
+  ym_download: {
+    args: { trackId: string; onProgress: Channel<DownloadEvent> };
+    result: { path: string; ext: string };
+  };
+  ym_download_cancel: { args: { trackId: string }; result: void };
   yt_search: { args: { query: string }; result: YtPage<YtSearchResult> };
   yt_search_continue: { args: { continuation: string }; result: YtPage<YtSearchResult> };
   yt_resolve: { args: { id: string }; result: string };

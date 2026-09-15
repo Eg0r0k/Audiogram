@@ -1,0 +1,386 @@
+{
+  "result": {
+    "id": 3328,
+    "title": "Private Room",
+    "year": 2007,
+    "coverUri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+    "trackCount": 16,
+    "artists": [
+      {
+        "id": 16313,
+        "name": "Avant",
+        "various": false,
+        "composer": false,
+        "cover": {
+          "type": "from-album-cover",
+          "uri": "avatars.yandex.net/get-music-content/49876/3f64f12d.a.85739-1/%%",
+          "prefix": "3f64f12d.a.85739-1"
+        },
+        "available": true
+      }
+    ],
+    "available": true,
+    "availableForPremiumUsers": true,
+    "genre": "rnb",
+    "volumes": [
+      [
+        {
+          "id": "40142",
+          "realId": "40142",
+          "title": "Private Room Intro",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 64880,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 16313,
+              "name": "Avant",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-album-cover",
+                "uri": "avatars.yandex.net/get-music-content/49876/3f64f12d.a.85739-1/%%",
+                "prefix": "3f64f12d.a.85739-1"
+              },
+              "genres": [],
+              "disclaimers": []
+            }
+          ],
+          "albums": [
+            {
+              "id": 3328,
+              "title": "Private Room",
+              "metaType": "music",
+              "year": 2007,
+              "releaseDate": "2007-03-29T00:00:00+04:00",
+              "coverUri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+              "cover": {
+                "uri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%"
+              },
+              "ogImage": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+              "genre": "rnb",
+              "trackCount": 16,
+              "likesCount": 16,
+              "recent": false,
+              "veryImportant": false,
+              "artists": [
+                {
+                  "id": 16313,
+                  "name": "Avant",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-album-cover",
+                    "uri": "avatars.yandex.net/get-music-content/49876/3f64f12d.a.85739-1/%%",
+                    "prefix": "3f64f12d.a.85739-1"
+                  },
+                  "genres": [],
+                  "disclaimers": []
+                }
+              ],
+              "labels": [
+                {
+                  "id": 1448,
+                  "name": "Geffen"
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [
+                40144
+              ],
+              "disclaimers": [],
+              "hasTrailer": false,
+              "trackPosition": {
+                "volume": 1,
+                "index": 1
+              }
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": true,
+            "hasAvailableTextLyrics": true
+          },
+          "type": "music"
+        },
+        {
+          "id": "40140",
+          "realId": "40140",
+          "title": "AV",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 238230,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 16313,
+              "name": "Avant",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-album-cover",
+                "uri": "avatars.yandex.net/get-music-content/49876/3f64f12d.a.85739-1/%%",
+                "prefix": "3f64f12d.a.85739-1"
+              },
+              "genres": [],
+              "disclaimers": []
+            }
+          ],
+          "albums": [
+            {
+              "id": 3328,
+              "title": "Private Room",
+              "metaType": "music",
+              "year": 2007,
+              "releaseDate": "2007-03-29T00:00:00+04:00",
+              "coverUri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+              "cover": {
+                "uri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%"
+              },
+              "ogImage": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+              "genre": "rnb",
+              "trackCount": 16,
+              "likesCount": 16,
+              "recent": false,
+              "veryImportant": false,
+              "artists": [
+                {
+                  "id": 16313,
+                  "name": "Avant",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-album-cover",
+                    "uri": "avatars.yandex.net/get-music-content/49876/3f64f12d.a.85739-1/%%",
+                    "prefix": "3f64f12d.a.85739-1"
+                  },
+                  "genres": [],
+                  "disclaimers": []
+                }
+              ],
+              "labels": [
+                {
+                  "id": 1448,
+                  "name": "Geffen"
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [
+                40144
+              ],
+              "disclaimers": [],
+              "hasTrailer": false,
+              "trackPosition": {
+                "volume": 1,
+                "index": 2
+              }
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": true,
+            "hasAvailableTextLyrics": true
+          },
+          "type": "music"
+        },
+        {
+          "id": "40144",
+          "realId": "40144",
+          "title": "Read Your Mind",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 263540,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 16313,
+              "name": "Avant",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-album-cover",
+                "uri": "avatars.yandex.net/get-music-content/49876/3f64f12d.a.85739-1/%%",
+                "prefix": "3f64f12d.a.85739-1"
+              },
+              "genres": [],
+              "disclaimers": []
+            }
+          ],
+          "albums": [
+            {
+              "id": 3328,
+              "title": "Private Room",
+              "metaType": "music",
+              "year": 2007,
+              "releaseDate": "2007-03-29T00:00:00+04:00",
+              "coverUri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+              "cover": {
+                "uri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%"
+              },
+              "ogImage": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+              "genre": "rnb",
+              "trackCount": 16,
+              "likesCount": 16,
+              "recent": false,
+              "veryImportant": false,
+              "artists": [
+                {
+                  "id": 16313,
+                  "name": "Avant",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-album-cover",
+                    "uri": "avatars.yandex.net/get-music-content/49876/3f64f12d.a.85739-1/%%",
+                    "prefix": "3f64f12d.a.85739-1"
+                  },
+                  "genres": [],
+                  "disclaimers": []
+                }
+              ],
+              "labels": [
+                {
+                  "id": 1448,
+                  "name": "Geffen"
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [
+                40144
+              ],
+              "disclaimers": [],
+              "hasTrailer": false,
+              "trackPosition": {
+                "volume": 1,
+                "index": 3
+              }
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": false,
+            "hasAvailableTextLyrics": true
+          },
+          "type": "music"
+        },
+        {
+          "id": "40135",
+          "realId": "40135",
+          "title": "Heaven",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 236770,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 16313,
+              "name": "Avant",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-album-cover",
+                "uri": "avatars.yandex.net/get-music-content/49876/3f64f12d.a.85739-1/%%",
+                "prefix": "3f64f12d.a.85739-1"
+              },
+              "genres": [],
+              "disclaimers": []
+            }
+          ],
+          "albums": [
+            {
+              "id": 3328,
+              "title": "Private Room",
+              "metaType": "music",
+              "year": 2007,
+              "releaseDate": "2007-03-29T00:00:00+04:00",
+              "coverUri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+              "cover": {
+                "uri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%"
+              },
+              "ogImage": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+              "genre": "rnb",
+              "trackCount": 16,
+              "likesCount": 16,
+              "recent": false,
+              "veryImportant": false,
+              "artists": [
+                {
+                  "id": 16313,
+                  "name": "Avant",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-album-cover",
+                    "uri": "avatars.yandex.net/get-music-content/49876/3f64f12d.a.85739-1/%%",
+                    "prefix": "3f64f12d.a.85739-1"
+                  },
+                  "genres": [],
+                  "disclaimers": []
+                }
+              ],
+              "labels": [
+                {
+                  "id": 1448,
+                  "name": "Geffen"
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [
+                40144
+              ],
+              "disclaimers": [],
+              "hasTrailer": false,
+              "trackPosition": {
+                "volume": 1,
+                "index": 4
+              }
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": false,
+            "hasAvailableTextLyrics": false
+          },
+          "type": "music"
+        }
+      ]
+    ]
+  }
+}

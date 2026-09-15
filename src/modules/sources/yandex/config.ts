@@ -27,3 +27,13 @@ export const ymHasPlus = (): boolean => {
     return false;
   }
 };
+
+/** A live `account/status` answer knows the current subscription better than the stored one. */
+export const setYmHasPlus = (hasPlus: boolean): void => {
+  try {
+    useYmAuthStore().hasPlus = hasPlus;
+  }
+  catch {
+    // No store yet: nothing to correct.
+  }
+};

@@ -1,0 +1,508 @@
+{
+  "result": {
+    "misspellCorrected": false,
+    "nocorrect": false,
+    "text": "кино",
+    "best": {
+      "type": "artist",
+      "result": {
+        "id": 41075,
+        "name": "КИНО",
+        "various": false,
+        "composer": false,
+        "cover": {
+          "type": "from-artist-photos",
+          "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+          "prefix": "c6d507c7.p.41075/"
+        },
+        "available": true,
+        "counts": {
+          "tracks": 146,
+          "directAlbums": 18,
+          "alsoAlbums": 5,
+          "alsoTracks": 7
+        }
+      }
+    },
+    "tracks": {
+      "total": 43690,
+      "perPage": 20,
+      "order": 2,
+      "results": [
+        {
+          "id": 64072310,
+          "realId": "64072310",
+          "title": "Кино",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 184440,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 3892062,
+              "name": "MACAN",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/14304155/77471f61.p.3892062/%%",
+                "prefix": "77471f61.p.3892062/"
+              },
+              "genres": [],
+              "disclaimers": [],
+              "cutoutCover": {
+                "uri": "avatars.yandex.net/get-music-content/19752797/ad5aa1bd.c.999562/%%"
+              }
+            }
+          ],
+          "albums": [
+            {
+              "id": 10252343,
+              "title": "Кино",
+              "type": "single",
+              "metaType": "music",
+              "year": 2020,
+              "releaseDate": "2020-03-30T00:00:00+03:00",
+              "coverUri": "avatars.yandex.net/get-music-content/2358262/d217c998.a.10252343-1/%%",
+              "ogImage": "avatars.yandex.net/get-music-content/2358262/d217c998.a.10252343-1/%%",
+              "genre": "rusrap",
+              "trackCount": 1,
+              "likesCount": 12700,
+              "recent": false,
+              "veryImportant": false,
+              "artists": [
+                {
+                  "id": 3892062,
+                  "name": "MACAN",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-artist-photos",
+                    "uri": "avatars.yandex.net/get-music-content/14304155/77471f61.p.3892062/%%",
+                    "prefix": "77471f61.p.3892062/"
+                  },
+                  "genres": [],
+                  "disclaimers": [],
+                  "cutoutCover": {
+                    "uri": "avatars.yandex.net/get-music-content/19752797/ad5aa1bd.c.999562/%%"
+                  }
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [],
+              "disclaimers": [],
+              "listeningFinished": false,
+              "labels": [
+                "Golden Sound"
+              ],
+              "storageDir": "d217c998.a.10252343-1",
+              "trackPosition": {
+                "volume": 1,
+                "index": 1
+              },
+              "regions": [
+                "RUSSIA",
+                "RUSSIA_PREMIUM"
+              ],
+              "availableRegions": []
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/2358262/d217c998.a.10252343-1/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": true,
+            "hasAvailableTextLyrics": true
+          },
+          "type": "music"
+        },
+        {
+          "id": 145486974,
+          "realId": "145486974",
+          "title": "Кино",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 210820,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 3313381,
+              "name": "ЛСП",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/5375761/ab269aae.p.3313381/%%",
+                "prefix": "ab269aae.p.3313381/"
+              },
+              "genres": [],
+              "disclaimers": [],
+              "cutoutCover": {
+                "uri": "avatars.yandex.net/get-music-content/17740720/92c6400f.c.960456/%%"
+              }
+            },
+            {
+              "id": 4865954,
+              "name": "GONE.Fludd",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/18132539/b4e18f3b.p.4865954/%%",
+                "prefix": "b4e18f3b.p.4865954/"
+              },
+              "genres": [],
+              "disclaimers": [],
+              "cutoutCover": {
+                "uri": "avatars.yandex.net/get-music-content/17674835/62320b72.c.1046625/%%"
+              }
+            }
+          ],
+          "albums": [
+            {
+              "id": 39362975,
+              "title": "Судный день",
+              "metaType": "music",
+              "contentWarning": "explicit",
+              "year": 2025,
+              "releaseDate": "2025-11-28T00:00:00+03:00",
+              "coverUri": "avatars.yandex.net/get-music-content/16406615/cdd1df81.a.39362975-1/%%",
+              "ogImage": "avatars.yandex.net/get-music-content/16406615/cdd1df81.a.39362975-1/%%",
+              "genre": "ruspop",
+              "trackCount": 14,
+              "likesCount": 81723,
+              "recent": false,
+              "veryImportant": false,
+              "artists": [
+                {
+                  "id": 3313381,
+                  "name": "ЛСП",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-artist-photos",
+                    "uri": "avatars.yandex.net/get-music-content/5375761/ab269aae.p.3313381/%%",
+                    "prefix": "ab269aae.p.3313381/"
+                  },
+                  "genres": [],
+                  "disclaimers": [],
+                  "cutoutCover": {
+                    "uri": "avatars.yandex.net/get-music-content/17740720/92c6400f.c.960456/%%"
+                  }
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [
+                145486968,
+                145486974,
+                131788963
+              ],
+              "disclaimers": [
+                "explicit",
+                "exclamationIcon:671a23afcec5646906723a52",
+                "descriptionText:67370c8e13b92b0a60256675"
+              ],
+              "listeningFinished": false,
+              "labels": [
+                "Lotus Music"
+              ],
+              "storageDir": "cdd1df81.a.39362975-1",
+              "trackPosition": {
+                "volume": 1,
+                "index": 7
+              },
+              "regions": [
+                "RUSSIA",
+                "RUSSIA_PREMIUM"
+              ],
+              "availableRegions": []
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/16406615/cdd1df81.a.39362975-1/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": true,
+            "hasAvailableTextLyrics": true
+          },
+          "type": "music"
+        },
+        {
+          "id": 124904044,
+          "realId": "124904044",
+          "title": "Кино",
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableFullWithoutPermission": false,
+          "durationMs": 201040,
+          "previewDurationMs": 30000,
+          "artists": [
+            {
+              "id": 10878798,
+              "name": "XOLIDAYBOY",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/15499524/cbcf8a27.p.10878798/%%",
+                "prefix": "cbcf8a27.p.10878798/"
+              },
+              "genres": [],
+              "disclaimers": [],
+              "cutoutCover": {
+                "uri": "avatars.yandex.net/get-music-content/16616584/f1861a5c.c.168600/%%"
+              }
+            }
+          ],
+          "albums": [
+            {
+              "id": 30749264,
+              "title": "Кино",
+              "type": "single",
+              "metaType": "music",
+              "year": 2024,
+              "releaseDate": "2024-04-19T00:00:00+03:00",
+              "coverUri": "avatars.yandex.net/get-music-content/10126140/9bb5155b.a.30749264-1/%%",
+              "ogImage": "avatars.yandex.net/get-music-content/10126140/9bb5155b.a.30749264-1/%%",
+              "genre": "ruspop",
+              "trackCount": 1,
+              "likesCount": 12940,
+              "recent": false,
+              "veryImportant": false,
+              "artists": [
+                {
+                  "id": 10878798,
+                  "name": "XOLIDAYBOY",
+                  "various": false,
+                  "composer": false,
+                  "available": true,
+                  "cover": {
+                    "type": "from-artist-photos",
+                    "uri": "avatars.yandex.net/get-music-content/15499524/cbcf8a27.p.10878798/%%",
+                    "prefix": "cbcf8a27.p.10878798/"
+                  },
+                  "genres": [],
+                  "disclaimers": [],
+                  "cutoutCover": {
+                    "uri": "avatars.yandex.net/get-music-content/16616584/f1861a5c.c.168600/%%"
+                  }
+                }
+              ],
+              "available": true,
+              "availableForPremiumUsers": true,
+              "availableForOptions": [
+                "bookmate"
+              ],
+              "availableForMobile": true,
+              "availablePartially": false,
+              "bests": [],
+              "disclaimers": [],
+              "listeningFinished": false,
+              "labels": [
+                "Banana Music"
+              ],
+              "storageDir": "9bb5155b.a.30749264-1",
+              "trackPosition": {
+                "volume": 1,
+                "index": 1
+              },
+              "regions": [
+                "RUSSIA",
+                "RUSSIA_PREMIUM"
+              ],
+              "availableRegions": []
+            }
+          ],
+          "coverUri": "avatars.yandex.net/get-music-content/10126140/9bb5155b.a.30749264-1/%%",
+          "lyricsInfo": {
+            "hasAvailableSyncLyrics": true,
+            "hasAvailableTextLyrics": true
+          },
+          "type": "music"
+        }
+      ]
+    },
+    "albums": {
+      "total": 1763,
+      "perPage": 10,
+      "order": 3,
+      "results": [
+        {
+          "id": 10252343,
+          "title": "Кино",
+          "type": "single",
+          "year": 2020,
+          "coverUri": "avatars.yandex.net/get-music-content/2358262/d217c998.a.10252343-1/%%",
+          "trackCount": 1,
+          "artists": [
+            {
+              "id": 3892062,
+              "name": "MACAN",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/14304155/77471f61.p.3892062/%%",
+                "prefix": "77471f61.p.3892062/"
+              },
+              "genres": [],
+              "disclaimers": [],
+              "cutoutCover": {
+                "uri": "avatars.yandex.net/get-music-content/19752797/ad5aa1bd.c.999562/%%"
+              }
+            }
+          ],
+          "available": true,
+          "availableForPremiumUsers": true,
+          "genre": "rusrap"
+        },
+        {
+          "id": 30749264,
+          "title": "Кино",
+          "type": "single",
+          "year": 2024,
+          "coverUri": "avatars.yandex.net/get-music-content/10126140/9bb5155b.a.30749264-1/%%",
+          "trackCount": 1,
+          "artists": [
+            {
+              "id": 10878798,
+              "name": "XOLIDAYBOY",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/15499524/cbcf8a27.p.10878798/%%",
+                "prefix": "cbcf8a27.p.10878798/"
+              },
+              "genres": [],
+              "disclaimers": [],
+              "cutoutCover": {
+                "uri": "avatars.yandex.net/get-music-content/16616584/f1861a5c.c.168600/%%"
+              }
+            }
+          ],
+          "available": true,
+          "availableForPremiumUsers": true,
+          "genre": "ruspop"
+        }
+      ]
+    },
+    "artists": {
+      "total": 43,
+      "perPage": 10,
+      "order": 0,
+      "results": [
+        {
+          "id": 41075,
+          "name": "КИНО",
+          "various": false,
+          "composer": false,
+          "cover": {
+            "type": "from-artist-photos",
+            "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+            "prefix": "c6d507c7.p.41075/"
+          },
+          "available": true,
+          "counts": {
+            "tracks": 146,
+            "directAlbums": 18,
+            "alsoAlbums": 5,
+            "alsoTracks": 7
+          }
+        },
+        {
+          "id": 953565,
+          "name": "Виктор Цой",
+          "various": false,
+          "composer": false,
+          "cover": {
+            "type": "from-artist-photos",
+            "uri": "avatars.yandex.net/get-music-content/175191/8d2eb74f.p.953565/%%",
+            "prefix": "8d2eb74f.p.953565/"
+          },
+          "available": true,
+          "counts": {
+            "tracks": 65,
+            "directAlbums": 5,
+            "alsoAlbums": 20,
+            "alsoTracks": 26
+          }
+        }
+      ]
+    },
+    "playlists": {
+      "total": 323,
+      "perPage": 4,
+      "order": 1,
+      "results": [
+        {
+          "owner": {
+            "uid": 457553308,
+            "login": "yamusic-bestsongs",
+            "name": "Яндекс Музыка",
+            "sex": "unknown",
+            "verified": true
+          },
+          "uid": 457553308,
+          "kind": 41075,
+          "title": "Лучшее: КИНО",
+          "description": "КИНО: самые популярные треки",
+          "trackCount": 20,
+          "cover": {
+            "type": "pic",
+            "dir": "/get-music-user-playlist/10311229/s9xdf1jvxpHCJj/",
+            "version": "1709726510822",
+            "uri": "avatars.yandex.net/get-music-user-playlist/10311229/s9xdf1jvxpHCJj/%%?1709726510822",
+            "custom": true
+          },
+          "available": true,
+          "visibility": "public",
+          "durationMs": 5497250,
+          "modified": "2026-08-31T16:45:31+00:00"
+        },
+        {
+          "owner": {
+            "uid": 1394200455,
+            "login": "snob.podcast",
+            "name": "snob.podcast",
+            "sex": "male",
+            "verified": true
+          },
+          "uid": 1394200455,
+          "kind": 1001,
+          "title": "Кино",
+          "trackCount": 12,
+          "cover": {
+            "type": "pic",
+            "dir": "/get-music-user-playlist/38125/1394200455.1001.87482/",
+            "version": "1622547868450",
+            "uri": "avatars.yandex.net/get-music-user-playlist/38125/1394200455.1001.87482/%%?1622547868450",
+            "custom": true
+          },
+          "available": true,
+          "visibility": "public",
+          "durationMs": 3045540,
+          "modified": "2021-05-28T15:28:35+00:00"
+        }
+      ]
+    }
+  }
+}

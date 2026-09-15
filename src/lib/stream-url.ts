@@ -1,7 +1,7 @@
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import type { TrackId } from "@/types/ids";
-import { ndTrackId, ytTrackId } from "@/types/track-ref";
+import { ndTrackId, ymTrackId, ytTrackId } from "@/types/track-ref";
 
 //
 // URL helpers for the loopback media server — the transport for all audio
@@ -10,8 +10,10 @@ import { ndTrackId, ytTrackId } from "@/types/track-ref";
 //
 //   http://127.0.0.1:{port}/{token}/yt/<videoId>
 //   http://127.0.0.1:{port}/{token}/nd/song/<songId>
+//   http://127.0.0.1:{port}/{token}/ym/track/<trackId>
 //   http://127.0.0.1:{port}/{token}/local/<encoded absolute path>
 //   http://127.0.0.1:{imagePort}/{token}/nd/cover/<coverId>?size=<px>
+//   http://127.0.0.1:{imagePort}/{token}/ym/cover/<encoded %% cover uri>?size=<px>
 //   http://127.0.0.1:{imagePort}/{token}/ytimg/<encoded https thumbnail url>
 //
 // Images live on a second port of the same server: the webview allows six
@@ -94,7 +96,22 @@ export const ytImageUrl = (thumbnailUrl: string): string => {
   return `${requireImageBase()}/ytimg/${encodeURIComponent(thumbnailUrl)}`;
 };
 
-const KNOWN_ROUTES = /^(yt|nd\/song|nd\/cover|local|ytimg)\//;
+/** Builds the playable URL for a Yandex Music track; the Rust side resolves the real stream per request. */
+export const ymTrackStreamUrl = (trackId: string): string => {
+  return `${requireBase()}/ym/track/${encodeURIComponent(trackId)}`;
+};
+
+/**
+ * Builds the proxied Yandex cover URL. The cover ref is Yandex's scheme-less
+ * URI with its `%%` size placeholder, riding as ONE encoded segment; the Rust
+ * side substitutes the size, adds the scheme and enforces the host allowlist.
+ */
+export const ymCoverUrl = (coverRef: string, size?: number): string => {
+  const query = size ? `?size=${size}` : "";
+  return `${requireImageBase()}/ym/cover/${encodeURIComponent(coverRef)}${query}`;
+};
+
+const KNOWN_ROUTES = /^(yt|nd\/song|nd\/cover|ym\/track|ym\/cover|local|ytimg)\//;
 
 /**
  * Recognizes a server URL from this or any previous session
@@ -150,6 +167,9 @@ export const trackIdFromStreamUrl = (url: string | null | undefined): TrackId | 
   const ndSong = route.startsWith("nd/song/") ? route.slice("nd/song/".length) : null;
   if (ndSong) return ndTrackId(ndSong);
 
+  const ymTrack = route.startsWith("ym/track/") ? route.slice("ym/track/".length) : null;
+  if (ymTrack) return ymTrackId(ymTrack);
+
   return null;
 };
 
@@ -181,6 +201,15 @@ export const migrateProxyUrl = (url: string): string => {
   if (ndCover) {
     const size = /(?:^|&)size=(\d+)/.exec(query)?.[1];
     return ndCoverUrl(ndCover, size ? Number(size) : undefined);
+  }
+
+  const ymTrack = route.startsWith("ym/track/") ? route.slice("ym/track/".length) : null;
+  if (ymTrack) return ymTrackStreamUrl(ymTrack);
+
+  const ymCover = route.startsWith("ym/cover/") ? route.slice("ym/cover/".length) : null;
+  if (ymCover) {
+    const size = /(?:^|&)size=(\d+)/.exec(query)?.[1];
+    return ymCoverUrl(ymCover, size ? Number(size) : undefined);
   }
 
   const local = route.startsWith("local/") ? route.slice("local/".length) : null;
