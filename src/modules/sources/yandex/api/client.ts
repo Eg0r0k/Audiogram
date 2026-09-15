@@ -10,6 +10,7 @@ import type {
   YmLikedAlbum,
   YmLikedArtist,
   YmLikedPlaylist,
+  YmLikedTracks,
   YmPlaylist,
   YmRequestPayload,
   YmSearchResult,
@@ -61,6 +62,16 @@ export const ymApi = {
   likedArtists: () => ymRequest<(YmLikedArtist | YmArtist)[]>({ path: "/users/{uid}/likes/artists" }),
 
   likedPlaylists: () => ymRequest<(YmLikedPlaylist | YmPlaylist)[]>({ path: "/users/{uid}/likes/playlists" }),
+
+  likedTrackIds: () =>
+    ymRequest<YmLikedTracks>({ path: "/users/{uid}/likes/tracks" })
+      .map(result => (result.library?.tracks ?? []).map(track => String(track.id))),
+
+  likeTracks: (trackIds: readonly string[]) =>
+    ymRequest<unknown>({ method: "POST", path: "/users/{uid}/likes/tracks/add-multiple", form: { "track-ids": trackIds.join(",") } }),
+
+  unlikeTracks: (trackIds: readonly string[]) =>
+    ymRequest<unknown>({ method: "POST", path: "/users/{uid}/likes/tracks/remove", form: { "track-ids": trackIds.join(",") } }),
 
   ownPlaylists: () => ymRequest<YmPlaylist[]>({ path: "/users/{uid}/playlists/list" }),
 

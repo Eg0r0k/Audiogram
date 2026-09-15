@@ -54,16 +54,30 @@ describe("useYmSourceSync", () => {
     scope.run(() => useYmSourceSync());
   };
 
-  it("restores the stored sign-in on launch without dropping anything", async () => {
-    invokeCommand.mockResolvedValue({ loggedIn: true, uid: 42, hasPlus: true, displayName: "Tester" });
+  it("restores the stored sign-in on launch, pulls the likes and drops nothing", async () => {
+    invokeCommand.mockImplementation(async (name: string) => (name === "ym_auth_status"
+      ? { loggedIn: true, uid: 42, hasPlus: true, displayName: "Tester" }
+      : { library: { tracks: [{ id: 40144, albumId: 3328 }, { id: "38633756" }] } }));
 
     run();
     await vi.advanceTimersByTimeAsync(0);
 
     expect(invokeCommand).toHaveBeenCalledWith("ym_auth_status");
     expect(useYmAuthStore().loggedIn).toBe(true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(invokeCommand).toHaveBeenCalledWith("ym_request", { req: { path: "/users/{uid}/likes/tracks" } });
+    expect([...useYmAuthStore().likedTrackIds]).toEqual(["40144", "38633756"]);
     await vi.advanceTimersByTimeAsync(2000);
     expect(invalidateSource).not.toHaveBeenCalled();
+  });
+
+  it("does not ask for likes while nobody is signed in", async () => {
+    invokeCommand.mockResolvedValue({ loggedIn: false, uid: null, hasPlus: false, displayName: null });
+
+    run();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(invokeCommand).not.toHaveBeenCalledWith("ym_request", expect.anything());
   });
 
   it("a confirmed sign-in reaches the store, drops stale answers and probes the source", async () => {

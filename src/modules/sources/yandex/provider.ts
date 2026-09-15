@@ -26,6 +26,7 @@ import type {
   YmTrack,
 } from "./api/types";
 import { isYmAvailable, setYmHasPlus } from "./config";
+import { useYmAuthStore } from "./store/ym-auth.store";
 import {
   flattenAlbumTracks,
   mapYmAlbum,
@@ -171,6 +172,29 @@ export const ymSourceProvider: SourceProvider = {
     return album
       ? `https://music.yandex.ru/album/${album}/track/${trackId}`
       : `https://music.yandex.ru/track/${trackId}`;
+  },
+
+  /** From the like list loaded at sign-in; a store that is not up knows no likes. */
+  isTrackLiked(id) {
+    const trackId = ymIdOf(id);
+    if (!trackId) return false;
+    try {
+      return useYmAuthStore().likedTrackIds.has(trackId);
+    }
+    catch {
+      return false;
+    }
+  },
+
+  /** Yandex first, then the store: a refused like leaves the heart as it was. */
+  setTrackLiked(id, liked) {
+    const trackId = ymIdOf(id);
+    if (!trackId) return notYm("track", id);
+    if (!isYmAvailable()) return unavailable<void>();
+    const call = liked ? ymApi.likeTracks([trackId]) : ymApi.unlikeTracks([trackId]);
+    return call.map(() => {
+      useYmAuthStore().markTrackLiked(trackId, liked);
+    });
   },
 
   /** The cheapest authenticated call; it also refreshes whether the account has Plus. */

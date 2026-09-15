@@ -9,10 +9,20 @@ vi.mock("../../registry", () => ({
     get: (kind: string) => ({
       coverUrl: (ref: string, size?: number) => `${kind}|${ref}|${size}`,
     }),
+    // Only one source keeps its own likes here; the other has no opinion.
+    find: (kind: string) => (kind === "ym" ? { isTrackLiked: (id: string) => id === "ym:1" } : {}),
   },
 }));
 
-import { sourceAlbumToAlbumData, sourceCoverUrl, sourcePlaylistToPlaylistData } from "../display";
+import { sourceAlbumToAlbumData, sourceCoverUrl, sourcePlaylistToPlaylistData, sourceTrackToDisplay } from "../display";
+
+describe("sourceTrackToDisplay", () => {
+  it("starts the heart from the source's own like list, empty where the source has none", () => {
+    expect(sourceTrackToDisplay({ id: "ym:1" as never, title: "a" }).isLiked).toBe(true);
+    expect(sourceTrackToDisplay({ id: "ym:2" as never, title: "b" }).isLiked).toBe(false);
+    expect(sourceTrackToDisplay({ id: "nd:1" as never, title: "c" }).isLiked).toBe(false);
+  });
+});
 import { THUMB_SIZE_FULL } from "@/lib/media/cover-sizes";
 
 describe("sourceCoverUrl", () => {

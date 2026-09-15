@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { computed, ref } from "vue";
+import { computed, ref, shallowRef } from "vue";
 import type { YmAuthEvent, YmAuthStatus, YmDeviceCode } from "../api/types";
 
 /**
@@ -25,8 +25,22 @@ export const useYmAuthStore = defineStore("ym-auth", () => {
   const hasPlus = ref(false);
   const displayName = ref<string | null>(null);
   const step = ref<YmAuthStep>({ kind: "idle" });
+  // Raw Yandex ids of the account's liked tracks — what a catalog row's
+  // heart starts from. Replaced whole on load, patched on each toggle.
+  const likedTrackIds = shallowRef<ReadonlySet<string>>(new Set());
 
   const isPending = computed(() => step.value.kind === "pending");
+
+  const setLikedTrackIds = (ids: Iterable<string>) => {
+    likedTrackIds.value = new Set(ids);
+  };
+
+  const markTrackLiked = (id: string, liked: boolean) => {
+    const next = new Set(likedTrackIds.value);
+    if (liked) next.add(id);
+    else next.delete(id);
+    likedTrackIds.value = next;
+  };
 
   const setAccount = (next: { uid: number; hasPlus: boolean; displayName: string }) => {
     loggedIn.value = true;
@@ -40,6 +54,7 @@ export const useYmAuthStore = defineStore("ym-auth", () => {
     uid.value = null;
     hasPlus.value = false;
     displayName.value = null;
+    likedTrackIds.value = new Set();
   };
 
   const applyStatus = (status: YmAuthStatus) => {
@@ -101,6 +116,9 @@ export const useYmAuthStore = defineStore("ym-auth", () => {
     displayName,
     step,
     isPending,
+    likedTrackIds,
+    setLikedTrackIds,
+    markTrackLiked,
     applyStatus,
     beginPending,
     failed,

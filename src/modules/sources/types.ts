@@ -99,6 +99,15 @@ export interface SourceProvider {
    * Optional; null when the source has no page to open right now.
    */
   externalUrl?(track: { id: TrackId; albumId?: AlbumId }): string | null;
+  /**
+   * The source keeps its own likes (Yandex "Мне нравится"): a like on one
+   * of its tracks is sent there too, and the like button of its catalog
+   * rows starts from what the source knows. Both optional; a source
+   * without them keeps likes local.
+   */
+  setTrackLiked?(id: TrackId, liked: boolean): ResultAsync<void, SourceError>;
+  /** Synchronous, from the source's cached like list — a row is built without a request. */
+  isTrackLiked?(id: TrackId): boolean;
 
   /**
    * The cheapest request that proves the configured source answers — a

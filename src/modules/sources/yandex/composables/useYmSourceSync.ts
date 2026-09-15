@@ -8,6 +8,7 @@ import { checkSource } from "@/modules/sources/composables/useSourceHealth";
 import { forgetSourceHealth } from "@/modules/sources/lib/health";
 import { useYmSourceSettings } from "@/modules/settings/store/sources";
 import { onYmAuthEvent, ymAuthStatus } from "../api/auth";
+import { loadYmLikes } from "../likes";
 import { useYmAuthStore } from "../store/ym-auth.store";
 import type { YmAuthEvent } from "../api/types";
 
@@ -33,8 +34,15 @@ export const useYmSourceSync = () => {
       .catch(error => getLogger().error(`[YM] Probing the source failed: ${String(error)}`));
   };
 
+  const pullLikes = (): void => {
+    loadYmLikes().catch(error => getLogger().error(`[YM] Loading the likes failed: ${String(error)}`));
+  };
+
   ymAuthStatus()
-    .then(status => store.applyStatus(status))
+    .then((status) => {
+      store.applyStatus(status);
+      if (status.loggedIn) pullLikes();
+    })
     .catch(error => getLogger().error(`[YM] Reading the stored sign-in failed: ${String(error)}`));
 
   const onEvent = (event: YmAuthEvent) => {
@@ -44,6 +52,7 @@ export const useYmSourceSync = () => {
     if (event.status === "ok") {
       dropAnswers();
       probe();
+      pullLikes();
     }
     else if (event.status === "expired") {
       dropAnswers();

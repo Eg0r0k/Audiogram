@@ -347,6 +347,39 @@ describe("ymSourceProvider", () => {
     });
   });
 
+  describe("likes", () => {
+    it("answers the heart from the like list the store holds", () => {
+      useYmAuthStore().setLikedTrackIds(["40144"]);
+
+      expect(ymSourceProvider.isTrackLiked!(ymTrackId("40144"))).toBe(true);
+      expect(ymSourceProvider.isTrackLiked!(ymTrackId("1"))).toBe(false);
+      expect(ymSourceProvider.isTrackLiked!(TrackId("nd:40144"))).toBe(false);
+    });
+
+    it("a like goes to Yandex's list first and the store follows", async () => {
+      answers.set("/users/{uid}/likes/tracks/add-multiple", "ok");
+      answers.set("/users/{uid}/likes/tracks/remove", "ok");
+
+      expect((await ymSourceProvider.setTrackLiked!(ymTrackId("40144"), true)).isOk()).toBe(true);
+      expect(requests()[0]).toEqual({ method: "POST", path: "/users/{uid}/likes/tracks/add-multiple", form: { "track-ids": "40144" } });
+      expect(useYmAuthStore().likedTrackIds.has("40144")).toBe(true);
+
+      expect((await ymSourceProvider.setTrackLiked!(ymTrackId("40144"), false)).isOk()).toBe(true);
+      expect(requests()[1]).toEqual({ method: "POST", path: "/users/{uid}/likes/tracks/remove", form: { "track-ids": "40144" } });
+      expect(useYmAuthStore().likedTrackIds.has("40144")).toBe(false);
+    });
+
+    it("a refused like changes nothing in the store", async () => {
+      useYmAuthStore().setLikedTrackIds([]);
+      invokeCommand.mockRejectedValue({ kind: "NETWORK", message: "offline" });
+
+      const result = await ymSourceProvider.setTrackLiked!(ymTrackId("40144"), true);
+
+      expect(result._unsafeUnwrapErr().kind).toBe("NETWORK");
+      expect(useYmAuthStore().likedTrackIds.has("40144")).toBe(false);
+    });
+  });
+
   describe("externalUrl", () => {
     it("links the track on its album page, or the bare track page without one", () => {
       expect(ymSourceProvider.externalUrl!({ id: ymTrackId("40144"), albumId: ymAlbumId("3328") }))

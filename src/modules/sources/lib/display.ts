@@ -41,7 +41,8 @@ export function sourceTrackToDisplay(dto: SourceTrackDTO): Track {
     state: TrackState.READY,
     pinned: 0,
     duration: dto.duration ?? 0,
-    isLiked: false,
+    // A source that keeps its own likes says whether this row is one.
+    isLiked: kind !== "local" && (sources.find(kind)?.isTrackLiked?.(dto.id) ?? false),
     trackNo: dto.trackNo,
     diskNo: dto.discNo,
     sourceDto: dto,

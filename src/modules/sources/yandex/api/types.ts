@@ -176,6 +176,15 @@ export interface YmArtistBriefInfo {
   playlists?: YmPlaylist[];
 }
 
+/** `/users/{uid}/likes/tracks` — ids only; the tracks themselves come from `/tracks`. */
+export interface YmLikedTracks {
+  library?: {
+    uid?: number;
+    revision?: number;
+    tracks?: { id: number | string; albumId?: number | string; timestamp?: string }[];
+  };
+}
+
 /** `/users/{uid}/likes/albums?rich=true` — the album rides inside the like. */
 export interface YmLikedAlbum {
   id: string;
