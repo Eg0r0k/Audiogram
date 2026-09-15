@@ -15,7 +15,16 @@ import type {
   SourceSearchScope,
 } from "../types";
 import { mapYmError, ymApi } from "./api/client";
-import type { YmAlbum, YmArtist, YmPlaylist, YmSearchResult, YmTrack } from "./api/types";
+import type {
+  YmAlbum,
+  YmArtist,
+  YmLikedAlbum,
+  YmLikedArtist,
+  YmLikedPlaylist,
+  YmPlaylist,
+  YmSearchResult,
+  YmTrack,
+} from "./api/types";
 import { isYmAvailable, setYmHasPlus } from "./config";
 import {
   flattenAlbumTracks,
@@ -71,20 +80,32 @@ const collectArtistAlbums = (
 /** The likes playlist: every account has it under this kind. */
 const LIKES_PLAYLIST_KIND = "3";
 
+// The likes endpoints wrap their entity in a like ({album, timestamp}) or
+// hand it over bare — recorded: artists come bare. Both are accepted.
+const likedAlbumOf = (row: YmLikedAlbum | YmAlbum): { album: YmAlbum; likedAt: string } | null => {
+  if ("title" in row) return { album: row, likedAt: "" };
+  return row.album ? { album: row.album, likedAt: row.timestamp ?? "" } : null;
+};
+
 /** Liked albums arrive whole; the sort is ours, the paging is one page. */
-const sortAlbums = (likes: { album?: YmAlbum; timestamp?: string }[], sort: "alpha" | "newest") => {
-  const rows = likes.flatMap(like => (like.album ? [{ album: like.album, likedAt: like.timestamp ?? "" }] : []));
+const sortAlbums = (likes: (YmLikedAlbum | YmAlbum)[], sort: "alpha" | "newest") => {
+  const rows = likes.flatMap(row => likedAlbumOf(row) ?? []);
   if (sort === "newest") rows.sort((a, b) => b.likedAt.localeCompare(a.likedAt));
   else rows.sort((a, b) => a.album.title.localeCompare(b.album.title));
   return rows.map(row => row.album);
 };
 
-const artistsOf = (rows: (YmArtist | { artist?: YmArtist })[]): SourceArtistDTO[] =>
+const artistsOf = (rows: (YmArtist | YmLikedArtist)[]): SourceArtistDTO[] =>
   rows.flatMap((row) => {
     const artist = "name" in row ? row : row.artist;
     const mapped = artist ? mapYmArtist(artist) : null;
     return mapped ? [mapped] : [];
   });
+
+const likedPlaylistOf = (row: YmLikedPlaylist | YmPlaylist): YmPlaylist[] => {
+  if ("kind" in row) return [row];
+  return row.playlist ? [row.playlist] : [];
+};
 
 const uniquePlaylists = (lists: YmPlaylist[][]): SourcePlaylistDTO[] => {
   const seen = new Set<string>();
@@ -211,7 +232,7 @@ export const ymSourceProvider: SourceProvider = {
       ResultAsync.combine([
         ymApi.playlist("{uid}", LIKES_PLAYLIST_KIND).map(playlist => [playlist]),
         ymApi.ownPlaylists(),
-        ymApi.likedPlaylists().map(likes => likes.flatMap(like => (like.playlist ? [like.playlist] : []))),
+        ymApi.likedPlaylists().map(likes => likes.flatMap(likedPlaylistOf)),
       ]).map(uniquePlaylists),
     );
   },

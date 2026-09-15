@@ -143,6 +143,19 @@ describe("ymSourceProvider", () => {
       expect(invokeCommand).not.toHaveBeenCalled();
     });
 
+    it("accepts liked albums and playlists bare, the way liked artists were recorded", async () => {
+      answers.set("/users/{uid}/likes/albums", [artistFixture.result.albums[0], artistFixture.result.albums[1]]);
+      answers.set("/users/{uid}/playlists/3", likesPlaylist);
+      answers.set("/users/{uid}/playlists/list", []);
+      answers.set("/users/{uid}/likes/playlists", [playlistFixture.result]);
+
+      const albums = await ymSourceProvider.listAlbums({ offset: 0, limit: 100, sort: "alpha" });
+      expect(albums._unsafeUnwrap().map(album => album.title)).toEqual(["Дождь для нас", "Легенда"]);
+
+      const playlists = await ymSourceProvider.listPlaylists();
+      expect(playlists._unsafeUnwrap().map(playlist => playlist.id)).toEqual(["ym:42:3", "ym:457553308:41075"]);
+    });
+
     it("opens an album with its tracks flattened from the volumes", async () => {
       answers.set("/albums/3328/with-tracks", albumFixture.result);
 

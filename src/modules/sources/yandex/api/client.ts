@@ -4,6 +4,7 @@ import type { SourceError, SourceErrorKind } from "@/types/source-dto";
 import type {
   YmAccountStatus,
   YmAlbum,
+  YmArtist,
   YmArtistAlbumsPage,
   YmArtistBriefInfo,
   YmLikedAlbum,
@@ -53,12 +54,13 @@ export const ymRequest = <T>(req: YmRequestPayload): ResultAsync<T, SourceError>
 export const ymApi = {
   accountStatus: () => ymRequest<YmAccountStatus>({ path: "/account/status" }),
 
+  // Likes come wrapped ({album, timestamp}) or bare; the provider accepts both.
   likedAlbums: () =>
-    ymRequest<YmLikedAlbum[]>({ path: "/users/{uid}/likes/albums", query: { rich: "true" } }),
+    ymRequest<(YmLikedAlbum | YmAlbum)[]>({ path: "/users/{uid}/likes/albums", query: { rich: "true" } }),
 
-  likedArtists: () => ymRequest<YmLikedArtist[]>({ path: "/users/{uid}/likes/artists" }),
+  likedArtists: () => ymRequest<(YmLikedArtist | YmArtist)[]>({ path: "/users/{uid}/likes/artists" }),
 
-  likedPlaylists: () => ymRequest<YmLikedPlaylist[]>({ path: "/users/{uid}/likes/playlists" }),
+  likedPlaylists: () => ymRequest<(YmLikedPlaylist | YmPlaylist)[]>({ path: "/users/{uid}/likes/playlists" }),
 
   ownPlaylists: () => ymRequest<YmPlaylist[]>({ path: "/users/{uid}/playlists/list" }),
 
