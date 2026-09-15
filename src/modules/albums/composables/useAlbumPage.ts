@@ -1,6 +1,6 @@
 import { computed, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useMutation, useQuery, useQueryClient, useInfiniteQuery, skipToken } from "@tanstack/vue-query";
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
 import { AlbumId } from "@/types/ids";
 import type { AlbumData } from "@/types/media-data";
 import { queryKeys } from "@/queries/query-keys";
@@ -14,7 +14,8 @@ import {
   type AlbumChanges,
   updateAlbumAndSync,
 } from "@/queries/album.queries";
-import { getArtistByIdOrThrow } from "@/queries/artist.queries";
+import { searchAlbumTracks } from "@/queries/track.queries";
+import { artistQueries } from "@/queries/artist.queries";
 import { routeLocation } from "@/app/router/route-locations";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { useSourceAlbum } from "@/modules/sources/composables/useSourceCatalog";
@@ -24,8 +25,9 @@ import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
 
 export type { AlbumChanges } from "@/queries/album.queries";
 
-export function useAlbumPage(sortKey: Ref<TrackSortKey | null>) {
+export function useAlbumPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) {
   const route = useRoute();
+  const normalizedSearchQuery = computed(() => searchQuery.value.trim());
   const router = useRouter();
   const queryClient = useQueryClient();
   const { t } = useI18n();
@@ -59,8 +61,10 @@ export function useAlbumPage(sortKey: Ref<TrackSortKey | null>) {
     isLoading: isTracksLoading,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.albums.tracksPage(albumId.value, sortKey.value)),
-    queryFn: ({ pageParam = 0 }) => getAlbumTracksPaginated(albumId.value, pageParam, undefined, sortKey.value),
+    queryKey: computed(() => queryKeys.albums.tracksPage(albumId.value, sortKey.value, normalizedSearchQuery.value)),
+    queryFn: ({ pageParam = 0 }) => normalizedSearchQuery.value
+      ? searchAlbumTracks(albumId.value, normalizedSearchQuery.value, pageParam, undefined, sortKey.value)
+      : getAlbumTracksPaginated(albumId.value, pageParam, undefined, sortKey.value),
     initialPageParam: 0,
     getNextPageParam: lastPage => lastPage.nextOffset,
     placeholderData: previousData => previousData,
@@ -94,25 +98,19 @@ export function useAlbumPage(sortKey: Ref<TrackSortKey | null>) {
     computed(() => albumQueries.totalDuration(albumId.value, !isRemote.value)),
   );
 
+  // A filtered list reports the matches' own duration, like their count.
   const totalDuration = computed(() =>
     formatTotalDuration(
       isRemote.value
         ? remoteTracks.value.reduce((sum, track) => sum + track.duration, 0)
-        : albumTotalDurationSeconds.value ?? 0,
+        : infiniteData.value?.pages[0]?.totalDuration ?? albumTotalDurationSeconds.value ?? 0,
       t,
     ),
   );
 
-  const artistId = computed(() => album.value?.artistId);
-
-  const { data: artistData } = useQuery({
-    queryKey: computed(() => queryKeys.artists.detail(artistId.value!)),
-    queryFn: computed(() =>
-      artistId.value
-        ? () => getArtistByIdOrThrow(artistId.value!)
-        : skipToken,
-    ),
-  });
+  const { data: artistData } = useQuery(
+    computed(() => artistQueries.libraryRow(album.value?.artistId ?? null)),
+  );
 
   const artist = computed(() =>
     artistData.value ? { id: artistData.value.id, name: artistData.value.name } : null,
@@ -173,6 +171,7 @@ export function useAlbumPage(sortKey: Ref<TrackSortKey | null>) {
     album,
     tracks,
     canSort,
+    normalizedSearchQuery,
     albumData: albumDataMapped,
     coverUrl,
     trackCount,

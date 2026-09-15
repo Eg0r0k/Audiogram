@@ -11,12 +11,12 @@
       <div
         class="absolute inset-0 transition-opacity duration-400 ease-standard pointer-events-none"
         :class="colorReady ? 'opacity-100' : 'opacity-0'"
-        :style="{ background: `linear-gradient(${color.hsl} 0%, transparent 140%)` }"
+        :style="{ background: `linear-gradient(${heroColor} 0%, transparent 145%)` }"
       />
 
       <MediaHeader
         :title="data.title"
-        :color="colorReady ? color.hsl : null"
+        :color="colorReady ? heroColor : null"
         :source="heroSource"
         @play="$emit('play')"
       />
@@ -70,11 +70,7 @@
           :filterable="props.filterable"
           @play="$emit('play')"
           @shuffle="$emit('shuffle')"
-        >
-          <template #actions>
-            <slot name="actions" />
-          </template>
-        </MediaHeroActions>
+        />
       </div>
     </div>
   </MediaContextMenu>
@@ -197,6 +193,7 @@ provideMediaContext({
 });
 
 const { color, extractColor, resetColor } = useImageColor();
+const heroColor = computed(() => color.value.palette?.vivid ?? color.value.hex);
 const colorReady = ref(false);
 
 watch(

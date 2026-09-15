@@ -4,11 +4,12 @@ import { useI18n } from "vue-i18n";
 import { formatTotalDuration } from "@/lib/format/time";
 import type { LikedData } from "@/types/media-data";
 import { queryKeys } from "@/queries/query-keys";
-import { getLikedTracksPaginated, trackQueries } from "@/queries/track.queries";
+import { getLikedTracksPaginated, searchLikedTracks, trackQueries } from "@/queries/track.queries";
 import type { TrackSortKey } from "@/modules/tracks/types";
 
-export function useLikedTracksPage(sortKey: Ref<TrackSortKey | null>) {
+export function useLikedTracksPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) {
   const { t } = useI18n();
+  const normalizedSearchQuery = computed(() => searchQuery.value.trim());
 
   const {
     data: infiniteData,
@@ -20,8 +21,10 @@ export function useLikedTracksPage(sortKey: Ref<TrackSortKey | null>) {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.tracks.likedPageInfinite(sortKey.value)),
-    queryFn: ({ pageParam = 0 }) => getLikedTracksPaginated(pageParam, undefined, sortKey.value),
+    queryKey: computed(() => queryKeys.tracks.likedPageInfinite(sortKey.value, normalizedSearchQuery.value)),
+    queryFn: ({ pageParam = 0 }) => normalizedSearchQuery.value
+      ? searchLikedTracks(normalizedSearchQuery.value, pageParam, undefined, sortKey.value)
+      : getLikedTracksPaginated(pageParam, undefined, sortKey.value),
     initialPageParam: 0,
     getNextPageParam: lastPage => lastPage.nextOffset,
     placeholderData: previousData => previousData,
@@ -37,8 +40,9 @@ export function useLikedTracksPage(sortKey: Ref<TrackSortKey | null>) {
     () => infiniteData.value?.pages[0]?.total ?? 0,
   );
 
+  // A filtered list reports the matches' own duration, like their count.
   const totalDuration = computed(() =>
-    formatTotalDuration(likedTotalDurationSeconds.value ?? 0, t),
+    formatTotalDuration(infiniteData.value?.pages[0]?.totalDuration ?? likedTotalDurationSeconds.value ?? 0, t),
   );
 
   const likedData = computed<LikedData>(() => ({
@@ -51,6 +55,7 @@ export function useLikedTracksPage(sortKey: Ref<TrackSortKey | null>) {
 
   return {
     tracks,
+    normalizedSearchQuery,
     likedData,
     totalDuration,
     isLoading,

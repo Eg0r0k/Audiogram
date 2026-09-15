@@ -4,7 +4,7 @@
   >
     <template v-if="isLoading">
       <div class="flex items-center justify-center h-full">
-        <IconLoader2 class="size-8 animate-spin text-muted-foreground" />
+        <Spinner class="size-8 text-muted-foreground" />
       </div>
     </template>
 
@@ -36,28 +36,27 @@
         >
           <template #before>
             <MediaHero
+              v-model:filter="searchQuery"
               :data="playlistData"
               :has-tracks="tracks.length > 0"
               :is-library-entity="!!playlist"
+              :filterable="!!playlist"
               @play="handlePlayAll"
               @shuffle="handleShuffle"
               @edit="openEditDialog"
               @delete="openDeleteDialog"
               @add-to-queue="handleAddToQueue"
               @share="handleShare"
-            >
-              <template #actions>
-                <Button
-                  v-if="playlist"
-                  variant="ghost"
-                  class="text-white"
-                  @click="openAddTracksPanel"
-                >
-                  <IconPlus class="size-5" />
-                  {{ $t("playlist.addTracks") }}
-                </Button>
-              </template>
-            </MediaHero>
+            />
+          </template>
+
+          <template #leading>
+            <div class="px-4">
+              <AddTrackRow
+                v-if="playlist"
+                @add="openAddTracksPanel"
+              />
+            </div>
           </template>
 
           <template #sticky>
@@ -85,21 +84,6 @@
               <TrackRowLoading />
             </div>
           </template>
-          <template
-            #empty
-          >
-            <div class="p-4">
-              <Button
-                size="lg"
-                variant="secondary"
-                class="w-full rounded-full"
-                @click="openAddTracksPanel"
-              >
-                <IconPlus class="size-5" />
-                {{ $t("playlist.addTracks") }}
-              </Button>
-            </div>
-          </template>
         </VirtualScrollable>
       </TrackContextMenu>
 
@@ -120,25 +104,24 @@ import { useRoute } from "vue-router";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import PageErrorState from "@/components/common/PageErrorState.vue";
-import { Button } from "@/components/ui/button";
 import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback";
 import type { QueueSource } from "@/modules/queue/types";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
-import IconLoader2 from "~icons/tabler/loader-2";
 import { usePlaylistPage } from "@/modules/playlist/composables/usePlaylistPage";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 import { summonDialog } from "@/components/dialogs/summonDialog";
 import { useEditPlaylistDialog } from "@/modules/playlist/composables/useEditPlaylistDialog";
-import IconPlus from "~icons/tabler/plus";
+import { Spinner } from "@/components/ui/spinner";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
+import AddTrackRow from "@/modules/tracks/components/AddTrackRow.vue";
 import { getLogger } from "@/lib/logger";
 
 const { t } = useI18n();
@@ -147,6 +130,7 @@ const rightPanelStore = useRightPanelStore();
 const { openMenu } = useTrackMenu();
 const route = useRoute();
 const sortKey = ref<TrackSortKey | null>(null);
+const searchQuery = ref("");
 
 const {
   playlist,
@@ -167,7 +151,7 @@ const {
   hasNextPage,
   isTracksLoading,
   isFetchingNextPage,
-} = usePlaylistPage(sortKey);
+} = usePlaylistPage(sortKey, searchQuery);
 
 const editPlaylist = useEditPlaylistDialog();
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);

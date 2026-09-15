@@ -1,49 +1,50 @@
 <template>
   <Teleport to="body">
-    <DropdownMenu v-model:open="localOpen">
-      <DropdownMenuTrigger as-child>
+    <ResponsiveMenu v-model:open="localOpen">
+      <ResponsiveMenuTrigger>
         <div
           class="pointer-events-none fixed"
           :style="anchorStyle"
         />
-      </DropdownMenuTrigger>
+      </ResponsiveMenuTrigger>
 
-      <DropdownMenuContent
+      <ResponsiveMenuContent
         class="w-65"
         side="left"
         align="start"
       >
+        <template #header>
+          <TrackMenuSheetHeader
+            v-if="activeTrack"
+            :track="activeTrack"
+          />
+        </template>
         <component
           :is="contextComponent"
           v-if="activeTrack"
           v-bind="contextProps"
         />
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </ResponsiveMenuContent>
+    </ResponsiveMenu>
   </Teleport>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-} from "@/components/ui/dropdown-menu";
+  ResponsiveMenu,
+  ResponsiveMenuContent,
+  ResponsiveMenuTrigger,
+} from "@/components/ui/responsive-menu";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
-import { useTrackContextActions } from "@/modules/tracks/composables/useTrackContextActions";
-import { useTrackMenuCaps } from "@/modules/tracks/composables/useTrackMenuCaps";
 import { useTrackMenuAutoClose } from "../composables/useTrackMenuAutoClose";
-import {
-  dropdownMenuTrackComponents,
-  provideTrackMenuComponents,
-} from "../useTrackMenuComponents";
+import { useTrackMenuContent } from "../composables/useTrackMenuContent";
+import { provideTrackMenuComponents, responsiveTrackComponents } from "../useTrackMenuComponents";
 import type { TrackContext } from "../type";
 import type { PlaylistId, AlbumId } from "@/types/ids";
-import { trackContextComponents } from "../contexts";
-import { useQueueStore } from "@/modules/queue/store/queue.store";
+import TrackMenuSheetHeader from "../TrackMenuSheetHeader.vue";
 
-provideTrackMenuComponents(dropdownMenuTrackComponents);
+provideTrackMenuComponents(responsiveTrackComponents);
 
 interface Props {
   context?: TrackContext;
@@ -61,13 +62,7 @@ const props = withDefaults(defineProps<Props>(), {
   onNavigate: undefined,
 });
 
-const queueStore = useQueueStore();
-
 const {
-  activeSubject,
-  activeTrack,
-  activeIndex,
-  activeQueueItemId,
   isDropdownOpen,
   activeDropdownTarget,
   dropdownAnchor,
@@ -94,35 +89,10 @@ const anchorStyle = computed(() => ({
   height: `${dropdownAnchor.value.height}px`,
 }));
 
-const contextComponent = computed(() => trackContextComponents[props.context]);
-
-const actions = useTrackContextActions(
-  activeTrack,
-  {
-    playlistId: () => props.playlistId,
-    queueIndex: activeIndex,
-    queueItemId: activeQueueItemId,
-    subject: activeSubject,
-    onNavigate: () => props.onNavigate?.(),
-  },
-);
-
-// Computed once per active subject; contexts receive ready-made booleans.
-const caps = useTrackMenuCaps(activeSubject);
-
-const contextProps = computed(() => {
-  if (!activeTrack.value) return {};
-
-  const base = { track: activeTrack.value, actions, caps: caps.value };
-
-  if (props.context === "playlist") {
-    return { ...base, playlistId: props.playlistId, isOwner: props.isPlaylistOwner };
-  }
-
-  if (props.context === "queue") {
-    return { ...base, queueIndex: activeIndex.value ?? -1, queueLength: queueStore.size };
-  }
-
-  return base;
+const { activeTrack, contextComponent, contextProps } = useTrackMenuContent({
+  context: () => props.context,
+  playlistId: () => props.playlistId,
+  isPlaylistOwner: () => props.isPlaylistOwner,
+  onNavigate: () => props.onNavigate?.(),
 });
 </script>

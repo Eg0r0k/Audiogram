@@ -1,40 +1,47 @@
 <template>
-  <ContextMenu v-model:open="localOpen">
-    <ContextMenuCloseBridge :open="localOpen" />
+  <ResponsiveContextMenu v-model:open="localOpen">
     <div
       ref="guardRef"
       class="contents"
     >
-      <ContextMenuTrigger as-child>
+      <ResponsiveContextMenuTrigger>
         <slot />
-      </ContextMenuTrigger>
+      </ResponsiveContextMenuTrigger>
     </div>
 
-    <ContextMenuContent class="w-65">
+    <ResponsiveMenuContent class="w-65">
+      <template #header>
+        <TrackMenuSheetHeader
+          v-if="activeTrack"
+          :track="activeTrack"
+        />
+      </template>
       <component
         :is="contextComponent"
         v-if="activeTrack"
         v-bind="contextProps"
       />
-    </ContextMenuContent>
-  </ContextMenu>
+    </ResponsiveMenuContent>
+  </ResponsiveContextMenu>
 </template>
 
 <script setup lang="ts">
 import { computed, useTemplateRef } from "vue";
 import { useEventListener } from "@vueuse/core";
-import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuCloseBridge } from "@/components/ui/context-menu";
+import {
+  ResponsiveContextMenu,
+  ResponsiveContextMenuTrigger,
+  ResponsiveMenuContent,
+} from "@/components/ui/responsive-menu";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import type { AlbumId, PlaylistId } from "@/types/ids";
-import { contextMenuTrackComponents, provideTrackMenuComponents } from "../useTrackMenuComponents";
+import { provideTrackMenuComponents, responsiveTrackComponents } from "../useTrackMenuComponents";
 import type { TrackContext } from "../type";
-import { trackContextComponents } from "../contexts";
-import { useTrackContextActions } from "@/modules/tracks/composables/useTrackContextActions";
-import { useTrackMenuCaps } from "@/modules/tracks/composables/useTrackMenuCaps";
 import { useTrackMenuAutoClose } from "../composables/useTrackMenuAutoClose";
-import { useQueueStore } from "@/modules/queue/store/queue.store";
+import { useTrackMenuContent } from "../composables/useTrackMenuContent";
+import TrackMenuSheetHeader from "../TrackMenuSheetHeader.vue";
 
-provideTrackMenuComponents(contextMenuTrackComponents);
+provideTrackMenuComponents(responsiveTrackComponents);
 
 interface Props {
   context?: TrackContext;
@@ -51,14 +58,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const {
-  activeSubject,
-  activeTrack,
-  activeIndex,
-  activeQueueItemId,
   isContextMenuOpen,
   activeContextMenuTarget,
 } = useTrackMenu();
-const queueStore = useQueueStore();
 
 const localOpen = computed({
   get: () => isContextMenuOpen.value && activeContextMenuTarget.value === props.context,
@@ -74,49 +76,16 @@ useTrackMenuAutoClose(localOpen, {
   playlistId: () => props.playlistId,
 });
 
-const contextComponent = computed(() => trackContextComponents[props.context]);
-
-const actions = useTrackContextActions(activeTrack, {
+const { activeTrack, contextComponent, contextProps } = useTrackMenuContent({
+  context: () => props.context,
   playlistId: () => props.playlistId,
-  queueIndex: activeIndex,
-  queueItemId: activeQueueItemId,
-  subject: activeSubject,
-});
-
-// Computed once per active subject; contexts receive ready-made booleans.
-const caps = useTrackMenuCaps(activeSubject);
-
-const contextProps = computed(() => {
-  if (!activeTrack.value) return {};
-
-  const base = {
-    track: activeTrack.value,
-    actions,
-    caps: caps.value,
-  };
-
-  switch (props.context) {
-    case "playlist":
-      return {
-        ...base,
-        playlistId: props.playlistId,
-        isOwner: props.isPlaylistOwner,
-      };
-
-    case "queue":
-      return {
-        ...base,
-        queueIndex: activeIndex.value ?? -1,
-        queueLength: queueStore.size,
-      };
-
-    default:
-      return base;
-  }
+  isPlaylistOwner: () => props.isPlaylistOwner,
 });
 
 const guardRef = useTemplateRef<HTMLElement>("guardRef");
 
+// Rows open the menu from their own contextmenu handlers; off the rows
+// nothing should open at all.
 useEventListener(guardRef, "contextmenu", (e: MouseEvent) => {
   const target = e.target as HTMLElement;
   if (target.closest("[data-media-context]")) {

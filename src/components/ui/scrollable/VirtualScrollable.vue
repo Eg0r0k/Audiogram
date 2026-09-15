@@ -33,6 +33,15 @@
       </div>
 
       <div
+        v-if="$slots.leading"
+        ref="leadingRef"
+        class="virtual-scrollable-leading"
+        :style="{ paddingTop: `${paddingTop}px` }"
+      >
+        <slot name="leading" />
+      </div>
+
+      <div
         v-if="items.length > 0"
         :style="{
           height: `${totalSize}px`,
@@ -79,7 +88,7 @@
 
 <script setup lang="ts" generic="T">
 import { useVirtualizer, type VirtualItem } from "@tanstack/vue-virtual";
-import { computed, nextTick, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, provide, ref, useSlots, useTemplateRef, watch, type Ref } from "vue";
 import { scrollableInjectionKey } from "./injection";
 import type { ScrollAnchor } from "./scroll-anchor";
 import { useSlideContentReady } from "@/components/transitions/slideContentReady";
@@ -128,11 +137,45 @@ const emit = defineEmits<{
   loadMore: [];
 }>();
 
-const beforeHeight = ref(0);
-const stickyHeight = ref(0);
-const preListHeight = computed(() => beforeHeight.value + stickyHeight.value);
+const containerRef = useTemplateRef("containerRef");
+const beforeRef = useTemplateRef("beforeRef");
+const stickyRef = useTemplateRef("stickyRef");
+const leadingRef = useTemplateRef("leadingRef");
 
-// Rows wait for two things: the before/sticky slots measured (so the first
+/**
+ * A block above the rows (`before`, `sticky`, `leading`). Its height is part
+ * of the virtualizer's scrollMargin, so a change re-measures the rows.
+ */
+const measuredBlock = (el: Readonly<Ref<HTMLElement | null>>) => {
+  const height = ref(0);
+  let observer: ResizeObserver | null = null;
+
+  const update = () => {
+    const next = el.value?.getBoundingClientRect().height ?? 0;
+    if (height.value === next) return;
+    height.value = next;
+    virtualizer.value.measure();
+    scrollable.updateThumb();
+  };
+
+  const observe = () => {
+    if (!el.value || typeof ResizeObserver === "undefined") return;
+    observer = new ResizeObserver(() => requestAnimationFrame(update));
+    observer.observe(el.value);
+  };
+
+  return { height, update, observe, disconnect: () => observer?.disconnect() };
+};
+
+const before = measuredBlock(beforeRef);
+const sticky = measuredBlock(stickyRef);
+const leading = measuredBlock(leadingRef);
+const preListBlocks = [before, sticky, leading];
+const beforeHeight = before.height;
+const stickyHeight = sticky.height;
+const preListHeight = computed(() => beforeHeight.value + stickyHeight.value + leading.height.value);
+
+// Rows wait for two things: the blocks above them measured (so the first
 // row render already has the right scrollMargin instead of being redone), and
 // the enclosing slide transition running — mounting dozens of rows is the
 // heaviest part of a page and must not sit between the click and the first
@@ -141,8 +184,11 @@ const headerMeasured = ref(false);
 const contentReady = useSlideContentReady();
 const rowsReady = computed(() => headerMeasured.value && contentReady.value);
 
+// With a leading block the top padding sits above it (in its measured
+// height), so the rows follow the block at row spacing.
+const slots = useSlots();
 const effectivePaddingTop = computed(() =>
-  props.items.length > 0 ? props.paddingTop : 0,
+  props.items.length > 0 && !slots.leading ? props.paddingTop : 0,
 );
 
 const effectivePaddingBottom = computed(() =>
@@ -156,33 +202,9 @@ const totalSize = computed(() => {
   return virtualizer.value.getTotalSize() + effectivePaddingTop.value + effectivePaddingBottom.value;
 });
 
-const containerRef = useTemplateRef("containerRef");
-const beforeRef = useTemplateRef("beforeRef");
-const stickyRef = useTemplateRef("stickyRef");
-
-let beforeResizeObserver: ResizeObserver | null = null;
-let stickyResizeObserver: ResizeObserver | null = null;
 let mountFrame: number | null = null;
 let lastLoadMoreItemsCount = -1;
 let scrollDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-function updateBeforeHeight() {
-  const newHeight = beforeRef.value?.getBoundingClientRect().height ?? 0;
-  if (beforeHeight.value !== newHeight) {
-    beforeHeight.value = newHeight;
-    virtualizer.value.measure();
-    scrollable.updateThumb();
-  }
-}
-
-function updateStickyHeight() {
-  const newHeight = stickyRef.value?.getBoundingClientRect().height ?? 0;
-  if (stickyHeight.value !== newHeight) {
-    stickyHeight.value = newHeight;
-    virtualizer.value.measure();
-    scrollable.updateThumb();
-  }
-}
 
 const scrollable = useScrollable(containerRef, {
   direction: "vertical",
@@ -497,23 +519,9 @@ const playFlip = () => {
 const measureHeaderNextFrame = () => {
   mountFrame = requestAnimationFrame(() => {
     mountFrame = null;
-    updateBeforeHeight();
-    updateStickyHeight();
+    for (const block of preListBlocks) block.update();
     headerMeasured.value = true;
-
-    if (beforeRef.value && typeof ResizeObserver !== "undefined") {
-      beforeResizeObserver = new ResizeObserver(() => {
-        requestAnimationFrame(updateBeforeHeight);
-      });
-      beforeResizeObserver.observe(beforeRef.value);
-    }
-
-    if (stickyRef.value && typeof ResizeObserver !== "undefined") {
-      stickyResizeObserver = new ResizeObserver(() => {
-        requestAnimationFrame(updateStickyHeight);
-      });
-      stickyResizeObserver.observe(stickyRef.value);
-    }
+    for (const block of preListBlocks) block.observe();
   });
 };
 
@@ -527,8 +535,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (mountFrame != null) cancelAnimationFrame(mountFrame);
-  beforeResizeObserver?.disconnect();
-  stickyResizeObserver?.disconnect();
+  for (const block of preListBlocks) block.disconnect();
   if (scrollDebounceTimer) {
     clearTimeout(scrollDebounceTimer);
   }

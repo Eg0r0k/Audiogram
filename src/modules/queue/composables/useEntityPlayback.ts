@@ -86,9 +86,12 @@ export const useEntityPlayback = (options: EntityPlaybackOptions) => {
   };
 
   const addToQueue = () => {
+    const source = toValue(options.source);
+    if (!source) return;
+
     const tracks = toValue(options.tracks);
     if (tracks.length === 0) return;
-    queueStore.addMultipleToQueue(tracks);
+    queueStore.addMultipleToQueue(tracks, source);
   };
 
   return { playAll, playTrack, shuffle, addToQueue };

@@ -1,14 +1,14 @@
-import { QueryClient, MutationCache, QueryCache } from "@tanstack/vue-query";
+import { QueryClient, MutationCache, QueryCache, hashKey } from "@tanstack/vue-query";
 import { getLogger } from "@/lib/logger";
+import { SourceQueryError } from "@/queries/shared";
 import type { SourceErrorKind } from "@/types/source-dto";
 
 const MAX_RETRIES = 2;
 
 /**
  * Source errors that repeating the request cannot change: a malformed body, a
- * rejected credential, a missing resource, a deliberate abort. Retrying those
- * only multiplies the log noise — one incident produced 52 identical lines
- * because every failure was retried the full two times.
+ * rejected credential, a missing resource, a deliberate abort. A retry there
+ * only repeats the log line.
  */
 const TERMINAL_SOURCE_ERRORS = new Set<SourceErrorKind>([
   "PARSE",
@@ -18,14 +18,13 @@ const TERMINAL_SOURCE_ERRORS = new Set<SourceErrorKind>([
 ]);
 
 /**
- * Only a source error can be transient. Everything else is Dexie, and a Dexie
+ * Only a source error can be transient, and only the source boundary
+ * (`unwrapSourceResult`) raises one. Everything else is Dexie, and a Dexie
  * read answers the same way on every attempt — "not found" or a full quota
  * would only reach the screen three seconds late.
  */
-const isRetryableSourceError = (error: unknown): boolean => {
-  if (typeof error !== "object" || error === null || !("kind" in error)) return false;
-  return !TERMINAL_SOURCE_ERRORS.has((error as { kind: SourceErrorKind }).kind);
-};
+const isRetryableSourceError = (error: unknown): boolean =>
+  error instanceof SourceQueryError && !TERMINAL_SOURCE_ERRORS.has(error.kind);
 
 const shouldRetry = (failureCount: number, error: unknown): boolean =>
   isRetryableSourceError(error) && failureCount < MAX_RETRIES;
@@ -33,13 +32,13 @@ const shouldRetry = (failureCount: number, error: unknown): boolean =>
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError(error, query) {
-      getLogger().error(`[Query] ${String(query.queryKey)} — ${error.message}`);
+      getLogger().error(`[Query] ${query.queryHash} — ${error.message}`);
     },
   }),
   mutationCache: new MutationCache({
     onError(error, _vars, _ctx, mutation) {
-      const key = mutation.options.mutationKey ?? "unknown";
-      getLogger().error(`[Mutation] ${String(key)} — ${error.message}`);
+      const key = mutation.options.mutationKey;
+      getLogger().error(`[Mutation] ${key ? hashKey(key) : "unknown"} — ${error.message}`);
     },
   }),
   defaultOptions: {

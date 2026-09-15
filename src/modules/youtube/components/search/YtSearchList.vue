@@ -76,14 +76,6 @@ import { useYtSearchResults } from "../../composables/useYtSearchResults";
 import { youtubeErrorMessage } from "../../lib/errors";
 import { Spinner } from "@/components/ui/spinner";
 
-//
-// One chip's results, paged. Track hits render as the shared row (they play
-// and download like any other source's), everything else as the shared
-// result row.
-//
-
-// Results open YouTube's view of an entity, not a library row that may exist
-// under the same branded id.
 const CATALOG = { catalog: true } as const;
 
 interface Row {

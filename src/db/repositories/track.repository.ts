@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import type { TrackEntity } from "@/db/entities";
-import type { TrackSortKey } from "@/types/track-sort";
+import { isDescendingSort, trackSortField, type TrackSortKey } from "@/types/track-sort";
 import type { AlbumId, ArtistId, TagId, TrackId } from "@/types/ids";
 import type { Collection } from "dexie";
 import type { Result } from "neverthrow";
@@ -26,51 +26,15 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   }
 
   private getSortedAllCollection(sortKey: TrackSortKey): Collection<TrackEntity, TrackId, TrackEntity> {
-    switch (sortKey) {
-      case "date_added_asc":
-        return this.table.orderBy("addedAt");
-      case "date_added_desc":
-        return this.table.orderBy("addedAt").reverse();
-      case "title_asc":
-        return this.table.orderBy("title");
-      case "title_desc":
-        return this.table.orderBy("title").reverse();
-      case "duration_asc":
-        return this.table.orderBy("duration");
-      case "duration_desc":
-        return this.table.orderBy("duration").reverse();
-      case "plays_desc":
-        return this.table.orderBy("playCount").reverse();
-      case "artist_asc":
-        return this.table.orderBy("artistName");
-      case "artist_desc":
-        return this.table.orderBy("artistName").reverse();
-      case "album_asc":
-        return this.table.orderBy("albumTitle");
-      case "album_desc":
-        return this.table.orderBy("albumTitle").reverse();
-      default:
-        return this.table.orderBy("addedAt").reverse();
-    }
-  }
-
-  private getSortField(sortKey: TrackSortKey): string {
-    switch (sortKey) {
-      case "title_asc": case "title_desc": return "title";
-      case "duration_asc": case "duration_desc": return "duration";
-      case "plays_desc": return "playCount";
-      case "artist_asc": case "artist_desc": return "artistName";
-      case "album_asc": case "album_desc": return "albumTitle";
-      case "date_added_asc": case "date_added_desc": return "addedAt";
-      default: return "addedAt";
-    }
+    const collection = this.table.orderBy(trackSortField(sortKey));
+    return isDescendingSort(sortKey) ? collection.reverse() : collection;
   }
 
   private getSortedLikedCollection(sortKey: TrackSortKey): Collection<TrackEntity, TrackId> {
-    const field = this.getSortField(sortKey);
+    const field = trackSortField(sortKey);
     const compoundKey = `[${field}+likedAt]`;
     const isNumeric = ["addedAt", "duration", "playCount"].includes(field);
-    const isDesc = sortKey.endsWith("_desc");
+    const isDesc = isDescendingSort(sortKey);
     const collection = this.table.where(compoundKey).between(
       isNumeric ? [0, 1] : ["", 1],
       isNumeric ? [Infinity, Infinity] : ["\uffff", Infinity],
@@ -365,8 +329,8 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
         return ok([]);
       }
 
-      const field = this.getSortField(sortKey);
-      const isDesc = sortKey.endsWith("_desc");
+      const field = trackSortField(sortKey);
+      const isDesc = isDescendingSort(sortKey);
 
       const tracks = await this.table
         .where("id")

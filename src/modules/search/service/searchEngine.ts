@@ -81,10 +81,12 @@ export const createSearchEngine = (): SearchEngine => {
     searchOptions: BASE_SEARCH_OPTIONS,
   });
 
-  const rawSearch = (query: string, filter: SearchFilter): SearchResult[] => {
+  const rawSearch = (query: string, filter: SearchFilter, within?: ReadonlySet<string>): SearchResult[] => {
     const options: MiniSearchOptions = { ...BASE_SEARCH_OPTIONS };
-    if (filter !== "all") {
-      options.filter = result => result.type === filter;
+    if (filter !== "all" || within) {
+      options.filter = result =>
+        (filter === "all" || result.type === filter)
+        && (!within || within.has(result.entityId as string));
     }
 
     // Every word must match; only if nothing does, fall back to any word.
@@ -106,7 +108,7 @@ export const createSearchEngine = (): SearchEngine => {
     },
 
     search: (query, filter, options) => {
-      const raw = rawSearch(query, filter);
+      const raw = rawSearch(query, filter, options?.within);
       const offset = options?.offset ?? 0;
       const page = options?.limit == null
         ? raw.slice(offset)

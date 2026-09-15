@@ -33,7 +33,7 @@
 
     <NavigationItems
       :artist-ids="libTrack.artistIds"
-      :album-name="libTrack.albumName"
+      :album-id="libTrack.albumId"
       @go-to-artist="actions.goToArtist"
       @go-to-album="actions.goToAlbum"
     />

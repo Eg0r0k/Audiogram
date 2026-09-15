@@ -21,6 +21,12 @@ const ACCENT_TONE = 80;
 const ON_ACCENT_TONE = 20;
 const TEXT_TONE = 95;
 const TEXT_MUTED_TONE = 80;
+// Hero gradients need punch: a lighter tone with a chroma floor. The floor
+// only applies to seeds that already carry a hue; Score lets chroma down to
+// 5 through, and lifting those would paint a grey cover teal or mustard.
+const VIVID_TONE = 50;
+const VIVID_CHROMA_FLOOR = 48;
+const VIVID_MIN_SEED_CHROMA = 16;
 
 export interface PaletteFromSeedOptions {
   /** Scales the seed chroma used for the background palette (1 = as-is). */
@@ -34,6 +40,7 @@ export interface SeedPalette {
   onAccent: number;
   text: number;
   textMuted: number;
+  vivid: number;
 }
 
 /** ARGB pixels → ranked theme seeds (ARGB). Empty when nothing is suitable. */
@@ -60,6 +67,8 @@ export const paletteFromSeed = (
   const background = TonalPalette.fromHueAndChroma(hue, chroma * chromaMultiplier);
   const text = TonalPalette.fromHueAndChroma(hue, Math.min(chroma / 12, 4));
   const textMuted = TonalPalette.fromHueAndChroma(hue, Math.min(chroma / 6, 8));
+  const vividChroma = chroma >= VIVID_MIN_SEED_CHROMA ? Math.max(chroma, VIVID_CHROMA_FLOOR) : chroma;
+  const vivid = TonalPalette.fromHueAndChroma(hue, vividChroma);
 
   return {
     seed,
@@ -68,5 +77,6 @@ export const paletteFromSeed = (
     onAccent: primary.tone(ON_ACCENT_TONE),
     text: text.tone(TEXT_TONE),
     textMuted: textMuted.tone(TEXT_MUTED_TONE),
+    vivid: vivid.tone(VIVID_TONE),
   };
 };

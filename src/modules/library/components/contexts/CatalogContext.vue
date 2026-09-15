@@ -1,22 +1,22 @@
 <template>
-  <ContextMenuItem @select="props.addToQueue">
+  <ResponsiveMenuItem @select="props.addToQueue">
     <IconList class="size-5" />
     {{ $t("track.contextMenu.addToQueue") }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 
-  <ContextMenuItem
+  <ResponsiveMenuItem
     v-if="canDownload"
     @select="props.download"
   >
     <IconDownload class="size-5" />
     {{ downloadLabel }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { ContextMenuItem } from "@/components/ui/context-menu";
+import { ResponsiveMenuItem } from "@/components/ui/responsive-menu";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import type { LibraryItem } from "@/modules/library/types";
 import IconList from "~icons/tabler/list";

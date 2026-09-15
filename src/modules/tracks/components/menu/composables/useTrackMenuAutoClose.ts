@@ -40,7 +40,9 @@ export function useTrackMenuAutoClose(
       case "queue": {
         const itemId = activeQueueItemId.value;
         if (!itemId) return false;
-        return !queueStore.upcomingItems.some(item => item.id === itemId);
+        // The whole queue, not just the upcoming slice: the now-playing row
+        // opens this menu too, and its item sits at currentIndex.
+        return !queueStore.queue.some(item => item.id === itemId);
       }
       case "playlist": {
         if (!isLibraryTrack(track)) return false;

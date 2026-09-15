@@ -1,18 +1,11 @@
 import { inject, provide, type Component, type InjectionKey } from "vue";
 import {
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubTrigger,
-  ContextMenuSubContent,
-} from "@/components/ui/context-menu";
-import {
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-} from "@/components/ui/dropdown-menu";
+  ResponsiveMenuItem,
+  ResponsiveMenuSeparator,
+  ResponsiveMenuSub,
+  ResponsiveMenuSubContent,
+  ResponsiveMenuSubTrigger,
+} from "@/components/ui/responsive-menu";
 
 export interface MenuTrackComponents {
   Item: Component;
@@ -24,21 +17,12 @@ export interface MenuTrackComponents {
 
 const TrackMenuComponentsKey: InjectionKey<MenuTrackComponents> = Symbol("MenuTrackComponents");
 
-export const contextMenuTrackComponents: MenuTrackComponents = {
-  Item: ContextMenuItem,
-  Separator: ContextMenuSeparator,
-  Sub: ContextMenuSub,
-  SubTrigger: ContextMenuSubTrigger,
-  SubContent: ContextMenuSubContent,
-
-};
-
-export const dropdownMenuTrackComponents: MenuTrackComponents = {
-  Item: DropdownMenuItem,
-  Separator: DropdownMenuSeparator,
-  Sub: DropdownMenuSub,
-  SubTrigger: DropdownMenuSubTrigger,
-  SubContent: DropdownMenuSubContent,
+export const responsiveTrackComponents: MenuTrackComponents = {
+  Item: ResponsiveMenuItem,
+  Separator: ResponsiveMenuSeparator,
+  Sub: ResponsiveMenuSub,
+  SubTrigger: ResponsiveMenuSubTrigger,
+  SubContent: ResponsiveMenuSubContent,
 };
 
 export function provideTrackMenuComponents(components: MenuTrackComponents) {

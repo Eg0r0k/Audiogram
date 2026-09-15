@@ -17,6 +17,7 @@ import {
   type PlaylistChanges,
   updatePlaylistAndSync,
 } from "@/queries/playlist.queries";
+import { searchPlaylistTracks } from "@/queries/track.queries";
 import { fetchSourcePlaylist } from "@/queries/source.queries";
 import { routeLocation } from "@/app/router/route-locations";
 import type { Track } from "@/modules/player/types";
@@ -29,8 +30,9 @@ import type { SourcePlaylistDTO } from "@/modules/sources/types";
 
 export type { PlaylistChanges } from "@/queries/playlist.queries";
 
-export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>) {
+export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) {
   const route = useRoute();
+  const normalizedSearchQuery = computed(() => searchQuery.value.trim());
   const router = useRouter();
   const queryClient = useQueryClient();
   const { t } = useI18n();
@@ -83,8 +85,10 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>) {
     isLoading: isLocalTracksLoading,
     isFetchingNextPage: isFetchingNextLocalPage,
   } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.playlists.tracksPage(playlistId.value, sortKey.value)),
-    queryFn: ({ pageParam = 0 }) => getPlaylistTracksPaginated(playlistId.value, pageParam, undefined, sortKey.value),
+    queryKey: computed(() => queryKeys.playlists.tracksPage(playlistId.value, sortKey.value, normalizedSearchQuery.value)),
+    queryFn: ({ pageParam = 0 }) => normalizedSearchQuery.value
+      ? searchPlaylistTracks(playlistId.value, normalizedSearchQuery.value, pageParam, undefined, sortKey.value)
+      : getPlaylistTracksPaginated(playlistId.value, pageParam, undefined, sortKey.value),
     initialPageParam: 0,
     getNextPageParam: lastPage => lastPage.nextOffset,
     placeholderData: previousData => previousData,
@@ -156,7 +160,7 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>) {
     formatTotalDuration(
       isRemote.value
         ? remoteTracks.value.reduce((sum, track) => sum + track.duration, 0)
-        : playlistTotalDurationSeconds.value ?? 0,
+        : infiniteData.value?.pages[0]?.totalDuration ?? playlistTotalDurationSeconds.value ?? 0,
       t,
     ),
   );
@@ -203,6 +207,10 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>) {
     }
     const current = playlist.value;
     if (!current) return [];
+    const query = normalizedSearchQuery.value;
+    if (query) {
+      return (await searchPlaylistTracks(current.id, query, 0, Infinity, sortKey.value)).tracks;
+    }
     return (await getPlaylistPageData(current.id, sortKey.value)).tracks;
   };
 
@@ -239,6 +247,7 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>) {
     playlist,
     tracks,
     canSort,
+    normalizedSearchQuery,
     /** True when `tracks` already holds the playlist whole. */
     isComplete: computed(() => !isPaged.value && isRemote.value),
     loadAllTracks,

@@ -4,7 +4,7 @@
   >
     <template v-if="isLoading">
       <div class="flex items-center justify-center h-full">
-        <IconLoader2 class="size-8 animate-spin text-muted-foreground" />
+        <Spinner class="size-8 text-muted-foreground" />
       </div>
     </template>
 
@@ -38,27 +38,26 @@
           >
             <template #before>
               <MediaHero
+                v-model:filter="searchQuery"
                 :data="albumData"
                 :has-tracks="tracks.length > 0"
                 :is-library-entity="!!album"
+                :filterable="!!album"
                 @play="handlePlayAll"
                 @shuffle="handleShuffle"
                 @edit="openEditDialog"
                 @delete="openDeleteDialog"
                 @add-to-queue="handleAddToQueue"
-              >
-                <template #actions>
-                  <Button
-                    v-if="album"
-                    class="text-white"
-                    variant="ghost"
-                    @click="openAddTracksPanel"
-                  >
-                    <IconPlus class="size-5" />
-                    {{ $t("track.addTracks") }}
-                  </Button>
-                </template>
-              </MediaHero>
+              />
+            </template>
+
+            <template #leading>
+              <div class="px-4">
+                <AddTrackRow
+                  v-if="album"
+                  @add="openAddTracksPanel"
+                />
+              </div>
             </template>
 
             <template #sticky>
@@ -108,26 +107,26 @@ import { useRoute } from "vue-router";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import PageErrorState from "@/components/common/PageErrorState.vue";
-import { Button } from "@/components/ui/button";
 import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback";
 import type { QueueSource } from "@/modules/queue/types";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
-import IconLoader2 from "~icons/tabler/loader-2";
 import { useAlbumPage } from "@/modules/albums/composables/useAlbumPage";
 import { getAlbumPageData } from "@/queries/album.queries";
+import { searchAlbumTracks } from "@/queries/track.queries";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 import { summonDialog } from "@/components/dialogs/summonDialog";
 import { useEditAlbumDialog } from "@/modules/albums/composables/useEditAlbumDialog";
-import IconPlus from "~icons/tabler/plus";
+import { Spinner } from "@/components/ui/spinner";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
+import AddTrackRow from "@/modules/tracks/components/AddTrackRow.vue";
 import { getLogger } from "@/lib/logger";
 
 const { t } = useI18n();
@@ -136,11 +135,13 @@ const rightPanelStore = useRightPanelStore();
 const { openMenu } = useTrackMenu();
 const route = useRoute();
 const sortKey = ref<TrackSortKey | null>(null);
+const searchQuery = ref("");
 
 const {
   album,
   tracks,
   canSort,
+  normalizedSearchQuery,
   albumData,
   coverUrl,
   trackCount,
@@ -154,7 +155,7 @@ const {
   hasNextPage,
   isTracksLoading,
   isFetchingNextPage,
-} = useAlbumPage(sortKey);
+} = useAlbumPage(sortKey, searchQuery);
 
 const editAlbum = useEditAlbumDialog();
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
@@ -209,6 +210,10 @@ const {
   loadAll: async () => {
     const row = album.value;
     if (!row) return [];
+    const query = normalizedSearchQuery.value;
+    if (query) {
+      return (await searchAlbumTracks(row.id, query, 0, Infinity, sortKey.value)).tracks;
+    }
     return (await getAlbumPageData(row.id, sortKey.value)).tracks;
   },
 });

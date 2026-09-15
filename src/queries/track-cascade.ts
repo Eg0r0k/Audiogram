@@ -7,7 +7,7 @@ import { cleanupAfterTrackRemoval } from "@/services/library-gc";
 import type { PlaylistId, TrackId } from "@/types/ids";
 import type { QueryClient } from "@tanstack/vue-query";
 import { queryKeys } from "@/queries/query-keys";
-import { removeTracksFromCaches, syncPlaylistCaches, syncPlaylistTrackRemoval } from "./cache";
+import { removeTracksFromCaches, syncPlaylistCaches } from "./cache";
 import { unwrapResult } from "./shared";
 
 //
@@ -85,16 +85,17 @@ export const purgeTracksInTx = async (
   return removals;
 };
 
-/**
- * Post-commit fan-out for a purge: copy files on disk, query caches and the
- * search index. `skipPlaylistIds` drops playlists that were deleted alongside
- * the tracks — re-syncing their caches would resurrect them.
- */
 export interface TrackPurgeSyncOptions {
   /** Leave the copy files on disk; the caller deletes them later (undo window). */
   deferCopyFiles?: boolean;
 }
 
+/**
+ * Post-commit fan-out for a purge: copy files on disk, query caches and the
+ * search index. `skipPlaylistIds` drops playlists that were deleted alongside
+ * the tracks — re-syncing their caches would resurrect them. The purged rows
+ * leave every paged list, the playlists' included, in one pass.
+ */
 export const syncAfterTrackPurge = async (
   queryClient: QueryClient,
   trackIds: readonly TrackId[],
@@ -113,12 +114,8 @@ export const syncAfterTrackPurge = async (
   }
 
   const skipped = new Set(skipPlaylistIds);
-  for (const { next, removedIds } of playlistRemovals) {
-    if (skipped.has(next.id)) continue;
-    for (const id of removedIds) {
-      syncPlaylistTrackRemoval(queryClient, next.id, id);
-    }
-    syncPlaylistCaches(queryClient, next);
+  for (const { next } of playlistRemovals) {
+    if (!skipped.has(next.id)) syncPlaylistCaches(queryClient, next);
   }
 
   if (trackIds.length === 0) return;

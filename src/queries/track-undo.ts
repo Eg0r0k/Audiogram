@@ -12,7 +12,7 @@ import { unitOfWork } from "@/db/unit-of-work";
 import { cleanupOfflineCopyFiles } from "@/modules/downloads/service/removeCopy";
 import { indexImportedTracks } from "@/modules/search/service/searchIndex";
 import type { TrackId } from "@/types/ids";
-import { invalidateForTrackMutation, removeCoverCache } from "./cache";
+import { invalidateForTrackMutation, removeCoverCache, settleLibraryReads } from "./cache";
 import { queryKeys } from "./query-keys";
 import { unique, unwrapResult } from "./shared";
 import { findOfflineCopiesOf, trackCascadeTables } from "./track-cascade";
@@ -110,6 +110,7 @@ export const deleteTracksWithUndo = async (
     });
     if (tx.isErr()) throw tx.error;
 
+    await settleLibraryReads(queryClient);
     await indexImportedTracks(trackIds);
     // Only the restored owners re-read their covers; a library-wide cover
     // invalidation would make every visible cover blink.
@@ -117,7 +118,7 @@ export const deleteTracksWithUndo = async (
     for (const id of trackIds) removeCoverCache("track", id);
     // The delete parked these on null; no invalidation reaches offlineCopies.
     for (const copy of copies) queryClient.setQueryData(queryKeys.offlineCopies.detail(copy.trackId), copy);
-    await invalidateForTrackMutation(queryClient, { kind: "relations" });
+    invalidateForTrackMutation(queryClient, { kind: "relations" });
   };
 
   return { deleted, restore, finalize };

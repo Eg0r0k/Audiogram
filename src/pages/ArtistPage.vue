@@ -40,21 +40,9 @@
               @shuffle="handleShuffle"
               @edit="openEditDialog"
               @delete="openDeleteDialog"
-            >
-              <template #actions>
-                <Button
-                  v-if="artist"
-                  class="text-white"
-                  variant="ghost"
-                  @click="openAddTracksPanel"
-                >
-                  <IconPlus class="size-5" />
-                  {{ $t("track.addTracks") }}
-                </Button>
-              </template>
-            </MediaHero>
+            />
             <section
-              v-if="albums.length > 0"
+              v-if="albums.length > 0 || artist"
               class="mx-auto max-w-page p-4"
             >
               <div class="flex items-center justify-between gap-4">
@@ -83,6 +71,10 @@
                 <ScrollableSlider
                   class="mt-3"
                 >
+                  <CreateAlbumCard
+                    v-if="artist"
+                    @create="handleCreateAlbum"
+                  />
                   <AlbumItem
                     v-for="albumItem in albumItems"
                     :key="albumItem.id"
@@ -112,6 +104,15 @@
                 </ScrollableSlider>
               </LibraryContextMenu>
             </section>
+          </template>
+
+          <template #leading>
+            <div class="px-4">
+              <AddTrackRow
+                v-if="artist"
+                @add="openAddTracksPanel"
+              />
+            </div>
           </template>
 
           <template #sticky>
@@ -159,7 +160,6 @@ import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/Trac
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import { Spinner } from "@/components/ui/spinner";
 import IconChevronRight from "~icons/tabler/chevron-right";
-import IconPlus from "~icons/tabler/plus";
 
 import { useArtistPage } from "@/modules/artists/composables/useArtistPage";
 import { getArtistPageData } from "@/queries/artist.queries";
@@ -174,7 +174,10 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
+import AddTrackRow from "@/modules/tracks/components/AddTrackRow.vue";
 import AlbumItem from "@/modules/albums/components/AlbumItem.vue";
+import CreateAlbumCard from "@/modules/albums/components/CreateAlbumCard.vue";
+import { useCreateAlbum } from "@/modules/albums/composables/useCreateAlbum";
 import { usePlayAlbum } from "@/modules/albums/composables/usePlayAlbum";
 import { ScrollableSlider } from "@/components/ui/scrollable";
 import { routeLocation } from "@/app/router/route-locations";
@@ -224,6 +227,15 @@ const {
 } = useArtistPage(sortKey, searchQuery);
 
 const editArtist = useEditArtistDialog();
+const createAlbum = useCreateAlbum();
+
+const handleCreateAlbum = () => {
+  if (!artist.value) return;
+  createAlbum(artist.value.id).catch((error: unknown) => {
+    getLogger().error(`[ArtistPage] Creating an album failed: ${String(error)}`);
+    toast.error(error instanceof Error ? error.message : t("errors.loadFailed"));
+  });
+};
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
 
 const albumItems = computed<LibraryItem[]>(() => albums.value.map(album => ({

@@ -109,7 +109,21 @@ export function useTrackMenu() {
     isDropdownOpen.value = false;
   };
 
+  const isMenuOpenFor = (
+    track: { id: string },
+    options?: { target?: TrackContext; queueItemId?: QueueItemId | null },
+  ): boolean => {
+    let openTarget: TrackContext | null = null;
+    if (isDropdownOpen.value) openTarget = activeDropdownTarget.value;
+    else if (isContextMenuOpen.value) openTarget = activeContextMenuTarget.value;
+    if (openTarget === null) return false;
+    if (options?.target && openTarget !== options.target) return false;
+    if (options?.queueItemId != null && activeQueueItemId.value !== options.queueItemId) return false;
+    return activeTrack.value?.id === track.id;
+  };
+
   return {
+    isMenuOpenFor,
     activeSubject,
     activeTrack,
     activeIndex,

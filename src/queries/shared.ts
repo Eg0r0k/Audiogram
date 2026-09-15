@@ -1,15 +1,18 @@
 import type { TrackEntity } from "@/db/entities";
 import { getLogger } from "@/lib/logger";
-import type { Track } from "@/modules/player/types";
 import { reportSourceError, reportSourceOk } from "@/modules/sources/lib/health";
 import type { SourceError, SourceErrorKind } from "@/types/source-dto";
 import type { SourceKind } from "@/types/track-ref";
-import type { TrackSortKey } from "@/types/track-sort";
+import { isDescendingSort, trackSortField, type TrackSortKey } from "@/types/track-sort";
 import type { Result } from "neverthrow";
 
 export { unwrapResult } from "@/lib/result";
 
-/** Typed SourceError carried across the TanStack Query boundary. */
+/**
+ * Typed SourceError carried across the TanStack Query boundary. The client's
+ * retry policy keys on this class: a failure of any other shape is never
+ * retried.
+ */
 export class SourceQueryError extends Error {
   constructor(public readonly kind: SourceErrorKind, message: string) {
     super(message);
@@ -23,10 +26,10 @@ export class SourceQueryError extends Error {
  * refused) is the one the verdict is recorded against, so a view can say
  * "the password was rejected" instead of showing an empty list.
  */
-export async function unwrapSourceResult<T>(
+export const unwrapSourceResult = async <T>(
   promise: PromiseLike<Result<T, SourceError>>,
   kind?: SourceKind,
-): Promise<T> {
+): Promise<T> => {
   const result = await promise;
 
   if (result.isErr()) {
@@ -37,15 +40,11 @@ export async function unwrapSourceResult<T>(
 
   if (kind) reportSourceOk(kind);
   return result.value;
-}
-export function unique<T>(values: readonly T[]): T[] {
-  return [...new Set(values)];
-}
+};
 
-export function upsertById<T extends { id: string }>(
-  items: readonly T[],
-  item: T,
-): T[] {
+export const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];
+
+export const upsertById = <T extends { id: string }>(items: readonly T[], item: T): T[] => {
   const index = items.findIndex(candidate => candidate.id === item.id);
 
   if (index === -1) {
@@ -55,50 +54,25 @@ export function upsertById<T extends { id: string }>(
   const next = [...items];
   next[index] = item;
   return next;
-}
+};
 
-export function removeById<T extends { id: string }>(
-  items: readonly T[],
-  id: string,
-): T[] {
-  return items.filter(item => item.id !== id);
-}
+export const removeById = <T extends { id: string }>(items: readonly T[], id: string): T[] =>
+  items.filter(item => item.id !== id);
 
-export function patchTrackEntityLike(
-  track: TrackEntity,
-  likedAt: number | undefined,
-): TrackEntity {
-  return {
-    ...track,
-    likedAt,
-  };
-}
-
-export function patchTrackLike(track: Track, isLiked: boolean): Track {
-  return {
-    ...track,
-    isLiked,
-  };
-}
-
-export function sortTracks(tracks: TrackEntity[], sortKey: TrackSortKey): TrackEntity[] {
-  const isDesc = sortKey.endsWith("_desc");
-  const getSortValue = (t: TrackEntity) => {
-    switch (sortKey) {
-      case "title_asc": case "title_desc": return t.title || "";
-      case "duration_asc": case "duration_desc": return t.duration || 0;
-      case "plays_desc": return t.playCount || 0;
-      case "artist_asc": case "artist_desc": return t.artistName || "";
-      case "album_asc": case "album_desc": return t.albumTitle || "";
-      default: return t.addedAt || 0;
-    }
-  };
+/**
+ * In-memory counterpart of the repository's sorted reads, with the same
+ * plain `<`/`>` comparison Dexie's `sortBy` uses, so a collection sorted
+ * here pages in the same order as one sorted by index.
+ */
+export const sortTracks = (tracks: TrackEntity[], sortKey: TrackSortKey): TrackEntity[] => {
+  const field = trackSortField(sortKey);
+  const direction = isDescendingSort(sortKey) ? -1 : 1;
 
   return [...tracks].sort((a, b) => {
-    const valA = getSortValue(a);
-    const valB = getSortValue(b);
-    if (valA < valB) return isDesc ? 1 : -1;
-    if (valA > valB) return isDesc ? -1 : 1;
+    const valueA = a[field];
+    const valueB = b[field];
+    if (valueA < valueB) return -direction;
+    if (valueA > valueB) return direction;
     return 0;
   });
-}
+};

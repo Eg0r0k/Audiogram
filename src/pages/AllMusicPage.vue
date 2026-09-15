@@ -354,7 +354,7 @@ const goBack = useGoBack();
 const scrollableRef = useTemplateRef("scrollableRef");
 
 useScrollRestoration(scrollableRef, {
-  key: () => `all-music:${resolvedSortKey.value}:${normalizedSearchQuery.value}`,
+  key: () => `all-music:${normalizedSearchQuery.value}`,
   ready: () => !isLoading.value,
   deps: () => tracks.value.length,
 });

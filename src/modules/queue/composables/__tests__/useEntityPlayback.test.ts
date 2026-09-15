@@ -99,9 +99,23 @@ describe("useEntityPlayback", () => {
     expect(queue.setQueue).not.toHaveBeenCalled();
   });
 
-  it("adds only the rendered rows to the queue", () => {
+  // The queue panel links each item back to where it came from; an item
+  // appended without its source would read as a manual add.
+  it("adds only the rendered rows to the queue, recorded against the source", () => {
     playback(false).addToQueue();
 
-    expect(queue.addMultipleToQueue).toHaveBeenCalledWith(LOADED);
+    expect(queue.addMultipleToQueue).toHaveBeenCalledWith(LOADED, ALBUM);
+  });
+
+  it("appends nothing while the source is still unknown", () => {
+    const { addToQueue } = useEntityPlayback({
+      tracks: ref(LOADED),
+      source: ref(null),
+      isComplete: ref(true),
+      loadAll: async () => WHOLE,
+    });
+    addToQueue();
+
+    expect(queue.addMultipleToQueue).not.toHaveBeenCalled();
   });
 });

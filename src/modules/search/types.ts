@@ -43,6 +43,8 @@ export interface SearchResponse {
 export interface SearchOptions {
   limit?: number;
   offset?: number;
+  /** Entity ids the hits must belong to — a search scoped to one album, artist or playlist. */
+  within?: ReadonlySet<string>;
 }
 
 export function createEmptyGroups(): Record<SearchEntityType, SearchResultItem[]> {

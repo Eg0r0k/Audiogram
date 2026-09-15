@@ -123,6 +123,20 @@ describe("invalidateForAlbumMutation: titleChange", () => {
   });
 });
 
+describe("invalidateForAlbumMutation: creation", () => {
+  // The artist page renders its album shelf and album count from its own
+  // keys; a new album must reach them, or going back to the artist shows the
+  // stale shelf for the whole staleTime.
+  it("reaches the artist's detail and album shelf", async () => {
+    const shelf = [queryKeys.artists.detail(artistId), queryKeys.artists.albums(artistId)];
+    const queryClient = seed(shelf);
+
+    await invalidateForAlbumMutation(queryClient, { kind: "creation", artistId });
+
+    expectStale(queryClient, shelf);
+  });
+});
+
 describe("invalidation does not hold the mutation", () => {
   // The point-sync already shows the change; the re-read of every mounted
   // list runs behind it. A mutation that waited for it would keep isPending

@@ -7,7 +7,7 @@ import { queryKeys } from "@/queries/query-keys";
 import { PlaylistId, QueueItemId, TrackId } from "@/types/ids";
 
 const queueState = reactive({
-  upcomingItems: [] as { id: QueueItemId }[],
+  queue: [] as { id: QueueItemId }[],
 });
 
 vi.mock("@/modules/queue/store/queue.store", () => ({
@@ -80,21 +80,21 @@ describe("useTrackMenuAutoClose", () => {
   const menu = useTrackMenu();
 
   beforeEach(() => {
-    queueState.upcomingItems = [];
+    queueState.queue = [];
     menu.closeMenu();
     menu.closeDropdown();
   });
 
   describe("контекст queue", () => {
-    it("закрывает меню, когда элемент исчез из предстоящих", async () => {
+    it("закрывает меню, когда элемент исчез из очереди", async () => {
       const itemId = QueueItemId("q-1");
-      queueState.upcomingItems = [{ id: itemId }, { id: QueueItemId("q-2") }];
+      queueState.queue = [{ id: itemId }, { id: QueueItemId("q-2") }];
 
       menu.openMenu(makeTrack(), 0, { queueItemId: itemId, target: "queue" });
       const isOpen = shallowRef(true);
       const wrapper = mountAutoClose(isOpen, "queue", createQueryClient());
 
-      queueState.upcomingItems = [{ id: QueueItemId("q-2") }];
+      queueState.queue = [{ id: QueueItemId("q-2") }];
       await nextTick();
 
       expect(menu.isContextMenuOpen.value).toBe(false);
@@ -103,13 +103,29 @@ describe("useTrackMenuAutoClose", () => {
 
     it("не закрывает, пока элемент на месте", async () => {
       const itemId = QueueItemId("q-1");
-      queueState.upcomingItems = [{ id: itemId }];
+      queueState.queue = [{ id: itemId }];
 
       menu.openMenu(makeTrack(), 0, { queueItemId: itemId, target: "queue" });
       const isOpen = shallowRef(true);
       const wrapper = mountAutoClose(isOpen, "queue", createQueryClient());
 
-      queueState.upcomingItems = [{ id: itemId }, { id: QueueItemId("q-2") }];
+      queueState.queue = [{ id: itemId }, { id: QueueItemId("q-2") }];
+      await nextTick();
+
+      expect(menu.isContextMenuOpen.value).toBe(true);
+      wrapper.unmount();
+    });
+
+    it("не закрывает меню текущего трека: его нет в предстоящих, но он в очереди", async () => {
+      const itemId = QueueItemId("q-current");
+      queueState.queue = [{ id: itemId }, { id: QueueItemId("q-2") }];
+
+      // The shell is mounted closed and opened later, like the real
+      // dropdown: the "gone" check runs on the open transition.
+      const isOpen = shallowRef(false);
+      const wrapper = mountAutoClose(isOpen, "queue", createQueryClient());
+      menu.openMenu(makeTrack(), 0, { queueItemId: itemId, target: "queue" });
+      isOpen.value = true;
       await nextTick();
 
       expect(menu.isContextMenuOpen.value).toBe(true);
@@ -118,13 +134,13 @@ describe("useTrackMenuAutoClose", () => {
 
     it("не реагирует при закрытом меню", async () => {
       const itemId = QueueItemId("q-1");
-      queueState.upcomingItems = [{ id: itemId }];
+      queueState.queue = [{ id: itemId }];
 
       menu.openMenu(makeTrack(), 0, { queueItemId: itemId, target: "queue" });
       const isOpen = shallowRef(false);
       const wrapper = mountAutoClose(isOpen, "queue", createQueryClient());
 
-      queueState.upcomingItems = [];
+      queueState.queue = [];
       await nextTick();
 
       expect(menu.isContextMenuOpen.value).toBe(true);

@@ -5,9 +5,9 @@
         class="flex items-center justify-center"
         :class="statusColor"
       >
-        <IconLoader2
+        <Spinner
           v-if="folder.status === 'scanning'"
-          class=" size-6 animate-spin"
+          class="size-6"
         />
         <IconFolder
           v-else-if="folder.status === 'watching'"
@@ -46,8 +46,8 @@
       </ItemSubtitle>
     </ItemContent>
 
-    <DropdownMenu>
-      <DropdownMenuTrigger as-child>
+    <ResponsiveMenu>
+      <ResponsiveMenuTrigger>
         <Button
           size="icon"
           variant="ghost"
@@ -55,35 +55,35 @@
         >
           <IconDots class="size-6" />
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
+      </ResponsiveMenuTrigger>
+      <ResponsiveMenuContent
         align="end"
         :side-offset="10"
         class="bg-popover/50 backdrop-blur-[50px]"
       >
-        <DropdownMenuItem
+        <ResponsiveMenuItem
           :disabled="folder.status === 'scanning'"
           @click="$emit('scan', folder)"
         >
           <IconEye class="size-5" />
           {{ $t('watchedFolders.scan') }}
-        </DropdownMenuItem>
-        <DropdownMenuItem
+        </ResponsiveMenuItem>
+        <ResponsiveMenuItem
           v-if="folder.status === 'missing'"
           @click="$emit('relink', folder.id)"
         >
           <IconFolderSearch class="size-5" />
           {{ $t('watchedFolders.relink') }}
-        </DropdownMenuItem>
-        <DropdownMenuItem
+        </ResponsiveMenuItem>
+        <ResponsiveMenuItem
           variant="destructive"
           @click="$emit('remove', folder.id)"
         >
           <IconTrash class=" size-5" />
           {{ $t('watchedFolders.remove') }}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </ResponsiveMenuItem>
+      </ResponsiveMenuContent>
+    </ResponsiveMenu>
   </Item>
 </template>
 
@@ -100,15 +100,15 @@ import {
 
 import type { WatchedFolder } from "../types";
 
+import { Spinner } from "@/components/ui/spinner";
 import IconFolder from "~icons/tabler/folder-filled";
-import IconLoader2 from "~icons/tabler/loader-2";
 import IconEye from "~icons/tabler/eye";
 import IconAlertTriangle from "~icons/tabler/alert-triangle";
 import IconDots from "~icons/tabler/dots";
 import IconTrash from "~icons/tabler/trash";
 import IconFolderSearch from "~icons/tabler/folder-search";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ResponsiveMenu, ResponsiveMenuContent, ResponsiveMenuItem, ResponsiveMenuTrigger } from "@/components/ui/responsive-menu";
 
 const props = defineProps<{
   folder: WatchedFolder;

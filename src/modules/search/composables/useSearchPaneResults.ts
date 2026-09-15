@@ -5,8 +5,7 @@ import { useQuery } from "@tanstack/vue-query";
 import type { Track } from "@/modules/player/types";
 import type { SourceKind } from "@/types/track-ref";
 import type { TrackId } from "@/types/ids";
-import { queryKeys } from "@/queries/query-keys";
-import { getTracksByIds } from "@/queries/track.queries";
+import { trackQueries } from "@/queries/track.queries";
 import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
 import { useSourcePlaylists, useSourceSearch } from "@/modules/sources/composables/useSourceCatalog";
 import {
@@ -52,11 +51,7 @@ const useLibraryResults = (enabled: ComputedRef<boolean>): SearchPaneResults => 
 
   // The index stores ids; the rows behind them come from Dexie.
   const trackIds = computed(() => groups.value.track.map(item => item.entityId as TrackId));
-  const { data: hydrated } = useQuery({
-    queryKey: computed(() => queryKeys.tracks.byIds(trackIds.value)),
-    queryFn: () => getTracksByIds(trackIds.value),
-    enabled: computed(() => trackIds.value.length > 0),
-  });
+  const { data: hydrated } = useQuery(computed(() => trackQueries.byIds(trackIds.value)));
   const trackRows = computed<Track[]>(() => hydrated.value ?? []);
 
   return {

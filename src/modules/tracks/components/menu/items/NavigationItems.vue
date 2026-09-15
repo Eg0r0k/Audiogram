@@ -29,7 +29,7 @@
       >
         <template v-if="isLoading">
           <div class="flex items-center justify-center py-3">
-            <IconLoader2 class="size-4 animate-spin text-muted-foreground" />
+            <Spinner class="size-4 text-muted-foreground" />
           </div>
         </template>
         <template v-else>
@@ -48,6 +48,7 @@
 
   <component
     :is="Item"
+    v-if="albumId"
     @click="emit('goToAlbum')"
   >
     <IconDisc
@@ -60,11 +61,11 @@
 <script setup lang="ts">
 import { shallowRef, watch } from "vue";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
+import { Spinner } from "@/components/ui/spinner";
 import IconDisc from "~icons/tabler/disc";
 import IconUser from "~icons/tabler/user";
 import IconUsers from "~icons/tabler/users";
-import IconLoader2 from "~icons/tabler/loader-2";
-import type { ArtistId } from "@/types/ids";
+import type { AlbumId, ArtistId } from "@/types/ids";
 import type { ArtistEntity } from "@/db/entities";
 import { getArtistsByIds } from "@/queries/artist.queries";
 
@@ -73,13 +74,15 @@ defineOptions({
 });
 
 // Ephemeral tracks (YouTube stream, radio) have no library identifiers —
-// default to "no artists" instead of crashing the menu render.
+// default to "no artists" instead of crashing the menu render. A library
+// track imported without an album tag carries an empty albumId (see
+// track-persister), which hides "Go to album" the same way.
 const props = withDefaults(defineProps<{
   artistIds?: ArtistId[];
-  albumName?: string;
+  albumId?: AlbumId;
 }>(), {
   artistIds: () => [],
-  albumName: "",
+  albumId: undefined,
 });
 
 const { Item, Sub, SubTrigger, SubContent } = useTrackMenuComponents();

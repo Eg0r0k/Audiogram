@@ -5,11 +5,11 @@ import {
   InputGroupInput,
   InputGroupAddon,
 } from "@/components/ui/input-group";
+import { Spinner } from "@/components/ui/spinner";
 import IconSearch from "~icons/tabler/search";
 import IconPlaylistAdd from "~icons/tabler/playlist-add";
 import IconPlus from "~icons/tabler/plus";
 import IconPlaylist from "~icons/tabler/playlist";
-import IconLoader2 from "~icons/tabler/loader-2";
 import type { PlaylistId } from "@/types/ids";
 import { useTrackMenuComponents } from "../../menu/useTrackMenuComponents";
 import { usePlaylistMenu } from "../composables/usePlaylistMenu";
@@ -82,7 +82,7 @@ const filteredPlaylists = computed(() => {
       <template v-if="isLoading">
         <component :is="Separator" />
         <div class="flex items-center justify-center py-3">
-          <IconLoader2 class="size-4 animate-spin text-muted-foreground" />
+          <Spinner class="size-4 text-muted-foreground" />
         </div>
       </template>
 

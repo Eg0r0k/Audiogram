@@ -12,7 +12,7 @@ import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import { unwrapResult } from "./shared";
 import type { LibrarySummaryData } from "./types";
 
-export async function getLibrarySummary(): Promise<LibrarySummaryData> {
+export const getLibrarySummary = async (): Promise<LibrarySummaryData> => {
   // Playing from ND/YT browsing must not grow the library — shadow rows
   // (pinned = 0) are excluded by the pinned index.
   const [artists, albums, playlists, folders, likedCount] = await Promise.all([
@@ -45,7 +45,7 @@ export async function getLibrarySummary(): Promise<LibrarySummaryData> {
     folders,
     likedCount,
   };
-}
+};
 
 export const libraryQueries = {
   summary: () =>
@@ -55,34 +55,31 @@ export const libraryQueries = {
     }),
 } as const;
 
-export async function invalidateLibrarySummary(queryClient: QueryClient) {
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.folders.all() }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.tracks.liked() }),
-  ]);
-}
-
-export async function invalidateLibraryData(queryClient: QueryClient) {
+/**
+ * After a bulk change to the local library (import, pin, rescan). Unlike the
+ * per-mutation registry in cache.ts this waits for the mounted lists to
+ * re-read, so a caller can chain on the refreshed rows.
+ */
+export const invalidateLibraryData = async (queryClient: QueryClient): Promise<void> => {
   markRecommenderContextDirty();
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.artists.all() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.albums.all() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.folders.all() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.tracks.all() }),
   ]);
   coverCache.invalidateAll();
-}
+};
 
 /**
- * After a full database wipe. Every cached answer is wrong now, so all of
- * them go — reset, not removed: removeQueries leaves a mounted observer
- * holding the old rows, reset blanks it and re-reads the empty database.
+ * After a full database wipe. Every Dexie-backed answer is wrong now, so the
+ * whole cache goes — reset, not removed: removeQueries leaves a mounted
+ * observer holding the old rows, reset blanks it and re-reads the empty
+ * database. Remote catalog answers go with it and are re-read from their
+ * source on the next mount.
  */
-export async function clearLibraryData(queryClient: QueryClient) {
+export const clearLibraryData = async (queryClient: QueryClient): Promise<void> => {
   await queryClient.resetQueries();
   coverCache.invalidateAll();
-}
+};

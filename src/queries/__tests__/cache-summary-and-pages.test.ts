@@ -132,4 +132,13 @@ describe("liked infinite pages under a point-sync", () => {
     expect(first.tracks.map(track => track.id)).toEqual(["t-2"]);
     expect(first).toMatchObject({ nextOffset: 1, total: 4 });
   });
+
+  it("deleting rows loaded in the liked pages moves the summary's likedCount too", () => {
+    const queryClient = seed();
+    queryClient.setQueryData(queryKeys.tracks.likedPageInfinite(), page());
+
+    removeTracksFromCaches(queryClient, ["t-1", "t-2", "t-never-loaded"]);
+
+    expect(summaryOf(queryClient).likedCount).toBe(2);
+  });
 });

@@ -33,9 +33,9 @@
           :disabled="busy || selectingAll"
           @click="toggleSelectAll"
         >
-          <IconLoader2
+          <Spinner
             v-if="selectingAll"
-            class="size-4 animate-spin"
+            class="size-4"
           />
           {{ t(allSelected ? 'library.selection.deselectAll' : 'library.selection.selectAll') }}
         </Button>
@@ -68,13 +68,13 @@
           </Tooltip>
         </template>
 
-        <DropdownMenu
+        <ResponsiveMenu
           v-if="!isNarrow"
           @update:open="onPlaylistMenuOpen"
         >
           <Tooltip>
             <TooltipTrigger as-child>
-              <DropdownMenuTrigger as-child>
+              <ResponsiveMenuTrigger>
                 <Button
                   variant="ghost"
                   size="icon-sm"
@@ -84,33 +84,33 @@
                 >
                   <IconPlaylistAdd class="size-5" />
                 </Button>
-              </DropdownMenuTrigger>
+              </ResponsiveMenuTrigger>
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {{ t('track.contextMenu.addToPlaylist') }}
             </TooltipContent>
           </Tooltip>
-          <DropdownMenuContent
+          <ResponsiveMenuContent
             align="end"
             class="min-w-52"
           >
-            <DropdownMenuLabel>{{ t('track.contextMenu.addToPlaylist') }}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem @select="handleCreatePlaylist">
+            <ResponsiveMenuLabel>{{ t('track.contextMenu.addToPlaylist') }}</ResponsiveMenuLabel>
+            <ResponsiveMenuSeparator />
+            <ResponsiveMenuItem @select="handleCreatePlaylist">
               <IconPlus class="size-4" />
               {{ t('track.contextMenu.createPlaylist') }}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator v-if="playlists.length" />
-            <DropdownMenuItem
+            </ResponsiveMenuItem>
+            <ResponsiveMenuSeparator v-if="playlists.length" />
+            <ResponsiveMenuItem
               v-for="playlist in playlists"
               :key="playlist.id"
               @select="emit('addToPlaylist', playlist.id)"
             >
               <IconPlaylist class="size-4" />
               <span class="truncate">{{ playlist.name }}</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </ResponsiveMenuItem>
+          </ResponsiveMenuContent>
+        </ResponsiveMenu>
 
         <Tooltip>
           <TooltipTrigger as-child>
@@ -130,11 +130,11 @@
           </TooltipContent>
         </Tooltip>
 
-        <DropdownMenu
+        <ResponsiveMenu
           v-if="isNarrow"
           @update:open="onPlaylistMenuOpen"
         >
-          <DropdownMenuTrigger as-child>
+          <ResponsiveMenuTrigger>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -144,12 +144,12 @@
             >
               <IconDots class="size-5" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
+          </ResponsiveMenuTrigger>
+          <ResponsiveMenuContent
             align="end"
             class="min-w-52"
           >
-            <DropdownMenuItem
+            <ResponsiveMenuItem
               :disabled="selectingAll"
               @select="toggleSelectAll"
             >
@@ -158,35 +158,35 @@
                 class="size-4"
               />
               {{ t(allSelected ? 'library.selection.deselectAll' : 'library.selection.selectAll') }}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem @select="emit('playNext')">
+            </ResponsiveMenuItem>
+            <ResponsiveMenuSeparator />
+            <ResponsiveMenuItem @select="emit('playNext')">
               <IconPlayerTrackNext class="size-4" />
               {{ t('track.contextMenu.playNext') }}
-            </DropdownMenuItem>
-            <DropdownMenuItem @select="emit('toggleLike')">
+            </ResponsiveMenuItem>
+            <ResponsiveMenuItem @select="emit('toggleLike')">
               <component
                 :is="allLiked ? IconHeartFilled : IconHeart"
                 class="size-4"
               />
               {{ likeLabel }}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>{{ t('track.contextMenu.addToPlaylist') }}</DropdownMenuLabel>
-            <DropdownMenuItem @select="handleCreatePlaylist">
+            </ResponsiveMenuItem>
+            <ResponsiveMenuSeparator />
+            <ResponsiveMenuLabel>{{ t('track.contextMenu.addToPlaylist') }}</ResponsiveMenuLabel>
+            <ResponsiveMenuItem @select="handleCreatePlaylist">
               <IconPlus class="size-4" />
               {{ t('track.contextMenu.createPlaylist') }}
-            </DropdownMenuItem>
-            <DropdownMenuItem
+            </ResponsiveMenuItem>
+            <ResponsiveMenuItem
               v-for="playlist in playlists"
               :key="playlist.id"
               @select="emit('addToPlaylist', playlist.id)"
             >
               <IconPlaylist class="size-4" />
               <span class="truncate">{{ playlist.name }}</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </ResponsiveMenuItem>
+          </ResponsiveMenuContent>
+        </ResponsiveMenu>
       </div>
     </div>
   </TooltipProvider>
@@ -199,20 +199,20 @@ import { useElementSize } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  ResponsiveMenu,
+  ResponsiveMenuContent,
+  ResponsiveMenuItem,
+  ResponsiveMenuLabel,
+  ResponsiveMenuSeparator,
+  ResponsiveMenuTrigger,
+} from "@/components/ui/responsive-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Spinner } from "@/components/ui/spinner";
 import IconDeselect from "~icons/tabler/deselect";
 import IconDots from "~icons/tabler/dots";
 import IconHeart from "~icons/tabler/heart";
 import IconHeartFilled from "~icons/tabler/heart-filled";
 import IconListNumbers from "~icons/tabler/list-numbers";
-import IconLoader2 from "~icons/tabler/loader-2";
 import IconPlay from "~icons/tabler/player-play";
 import IconPlayerTrackNext from "~icons/tabler/player-track-next";
 import IconPlaylist from "~icons/tabler/playlist";

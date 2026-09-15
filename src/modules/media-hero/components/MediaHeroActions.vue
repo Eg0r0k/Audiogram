@@ -1,6 +1,6 @@
 <template>
   <div class="@container flex flex-col items-center gap-4 @md:flex-row @md:items-center @md:justify-between">
-    <div class="flex flex-wrap items-center justify-center gap-3 @md:justify-start">
+    <div class="flex shrink-0 items-center justify-center gap-4 @md:justify-start">
       <Button
         class="size-14 rounded-full "
         :disabled="showLoadingIndicator || !props.hasTracks"
@@ -35,8 +35,39 @@
       <slot name="after-primary" />
     </div>
 
-    <div class="flex flex-wrap items-center justify-center gap-2 @md:justify-end">
-      <slot name="actions" />
+    <div class="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-2 @md:justify-end">
+      <InputGroup
+        v-if="props.filterable"
+        class="h-9 min-w-32 max-w-56 flex-1 rounded-full border-0 bg-black/30 text-white shadow-none"
+      >
+        <InputGroupAddon tabindex="-1">
+          <IconSearch class="size-5 text-white/70" />
+        </InputGroupAddon>
+
+        <InputGroupInput
+          v-model="filter"
+          class="pl-2! text-sm! text-white placeholder:text-white/60"
+          :placeholder="$t('media.filter')"
+          @keydown.stop
+          @keydown.esc="filter = ''"
+        />
+
+        <InputGroupAddon
+          v-if="filter"
+          tabindex="-1"
+          align="inline-end"
+        >
+          <Button
+            class="rounded-full text-white hover:text-white"
+            variant="ghost"
+            size="icon-sm"
+            :aria-label="$t('media.filterClear')"
+            @click="filter = ''"
+          >
+            <IconX class="size-4" />
+          </Button>
+        </InputGroupAddon>
+      </InputGroup>
     </div>
   </div>
 </template>
@@ -47,6 +78,9 @@ import MediaDropdown from "./menu/dropdown/MediaDropdown.vue";
 import IconPlay from "~icons/audiogram/play-rounded";
 import IconPause from "~icons/audiogram/pause-rounded";
 import IconShuffle from "~icons/tabler/arrows-shuffle";
+import IconSearch from "~icons/tabler/search";
+import IconX from "~icons/tabler/x";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 import type { QueueSource } from "@/modules/queue/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
@@ -63,12 +97,16 @@ const props = defineProps<{
   isPlaylistOwner?: boolean;
   /** False hides the "⋯" dropdown — its context would render no items. */
   showMenu?: boolean;
+  /** Shows the track filter input; the page reads it through the `filter` model. */
+  filterable?: boolean;
 }>();
 
 const emit = defineEmits<{
   play: [];
   shuffle: [];
 }>();
+
+const filter = defineModel<string>("filter", { default: "" });
 
 const playerStore = usePlayerStore();
 const queueStore = useQueueStore();

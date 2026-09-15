@@ -14,6 +14,7 @@ import {
   type ArtistChanges,
   updateArtistAndSync,
 } from "@/queries/artist.queries";
+import { searchArtistTracks } from "@/queries/track.queries";
 import { statsQueries } from "@/queries/stats.queries";
 import { routeLocation } from "@/app/router/route-locations";
 import type { TrackSortKey } from "@/modules/tracks/types";
@@ -40,8 +41,9 @@ function sourceAlbumToLibraryAlbum(dto: SourceAlbumDTO): AlbumEntity {
   };
 }
 
-export function useArtistPage(sortKey: Ref<TrackSortKey | null>) {
+export function useArtistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) {
   const route = useRoute();
+  const normalizedSearchQuery = computed(() => searchQuery.value.trim());
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -74,8 +76,10 @@ export function useArtistPage(sortKey: Ref<TrackSortKey | null>) {
     isLoading: isTracksLoading,
     isFetchingNextPage: isFetchingNextTrackPage,
   } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.artists.tracksPage(artistId.value, sortKey.value)),
-    queryFn: ({ pageParam = 0 }) => getArtistTracksPaginated(artistId.value, pageParam, undefined, sortKey.value),
+    queryKey: computed(() => queryKeys.artists.tracksPage(artistId.value, sortKey.value, normalizedSearchQuery.value)),
+    queryFn: ({ pageParam = 0 }) => normalizedSearchQuery.value
+      ? searchArtistTracks(artistId.value, normalizedSearchQuery.value, pageParam, undefined, sortKey.value)
+      : getArtistTracksPaginated(artistId.value, pageParam, undefined, sortKey.value),
     initialPageParam: 0,
     getNextPageParam: lastPage => lastPage.nextOffset,
     placeholderData: previousData => previousData,
@@ -210,6 +214,7 @@ export function useArtistPage(sortKey: Ref<TrackSortKey | null>) {
     playlistItems,
     tracks,
     canSort,
+    normalizedSearchQuery,
     artistData: artistDataMapped,
     coverUrl,
     trackCount,

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { QueryClient, type InfiniteData } from "@tanstack/vue-query";
-import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
+import { TrackSource, TrackState, type AlbumEntity, type TrackEntity } from "@/db/entities";
 import type { Track } from "@/modules/player/types";
 import { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 import { keyMatchers, queryKeys } from "../query-keys";
@@ -14,7 +14,7 @@ import {
   syncTrackLikeCaches,
   syncTrackMetadataCaches,
 } from "../cache";
-import type { PaginatedTracksResult } from "../types";
+import type { PaginatedAlbumsResult, PaginatedTracksResult } from "../types";
 
 const albumId = AlbumId("al-1");
 const artistId = ArtistId("a-1");
@@ -257,5 +257,29 @@ describe("search-scoped liked pages", () => {
     expect(keyMatchers.searchScopedPages(queryKeys.tracks.likedPageInfinite("title_asc", "abba"))).toBe(true);
     expect(keyMatchers.searchScopedPages(queryKeys.tracks.likedPageInfinite("title_asc"))).toBe(false);
     expect(keyMatchers.likedDefaultPage(queryKeys.tracks.likedPageInfinite(null, "abba"))).toBe(false);
+  });
+});
+
+describe("artist album shelf under a point-sync", () => {
+  const albumRow = (id: string): AlbumEntity =>
+    ({ id: AlbumId(id), title: id, artistId, pinned: 1, addedAt: 1, updatedAt: 1 });
+  type Shelf = InfiniteData<PaginatedAlbumsResult>;
+
+  it("removing an album moves the shelf's nextOffset back like a track page", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData<Shelf>(queryKeys.artists.albums(artistId), {
+      pages: [
+        { albums: ["al-1", "al-2"].map(albumRow), nextOffset: 2, total: 3 },
+        { albums: [albumRow("al-3")], nextOffset: null, total: 3 },
+      ],
+      pageParams: [0, 2],
+    });
+
+    removeAlbumCaches(queryClient, albumId, artistId);
+
+    const shelf = queryClient.getQueryData<Shelf>(queryKeys.artists.albums(artistId))!;
+    expect(shelf.pages.map(page => page.albums.map(album => album.id))).toEqual([["al-2"], ["al-3"]]);
+    expect(shelf.pages.map(page => page.nextOffset)).toEqual([1, null]);
+    expect(shelf.pages.map(page => page.total)).toEqual([2, 2]);
   });
 });

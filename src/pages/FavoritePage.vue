@@ -4,7 +4,7 @@
   >
     <template v-if="isLoading">
       <div class="flex h-full items-center justify-center">
-        <IconLoader2 class="size-8 animate-spin text-muted-foreground" />
+        <Spinner class="size-8 text-muted-foreground" />
       </div>
     </template>
 
@@ -32,23 +32,20 @@
         >
           <template #before>
             <MediaHero
+              v-model:filter="searchQuery"
               :data="likedData"
               :has-tracks="tracks.length > 0"
-              @play="handlePlayAll"
-              @shuffle="handleShuffle"
-              @add-to-queue="handleAddToQueue"
-            >
-              <template #actions>
-                <Button
-                  class="text-white"
-                  variant="ghost"
-                  @click="openAddTracksPanel"
-                >
-                  <IconPlus class="size-5" />
-                  {{ $t("track.favorite.addTracks") }}
-                </Button>
-              </template>
-            </MediaHero>
+              filterable
+              @play="playAll"
+              @shuffle="shuffle"
+              @add-to-queue="addToQueue"
+            />
+          </template>
+
+          <template #leading>
+            <div class="px-4">
+              <AddTrackRow @add="openAddTracksPanel" />
+            </div>
           </template>
 
           <template #sticky>
@@ -66,28 +63,15 @@
                 :index="index + 1"
                 :is-active="currentTrackId === item.id"
                 menu-target="liked"
-                @play="handlePlayTrack(index)"
+                @play="playTrack(index)"
                 @contextmenu="handleContextMenu(item, index)"
               />
             </div>
           </template>
 
           <template #loader>
-            <IconLoader2 class="size-5 animate-spin text-muted-foreground" />
-          </template>
-          <template
-            #empty
-          >
-            <div class="p-4">
-              <Button
-                size="lg"
-                variant="secondary"
-                class="w-full rounded-full"
-                @click="openAddTracksPanel"
-              >
-                <IconPlus class="size-5" />
-                {{ $t("track.favorite.addTracks") }}
-              </Button>
+            <div class="flex items-center px-4 flex-col w-full">
+              <TrackRowLoading />
             </div>
           </template>
         </VirtualScrollable>
@@ -105,13 +89,10 @@ import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue"
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 import PageErrorState from "@/components/common/PageErrorState.vue";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
-import { Button } from "@/components/ui/button";
-import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
-import IconLoader2 from "~icons/tabler/loader-2";
-import IconPlus from "~icons/tabler/plus";
+import { Spinner } from "@/components/ui/spinner";
 import { useLikedTracksPage } from "@/modules/favorite/composables/useLikedTracksPage";
-import { getLikedTracksPageData } from "@/queries/track.queries";
+import { getLikedTracksPageData, searchLikedTracks } from "@/queries/track.queries";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import type { TrackSortKey } from "@/modules/tracks/types";
@@ -120,19 +101,21 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
-import { useQueueShuffle } from "@/modules/queue/composables/useQueueShuffle";
+import AddTrackRow from "@/modules/tracks/components/AddTrackRow.vue";
+import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback";
 import { getLogger } from "@/lib/logger";
+import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 
-const queueStore = useQueueStore();
 const playerStore = usePlayerStore();
 const rightPanelStore = useRightPanelStore();
 const { openMenu } = useTrackMenu();
-const shuffleQueue = useQueueShuffle();
 const route = useRoute();
 const sortKey = ref<TrackSortKey | null>(null);
+const searchQuery = ref("");
 
 const {
   tracks,
+  normalizedSearchQuery,
   likedData,
   isLoading,
   isError,
@@ -140,7 +123,21 @@ const {
   fetchNextPage,
   hasNextPage,
   isFetchingNextPage,
-} = useLikedTracksPage(sortKey);
+} = useLikedTracksPage(sortKey, searchQuery);
+
+// The queue takes what the page shows: every liked row, or the filter's matches.
+const loadShownTracks = async () => {
+  const query = normalizedSearchQuery.value;
+  if (query) return (await searchLikedTracks(query, 0, Infinity, sortKey.value)).tracks;
+  return (await getLikedTracksPageData(sortKey.value)).tracks;
+};
+
+const { playAll, playTrack, shuffle, addToQueue } = useEntityPlayback({
+  tracks,
+  source: { type: "liked" },
+  isComplete: computed(() => !hasNextPage.value),
+  loadAll: loadShownTracks,
+});
 
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
 
@@ -172,55 +169,13 @@ function handleContextMenu(track: Track, index: number) {
   openMenu(track, index, { target: "liked" });
 }
 
-function handlePlayAll() {
-  getLikedTracksPageData(sortKey.value)
-    .then((data) => {
-      if (data.tracks.length > 0) {
-        return queueStore.setQueue(data.tracks, 0, {
-          type: "liked",
-        });
-      }
-    })
-    .catch((error: unknown) => {
-      getLogger().error(`[FavoritePage] Playing all liked tracks failed: ${String(error)}`);
-    });
-}
-
-async function handlePlayTrack(index: number) {
-  const selectedTrack = tracks.value[index] as Track | undefined;
-  if (!selectedTrack) return;
-
-  if (currentTrackId.value === selectedTrack.id) {
-    await playerStore.togglePlay();
-    return;
-  }
-
-  const data = await getLikedTracksPageData(sortKey.value);
-  const fullIndex = data.tracks.findIndex(track => track.id === selectedTrack.id);
-  if (fullIndex === -1) return;
-
-  await queueStore.setQueue(data.tracks, fullIndex, {
-    type: "liked",
-  });
-}
-
-async function handleShuffle() {
-  const source = { type: "liked" } as const;
-  await shuffleQueue(source, async () => (await getLikedTracksPageData(sortKey.value)).tracks);
-}
-
-function handleAddToQueue() {
-  if (tracks.value.length === 0) return;
-  queueStore.addMultipleToQueue(tracks.value, {
-    type: "liked",
-  });
-}
-
 const scrollableRef = useTemplateRef("scrollableRef");
 // Declared after the page state it reads: the hook evaluates `ready`
 // immediately, so placing this any earlier hits the temporal dead zone.
+// A sort only reorders the list, so the scroll stays put; a search shows
+// another list and gets its own position.
 useScrollRestoration(scrollableRef, {
-  key: () => `liked:${sortKey.value ?? "default"}`,
+  key: () => `liked:${normalizedSearchQuery.value}`,
   ready: () => !isLoading.value,
   deps: () => tracks.value.length,
 });

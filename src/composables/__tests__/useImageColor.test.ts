@@ -58,6 +58,7 @@ describe("getColorFromImage", () => {
       onAccent: hexFromArgb(palette.onAccent),
       text: hexFromArgb(palette.text),
       textMuted: hexFromArgb(palette.textMuted),
+      vivid: hexFromArgb(palette.vivid),
     });
   });
 

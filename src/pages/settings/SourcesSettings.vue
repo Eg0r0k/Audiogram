@@ -33,9 +33,9 @@
           :disabled="!source.isAvailable || isChecking(source.kind)"
           @click="check(source.kind)"
         >
-          <IconLoader2
+          <Spinner
             v-if="isChecking(source.kind)"
-            class="size-6 animate-spin"
+            class="size-6"
           />
           <IconPlugConnected
             v-else
@@ -67,7 +67,7 @@ import { useI18n } from "vue-i18n";
 import { Item, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import ItemSubtitle from "@/components/ui/item/ItemSubtitle.vue";
 import { Button } from "@/components/ui/button";
-import IconLoader2 from "~icons/tabler/loader-2";
+import { Spinner } from "@/components/ui/spinner";
 import IconPlugConnected from "~icons/tabler/plug-connected";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";

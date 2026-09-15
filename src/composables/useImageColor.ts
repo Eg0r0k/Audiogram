@@ -11,8 +11,9 @@ export interface ColorResult {
   isDark: boolean;
   /** Ranked cover seeds (hex), dominant first. Absent on fallback. */
   seeds?: string[];
-  /** Tonal roles of the top seed (hex). Absent on fallback. */
-  palette?: { accent: string; onAccent: string; text: string; textMuted: string };
+  /** Tonal roles of the top seed (hex). Absent on fallback. `vivid` is the
+   * brighter, chroma-floored variant for large gradients (MediaHero). */
+  palette?: { accent: string; onAccent: string; text: string; textMuted: string; vivid: string };
 }
 
 export interface UseImageColorOptions {
@@ -53,6 +54,7 @@ export async function getColorFromImage(
         onAccent: hexFromArgb(palette.onAccent),
         text: hexFromArgb(palette.text),
         textMuted: hexFromArgb(palette.textMuted),
+        vivid: hexFromArgb(palette.vivid),
       },
     };
   }

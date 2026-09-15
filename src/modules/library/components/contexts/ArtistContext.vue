@@ -1,5 +1,5 @@
 <template>
-  <ContextMenuItem @select="props.onTogglePin">
+  <ResponsiveMenuItem @select="props.onTogglePin">
     <IconPinFilled
       v-if="item.isPinned"
       class="size-5  text-primary"
@@ -9,36 +9,36 @@
       class="size-5 "
     />
     {{ item.isPinned ? $t("artist.unpinArtist") : $t("artist.pinArtist") }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 
-  <ContextMenuItem
+  <ResponsiveMenuItem
     v-if="props.onMoveToFolder"
     @select="props.onMoveToFolder"
   >
     <IconFolder class="size-5" />
     {{ $t("library.folder.moveToFolder") }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 
-  <ContextMenuItem
+  <ResponsiveMenuItem
     v-if="props.onRemoveFromFolder"
     @select="props.onRemoveFromFolder"
   >
     <IconFolderMinus class="size-5" />
     {{ $t("library.folder.removeFromFolder") }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 
-  <ContextMenuItem
-    class="text-destructive focus:text-destructive"
+  <ResponsiveMenuItem
+    variant="destructive"
     @select="props.onDelete"
   >
     <IconTrash class="size-5 " />
     {{ $t("artist.deleteArtist") }}
-  </ContextMenuItem>
+  </ResponsiveMenuItem>
 </template>
 <script setup lang="ts">
 import {
-  ContextMenuItem,
-} from "@/components/ui/context-menu";
+  ResponsiveMenuItem,
+} from "@/components/ui/responsive-menu";
 import type { LibraryItem } from "@/modules/library/types";
 import IconPinFilled from "~icons/tabler/pin-filled";
 import IconPin from "~icons/tabler/pin";

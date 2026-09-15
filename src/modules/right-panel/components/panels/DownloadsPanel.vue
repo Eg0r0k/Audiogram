@@ -24,9 +24,9 @@
           class="gap-3 rounded-lg px-2 py-2"
         >
           <ItemMedia>
-            <IconLoader
+            <Spinner
               v-if="job.status === 'running'"
-              class="size-5 animate-spin text-primary"
+              class="size-5 text-primary"
             />
             <IconClock
               v-else
@@ -42,11 +42,8 @@
               <template v-if="job.cancelling">
                 {{ t("downloads.cancelling") }}
               </template>
-              <template v-else-if="job.status === 'running' && job.total">
-                {{ Math.min(100, Math.round((job.downloaded / job.total) * 100)) }}%
-              </template>
               <template v-else-if="job.status === 'running'">
-                {{ t("downloads.downloading") }}
+                {{ formatDownloadProgress(job.downloaded, job.total) ?? t("downloads.downloading") }}
               </template>
               <template v-else>
                 {{ t("downloads.queued") }}
@@ -84,9 +81,10 @@ import RightPanelHeader from "@/modules/right-panel/components/RightPanelHeader.
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { useDownloadsStore } from "@/modules/downloads/store/downloads.store";
 import { cancelTrackDownload } from "@/modules/downloads/service/manager";
-import { getTracksByIds } from "@/queries/track.queries";
+import { formatDownloadProgress } from "@/modules/downloads/lib/formatDownloadProgress";
+import { trackQueries } from "@/queries/track.queries";
 import type { TrackId } from "@/types/ids";
-import IconLoader from "~icons/tabler/loader-2";
+import { Spinner } from "@/components/ui/spinner";
 import IconClock from "~icons/tabler/clock";
 import IconX from "~icons/tabler/x";
 
@@ -103,11 +101,7 @@ const jobs = computed(() => Object.values(downloads.jobs));
 
 const trackIds = computed(() => jobs.value.map(job => job.trackId));
 
-const { data: titleRows } = useQuery(computed(() => ({
-  queryKey: ["downloads", "panel-titles", trackIds.value] as const,
-  queryFn: () => getTracksByIds(trackIds.value),
-  enabled: trackIds.value.length > 0,
-})));
+const { data: titleRows } = useQuery(computed(() => trackQueries.byIds(trackIds.value)));
 
 const titles = computed(() => {
   const map = new Map<TrackId, string>();

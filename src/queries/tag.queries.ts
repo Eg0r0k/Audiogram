@@ -3,6 +3,7 @@ import { tagRepository, trackRepository } from "@/db/repositories";
 import { queryKeys } from "@/queries/query-keys";
 import type { TrackId, TagId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
+import { settleLibraryReads } from "./cache";
 import { unwrapResult } from "./shared";
 
 export async function getAllTags(): Promise<TagEntity[]> {
@@ -51,6 +52,7 @@ export async function addTagToTrackAndSync(
   const currentTagIds = track.tagIds;
   if (!currentTagIds.includes(tag.id)) {
     await unwrapResult(trackRepository.addTagToTrack(track.id, tag.id));
+    await settleLibraryReads(queryClient);
 
     const nextTrack: TrackEntity = {
       ...track,
@@ -73,6 +75,7 @@ export async function removeTagFromTrackAndSync(
   tagId: TagId,
 ): Promise<void> {
   await unwrapResult(trackRepository.removeTagFromTrack(track.id, tagId));
+  await settleLibraryReads(queryClient);
 
   const currentTagIds = track.tagIds;
   const nextTagIds = currentTagIds.filter(id => id !== tagId);

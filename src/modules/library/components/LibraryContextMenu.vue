@@ -1,19 +1,17 @@
 <template>
-  <ContextMenu v-model:open="isContextMenuOpen">
-    <ContextMenuCloseBridge :open="isContextMenuOpen" />
-
+  <ResponsiveContextMenu v-model:open="isOpen">
     <div
       class="contents"
       role="presentation"
       @contextmenu.capture="guardContextMenu"
       @pointerdown.capture="guardLongPress"
     >
-      <ContextMenuTrigger as-child>
+      <ResponsiveContextMenuTrigger>
         <slot />
-      </ContextMenuTrigger>
+      </ResponsiveContextMenuTrigger>
     </div>
 
-    <ContextMenuContent
+    <ResponsiveMenuContent
       class="w-50 bg-popover/50 backdrop-blur-[50px]"
     >
       <template v-if="activeItem">
@@ -22,18 +20,17 @@
           v-bind="contextProps"
         />
       </template>
-    </ContextMenuContent>
-  </ContextMenu>
+    </ResponsiveMenuContent>
+  </ResponsiveContextMenu>
 </template>
 
 <script setup lang="ts">
-import { computed, type Component } from "vue";
+import { computed, ref, watch, type Component } from "vue";
 import {
-  ContextMenu,
-  ContextMenuCloseBridge,
-  ContextMenuContent,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
+  ResponsiveContextMenu,
+  ResponsiveContextMenuTrigger,
+  ResponsiveMenuContent,
+} from "@/components/ui/responsive-menu";
 import { useLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
 import type { LibraryItem } from "@/modules/library/types";
@@ -53,6 +50,14 @@ const props = withDefaults(defineProps<{
 });
 
 const { activeItem, menuFlavor, isContextMenuOpen } = useLibraryMenu();
+
+const isOpen = ref(false);
+watch(isOpen, (open) => {
+  isContextMenuOpen.value = open;
+});
+watch(isContextMenuOpen, (open) => {
+  if (!open) isOpen.value = false;
+});
 
 const { togglePin, createPlaylist, moveToFolder } = useLibrary();
 const { addToQueue, addCatalogToQueue, downloadCatalog } = useLibraryContextActions();

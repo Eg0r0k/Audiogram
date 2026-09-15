@@ -127,6 +127,24 @@ describe("paletteFromSeed (tonal roles)", () => {
     expect(Hct.fromInt(palette.text).chroma).toBeLessThan(Hct.fromInt(palette.accent).chroma);
   });
 
+  // The hero gradient wants a punchier colour than the player background:
+  // a brighter tone with a chroma floor, but only for seeds that carry a
+  // real hue. Lifting a near-grey seed to the floor would invent a colour.
+  it("gives vivid a brighter tone and a chroma floor for a coloured seed", () => {
+    const seed = Hct.from(60, 26, 60).toInt();
+    const vivid = Hct.fromInt(paletteFromSeed(seed).vivid);
+    expect(vivid.tone).toBeCloseTo(50, 0);
+    expect(vivid.chroma).toBeGreaterThan(40);
+    expect(hueDiff(vivid.hue, 60)).toBeLessThan(3);
+  });
+
+  it("leaves a near-grey seed's chroma alone in vivid", () => {
+    const seed = Hct.from(200, 8, 30).toInt();
+    const vivid = Hct.fromInt(paletteFromSeed(seed).vivid);
+    expect(vivid.chroma).toBeLessThan(12);
+    expect(vivid.tone).toBeCloseTo(50, 0);
+  });
+
   it("scales background chroma by chromaMultiplier", () => {
     const full = Hct.fromInt(paletteFromSeed(PURPLE, { chromaMultiplier: 1 }).background);
     const muted = Hct.fromInt(paletteFromSeed(PURPLE, { chromaMultiplier: 0.33 }).background);

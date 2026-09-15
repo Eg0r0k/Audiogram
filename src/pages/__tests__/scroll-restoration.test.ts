@@ -20,7 +20,8 @@ const likedPage = await vi.hoisted(async () => {
   return { isLoading: ref(true), tracks: ref<unknown[]>([]) };
 });
 vi.mock("@/modules/favorite/composables/useLikedTracksPage", () => ({
-  useLikedTracksPage: () => ({
+  useLikedTracksPage: (_sortKey: unknown, searchQuery: { value: string }) => ({
+    normalizedSearchQuery: computed(() => searchQuery.value.trim()),
     tracks: likedPage.tracks,
     likedData: computed(() => ({ type: "liked", title: "Liked", image: "", trackCount: 0, duration: "" })),
     isLoading: likedPage.isLoading,
@@ -80,11 +81,15 @@ describe("scroll restoration wiring", () => {
     indexPage.tracks.value = [];
   });
 
-  it("the liked page saves its position per sort and waits for the rows", async () => {
-    await mountPage(FavoritePage);
+  // A sort reorders the same list, so it keeps the scroll where it is; a
+  // position saved under another sort would land the user somewhere else.
+  it("the liked page saves its position per search, not per sort, and waits for the rows", async () => {
+    const wrapper = await mountPage(FavoritePage);
     const options = lastOptions();
 
-    expect(toValue(options.key)).toBe("liked:default");
+    expect(toValue(options.key)).toBe("liked:");
+    (wrapper.vm as unknown as { sortKey: string }).sortKey = "title_asc";
+    expect(toValue(options.key)).toBe("liked:");
     expect(toValue(options.ready)).toBe(false);
     likedPage.isLoading.value = false;
     likedPage.tracks.value = [{}, {}];
@@ -92,11 +97,13 @@ describe("scroll restoration wiring", () => {
     expect(toValue(options.deps)).toBe(2);
   });
 
-  it("the all-music page saves its position per sort and search", async () => {
-    await mountPage(AllMusicPage);
+  it("the all-music page saves its position per search, not per sort", async () => {
+    const wrapper = await mountPage(AllMusicPage);
     const options = lastOptions();
 
-    expect(toValue(options.key)).toBe("all-music:date_added_desc:");
+    expect(toValue(options.key)).toBe("all-music:");
+    (wrapper.vm as unknown as { sortKey: string }).sortKey = "title_asc";
+    expect(toValue(options.key)).toBe("all-music:");
     expect(toValue(options.ready)).toBe(false);
     indexPage.isLoading.value = false;
     indexPage.tracks.value = [{}];

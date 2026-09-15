@@ -4,27 +4,14 @@ import { assertValidFolderName } from "@/modules/library/lib/folderName";
 import { queryKeys } from "@/queries/query-keys";
 import { SidebarFolderId } from "@/types/ids";
 import type { QueryClient } from "@tanstack/vue-query";
-import { queryOptions } from "@tanstack/vue-query";
+import { settleLibraryReads } from "./cache";
 import { unwrapResult } from "./shared";
 
-export async function getFolders() {
-  return unwrapResult(folderRepository.findAll());
-}
-
-export const folderQueries = {
-  all: () =>
-    queryOptions({
-      queryKey: queryKeys.folders.all(),
-      queryFn: getFolders,
-    }),
-} as const;
-
-async function invalidateFolders(queryClient: QueryClient) {
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: queryKeys.folders.all() }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }),
-  ]);
-}
+// Folders are only read as part of the library summary.
+const invalidateFolders = async (queryClient: QueryClient) => {
+  await settleLibraryReads(queryClient);
+  queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }).catch(() => {});
+};
 
 export async function createFolderAndSync(queryClient: QueryClient, name: string) {
   const now = Date.now();
@@ -37,10 +24,6 @@ export async function createFolderAndSync(queryClient: QueryClient, name: string
   };
 
   await unwrapResult(folderRepository.create(folder));
-  queryClient.setQueryData(queryKeys.folders.all(), (folders: SidebarFolderEntity[] | undefined) => [
-    ...(folders ?? []),
-    folder,
-  ]);
   await invalidateFolders(queryClient);
 
   return folder;

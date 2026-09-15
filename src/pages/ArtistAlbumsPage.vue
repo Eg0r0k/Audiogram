@@ -19,7 +19,7 @@
           v-if="artistData"
           class="truncate text-sm text-muted-foreground"
         >
-          {{ artistData.title }} · {{ $t('common.albums', { count: albumCount }) }}
+          {{ artistData.title }} {{ $t('common.albums', { count: albumCount }) }}
         </p>
       </div>
     </div>
@@ -86,7 +86,7 @@
           v-if="isFetchingNextAlbumPage"
           class="flex justify-center py-4"
         >
-          <IconLoader2 class="size-6 animate-spin text-muted-foreground" />
+          <Spinner class="size-6 text-muted-foreground" />
         </div>
       </Scrollable>
     </LibraryContextMenu>
@@ -103,8 +103,8 @@ import { Scrollable } from "@/components/ui/scrollable";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 import { Skeleton } from "@/components/ui/skeleton";
 import PageErrorState from "@/components/common/PageErrorState.vue";
+import { Spinner } from "@/components/ui/spinner";
 import IconArrowLeft from "~icons/tabler/arrow-left";
-import IconLoader2 from "~icons/tabler/loader-2";
 import IconVinyl from "~icons/tabler/vinyl";
 import { routeLocation, wantsCatalogView } from "@/app/router/route-locations";
 import { useGoBack } from "@/composables/useGoBack";
@@ -124,6 +124,8 @@ const { playAlbum } = usePlayAlbum();
 
 // Same data hook as the artist page: the album pages and the artist row
 // are already cached from there, so this page opens instantly.
+
+const searchQuery = ref("");
 const sortKey = ref<TrackSortKey | null>(null);
 const {
   artist,
@@ -138,7 +140,7 @@ const {
   fetchNextAlbumPage,
   hasNextAlbumPage,
   isFetchingNextAlbumPage,
-} = useArtistPage(sortKey);
+} = useArtistPage(sortKey, searchQuery);
 
 // Going back from a catalog album list lands on the catalog artist, not on
 // the library row that may share its id.
