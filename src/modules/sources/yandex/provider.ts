@@ -52,6 +52,22 @@ const withSession = <T>(call: () => ResultAsync<T, SourceError>): ResultAsync<T,
 
 /** Yandex refuses `page >= 100`; the tail past that is simply not offered. */
 const MAX_SEARCH_PAGE = 99;
+/** Discography page size; a page cap keeps a pathological artist from turning into hundreds of round-trips. */
+const ARTIST_ALBUMS_PAGE_SIZE = 200;
+const MAX_ARTIST_ALBUM_PAGES = 10;
+
+/** Walks the discography until the pager says it is complete or the page cap is hit. */
+const collectArtistAlbums = (
+  artistId: string,
+  loaded: YmAlbum[],
+  page: number,
+): ResultAsync<YmAlbum[], SourceError> =>
+  ymApi.artistAlbums(artistId, page, ARTIST_ALBUMS_PAGE_SIZE).andThen((result) => {
+    const albums = [...loaded, ...result.albums];
+    const done = result.albums.length === 0 || albums.length >= result.pager.total;
+    if (done || page + 1 >= MAX_ARTIST_ALBUM_PAGES) return okAsync(albums);
+    return collectArtistAlbums(artistId, albums, page + 1);
+  });
 /** The likes playlist: every account has it under this kind. */
 const LIKES_PLAYLIST_KIND = "3";
 
@@ -172,16 +188,17 @@ export const ymSourceProvider: SourceProvider = {
     );
   },
 
+  /** brief-info for the artist and the popular tracks; the discography comes whole from direct-albums. */
   getArtist(id) {
     const artistId = ymIdOf(id);
     if (!artistId) return notYm("artist", id);
     return withSession(() =>
-      ymApi.artist(artistId).andThen((info) => {
+      ResultAsync.combine([ymApi.artist(artistId), collectArtistAlbums(artistId, [], 0)]).andThen(([info, albums]) => {
         const artist = mapYmArtist(info.artist) ?? mapYmArtist({ ...info.artist, id: artistId });
         if (!artist) return errAsync<never, SourceError>({ kind: "PARSE", message: "brief-info returned no artist" });
         return okAsync({
-          artist,
-          albums: (info.albums ?? []).map(mapYmAlbum),
+          artist: { ...artist, albumCount: albums.length },
+          albums: albums.map(mapYmAlbum),
           tracks: (info.popularTracks ?? []).map(track => mapYmTrack(track)),
         });
       }),

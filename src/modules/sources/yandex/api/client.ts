@@ -4,6 +4,7 @@ import type { SourceError, SourceErrorKind } from "@/types/source-dto";
 import type {
   YmAccountStatus,
   YmAlbum,
+  YmArtistAlbumsPage,
   YmArtistBriefInfo,
   YmLikedAlbum,
   YmLikedArtist,
@@ -67,6 +68,13 @@ export const ymApi = {
   album: (albumId: string) => ymRequest<YmAlbum>({ path: `/albums/${albumId}/with-tracks` }),
 
   artist: (artistId: string) => ymRequest<YmArtistBriefInfo>({ path: `/artists/${artistId}/brief-info` }),
+
+  /** brief-info lists only the first albums; this is the discography, newest first. */
+  artistAlbums: (artistId: string, page: number, pageSize: number) =>
+    ymRequest<YmArtistAlbumsPage>({
+      path: `/artists/${artistId}/direct-albums`,
+      query: { "page": String(page), "page-size": String(pageSize), "sort-by": "year" },
+    }),
 
   /** POST: a liked-tracks list can run to thousands of ids. */
   tracks: (trackIds: readonly string[]) =>

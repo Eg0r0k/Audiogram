@@ -139,6 +139,7 @@ const ALLOWED_PATHS: &[&str] = &[
     "/users/{*}/playlists/{*}",
     "/albums/{*}/with-tracks",
     "/artists/{*}/brief-info",
+    "/artists/{*}/direct-albums",
     "/tracks",
     "/tracks/{*}/download-info",
     "/tracks/{*}/lyrics",
@@ -392,6 +393,10 @@ mod tests {
         assert_eq!(
             allowed_path("/rotor/station/user:onyourwave/tracks", 42).as_deref(),
             Some("/rotor/station/user:onyourwave/tracks")
+        );
+        assert_eq!(
+            allowed_path("/artists/41075/direct-albums", 42).as_deref(),
+            Some("/artists/41075/direct-albums")
         );
         assert_eq!(
             allowed_path("/users/457553308/playlists/41075", 42).as_deref(),

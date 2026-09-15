@@ -156,6 +156,18 @@ export interface YmSearchResult {
   playlists?: YmSearchPage<YmPlaylist>;
 }
 
+export interface YmPager {
+  page: number;
+  perPage: number;
+  total: number;
+}
+
+/** `/artists/{id}/direct-albums` — the whole discography, paged. */
+export interface YmArtistAlbumsPage {
+  pager: YmPager;
+  albums: YmAlbum[];
+}
+
 export interface YmArtistBriefInfo {
   artist: YmArtist;
   albums?: YmAlbum[];

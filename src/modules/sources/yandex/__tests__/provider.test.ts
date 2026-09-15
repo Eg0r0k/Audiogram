@@ -4,6 +4,7 @@ import { AlbumId, PlaylistId, TrackId } from "@/types/ids";
 import { ymAlbumId, ymArtistId, ymPlaylistId, ymTrackId } from "@/types/track-ref";
 import albumFixture from "../__fixtures__/album-with-tracks.json";
 import artistFixture from "../__fixtures__/artist-brief-info.json";
+import artistAlbumsFixture from "../__fixtures__/artist-direct-albums.json";
 import playlistFixture from "../__fixtures__/playlist.json";
 import searchFixture from "../__fixtures__/search-all.json";
 import searchPageFixture from "../__fixtures__/search-track-page1.json";
@@ -153,15 +154,39 @@ describe("ymSourceProvider", () => {
       expect(tracks[2]).toMatchObject({ id: "ym:40144", trackNo: 3, discNo: 1, availability: "full" });
     });
 
-    it("opens an artist with the direct albums and the popular tracks", async () => {
+    it("opens an artist with the whole discography and the popular tracks", async () => {
+      // brief-info lists 3 of the recorded 18 albums; direct-albums has them all.
       answers.set("/artists/41075/brief-info", artistFixture.result);
+      const [a, b, c] = artistAlbumsFixture.result.albums;
+      answers.set("/artists/41075/direct-albums", { pager: { page: 0, perPage: 200, total: 3 }, albums: [a, b, c] });
 
       const result = await ymSourceProvider.getArtist(ymArtistId("41075"));
 
       const { artist, albums, tracks } = result._unsafeUnwrap();
-      expect(artist).toMatchObject({ id: "ym:41075", name: "КИНО" });
-      expect(albums).toHaveLength(3);
+      expect(artist).toMatchObject({ id: "ym:41075", name: "КИНО", albumCount: 3 });
+      expect(albums.map(album => album.id)).toEqual([`ym:${a.id}`, `ym:${b.id}`, `ym:${c.id}`]);
       expect(tracks).toHaveLength(3);
+      expect(requests().find(r => r.path.endsWith("/direct-albums"))?.query).toEqual({ page: "0", "page-size": "200", "sort-by": "year" });
+    });
+
+    it("keeps paging the discography until the pager's total is reached", async () => {
+      answers.set("/artists/41075/brief-info", artistFixture.result);
+      const [a, b, c] = artistAlbumsFixture.result.albums;
+      invokeCommand.mockImplementation(async (name: string, args?: unknown) => {
+        if (name !== "ym_request") return undefined;
+        const { req } = args as { req: YmRequestPayload };
+        if (req.path.endsWith("/direct-albums")) {
+          return req.query?.page === "0"
+            ? { pager: { page: 0, perPage: 2, total: 3 }, albums: [a, b] }
+            : { pager: { page: 1, perPage: 2, total: 3 }, albums: [c] };
+        }
+        return answers.get(req.path);
+      });
+
+      const result = await ymSourceProvider.getArtist(ymArtistId("41075"));
+
+      expect(result._unsafeUnwrap().albums.map(album => album.id)).toEqual([`ym:${a.id}`, `ym:${b.id}`, `ym:${c.id}`]);
+      expect(requests().filter(r => r.path.endsWith("/direct-albums")).map(r => r.query?.page)).toEqual(["0", "1"]);
     });
 
     it("lists the likes playlist, own playlists and liked playlists once each", async () => {
