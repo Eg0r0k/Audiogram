@@ -34,6 +34,8 @@ mod remote_download;
 
 mod transcode;
 
+mod ym;
+
 mod proxy;
 
 fn dir_size(path: &Path) -> u64 {
@@ -61,7 +63,7 @@ fn dir_size(path: &Path) -> u64 {
 #[tauri::command]
 async fn app_data_folder_size(app: tauri::AppHandle, folder: String) -> Result<u64, String> {
     match folder.as_str() {
-        "tracks" | "lyrics" | "offline" | "offline/nd" | "offline/yt" => {}
+        "tracks" | "lyrics" | "offline" | "offline/nd" | "offline/yt" | "offline/ym" => {}
         _ => return Err("unsupported app data folder".into()),
     }
 
@@ -164,6 +166,7 @@ pub fn run() {
         .manage(nd::NdState::default())
         .manage(nd::NdAudioCache::default())
         .manage(remote_download::DownloadRegistry::default())
+        .manage(ym::YmState::default())
         .manage(media_state);
 
     #[cfg(desktop)]
@@ -217,6 +220,11 @@ pub fn run() {
         nd::nd_prefetch,
         nd::nd_download,
         nd::nd_download_cancel,
+        ym::ym_auth_status,
+        ym::ym_auth_start,
+        ym::ym_auth_cancel,
+        ym::ym_auth_logout,
+        ym::ym_request,
     ]);
 
     #[cfg(mobile)]
@@ -231,6 +239,11 @@ pub fn run() {
         nd::nd_prefetch,
         nd::nd_download,
         nd::nd_download_cancel,
+        ym::ym_auth_status,
+        ym::ym_auth_start,
+        ym::ym_auth_cancel,
+        ym::ym_auth_logout,
+        ym::ym_request,
     ]);
 
     builder

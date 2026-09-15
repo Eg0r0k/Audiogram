@@ -25,9 +25,11 @@ import {
   DEFAULT_SOURCES_SETTINGS,
   NdSourceSettingsSchema,
   SourcesSettingsSchema,
+  YmSourceSettingsSchema,
   buildNdConfig,
   type NdSourceSettings,
   type SourcesSettings,
+  type YmSourceSettings,
 } from "./sources";
 
 export const SettingsSchema = object({
@@ -50,6 +52,7 @@ export {
   PROXY_PROTOCOLS,
   buildProxyUrl,
   NdSourceSettingsSchema,
+  YmSourceSettingsSchema,
   SourcesSettingsSchema,
   buildNdConfig,
   EQ_PRESETS,
@@ -65,6 +68,7 @@ export {
   type ProxySettings,
   type ProxyProtocol,
   type NdSourceSettings,
+  type YmSourceSettings,
   type SourcesSettings,
   type SupportedLanguage,
 };

@@ -25,6 +25,7 @@ import { resetSearchIndex } from "@/modules/search/service/searchIndex";
 import { openDatabase } from "@/db";
 import { sources } from "@/modules/sources/registry";
 import { ytSourceProvider } from "@/modules/youtube/source-provider";
+import { ymSourceProvider } from "@/modules/sources/yandex/provider";
 import { registerAutoplaySource } from "@/modules/queue/lib/queue-autoplay";
 import { getRecommendations } from "@/modules/recommendations/service/recommender.service";
 import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
@@ -52,6 +53,7 @@ if (dbOpen.isErr()) {
 // Feature → core registrations (ARCHITECTURE.md §3), before any store can
 // ask the registry: persisted stores resolve sources on first use.
 sources.register(ytSourceProvider);
+sources.register(ymSourceProvider);
 registerAutoplaySource(getRecommendations);
 statsService.onChange(markRecommenderContextDirty);
 statsService.onListenRecorded(markRecommenderContextDirty);

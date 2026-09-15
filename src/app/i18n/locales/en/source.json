@@ -2,6 +2,7 @@
   "local": "My library",
   "nd": "Navidrome",
   "yt": "YouTube",
+  "ym": "Yandex Music",
   "health": {
     "authFailed": "{source}: sign-in failed",
     "forbidden": "{source}: no access — a subscription may be required",

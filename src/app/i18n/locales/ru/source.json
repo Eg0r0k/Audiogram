@@ -2,6 +2,7 @@
   "local": "Моя медиатека",
   "nd": "Navidrome",
   "yt": "YouTube",
+  "ym": "Яндекс Музыка",
   "health": {
     "authFailed": "{source}: не удалось войти",
     "forbidden": "{source}: нет доступа — возможно, нужна подписка",

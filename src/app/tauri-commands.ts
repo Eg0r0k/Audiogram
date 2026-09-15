@@ -18,6 +18,12 @@ import type {
 } from "@/modules/youtube/types";
 import type { DiscordActivityPayload } from "@/modules/player/utils/discordPresence";
 import type { ThumbbarAction, ThumbbarState } from "@/modules/player/api/thumbbarApi";
+import type {
+  YmAuthEvent,
+  YmAuthStatus,
+  YmDeviceCode,
+  YmRequestPayload,
+} from "@/modules/sources/yandex/api/types";
 
 //
 // The one place the frontend names a Rust command or event (ARCHITECTURE.md
@@ -39,6 +45,11 @@ export const COMMANDS = {
   ndPrefetch: "nd_prefetch",
   ndDownload: "nd_download",
   ndDownloadCancel: "nd_download_cancel",
+  ymAuthStatus: "ym_auth_status",
+  ymAuthStart: "ym_auth_start",
+  ymAuthCancel: "ym_auth_cancel",
+  ymAuthLogout: "ym_auth_logout",
+  ymRequest: "ym_request",
   ytSearch: "yt_search",
   ytSearchContinue: "yt_search_continue",
   ytResolve: "yt_resolve",
@@ -82,6 +93,12 @@ export interface CommandMap {
     result: { path: string; ext: string };
   };
   nd_download_cancel: { args: { songId: string }; result: void };
+  ym_auth_status: { args: undefined; result: YmAuthStatus };
+  ym_auth_start: { args: undefined; result: YmDeviceCode };
+  ym_auth_cancel: { args: undefined; result: void };
+  ym_auth_logout: { args: undefined; result: void };
+  /** The `result` of the API envelope; the caller narrows it. */
+  ym_request: { args: { req: YmRequestPayload }; result: unknown };
   yt_search: { args: { query: string }; result: YtPage<YtSearchResult> };
   yt_search_continue: { args: { continuation: string }; result: YtPage<YtSearchResult> };
   yt_resolve: { args: { id: string }; result: string };
@@ -136,6 +153,7 @@ export const EVENTS = {
   windowResize: "tauri://resize",
   updateDownloadProgress: "update://download-progress",
   updateInstallStarted: "update://install-started",
+  ymAuth: "ym:auth",
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -146,6 +164,7 @@ export interface EventMap {
   "tauri://resize": unknown;
   "update://download-progress": DownloadProgress;
   "update://install-started": unknown;
+  "ym:auth": YmAuthEvent;
 }
 
 /**
