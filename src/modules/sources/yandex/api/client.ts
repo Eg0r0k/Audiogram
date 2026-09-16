@@ -73,6 +73,30 @@ export const ymApi = {
   unlikeTracks: (trackIds: readonly string[]) =>
     ymRequest<unknown>({ method: "POST", path: "/users/{uid}/likes/tracks/remove", form: { "track-ids": trackIds.join(",") } }),
 
+  // Entity likes mirror the track ones: one form field of comma-joined ids.
+  likeArtists: (artistIds: readonly string[]) =>
+    ymRequest<unknown>({ method: "POST", path: "/users/{uid}/likes/artists/add-multiple", form: { "artist-ids": artistIds.join(",") } }),
+
+  unlikeArtists: (artistIds: readonly string[]) =>
+    ymRequest<unknown>({ method: "POST", path: "/users/{uid}/likes/artists/remove", form: { "artist-ids": artistIds.join(",") } }),
+
+  likeAlbums: (albumIds: readonly string[]) =>
+    ymRequest<unknown>({ method: "POST", path: "/users/{uid}/likes/albums/add-multiple", form: { "album-ids": albumIds.join(",") } }),
+
+  unlikeAlbums: (albumIds: readonly string[]) =>
+    ymRequest<unknown>({ method: "POST", path: "/users/{uid}/likes/albums/remove", form: { "album-ids": albumIds.join(",") } }),
+
+  /** Playlist ids are `ownerUid:kind`. */
+  likePlaylists: (playlistIds: readonly string[]) =>
+    ymRequest<unknown>({ method: "POST", path: "/users/{uid}/likes/playlists/add-multiple", form: { "playlist-ids": playlistIds.join(",") } }),
+
+  unlikePlaylists: (playlistIds: readonly string[]) =>
+    ymRequest<unknown>({ method: "POST", path: "/users/{uid}/likes/playlists/remove", form: { "playlist-ids": playlistIds.join(",") } }),
+
+  /** Only the account's own playlists: Rust fills `{uid}`, so another owner's kind never matches. */
+  deletePlaylist: (kind: string) =>
+    ymRequest<unknown>({ method: "POST", path: `/users/{uid}/playlists/${kind}/delete` }),
+
   ownPlaylists: () => ymRequest<YmPlaylist[]>({ path: "/users/{uid}/playlists/list" }),
 
   playlist: (ownerUid: string, kind: string) =>

@@ -36,6 +36,34 @@ describe("ymRequest", () => {
     });
   });
 
+  it("posts entity likes as forms under the same scheme as track likes", async () => {
+    invokeCommand.mockResolvedValue("ok");
+
+    await ymApi.likeArtists(["41075"]);
+    await ymApi.unlikeAlbums(["5307396", "10374"]);
+    await ymApi.likePlaylists(["457553308:1000"]);
+
+    expect(invokeCommand).toHaveBeenNthCalledWith(1, "ym_request", {
+      req: { method: "POST", path: "/users/{uid}/likes/artists/add-multiple", form: { "artist-ids": "41075" } },
+    });
+    expect(invokeCommand).toHaveBeenNthCalledWith(2, "ym_request", {
+      req: { method: "POST", path: "/users/{uid}/likes/albums/remove", form: { "album-ids": "5307396,10374" } },
+    });
+    expect(invokeCommand).toHaveBeenNthCalledWith(3, "ym_request", {
+      req: { method: "POST", path: "/users/{uid}/likes/playlists/add-multiple", form: { "playlist-ids": "457553308:1000" } },
+    });
+  });
+
+  it("deletes an own playlist by kind under the account's uid", async () => {
+    invokeCommand.mockResolvedValue("ok");
+
+    await ymApi.deletePlaylist("1000");
+
+    expect(invokeCommand).toHaveBeenCalledWith("ym_request", {
+      req: { method: "POST", path: "/users/{uid}/playlists/1000/delete" },
+    });
+  });
+
   it("returns the unwrapped result Rust hands over", async () => {
     invokeCommand.mockResolvedValue({ account: { uid: 42 }, plus: { hasPlus: true } });
 
