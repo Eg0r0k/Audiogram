@@ -43,12 +43,10 @@ const hasStaticImage = computed(() => !!props.item.image);
         <IconFolder class="size-8" />
       </div>
 
-      <img
+      <div
         v-else-if="item.type === 'radio'"
-        src="/icon.svg"
-        alt=""
-        class="size-full scale-[1.15] object-cover"
-      >
+        class="wave-tile size-full"
+      />
 
       <EntityCoverImage
         v-else
@@ -80,3 +78,23 @@ const hasStaticImage = computed(() => !!props.item.image);
     </span>
   </div>
 </template>
+
+<style scoped>
+/* The station has no cover of its own: a slow drift across the palette
+   stands in for one. Stops repeat the first colour so the loop never snaps. */
+.wave-tile {
+  background: linear-gradient(135deg, #7c5cff 0%, #ff5ea8 30%, #ffb347 55%, #38d9f5 80%, #7c5cff 100%);
+  background-size: 400% 400%;
+  animation: wave-drift 9s ease-in-out infinite;
+}
+
+@keyframes wave-drift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave-tile { animation: none; }
+}
+</style>
