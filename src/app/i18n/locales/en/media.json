@@ -18,5 +18,8 @@
   },
   "nothingToDownload": "Nothing to download",
   "filter": "Filter",
-  "filterClear": "Clear filter"
+  "filterClear": "Clear filter",
+  "like": "Like",
+  "unlike": "Remove from liked",
+  "likeFailed": "Couldn't change the like"
 }

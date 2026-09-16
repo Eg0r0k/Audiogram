@@ -89,6 +89,8 @@ export const queryKeys = {
     /** One source's slice of the above. */
     ofKind: (kind: SourceKind) => ["source", kind] as const,
     artists: (kind: SourceKind | null) => ["source", kind, "artists"] as const,
+    /** Every album page of a source, whatever the sort — the prefix of albumsInf. */
+    albums: (kind: SourceKind | null) => ["source", kind, "albums"] as const,
     albumsInf: (kind: SourceKind | null, sort: string) => ["source", kind, "albums", sort] as const,
     // Null ids come from skipToken-parked options.
     album: (kind: SourceKind | null, id: AlbumId | null) => ["source", kind, "album", id] as const,
