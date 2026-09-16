@@ -36,6 +36,8 @@ export interface YmRequestPayload {
   path: string;
   query?: Record<string, string>;
   form?: Record<string, string>;
+  /** A JSON body — rotor feedback is validated as one and refuses a form. */
+  json?: Record<string, unknown>;
 }
 
 /** Every `ym_*` command rejects with this shape (serialized `YmError`). */

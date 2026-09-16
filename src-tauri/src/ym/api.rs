@@ -101,6 +101,7 @@ fn api_error_message(body: &str) -> Option<String> {
     let error = json.get("error")?;
     error["message"]
         .as_str()
+        .filter(|message| !message.is_empty())
         .or_else(|| error["name"].as_str())
         .or_else(|| error.as_str())
         .map(str::to_owned)
@@ -118,6 +119,9 @@ pub struct YmRequest {
     pub query: BTreeMap<String, String>,
     #[serde(default)]
     pub form: Option<BTreeMap<String, String>>,
+    /// A JSON body; rotor feedback is validated as one and refuses a form.
+    #[serde(default)]
+    pub json: Option<serde_json::Value>,
 }
 
 fn default_method() -> String {
@@ -234,6 +238,9 @@ async fn send(
     }
     if let Some(form) = &req.form {
         request = request.form(form);
+    }
+    if let Some(body) = &req.json {
+        request = request.json(body);
     }
 
     let resp = request
@@ -381,6 +388,7 @@ mod tests {
             path: path.into(),
             query: BTreeMap::new(),
             form: None,
+            json: None,
         }
     }
 
@@ -487,6 +495,31 @@ mod tests {
         assert!(matches!(outcome.session, SessionChange::Unchanged));
     }
 
+    // Rotor feedback is validated as JSON: the same fields as a form come
+    // back as 400 "condition is not met" with an empty message.
+    #[tokio::test]
+    async fn a_post_sends_a_json_body() {
+        let upstream = spawn_upstream(|req| {
+            assert_eq!(req.method(), http::Method::POST);
+            assert_eq!(req.uri().path(), "/rotor/station/user:onyourwave/feedback");
+            assert_eq!(req.headers()["Content-Type"], "application/json");
+            json(200, r#"{"result":"ok"}"#)
+        })
+        .await;
+        let state = signed_in(&upstream);
+        let req = YmRequest {
+            method: "POST".into(),
+            path: "/rotor/station/user:onyourwave/feedback".into(),
+            query: BTreeMap::new(),
+            form: None,
+            json: Some(serde_json::json!({ "type": "radioStarted", "timestamp": "2026-09-16T00:00:00Z" })),
+        };
+
+        let outcome = call(&state, &reqwest::Client::new(), &req).await;
+
+        assert_eq!(outcome.result.expect("result"), "ok");
+    }
+
     #[tokio::test]
     async fn a_post_sends_the_form_body() {
         let upstream = spawn_upstream(|req| {
@@ -505,6 +538,7 @@ mod tests {
             path: "/users/{uid}/likes/tracks/add-multiple".into(),
             query: BTreeMap::new(),
             form: Some(BTreeMap::from([("track-ids".to_owned(), "1,2".to_owned())])),
+            json: None,
         };
 
         let outcome = call(&state, &reqwest::Client::new(), &req).await;
@@ -602,6 +636,8 @@ mod tests {
             (403, r#"{"error":{"name":"not-allowed","message":"premium only"}}"#, YmErrorKind::Forbidden, "premium only"),
             (404, "{}", YmErrorKind::NotFound, "upstream status 404"),
             (400, r#"{"error":{"name":"validate","message":"Parameters requirements are not met"}}"#, YmErrorKind::Unknown, "Parameters requirements are not met"),
+            // An empty message hides the cause; the name is the next best thing.
+            (400, r#"{"error":{"name":"condition is not met","message":""}}"#, YmErrorKind::Unknown, "condition is not met"),
             (502, "<html>bad gateway</html>", YmErrorKind::Unavailable, "upstream status 502"),
         ] {
             let upstream = spawn_upstream(move |_req| json(status, body)).await;

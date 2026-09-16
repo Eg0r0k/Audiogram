@@ -54,6 +54,27 @@ describe("ymRequest", () => {
     });
   });
 
+  // Yandex validates rotor feedback as a JSON body; a form is refused with
+  // 400 "condition is not met" — recorded live 2026-09-16.
+  it("sends station feedback as a JSON body under the chain's batch id", async () => {
+    invokeCommand.mockResolvedValue("ok");
+
+    await ymApi.stationFeedback("user:onyourwave", "batch-1", { type: "trackStarted", trackId: "63606604", timestamp: "t" });
+    await ymApi.stationFeedback("user:onyourwave", null, { type: "radioStarted", timestamp: "t" });
+
+    expect(invokeCommand).toHaveBeenNthCalledWith(1, "ym_request", {
+      req: {
+        method: "POST",
+        path: "/rotor/station/user:onyourwave/feedback",
+        query: { "batch-id": "batch-1" },
+        json: { type: "trackStarted", trackId: "63606604", timestamp: "t" },
+      },
+    });
+    expect(invokeCommand).toHaveBeenNthCalledWith(2, "ym_request", {
+      req: { method: "POST", path: "/rotor/station/user:onyourwave/feedback", json: { type: "radioStarted", timestamp: "t" } },
+    });
+  });
+
   it("deletes an own playlist by kind under the account's uid", async () => {
     invokeCommand.mockResolvedValue("ok");
 

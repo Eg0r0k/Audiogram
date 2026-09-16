@@ -130,11 +130,11 @@ export const ymApi = {
       query: { settings2: "true", ...(queue ? { queue } : {}) },
     }),
 
-  stationFeedback: (station: string, batchId: string | null, form: Record<string, string>) =>
+  stationFeedback: (station: string, batchId: string | null, body: Record<string, string>) =>
     ymRequest<unknown>({
       method: "POST",
       path: `/rotor/station/${station}/feedback`,
       ...(batchId ? { query: { "batch-id": batchId } } : {}),
-      form,
+      json: body,
     }),
 };
