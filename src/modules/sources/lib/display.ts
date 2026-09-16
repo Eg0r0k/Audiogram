@@ -87,7 +87,7 @@ export function sourcePlaylistToPlaylistData(dto: SourcePlaylistDTO, id: Playlis
     id,
     title: dto.name,
     image: sourceCoverUrl(sourceKindOf(id), dto.coverRef, THUMB_SIZE_FULL),
-    isOwner: false,
+    isOwner: dto.isOwner ?? false,
     trackCount: dto.trackCount,
   };
 }

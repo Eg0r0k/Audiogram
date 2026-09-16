@@ -6,6 +6,7 @@ import { parseTrackRef } from "@/types/track-ref";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 import type {
   DownloadEvent,
+  LikeableEntity,
   SourceAlbumDTO,
   SourceArtistDTO,
   SourceError,
@@ -108,10 +109,16 @@ const likedPlaylistOf = (row: YmLikedPlaylist | YmPlaylist): YmPlaylist[] => {
   return row.playlist ? [row.playlist] : [];
 };
 
+/** Own = the account's uid is the owner's; the likes playlist counts as own too. */
+const ownedPlaylist = (playlist: YmPlaylist): SourcePlaylistDTO => ({
+  ...mapYmPlaylist(playlist),
+  isOwner: ymPlaylistOwnerUid(playlist) === useYmAuthStore().uid,
+});
+
 const uniquePlaylists = (lists: YmPlaylist[][]): SourcePlaylistDTO[] => {
   const seen = new Set<string>();
   return lists.flat().flatMap((playlist) => {
-    const dto = mapYmPlaylist(playlist);
+    const dto = ownedPlaylist(playlist);
     if (seen.has(dto.id)) return [];
     seen.add(dto.id);
     return [dto];
@@ -197,6 +204,29 @@ export const ymSourceProvider: SourceProvider = {
     });
   },
 
+  setEntityLiked(entity, id, liked) {
+    const raw = ymIdOf(id as TrackId);
+    if (!raw) return notYm(entity, id);
+    if (!isYmAvailable()) return unavailable<void>();
+    const calls: Record<LikeableEntity, [like: typeof ymApi.likeArtists, unlike: typeof ymApi.unlikeArtists]> = {
+      artist: [ymApi.likeArtists, ymApi.unlikeArtists],
+      album: [ymApi.likeAlbums, ymApi.unlikeAlbums],
+      playlist: [ymApi.likePlaylists, ymApi.unlikePlaylists],
+    };
+    const [like, unlike] = calls[entity];
+    return (liked ? like([raw]) : unlike([raw])).map(() => undefined);
+  },
+
+  deletePlaylist(id) {
+    const ref = ymPlaylistRef(id);
+    if (!ref) return notYm("playlist", id);
+    if (!isYmAvailable()) return unavailable<void>();
+    if (ref.owner !== String(useYmAuthStore().uid)) {
+      return errAsync<void, SourceError>({ kind: "FORBIDDEN", message: "not this account's playlist" });
+    }
+    return ymApi.deletePlaylist(ref.kind).map(() => undefined);
+  },
+
   /** The cheapest authenticated call; it also refreshes whether the account has Plus. */
   checkConnection() {
     if (!isYmAvailable()) return unavailable<void>();
@@ -266,7 +296,7 @@ export const ymSourceProvider: SourceProvider = {
     if (!ref) return notYm("playlist", id);
     return withSession(() =>
       ymApi.playlist(ref.owner, ref.kind).map(playlist => ({
-        playlist: mapYmPlaylist({ ...playlist, uid: ymPlaylistOwnerUid(playlist) ?? Number(ref.owner) }),
+        playlist: ownedPlaylist({ ...playlist, uid: ymPlaylistOwnerUid(playlist) ?? Number(ref.owner) }),
         tracks: playlistTracks(playlist),
       })),
     );

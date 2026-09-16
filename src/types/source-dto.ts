@@ -62,6 +62,8 @@ export interface SourcePlaylistDTO {
   name: string;
   trackCount: number;
   coverRef?: string;
+  /** The signed-in account owns it at the source; absent = not owned / not applicable. */
+  isOwner?: boolean;
 }
 
 /**

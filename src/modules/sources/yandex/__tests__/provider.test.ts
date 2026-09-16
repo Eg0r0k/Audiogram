@@ -215,6 +215,32 @@ describe("ymSourceProvider", () => {
       expect(new Set(ids).size).toBe(ids.length);
     });
 
+    it("marks the account's playlists as owned, the liked ones as not", async () => {
+      answers.set("/users/{uid}/playlists/3", likesPlaylist);
+      answers.set("/users/{uid}/playlists/list", ownPlaylists);
+      answers.set("/users/{uid}/likes/playlists", likedPlaylists);
+
+      const list = (await ymSourceProvider.listPlaylists())._unsafeUnwrap();
+
+      expect(list.find(playlist => playlist.id === "ym:42:3")?.isOwner).toBe(true);
+      expect(list.find(playlist => playlist.id === "ym:457553308:41075")?.isOwner).toBe(false);
+
+      answers.set("/users/457553308/playlists/41075", playlistFixture.result);
+      const opened = (await ymSourceProvider.getPlaylist(ymPlaylistId(457553308, 41075)))._unsafeUnwrap();
+      expect(opened.playlist.isOwner).toBe(false);
+    });
+
+    it("deletes an own playlist and refuses someone else's", async () => {
+      answers.set("/users/{uid}/playlists/1000/delete", "ok");
+
+      expect((await ymSourceProvider.deletePlaylist!(ymPlaylistId(42, 1000))).isOk()).toBe(true);
+      expect(requests()).toEqual([{ method: "POST", path: "/users/{uid}/playlists/1000/delete" }]);
+
+      const foreign = await ymSourceProvider.deletePlaylist!(ymPlaylistId(7, 1000));
+      expect(foreign._unsafeUnwrapErr().kind).toBe("FORBIDDEN");
+      expect(requests()).toHaveLength(1);
+    });
+
     it("opens a playlist by owner and kind", async () => {
       answers.set("/users/457553308/playlists/41075", playlistFixture.result);
 
@@ -387,5 +413,52 @@ describe("ymSourceProvider", () => {
       expect(ymSourceProvider.externalUrl!({ id: ymTrackId("40144") })).toBe("https://music.yandex.ru/track/40144");
       expect(ymSourceProvider.externalUrl!({ id: TrackId("yt:x") })).toBeNull();
     });
+  });
+});
+
+describe("entity likes", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    useYmAuthStore().applyStatus(SIGNED_IN);
+    answers.clear();
+    invokeCommand.mockReset();
+    invokeCommand.mockImplementation(async (name: string, args?: unknown) => {
+      if (name !== "ym_request") return undefined;
+      const { req } = args as { req: YmRequestPayload };
+      if (!answers.has(req.path)) throw new Error(`no answer for ${req.path}`);
+      return answers.get(req.path);
+    });
+  });
+
+  it("likes and unlikes an artist, album and playlist at Yandex", async () => {
+    answers.set("/users/{uid}/likes/artists/add-multiple", "ok");
+    answers.set("/users/{uid}/likes/albums/remove", "ok");
+    answers.set("/users/{uid}/likes/playlists/add-multiple", "ok");
+
+    expect((await ymSourceProvider.setEntityLiked!("artist", ymArtistId("41075"), true)).isOk()).toBe(true);
+    expect((await ymSourceProvider.setEntityLiked!("album", ymAlbumId("5307396"), false)).isOk()).toBe(true);
+    expect((await ymSourceProvider.setEntityLiked!("playlist", ymPlaylistId(457553308, 1000), true)).isOk()).toBe(true);
+
+    expect(requests()).toEqual([
+      { method: "POST", path: "/users/{uid}/likes/artists/add-multiple", form: { "artist-ids": "41075" } },
+      { method: "POST", path: "/users/{uid}/likes/albums/remove", form: { "album-ids": "5307396" } },
+      { method: "POST", path: "/users/{uid}/likes/playlists/add-multiple", form: { "playlist-ids": "457553308:1000" } },
+    ]);
+  });
+
+  it("refuses ids of other sources and fails with UNAVAILABLE when signed out", async () => {
+    expect((await ymSourceProvider.setEntityLiked!("artist", "nd:artist9", true))._unsafeUnwrapErr().kind).toBe("PARSE");
+
+    useYmAuthStore().signedOut();
+    expect((await ymSourceProvider.setEntityLiked!("album", ymAlbumId("1"), true))._unsafeUnwrapErr().kind).toBe("UNAVAILABLE");
+    expect(invokeCommand).not.toHaveBeenCalled();
+  });
+
+  it("passes a refused like through as the source's error", async () => {
+    invokeCommand.mockRejectedValueOnce({ kind: "AUTH", message: "session expired" });
+
+    const result = await ymSourceProvider.setEntityLiked!("artist", ymArtistId("41075"), true);
+
+    expect(result._unsafeUnwrapErr()).toEqual({ kind: "AUTH", message: "session expired" });
   });
 });
