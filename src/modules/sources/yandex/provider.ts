@@ -110,11 +110,15 @@ const likedPlaylistOf = (row: YmLikedPlaylist | YmPlaylist): YmPlaylist[] => {
 };
 
 /** Own = the account's uid is the owner's; the likes playlist is own AND system. */
-const ownedPlaylist = (playlist: YmPlaylist): SourcePlaylistDTO => ({
-  ...mapYmPlaylist(playlist),
-  isOwner: ymPlaylistOwnerUid(playlist) === useYmAuthStore().uid,
-  ...(String(playlist.kind) === LIKES_PLAYLIST_KIND ? { isSystem: true } : {}),
-});
+const ownedPlaylist = (playlist: YmPlaylist): SourcePlaylistDTO => {
+  const owner = ymPlaylistOwnerUid(playlist);
+  const uid = useYmAuthStore().uid;
+  return {
+    ...mapYmPlaylist(playlist),
+    isOwner: owner !== undefined && uid !== null && owner === uid,
+    ...(String(playlist.kind) === LIKES_PLAYLIST_KIND ? { isSystem: true } : {}),
+  };
+};
 
 const uniquePlaylists = (lists: YmPlaylist[][]): SourcePlaylistDTO[] => {
   const seen = new Set<string>();

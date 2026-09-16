@@ -49,6 +49,7 @@ export const useEntityLike = (
       case "artist": return artists.data.value ? new Set(artists.data.value.map(row => row.id)) : null;
       case "album": return albums.data.value ? new Set(albums.data.value.pages.flat().map(row => row.id)) : null;
       case "playlist": return playlists.data.value ? new Set(playlists.data.value.map(row => row.id)) : null;
+      default: return null;
     }
   });
 

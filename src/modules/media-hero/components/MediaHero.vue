@@ -118,6 +118,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   isLibraryEntity: true,
   filterable: false,
+  like: undefined,
   canDeleteAtSource: false,
 });
 
