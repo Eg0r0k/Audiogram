@@ -222,9 +222,10 @@ describe("ymSourceProvider", () => {
 
       const list = (await ymSourceProvider.listPlaylists())._unsafeUnwrap();
 
-      // The likes playlist is the account's, but a system one: never editable or deletable.
-      expect(list.find(playlist => playlist.id === "ym:42:3")?.isOwner).toBe(false);
-      expect(list.find(playlist => playlist.id === "ym:42:41075")?.isOwner).toBe(true);
+      // The likes playlist is the account's, but a system one: never editable, deletable or liked.
+      expect(list.find(playlist => playlist.id === "ym:42:3")).toMatchObject({ isOwner: true, isSystem: true });
+      expect(list.find(playlist => playlist.id === "ym:42:41075")).toMatchObject({ isOwner: true });
+      expect(list.find(playlist => playlist.id === "ym:42:41075")?.isSystem).toBeUndefined();
       expect(list.find(playlist => playlist.id === "ym:1394200455:1001")?.isOwner).toBe(false);
 
       answers.set("/users/457553308/playlists/41075", playlistFixture.result);

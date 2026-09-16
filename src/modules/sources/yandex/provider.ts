@@ -109,13 +109,11 @@ const likedPlaylistOf = (row: YmLikedPlaylist | YmPlaylist): YmPlaylist[] => {
   return row.playlist ? [row.playlist] : [];
 };
 
-/**
- * Own = the account's uid is the owner's. The likes playlist is the account's
- * too, but a system one Yandex neither renames nor deletes — not "own" here.
- */
+/** Own = the account's uid is the owner's; the likes playlist is own AND system. */
 const ownedPlaylist = (playlist: YmPlaylist): SourcePlaylistDTO => ({
   ...mapYmPlaylist(playlist),
-  isOwner: ymPlaylistOwnerUid(playlist) === useYmAuthStore().uid && String(playlist.kind) !== LIKES_PLAYLIST_KIND,
+  isOwner: ymPlaylistOwnerUid(playlist) === useYmAuthStore().uid,
+  ...(String(playlist.kind) === LIKES_PLAYLIST_KIND ? { isSystem: true } : {}),
 });
 
 const uniquePlaylists = (lists: YmPlaylist[][]): SourcePlaylistDTO[] => {

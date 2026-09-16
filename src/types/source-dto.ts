@@ -64,6 +64,8 @@ export interface SourcePlaylistDTO {
   coverRef?: string;
   /** The signed-in account owns it at the source; absent = not owned / not applicable. */
   isOwner?: boolean;
+  /** A fixed playlist of the account (Yandex likes): owned, yet never renamed, deleted or liked. */
+  isSystem?: boolean;
 }
 
 /**

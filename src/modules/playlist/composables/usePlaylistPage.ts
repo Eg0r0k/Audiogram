@@ -226,9 +226,9 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
 
   const sourceProvider = computed(() => (remoteKind.value ? sources.find(remoteKind.value) : undefined));
 
-  /** An own catalog playlist whose source can delete it — the only delete a remote page offers. */
+  /** An own, non-system catalog playlist whose source can delete it — the only delete a remote page offers. */
   const canDeleteAtSource = computed(() =>
-    isRemote.value && !!playlistDetailData.value?.isOwner && !!sourceProvider.value?.deletePlaylist,
+    isRemote.value && !!remoteMeta.value?.isOwner && !remoteMeta.value.isSystem && !!sourceProvider.value?.deletePlaylist,
   );
 
   const deleteAtSource = async (): Promise<boolean> => {
