@@ -68,6 +68,7 @@
           :is-playlist-owner="isPlaylist(data) ? data.isOwner : undefined"
           :show-menu="hasMenuItems"
           :filterable="props.filterable"
+          :like="props.like"
           @play="$emit('play')"
           @shuffle="$emit('shuffle')"
         />
@@ -97,6 +98,7 @@ import MediaHeroMeta from "./MediaHeroMeta.vue";
 import MediaHeroActions from "./MediaHeroActions.vue";
 import type { QueueSource } from "@/modules/queue/types";
 import type { MediaData } from "@/types/media-data";
+import type { EntityLikeState } from "@/modules/sources/composables/useEntityLike";
 import { isAlbum, isArtist, isLiked, isPlaylist } from "@/types/media-data";
 
 const props = withDefaults(defineProps<{
@@ -109,6 +111,8 @@ const props = withDefaults(defineProps<{
   isLibraryEntity?: boolean;
   /** Shows the track filter; the page narrows its list by the `filter` model. */
   filterable?: boolean;
+  /** The entity's like at its source, handed down to the actions row. */
+  like?: EntityLikeState;
 }>(), {
   isLibraryEntity: true,
   filterable: false,

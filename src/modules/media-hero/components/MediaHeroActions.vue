@@ -26,6 +26,26 @@
         <IconShuffle class="size-5" />
       </Button>
 
+      <Button
+        v-if="props.like"
+        class="rounded-full text-white"
+        size="icon-lg"
+        variant="ghost"
+        :class="{ 'text-primary': props.like.isLiked }"
+        :disabled="props.like.isPending"
+        :aria-label="props.like.isLiked ? $t('media.unlike') : $t('media.like')"
+        @click="props.like.toggle()"
+      >
+        <IconLikedFilled
+          v-if="props.like.isLiked"
+          class="size-5"
+        />
+        <IconLike
+          v-else
+          class="size-5"
+        />
+      </Button>
+
       <MediaDropdown
         v-if="props.showMenu !== false"
         :context="contextType"
@@ -78,6 +98,8 @@ import MediaDropdown from "./menu/dropdown/MediaDropdown.vue";
 import IconPlay from "~icons/audiogram/play-rounded";
 import IconPause from "~icons/audiogram/pause-rounded";
 import IconShuffle from "~icons/tabler/arrows-shuffle";
+import IconLike from "~icons/tabler/heart";
+import IconLikedFilled from "~icons/tabler/heart-filled";
 import IconSearch from "~icons/tabler/search";
 import IconX from "~icons/tabler/x";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
@@ -87,6 +109,7 @@ import { usePlayerStore } from "@/modules/player/store/player.store";
 import { getLogger } from "@/lib/logger";
 import { usePlaybackState } from "@/modules/player/composables/usePlaybackState";
 import type { MediaType } from "@/types/media-data";
+import type { EntityLikeState } from "@/modules/sources/composables/useEntityLike";
 import { Button } from "@/components/ui/button";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 
@@ -99,6 +122,8 @@ const props = defineProps<{
   showMenu?: boolean;
   /** Shows the track filter input; the page reads it through the `filter` model. */
   filterable?: boolean;
+  /** The entity's like at its source; absent = the source keeps no such likes (or this is a library row). */
+  like?: EntityLikeState;
 }>();
 
 const emit = defineEmits<{
