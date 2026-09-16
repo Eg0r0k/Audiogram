@@ -135,6 +135,13 @@ const ALLOWED_PATHS: &[&str] = &[
     "/users/{uid}/likes/playlists",
     "/users/{uid}/likes/tracks/add-multiple",
     "/users/{uid}/likes/tracks/remove",
+    "/users/{uid}/likes/artists/add-multiple",
+    "/users/{uid}/likes/artists/remove",
+    "/users/{uid}/likes/albums/add-multiple",
+    "/users/{uid}/likes/albums/remove",
+    "/users/{uid}/likes/playlists/add-multiple",
+    "/users/{uid}/likes/playlists/remove",
+    "/users/{uid}/playlists/{*}/delete",
     "/users/{uid}/playlists/list",
     "/users/{*}/playlists/{*}",
     "/albums/{*}/with-tracks",
@@ -402,6 +409,26 @@ mod tests {
             allowed_path("/users/457553308/playlists/41075", 42).as_deref(),
             Some("/users/457553308/playlists/41075")
         );
+        for path in [
+            "/users/{uid}/likes/artists/add-multiple",
+            "/users/{uid}/likes/artists/remove",
+            "/users/{uid}/likes/albums/add-multiple",
+            "/users/{uid}/likes/albums/remove",
+            "/users/{uid}/likes/playlists/add-multiple",
+            "/users/{uid}/likes/playlists/remove",
+        ] {
+            assert_eq!(
+                allowed_path(path, 42).as_deref(),
+                Some(path.replace("{uid}", "42").as_str()),
+                "{path}"
+            );
+        }
+        assert_eq!(
+            allowed_path("/users/{uid}/playlists/1000/delete", 42).as_deref(),
+            Some("/users/42/playlists/1000/delete")
+        );
+        // Deleting under someone else's uid is not this account's playlist.
+        assert_eq!(allowed_path("/users/7/playlists/1000/delete", 42), None);
 
         // Another account's likes, arbitrary endpoints, traversal, trailing junk.
         assert_eq!(allowed_path("/users/7/likes/tracks", 42), None);
