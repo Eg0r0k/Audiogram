@@ -74,7 +74,7 @@ export function useCatalogLibraryItems(
         addedAt: 0,
         updatedAt: 0,
         to: "/",
-        rounded: true,
+        rounded: false,
       });
     }
 

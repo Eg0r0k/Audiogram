@@ -35,7 +35,7 @@ describe("useCatalogLibraryItems — the station card", () => {
         title: "My Wave",
         isCatalog: true,
         isSystem: true,
-        rounded: true,
+        rounded: false,
       });
     }
   });
