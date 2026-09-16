@@ -244,6 +244,7 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
   });
 
   return {
+    remoteKind,
     playlist,
     tracks,
     canSort,

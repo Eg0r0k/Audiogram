@@ -41,6 +41,7 @@
               :has-tracks="tracks.length > 0"
               :is-library-entity="!!playlist"
               :filterable="!!playlist"
+              :like="playlistData.isOwner ? undefined : like.state.value"
               @play="handlePlayAll"
               @shuffle="handleShuffle"
               @edit="openEditDialog"
@@ -110,6 +111,7 @@ import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.stor
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import { usePlaylistPage } from "@/modules/playlist/composables/usePlaylistPage";
+import { useEntityLike } from "@/modules/sources/composables/useEntityLike";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 import { summonDialog } from "@/components/dialogs/summonDialog";
@@ -133,6 +135,7 @@ const sortKey = ref<TrackSortKey | null>(null);
 const searchQuery = ref("");
 
 const {
+  remoteKind,
   playlist,
   tracks,
   canSort,
@@ -152,6 +155,9 @@ const {
   isTracksLoading,
   isFetchingNextPage,
 } = usePlaylistPage(sortKey, searchQuery);
+
+const playlistId = computed(() => route.params.id as string);
+const like = useEntityLike(remoteKind, "playlist", playlistId);
 
 const editPlaylist = useEditPlaylistDialog();
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);

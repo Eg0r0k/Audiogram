@@ -36,6 +36,7 @@
               :has-tracks="tracks.length > 0"
               :is-library-entity="!!artist"
               :filterable="!!artist"
+              :like="like.state.value"
               @play="handlePlayAll"
               @shuffle="handleShuffle"
               @edit="openEditDialog"
@@ -162,6 +163,7 @@ import { Spinner } from "@/components/ui/spinner";
 import IconChevronRight from "~icons/tabler/chevron-right";
 
 import { useArtistPage } from "@/modules/artists/composables/useArtistPage";
+import { useEntityLike } from "@/modules/sources/composables/useEntityLike";
 import { getArtistPageData } from "@/queries/artist.queries";
 import { searchArtistTracks } from "@/queries/track.queries";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
@@ -203,6 +205,7 @@ const searchQuery = ref("");
 const artistId = computed(() => route.params.id as string);
 
 const {
+  remoteKind,
   artist,
   albums,
   albumCovers,
@@ -225,6 +228,8 @@ const {
   isTracksLoading,
   isFetchingNextTrackPage,
 } = useArtistPage(sortKey, searchQuery);
+
+const like = useEntityLike(remoteKind, "artist", artistId);
 
 const editArtist = useEditArtistDialog();
 const createAlbum = useCreateAlbum();

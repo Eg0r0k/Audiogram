@@ -35,9 +35,9 @@ export function useAlbumPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
   const albumId = computed(() => AlbumId(route.params.id as string));
 
   const path = useCatalogEntity("albums", albumId);
-  const { isRemote, remoteId, localEnabled } = path;
+  const { remoteKind, isRemote, remoteId, localEnabled } = path;
 
-  const remoteQuery = useSourceAlbum(path.remoteKind, remoteId);
+  const remoteQuery = useSourceAlbum(remoteKind, remoteId);
 
   const {
     data: albumData,
@@ -168,6 +168,7 @@ export function useAlbumPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
   });
 
   return {
+    remoteKind,
     album,
     tracks,
     canSort,
