@@ -3,8 +3,9 @@ import type { EphemeralTrack, PlayerTrack, Track } from "@/modules/player/types"
 import type { SourceTrackDTO } from "@/modules/sources";
 
 // "yt" serves the YT collection/artist pages, "yt-search" the search overlay —
-// separate targets because both can be mounted at the same time.
-export type TrackContext = "default" | "current-track" | "queue" | "playlist" | "album" | "search" | "history" | "liked" | "artist" | "yt" | "yt-search";
+// separate targets because both can be mounted at the same time. Likewise
+// "search-top" is the best-result row above the "search" track section.
+export type TrackContext = "default" | "current-track" | "queue" | "playlist" | "album" | "search" | "search-top" | "history" | "liked" | "artist" | "yt" | "yt-search";
 
 //
 // What the menu is open FOR. Menus serve not only library tracks but also

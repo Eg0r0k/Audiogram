@@ -57,4 +57,16 @@ describe("SearchDropdownRow", () => {
     expect(row.isCatalog).toBe(false);
     expect(row.to).not.toHaveProperty("query");
   });
+
+  it("renders the best-result track inside its own track-menu scope", () => {
+    const track = { id: "local-t1", title: "T", artistName: "A", duration: 1 } as never;
+    const { container } = render(SearchDropdownRow, {
+      props: { item: entity("track", "local-t1"), track },
+      global: { stubs },
+    });
+
+    const scope = container.querySelector("[data-track-menu-scope]");
+    expect(scope).not.toBeNull();
+    expect(scope!.querySelector("track-row-stub")).not.toBeNull();
+  });
 });

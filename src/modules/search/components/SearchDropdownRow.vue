@@ -5,6 +5,8 @@ import type { Track } from "@/modules/player/types";
 import type { LibraryItem } from "@/modules/library/types";
 import type { RouteLocationRaw } from "vue-router";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
+import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
+import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import LibrarySidebarItem from "@/components/layout/sidebar/library-item/LibrarySidebarItem.vue";
 import { routeLocation, type ViewIntent } from "@/app/router/route-locations";
 import { sourceKindOf } from "@/modules/sources/lib/display";
@@ -46,14 +48,20 @@ const libraryItem = computed<LibraryItem>(() => ({
 </script>
 
 <template>
-  <TrackRow
-    v-if="item.type === 'track' && track"
-    :track="track"
-    :cover-url="item.coverPath"
-    hide-index
-    menu-target="search"
-    @play="emit('click')"
-  />
+  <template v-if="item.type === 'track' && track">
+    <TrackContextMenu context="search-top">
+      <div data-track-menu-scope>
+        <TrackRow
+          :track="track"
+          :cover-url="item.coverPath"
+          hide-index
+          menu-target="search-top"
+          @play="emit('click')"
+        />
+      </div>
+    </TrackContextMenu>
+    <TrackDropdown context="search-top" />
+  </template>
 
   <LibrarySidebarItem
     v-else-if="item.type !== 'track'"
