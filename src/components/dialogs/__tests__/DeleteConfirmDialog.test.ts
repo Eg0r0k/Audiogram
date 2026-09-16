@@ -80,6 +80,18 @@ describe("DeleteConfirmDialog (summoned)", () => {
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 
+  it("names the source and hides the track opt-in when deleting at the source", async () => {
+    renderHost();
+    summonComponent<DeleteConfirmResult>(DeleteConfirmDialog, {
+      data: { ...DATA, atSource: "Yandex Music" },
+    });
+    await nextTick();
+    await screen.findByText("My Playlist");
+
+    expect(screen.getByText(/Yandex Music/)).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
   it("resolves undefined when cancelled", async () => {
     renderHost();
     const promise = summonComponent<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });

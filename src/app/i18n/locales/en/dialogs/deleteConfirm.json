@@ -1,4 +1,5 @@
 {
   "description": "Are you sure you want to delete \"{name}\"?",
-  "deleteTracks": "Also delete the tracks inside"
+  "deleteTracks": "Also delete the tracks inside",
+  "descriptionAtSource": "\"{name}\" will be deleted from {source}. This cannot be undone."
 }

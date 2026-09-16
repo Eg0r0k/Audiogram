@@ -113,9 +113,12 @@ const props = withDefaults(defineProps<{
   filterable?: boolean;
   /** The entity's like at its source, handed down to the actions row. */
   like?: EntityLikeState;
+  /** An own catalog playlist its source can delete — "Delete" without a Dexie row. */
+  canDeleteAtSource?: boolean;
 }>(), {
   isLibraryEntity: true,
   filterable: false,
+  canDeleteAtSource: false,
 });
 
 const filter = defineModel<string>("filter", { default: "" });
@@ -189,6 +192,7 @@ provideMediaContext({
   delete: () => emit("delete"),
   share: () => emit("share"),
   canManage,
+  canDeleteAtSource: computed(() => props.canDeleteAtSource),
   canDownloadOffline,
   downloadOffline: () => {
     startOfflineDownload()

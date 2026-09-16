@@ -13,6 +13,8 @@ export interface MediaActions {
    * Absent = assume manageable (local-only call sites).
    */
   canManage?: ComputedRef<boolean>;
+  /** An own catalog playlist its source can delete (Yandex). Absent = no. */
+  canDeleteAtSource?: ComputedRef<boolean>;
   /** M4: ND album / any playlist — batch offline download. Absent = hidden. */
   canDownloadOffline?: ComputedRef<boolean>;
   downloadOffline?: () => void;

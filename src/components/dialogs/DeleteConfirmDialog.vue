@@ -113,7 +113,7 @@ watch(() => props.data.defaultDeleteTracks, (value) => {
   deleteTracks.value = value === true;
 }, { immediate: true });
 
-const canDeleteTracks = computed(() => props.data.trackCount > 0);
+const canDeleteTracks = computed(() => props.data.trackCount > 0 && !props.data.atSource);
 
 const { url: coverUrl } = useEntityCover(
   () => props.data.type,
@@ -134,7 +134,9 @@ const dialogTitle = computed(() => {
 });
 
 const dialogDescription = computed(() =>
-  t("dialogs.deleteConfirm.description", { name: props.data.name }),
+  (props.data.atSource
+    ? t("dialogs.deleteConfirm.descriptionAtSource", { name: props.data.name, source: props.data.atSource })
+    : t("dialogs.deleteConfirm.description", { name: props.data.name })),
 );
 
 const coverShapeClass = computed(() =>

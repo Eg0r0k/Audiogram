@@ -217,13 +217,15 @@ describe("ymSourceProvider", () => {
 
     it("marks the account's playlists as owned, the liked ones as not", async () => {
       answers.set("/users/{uid}/playlists/3", likesPlaylist);
-      answers.set("/users/{uid}/playlists/list", ownPlaylists);
+      answers.set("/users/{uid}/playlists/list", [{ ...playlistFixture.result, uid: 42, owner: { uid: 42 } }]);
       answers.set("/users/{uid}/likes/playlists", likedPlaylists);
 
       const list = (await ymSourceProvider.listPlaylists())._unsafeUnwrap();
 
-      expect(list.find(playlist => playlist.id === "ym:42:3")?.isOwner).toBe(true);
-      expect(list.find(playlist => playlist.id === "ym:457553308:41075")?.isOwner).toBe(false);
+      // The likes playlist is the account's, but a system one: never editable or deletable.
+      expect(list.find(playlist => playlist.id === "ym:42:3")?.isOwner).toBe(false);
+      expect(list.find(playlist => playlist.id === "ym:42:41075")?.isOwner).toBe(true);
+      expect(list.find(playlist => playlist.id === "ym:1394200455:1001")?.isOwner).toBe(false);
 
       answers.set("/users/457553308/playlists/41075", playlistFixture.result);
       const opened = (await ymSourceProvider.getPlaylist(ymPlaylistId(457553308, 41075)))._unsafeUnwrap();
@@ -238,6 +240,10 @@ describe("ymSourceProvider", () => {
 
       const foreign = await ymSourceProvider.deletePlaylist!(ymPlaylistId(7, 1000));
       expect(foreign._unsafeUnwrapErr().kind).toBe("FORBIDDEN");
+      expect(requests()).toHaveLength(1);
+
+      const likes = await ymSourceProvider.deletePlaylist!(ymPlaylistId(42, 3));
+      expect(likes._unsafeUnwrapErr().kind).toBe("FORBIDDEN");
       expect(requests()).toHaveLength(1);
     });
 

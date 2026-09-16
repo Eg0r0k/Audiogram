@@ -88,8 +88,8 @@ describe("media-hero menus for catalog entities", () => {
 // The separator only introduces the owner block; a catalog (YT/ND) playlist
 // has no owner block, and a separator with nothing after it is a bug.
 describe("playlist menu separator", () => {
-  const renderPlaylist = (isOwner: boolean) => {
-    const i18n = createI18n({ legacy: false, locale: "en", missingWarn: false, fallbackWarn: false, messages: { en: {} } });
+  const renderPlaylist = (isOwner: boolean, overrides: Partial<MediaActions> = {}) => {
+    const i18n = createI18n({ legacy: false, locale: "en", missingWarn: false, fallbackWarn: false, messages: { en: { common: { edit: "Edit", delete: "Delete" } } } });
     return render({
       components: { Ctx: PlaylistContext as never },
       props: { actions: { type: Object, required: true }, isOwner: Boolean },
@@ -98,7 +98,7 @@ describe("playlist menu separator", () => {
       },
       template: "<Ctx :actions=\"actions\" :is-owner=\"isOwner\" />",
     }, {
-      props: { actions: actions(isOwner), isOwner },
+      props: { actions: { ...actions(isOwner), ...overrides }, isOwner },
       global: { plugins: [i18n] },
     });
   };
@@ -113,5 +113,23 @@ describe("playlist menu separator", () => {
     const { container } = renderPlaylist(true);
 
     expect(container.querySelectorAll("hr")).toHaveLength(1);
+  });
+
+  // A catalog playlist the account owns (Yandex): nothing to edit here, but
+  // the source can delete it — only "Delete" survives, with its separator.
+  it("offers delete alone for an own catalog playlist the source can delete", () => {
+    const { container } = renderPlaylist(true, { canManage: computed(() => false), canDeleteAtSource: computed(() => true) });
+
+    expect(screen.queryByText("Edit")).toBeNull();
+    expect(screen.getByText("Delete")).toBeTruthy();
+    expect(container.querySelectorAll("hr")).toHaveLength(1);
+  });
+
+  it("offers neither for an own catalog playlist the source cannot delete", () => {
+    const { container } = renderPlaylist(true, { canManage: computed(() => false) });
+
+    expect(screen.queryByText("Edit")).toBeNull();
+    expect(screen.queryByText("Delete")).toBeNull();
+    expect(container.querySelector("hr")).toBeNull();
   });
 });

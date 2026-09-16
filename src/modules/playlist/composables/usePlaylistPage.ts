@@ -27,6 +27,7 @@ import { useCatalogEntity } from "@/modules/sources/composables/useCatalogEntity
 import { pagedPlaylistKindOf } from "@/modules/sources/lib/catalog-kind";
 import { sourcePlaylistToPlaylistData, sourceTrackToDisplay } from "@/modules/sources/lib/display";
 import type { SourcePlaylistDTO } from "@/modules/sources/types";
+import { sources } from "@/modules/sources";
 
 export type { PlaylistChanges } from "@/queries/playlist.queries";
 
@@ -223,6 +224,28 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
     },
   });
 
+  const sourceProvider = computed(() => (remoteKind.value ? sources.find(remoteKind.value) : undefined));
+
+  /** An own catalog playlist whose source can delete it — the only delete a remote page offers. */
+  const canDeleteAtSource = computed(() =>
+    isRemote.value && !!playlistDetailData.value?.isOwner && !!sourceProvider.value?.deletePlaylist,
+  );
+
+  const deleteAtSource = async (): Promise<boolean> => {
+    const kind = remoteKind.value;
+    const provider = sourceProvider.value;
+    if (!kind || !provider?.deletePlaylist) return false;
+    const result = await provider.deletePlaylist(playlistId.value);
+    if (result.isErr()) {
+      getLogger().warn(`[Playlist] Deleting ${playlistId.value} at ${kind} failed (${result.error.kind}): ${result.error.message}`);
+      return false;
+    }
+    await queryClient.invalidateQueries({ queryKey: queryKeys.source.playlists(kind) });
+    router.push(routeLocation.home())
+      .catch(error => getLogger().error(`[Playlist] Navigation home after delete failed: ${String(error)}`));
+    return true;
+  };
+
   const { mutateAsync: updatePlaylist } = useMutation({
     mutationFn: async (changes: PlaylistChanges) => {
       const current = playlist.value;
@@ -260,6 +283,8 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
     isError,
     error,
     deletePlaylist,
+    canDeleteAtSource,
+    deleteAtSource,
     updatePlaylist,
     removeTrack,
     refetch,

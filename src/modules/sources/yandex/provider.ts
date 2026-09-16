@@ -109,10 +109,13 @@ const likedPlaylistOf = (row: YmLikedPlaylist | YmPlaylist): YmPlaylist[] => {
   return row.playlist ? [row.playlist] : [];
 };
 
-/** Own = the account's uid is the owner's; the likes playlist counts as own too. */
+/**
+ * Own = the account's uid is the owner's. The likes playlist is the account's
+ * too, but a system one Yandex neither renames nor deletes — not "own" here.
+ */
 const ownedPlaylist = (playlist: YmPlaylist): SourcePlaylistDTO => ({
   ...mapYmPlaylist(playlist),
-  isOwner: ymPlaylistOwnerUid(playlist) === useYmAuthStore().uid,
+  isOwner: ymPlaylistOwnerUid(playlist) === useYmAuthStore().uid && String(playlist.kind) !== LIKES_PLAYLIST_KIND,
 });
 
 const uniquePlaylists = (lists: YmPlaylist[][]): SourcePlaylistDTO[] => {
@@ -221,8 +224,8 @@ export const ymSourceProvider: SourceProvider = {
     const ref = ymPlaylistRef(id);
     if (!ref) return notYm("playlist", id);
     if (!isYmAvailable()) return unavailable<void>();
-    if (ref.owner !== String(useYmAuthStore().uid)) {
-      return errAsync<void, SourceError>({ kind: "FORBIDDEN", message: "not this account's playlist" });
+    if (ref.owner !== String(useYmAuthStore().uid) || ref.kind === LIKES_PLAYLIST_KIND) {
+      return errAsync<void, SourceError>({ kind: "FORBIDDEN", message: "not a playlist this account may delete" });
     }
     return ymApi.deletePlaylist(ref.kind).map(() => undefined);
   },
