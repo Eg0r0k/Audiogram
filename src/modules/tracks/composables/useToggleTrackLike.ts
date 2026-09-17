@@ -19,11 +19,12 @@ export function useToggleTrackLike() {
     mutationFn: async (track: Track) => {
       const liked = !track.isLiked;
 
-      // A catalog row has no Dexie row until something pins it; a like
-      // makes it a library member (like a download does), an unlike only
-      // needs a row to clear the flag on.
+      // A catalog row has no Dexie row until something pins it. A like needs
+      // one to carry likedAt, but it is NOT library membership (§1): the row,
+      // its album and its artist stay shadows and the artist link keeps
+      // opening the catalog.
       if (track.sourceDto) {
-        await ensurePinned({ kind: "remote", dto: track.sourceDto }, { pinned: liked ? 1 : 0 });
+        await ensurePinned({ kind: "remote", dto: track.sourceDto }, { pinned: 0 });
         if (liked) await invalidateLibraryData(queryClient);
       }
 

@@ -69,12 +69,12 @@ describe("useToggleTrackLike", () => {
     provider.setTrackLiked.mockReturnValue(okAsync(undefined));
   });
 
-  it("liking a catalog row makes it a library member first, then tells the source, then flips the row", async () => {
+  it("liking a catalog row keeps it a shadow row, tells the source, then flips the row", async () => {
     const { toggleTrackLike } = setup();
 
     const next = await toggleTrackLike(remoteRow("ym:40144"));
 
-    expect(ensurePinned).toHaveBeenCalledWith({ kind: "remote", dto: expect.objectContaining({ id: "ym:40144" }) }, { pinned: 1 });
+    expect(ensurePinned).toHaveBeenCalledWith({ kind: "remote", dto: expect.objectContaining({ id: "ym:40144" }) }, { pinned: 0 });
     expect(provider.setTrackLiked).toHaveBeenCalledWith("ym:40144", true);
     expect(toggleTrackLikeAndSync).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ id: "ym:40144" }));
     expect(next.isLiked).toBe(true);

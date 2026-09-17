@@ -96,8 +96,8 @@ export const useTrackContextActions = (
     const subject = toValue(options.subject);
     if (subject?.kind !== "remote") return null;
     try {
-      const pinned = await ensurePinned(subject);
-      // The pin may have made its album/artist visible in the library.
+      // Playlists and lyrics need a row, not a library member (§1).
+      const pinned = await ensurePinned(subject, { pinned: 0 });
       await invalidateLibraryData(queryClient);
       return pinned;
     }
