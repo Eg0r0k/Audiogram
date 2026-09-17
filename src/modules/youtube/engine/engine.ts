@@ -32,7 +32,9 @@ import {
   type SearchSectionLike,
 } from "./mappers";
 import { createYtSession, type YtSession } from "./session";
+import { createStreamResolver, type StreamRegistrar } from "./stream";
 import { createYtFetch } from "./transport";
+import { registerYoutubeStream } from "../api/youtubeApi";
 
 //
 // The catalog half of the YouTube engine: search, browse and details over
@@ -49,12 +51,15 @@ export interface YtEngine {
   artist: (id: string) => Promise<YtArtistDetail>;
   playlist: (id: string) => Promise<YtPlaylistDetail>;
   track: (id: string) => Promise<YtMusicTrack>;
-  /** The live Innertube session, for the stream half of the engine. */
+  /** Resolves the audio stream for `id` and registers it with the Rust `yt/` route. */
+  resolveStream: (id: string) => Promise<void>;
+  /** The live Innertube session, for probes and tests. */
   session: YtSession;
 }
 
 interface EngineDeps {
   session: YtSession;
+  register: StreamRegistrar;
   musicPages?: ContinuationRegistry<YtPage<YtMusicEntity>>;
   videoPages?: ContinuationRegistry<YtPage<YtSearchResult>>;
 }
@@ -252,7 +257,20 @@ export const createYtEngine = (deps: EngineDeps): YtEngine => {
     };
   };
 
-  return { searchMusic, continueMusic, searchVideos, continueVideos, album, artist, playlist, track, session };
+  const resolver = createStreamResolver({ session, register: deps.register });
+
+  return {
+    searchMusic,
+    continueMusic,
+    searchVideos,
+    continueVideos,
+    album,
+    artist,
+    playlist,
+    track,
+    resolveStream: resolver.resolve,
+    session,
+  };
 };
 
 const defaultSession = createYtSession({
@@ -260,4 +278,10 @@ const defaultSession = createYtSession({
   proxyUrl: currentProxyUrl,
 });
 
-export const ytEngine: YtEngine = createYtEngine({ session: defaultSession });
+export const ytEngine: YtEngine = createYtEngine({
+  session: defaultSession,
+  register: async (id, stream) => {
+    const result = await registerYoutubeStream(id, stream);
+    if (result.isErr()) throw new Error(result.error.message);
+  },
+});

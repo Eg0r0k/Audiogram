@@ -45,7 +45,7 @@ export const COMMANDS = {
   ymPrefetch: "ym_prefetch",
   ymDownload: "ym_download",
   ymDownloadCancel: "ym_download_cancel",
-  ytResolve: "yt_resolve",
+  ytRegisterStream: "yt_register_stream",
   ytPrefetch: "yt_prefetch",
   ytDownload: "yt_download",
   ytDownloadCancel: "yt_download_cancel",
@@ -92,7 +92,10 @@ export interface CommandMap {
     result: { path: string; ext: string };
   };
   ym_download_cancel: { args: { trackId: string }; result: void };
-  yt_resolve: { args: { id: string }; result: string };
+  yt_register_stream: {
+    args: { id: string; url: string; headers: [string, string][]; expiresAt: number | null };
+    result: void;
+  };
   yt_prefetch: { args: { id: string }; result: void };
   yt_download: {
     args: { id: string; meta: YtTrackMeta | null; onProgress: Channel<YtDownloadEvent> };

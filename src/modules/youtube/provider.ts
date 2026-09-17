@@ -19,7 +19,6 @@ import {
   cancelYoutubeDownload,
   downloadYoutube,
   prefetchYoutube,
-  resolveYoutube,
 } from "./api/youtubeApi";
 import { ytEngine, type YtEngine } from "./engine/engine";
 import { toYoutubeError } from "./engine/errors";
@@ -80,11 +79,14 @@ export const createInnertubeProvider = (engine: YtEngine): YoutubeProvider => ({
   album: id => fromEngine(() => engine.album(id), "SEARCH_FAILED"),
   artist: id => fromEngine(() => engine.artist(id), "SEARCH_FAILED"),
   track: id => fromEngine(() => engine.track(id), "SEARCH_FAILED"),
-  resolve: id => resolveYoutube(id),
-  prefetch: id => prefetchYoutube(id),
+  // Resolving registers the stream with the Rust route; the id is what the
+  // frontend plays, `ytStreamUrl(id)` maps it back on the media server.
+  resolve: id => fromEngine(() => engine.resolveStream(id), "DOWNLOAD_FAILED").map(() => id),
+  prefetch: id => fromEngine(() => engine.resolveStream(id), "NETWORK").andThen(() => prefetchYoutube(id)),
   // Retries belong to the download manager (single layer, with backoff) —
   // one provider call is exactly one yt_download run.
-  download: (id, onEvent, meta) => downloadYoutube(id, onEvent, meta),
+  download: (id, onEvent, meta) =>
+    fromEngine(() => engine.resolveStream(id), "DOWNLOAD_FAILED").andThen(() => downloadYoutube(id, onEvent, meta)),
   cancelDownload: id => cancelYoutubeDownload(id),
 });
 

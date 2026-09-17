@@ -12,9 +12,6 @@ import type {
 /** Backend `YtErrorKind` values that map 1:1 onto frontend kinds. */
 const BACKEND_KIND_MAP: Partial<Record<string, YoutubeErrorKind>> = {
   NOT_FOUND: "NOT_FOUND",
-  // Backend UNAVAILABLE = geoblocked/premium/private content; the frontend
-  // reserves plain UNAVAILABLE for "no YouTube on this platform".
-  UNAVAILABLE: "UNAVAILABLE_REGION",
   NETWORK: "NETWORK",
   CANCELLED: "CANCELLED",
 };
@@ -31,11 +28,18 @@ const toYoutubeError = (raw: unknown, fallbackKind: YoutubeErrorKind): YoutubeEr
   return { kind: fallbackKind, message };
 };
 
-export const resolveYoutube = (
+/** Hands the engine's resolved googlevideo stream to the Rust `yt/` route, prefetch and download. */
+export const registerYoutubeStream = (
   id: string,
-): ResultAsync<string, YoutubeError> =>
+  stream: { url: string; headers: [string, string][]; expiresAt: number | null },
+): ResultAsync<void, YoutubeError> =>
   ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytResolve, { id }),
+    invokeCommand(COMMANDS.ytRegisterStream, {
+      id,
+      url: stream.url,
+      headers: stream.headers,
+      expiresAt: stream.expiresAt,
+    }),
     e => toYoutubeError(e, "DOWNLOAD_FAILED"),
   );
 
