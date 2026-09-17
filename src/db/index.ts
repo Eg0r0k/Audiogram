@@ -15,7 +15,7 @@ import type {
   TrackChapterEntity,
   TrackEntity,
 } from "./entities";
-import { upgradeToV10, upgradeToV12, upgradeToV14, upgradeToV15 } from "./migrations";
+import { upgradeToV10, upgradeToV12, upgradeToV14, upgradeToV15, upgradeToV16 } from "./migrations";
 import type { DbError } from "./errors/db.errors";
 import { toDbError } from "./errors/db.errors";
 import { getLogger } from "@/lib/logger";
@@ -101,12 +101,13 @@ export class AppDatabase extends Dexie {
       recommenderModels: "&id",
     }).upgrade(upgradeToV15);
 
-    // Index-only change: + sourceRef on tracks (remote id → downloaded local
-    // row). offlineCopies stays declared so the post-open migration can drain
-    // it; the store is dropped by a later version once every install ran it.
+    // + sourceRef on tracks (remote id → downloaded local row); remote rows
+    // pinned by the old "like = membership" rule demote (upgradeToV16).
+    // offlineCopies stays declared so the post-open migration can drain it;
+    // the store is dropped by a later version once every install ran it.
     this.version(16).stores({
       tracks: "&id, title, artistName, albumTitle, *artistIds, albumId, *tagIds, likedAt, addedAt, duration, playCount, storagePath, fingerprint, pinned, sourceRef, [albumId+pinned], [title+likedAt], [addedAt+likedAt], [duration+likedAt], [artistName+likedAt], [albumTitle+likedAt], [playCount+likedAt]",
-    });
+    }).upgrade(upgradeToV16);
 
     this.tracks = this.table("tracks");
     this.artists = this.table("artists");

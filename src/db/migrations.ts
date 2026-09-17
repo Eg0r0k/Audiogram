@@ -1,5 +1,6 @@
 import type { Transaction } from "dexie";
 import type { PinnedFlag } from "./entities";
+import { sourceKindOfId } from "@/types/track-ref";
 
 /**
  * v10 upgrade transform: every row existing before the multi-source schema is
@@ -144,4 +145,48 @@ export const upgradeToV15 = async (tx: UpgradeTransaction): Promise<void> => {
   await tx.table("listenEvents").toCollection().modify((event) => {
     if (event.origin === undefined) event.origin = "user";
   });
+};
+
+/**
+ * v16: library membership is no longer implied by a like, a playlist or a
+ * download (downloads are local tracks now, see TrackEntity.sourceRef). Every
+ * remote-branded row with pinned = 1 predates that rule and cannot be told
+ * apart from an explicit "Add to library", so all of them demote to shadow
+ * rows; likes, counts and playlist membership stay. Albums and artists follow
+ * when no pinned track references them any more. The offline copies' files
+ * are imported post-open (migrate-offline-copies.ts) — file IO cannot run
+ * inside this transaction.
+ */
+export const upgradeToV16 = async (tx: UpgradeTransaction): Promise<void> => {
+  const isRemote = (id: string): boolean => sourceKindOfId(id) !== "local";
+  const tracks = tx.table("tracks");
+  const albums = tx.table("albums");
+  const artists = tx.table("artists");
+
+  const pinned = (await tracks.where("pinned").equals(1).toArray()) as {
+    id: string;
+    albumId: string;
+    artistIds: string[];
+  }[];
+  const demoted = pinned.filter(track => isRemote(track.id)).map(track => track.id);
+  if (demoted.length > 0) {
+    await tracks.where("id").anyOf(demoted).modify({ pinned: 0 });
+  }
+
+  // References that keep a remote album/artist a library member: only the
+  // rows that stay pinned (local ones, and remote-branded ones never exist
+  // after the modify above).
+  const keptAlbumIds = new Set<string>();
+  const keptArtistIds = new Set<string>();
+  for (const track of pinned) {
+    if (isRemote(track.id)) continue;
+    keptAlbumIds.add(track.albumId);
+    for (const artistId of track.artistIds) keptArtistIds.add(artistId);
+  }
+  await albums.where("pinned").equals(1)
+    .filter(album => isRemote(album.id) && !keptAlbumIds.has(album.id))
+    .modify({ pinned: 0 });
+  await artists.where("pinned").equals(1)
+    .filter(artist => isRemote(artist.id) && !keptArtistIds.has(artist.id))
+    .modify({ pinned: 0 });
 };

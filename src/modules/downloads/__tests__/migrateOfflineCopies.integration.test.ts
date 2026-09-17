@@ -7,9 +7,8 @@ import { TrackSource, TrackState } from "@/db/entities";
 import { AlbumId, ArtistId, TrackId } from "@/types/ids";
 
 //
-// The one-time post-open migration over real Dexie (fake-indexeddb): pre-v16
-// offline copies import as local tracks and the old "like = library
-// membership" pins demote, once.
+// The post-open half of the v16 upgrade over real Dexie (fake-indexeddb):
+// pre-v16 offline copies import as local tracks; the table is the state.
 //
 
 // `importFile` is what marks the adapter native (hasNativeSupport).
@@ -20,7 +19,6 @@ const storageMock = vi.hoisted(() => ({
   deleteFile: vi.fn(),
 }));
 const finalizeMock = vi.hoisted(() => ({ importDownloadedFile: vi.fn() }));
-const searchMock = vi.hoisted(() => ({ rebuildSearchIndex: vi.fn(async () => {}) }));
 const fsMock = vi.hoisted(() => ({ remove: vi.fn(async () => {}) }));
 
 vi.mock("@/lib/logger", () => ({
@@ -29,14 +27,13 @@ vi.mock("@/lib/logger", () => ({
 vi.mock("@/lib/environment/platformCaps", () => ({ platformCaps: { hasFs: true } }));
 vi.mock("@/db/storage", () => ({ storageService: storageMock }));
 vi.mock("../service/finalize", () => finalizeMock);
-vi.mock("@/modules/search/service/searchIndex", () => searchMock);
 vi.mock("@tauri-apps/plugin-fs", () => ({
   BaseDirectory: { AppData: 1 },
   remove: fsMock.remove,
 }));
 
 import { db } from "@/db";
-import { MIGRATION_FLAG, migrateOfflineCopies } from "../service/migrate-offline-copies";
+import { migrateOfflineCopies } from "../service/migrate-offline-copies";
 
 const remoteTrack = (id: TrackId, overrides: Partial<TrackEntity> = {}): TrackEntity => ({
   id,
@@ -68,7 +65,6 @@ const copyRow = (trackId: TrackId, storagePath: string) => ({
 
 describe("migrateOfflineCopies (integration)", () => {
   beforeEach(async () => {
-    localStorage.clear();
     vi.clearAllMocks();
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
@@ -94,44 +90,6 @@ describe("migrateOfflineCopies (integration)", () => {
     expect(storageMock.deleteFile).toHaveBeenCalledWith("offline/nd/s1.flac");
     expect(storageMock.deleteFile).toHaveBeenCalledWith("offline/ym/42.mp3");
     expect(fsMock.remove).toHaveBeenCalledWith("offline", { baseDir: 1, recursive: true });
-  });
-
-  it("demotes remote pinned rows and the albums/artists left without pinned tracks, keeping likes and counts", async () => {
-    await db.artists.add({ id: ndArtistId("a1"), name: "Artist A", pinned: 1, addedAt: 1, updatedAt: 1 });
-    await db.albums.add({ id: ndAlbumId("al1"), title: "Remote Album", artistId: ndArtistId("a1"), pinned: 1, addedAt: 1, updatedAt: 1 });
-    await db.tracks.bulkAdd([
-      remoteTrack(ndTrackId("s1"), { albumId: ndAlbumId("al1"), artistIds: [ndArtistId("a1")] }),
-      remoteTrack(ymTrackId("liked")),
-    ]);
-
-    await migrateOfflineCopies();
-
-    expect(await db.tracks.get(ndTrackId("s1"))).toMatchObject({ pinned: 0, likedAt: 5, playCount: 2 });
-    expect((await db.tracks.get(ymTrackId("liked")))?.pinned).toBe(0);
-    expect((await db.albums.get(ndAlbumId("al1")))?.pinned).toBe(0);
-    expect((await db.artists.get(ndArtistId("a1")))?.pinned).toBe(0);
-  });
-
-  it("keeps a remote album/artist pinned while a pinned track still references it", async () => {
-    await db.artists.add({ id: ndArtistId("a1"), name: "Artist A", pinned: 1, addedAt: 1, updatedAt: 1 });
-    await db.albums.add({ id: ndAlbumId("al1"), title: "Remote Album", artistId: ndArtistId("a1"), pinned: 1, addedAt: 1, updatedAt: 1 });
-    await db.tracks.bulkAdd([
-      remoteTrack(ndTrackId("s1"), { albumId: ndAlbumId("al1"), artistIds: [ndArtistId("a1")] }),
-      remoteTrack(TrackId("local-s1"), {
-        source: TrackSource.LOCAL_INTERNAL,
-        storagePath: "tracks/local-s1.flac",
-        sourceRef: ndTrackId("s1"),
-        albumId: ndAlbumId("al1"),
-        artistIds: [ndArtistId("a1")],
-      }),
-    ]);
-
-    await migrateOfflineCopies();
-
-    expect((await db.tracks.get(ndTrackId("s1")))?.pinned).toBe(0);
-    expect((await db.tracks.get(TrackId("local-s1")))?.pinned).toBe(1);
-    expect((await db.albums.get(ndAlbumId("al1")))?.pinned).toBe(1);
-    expect((await db.artists.get(ndArtistId("a1")))?.pinned).toBe(1);
   });
 
   it("skips a copy whose file is gone and still drains its row", async () => {
@@ -160,37 +118,25 @@ describe("migrateOfflineCopies (integration)", () => {
     expect(await db.offlineCopies.count()).toBe(0);
   });
 
-  it("leaves local rows alone", async () => {
-    await db.tracks.add(remoteTrack(TrackId("local-x"), { source: TrackSource.LOCAL_INTERNAL, storagePath: "tracks/x.mp3" }));
-    await db.artists.add({ id: ArtistId("ar-local"), name: "Local Artist", pinned: 1, addedAt: 1, updatedAt: 1 });
-    await db.albums.add({ id: AlbumId("al-local"), title: "Local Album", artistId: ArtistId("ar-local"), pinned: 1, addedAt: 1, updatedAt: 1 });
-
+  it("does nothing when the table is empty", async () => {
     await migrateOfflineCopies();
 
-    expect((await db.tracks.get(TrackId("local-x")))?.pinned).toBe(1);
-    expect((await db.albums.get(AlbumId("al-local")))?.pinned).toBe(1);
-    expect((await db.artists.get(ArtistId("ar-local")))?.pinned).toBe(1);
+    expect(finalizeMock.importDownloadedFile).not.toHaveBeenCalled();
+    expect(storageMock.getAppDataDir).not.toHaveBeenCalled();
   });
 
-  it("runs once: the localStorage flag stops a second run from demoting rows added later", async () => {
-    await db.tracks.add(remoteTrack(ndTrackId("first")));
-
+  it("handles rows a previous launch left behind", async () => {
+    await db.tracks.add(remoteTrack(ndTrackId("s1")));
+    await db.offlineCopies.add(copyRow(ndTrackId("s1"), "offline/nd/s1.flac"));
+    finalizeMock.importDownloadedFile.mockRejectedValueOnce(new Error("boom"));
     await migrateOfflineCopies();
-    expect((await db.tracks.get(ndTrackId("first")))?.pinned).toBe(0);
+    expect(await db.offlineCopies.count()).toBe(0);
 
-    await db.tracks.add(remoteTrack(ndTrackId("added-later")));
-    await migrateOfflineCopies();
-
-    expect((await db.tracks.get(ndTrackId("added-later")))?.pinned).toBe(1);
-    expect(searchMock.rebuildSearchIndex).toHaveBeenCalledTimes(1);
-  });
-
-  it("rebuilds the search index and sets the flag at the end", async () => {
-    expect(localStorage.getItem(MIGRATION_FLAG)).toBeNull();
-
+    await db.offlineCopies.add(copyRow(ndTrackId("s2"), "offline/nd/s2.flac"));
+    await db.tracks.add(remoteTrack(ndTrackId("s2")));
     await migrateOfflineCopies();
 
-    expect(searchMock.rebuildSearchIndex).toHaveBeenCalled();
-    expect(localStorage.getItem(MIGRATION_FLAG)).toBe("1");
+    expect(finalizeMock.importDownloadedFile).toHaveBeenLastCalledWith(ndTrackId("s2"), "C:/appdata/offline/nd/s2.flac");
+    expect(await db.offlineCopies.count()).toBe(0);
   });
 });

@@ -100,8 +100,8 @@ initDownloadManager().catch(error =>
   getLogger().error(`[Downloads] Init failed: ${String(error)}`),
 );
 
-// One-time (flagged in localStorage): pre-v16 offline copies become local
-// tracks and remote pinned rows demote — see migrate-offline-copies.ts.
+// Post-open half of the v16 upgrade: pre-v16 offline copies become local
+// tracks (no-op once the table is empty) — see migrate-offline-copies.ts.
 migrateOfflineCopies().catch(error =>
   getLogger().error(`[Migration] download-is-import failed: ${String(error)}`),
 );
