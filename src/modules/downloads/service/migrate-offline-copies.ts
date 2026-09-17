@@ -22,13 +22,21 @@ const isRemoteId = (id: string): boolean => sourceKindOfId(id) !== "local";
 const absolutePathOf = (appDataDir: string, storagePath: string): string =>
   `${appDataDir.replace(/\\/g, "/").replace(/\/$/, "")}/${storagePath}`;
 
-const importCopies = async (): Promise<void> => {
+/**
+ * Drains `offlineCopies` — every row is deleted, since the migration is a
+ * one-shot and will not look at the table again. Returns false when at least
+ * one import threw: that file was never imported anywhere, so it is still the
+ * only copy and the folder must survive.
+ */
+const importCopies = async (): Promise<boolean> => {
   const copies = await db.offlineCopies.toArray();
+  if (copies.length === 0) return true;
   // The narrowing never fails behind the `hasFs` gate; the import needs an
   // absolute path, which only the native adapter can build.
-  if (copies.length === 0 || !hasNativeSupport(storageService)) return;
+  if (!hasNativeSupport(storageService)) return false;
   const appDataDir = await storageService.getAppDataDir();
 
+  let allHandled = true;
   for (const copy of copies) {
     const size = await storageService.getFileSize(copy.storagePath);
     if (size.isOk()) {
@@ -37,8 +45,7 @@ const importCopies = async (): Promise<void> => {
         await storageService.deleteFile(copy.storagePath);
       }
       catch (error) {
-        // The row survives only as a lost file; keep it out of the way and
-        // let the user download again.
+        allHandled = false;
         getLogger().warn(`[Migration] Importing the offline copy of ${copy.trackId} failed: ${String(error)}`);
       }
     }
@@ -47,6 +54,7 @@ const importCopies = async (): Promise<void> => {
     }
     await db.offlineCopies.delete(copy.trackId);
   }
+  return allHandled;
 };
 
 const demoteRemoteRows = async (): Promise<void> => {
@@ -92,9 +100,10 @@ export const migrateOfflineCopies = async (): Promise<void> => {
   }
   if (done) return;
 
-  await importCopies();
+  const allHandled = await importCopies();
   await demoteRemoteRows();
-  await removeOfflineDir();
+  if (allHandled) await removeOfflineDir();
+  else getLogger().warn("[Migration] An offline copy could not be imported: offline/ and its files are kept");
   await rebuildSearchIndex();
 
   try {

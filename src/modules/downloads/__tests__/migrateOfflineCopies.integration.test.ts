@@ -21,6 +21,7 @@ const storageMock = vi.hoisted(() => ({
 }));
 const finalizeMock = vi.hoisted(() => ({ importDownloadedFile: vi.fn() }));
 const searchMock = vi.hoisted(() => ({ rebuildSearchIndex: vi.fn(async () => {}) }));
+const fsMock = vi.hoisted(() => ({ remove: vi.fn(async () => {}) }));
 
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
@@ -31,7 +32,7 @@ vi.mock("../service/finalize", () => finalizeMock);
 vi.mock("@/modules/search/service/searchIndex", () => searchMock);
 vi.mock("@tauri-apps/plugin-fs", () => ({
   BaseDirectory: { AppData: 1 },
-  remove: vi.fn(async () => {}),
+  remove: fsMock.remove,
 }));
 
 import { db } from "@/db";
@@ -92,6 +93,7 @@ describe("migrateOfflineCopies (integration)", () => {
     expect(await db.offlineCopies.count()).toBe(0);
     expect(storageMock.deleteFile).toHaveBeenCalledWith("offline/nd/s1.flac");
     expect(storageMock.deleteFile).toHaveBeenCalledWith("offline/ym/42.mp3");
+    expect(fsMock.remove).toHaveBeenCalledWith("offline", { baseDir: 1, recursive: true });
   });
 
   it("demotes remote pinned rows and the albums/artists left without pinned tracks, keeping likes and counts", async () => {
@@ -141,6 +143,20 @@ describe("migrateOfflineCopies (integration)", () => {
 
     expect(finalizeMock.importDownloadedFile).not.toHaveBeenCalled();
     expect(storageMock.deleteFile).not.toHaveBeenCalled();
+    expect(await db.offlineCopies.count()).toBe(0);
+    // A missing file is nothing to lose: the folder still goes.
+    expect(fsMock.remove).toHaveBeenCalled();
+  });
+
+  it("keeps the offline directory when an import failed", async () => {
+    await db.tracks.add(remoteTrack(ndTrackId("bad")));
+    await db.offlineCopies.add(copyRow(ndTrackId("bad"), "offline/nd/bad.flac"));
+    finalizeMock.importDownloadedFile.mockRejectedValue(new Error("import failed"));
+
+    await migrateOfflineCopies();
+
+    expect(storageMock.deleteFile).not.toHaveBeenCalled();
+    expect(fsMock.remove).not.toHaveBeenCalled();
     expect(await db.offlineCopies.count()).toBe(0);
   });
 
