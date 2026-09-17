@@ -138,7 +138,10 @@ export async function getAlbumTotalDuration(albumId: AlbumId): Promise<number> {
 }
 
 async function getAlbumTrackEntities(albumId: AlbumId, sortKey: TrackSortKey | null) {
-  const albumTracks = await unwrapResult(trackRepository.findByAlbumId(albumId));
+  // Shadow rows (a liked catalog track next to its downloaded copy) are not
+  // listed; findByAlbumId keeps them for the cascades.
+  const albumTracks = (await unwrapResult(trackRepository.findByAlbumId(albumId)))
+    .filter(track => track.pinned !== 0);
 
   if (!sortKey) {
     return albumTracks;
