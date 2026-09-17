@@ -13,10 +13,13 @@ use lofty::prelude::*;
 use lofty::tag::{Tag, TagType};
 
 use crate::remote_download::{
-    fetch_to_tmp, tmp_dir, DownloadEvent, DownloadRegistry, DownloadRequest, DownloadResult,
+    fetch_to_tmp_ranged, tmp_dir, DownloadEvent, DownloadRegistry, DownloadRequest, DownloadResult,
 };
 
-use super::{http_client, is_allowed_image_host, validate_id, YtError, YtErrorKind, YtStreamCache};
+use super::{
+    http_client, is_allowed_image_host, validate_id, YtError, YtErrorKind, YtStreamCache,
+    YT_RANGE_SPAN,
+};
 
 /// Known-good metadata supplied by the frontend (search/playlist results), so
 /// YT Music tracks get real artist/album tags.
@@ -61,7 +64,7 @@ pub async fn yt_download<R: Runtime>(
         .map_err(YtError::invalid_input)?;
     let client = http_client(&app)?;
     let tmp = tmp_dir(&app)?;
-    let result = fetch_to_tmp(
+    let result = fetch_to_tmp_ranged(
         &client,
         &tmp,
         DownloadRequest {
@@ -70,6 +73,7 @@ pub async fn yt_download<R: Runtime>(
             file_stem: &id,
             suffix: None,
         },
+        YT_RANGE_SPAN,
         &on_progress,
         &slot.cancelled,
     )

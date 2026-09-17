@@ -135,8 +135,14 @@ mod tests {
         Channel::new(|_body: InvokeResponseBody| Ok(()))
     }
 
+    /// One directory per call: the tests share the stem "40144" and run in
+    /// parallel, so a per-process directory let one test's cleanup or
+    /// `File::create` clobber another's file.
     fn temp() -> std::path::PathBuf {
-        std::env::temp_dir().join(format!("ym-download-test-{}", std::process::id()))
+        std::env::temp_dir().join(format!(
+            "ym-download-test-{}",
+            crate::media_server::new_token()
+        ))
     }
 
     #[tokio::test]

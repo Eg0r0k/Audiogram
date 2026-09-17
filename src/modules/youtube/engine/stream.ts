@@ -39,12 +39,13 @@ interface ResolverDeps {
 const STREAM_CLIENT = "VISIONOS";
 
 /**
- * A registration is reused only briefly: the Rust side drops an entry
- * googlevideo refuses (IP change behind a proxy), and nothing tells this
- * side — so a replay soon after resolving skips the round-trip, anything
- * later resolves again.
+ * A registration is reused only briefly — long enough for the play path's
+ * own double resolve (the YouTube pane resolves, then the playback resolver
+ * resolves again) to cost one player request. The Rust side drops an entry
+ * googlevideo refuses (IP change behind a proxy) and nothing tells this
+ * side, so anything later resolves again rather than trusting the map.
  */
-const REUSE_WINDOW_MS = 5 * 60_000;
+const REUSE_WINDOW_MS = 60_000;
 /** Do not hand the route an entry about to expire mid-track. */
 const EXPIRY_MARGIN_MS = 60_000;
 

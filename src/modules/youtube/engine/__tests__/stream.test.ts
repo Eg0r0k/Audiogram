@@ -102,11 +102,11 @@ describe("createStreamResolver", () => {
     const resolver = createStreamResolver({ session: fakeSession([yt]), register, now: () => now });
 
     await resolver.resolve("Rgrt_8mXrK8");
-    now += 60_000;
+    now += 20_000;
     await resolver.resolve("Rgrt_8mXrK8");
     expect(getBasicInfo).toHaveBeenCalledTimes(1);
 
-    now += 5 * 60_000;
+    now += 61_000;
     await resolver.resolve("Rgrt_8mXrK8");
     expect(getBasicInfo).toHaveBeenCalledTimes(2);
   });

@@ -12,6 +12,7 @@ use tauri::{AppHandle, Manager, Runtime};
 
 use crate::audio_cache::{AudioCache, CachedAudio};
 use crate::media_server::{forward_stream, memory_range_response, status_response};
+use crate::remote_download::{content_range_total, get_range};
 
 use super::{validate_id, YtError, YtErrorKind};
 
@@ -79,6 +80,14 @@ impl YtStreamCache {
 /// MB of audio in memory for a head start streaming already provides.
 const MAX_PREFETCHED_TRACKS: usize = 3;
 const MAX_PREFETCHED_YT_BYTES: usize = 128 * 1024 * 1024;
+
+/// Per-request range window for googlevideo, on the route and on every
+/// whole-file walk (prefetch, download). Measured 2026-09-17 on the VISIONOS
+/// URLs the engine resolves: an unranged request is throttled to ~30 KB/s,
+/// an open-ended range too on a 1 h mix (0.9 MB in 30 s), while bounded
+/// 10 MiB ranges — yt-dlp's chunk size — stream at full speed. A capped 206
+/// + Content-Range makes the media element ask for the next window itself.
+pub(crate) const YT_RANGE_SPAN: u64 = 10 * 1024 * 1024;
 
 /// The YouTube instance of [`AudioCache`], keyed by video id — a newtype
 /// because tauri manages state by type, and the nd path has its own.
@@ -194,16 +203,22 @@ pub async fn yt_prefetch<R: Runtime>(app: AppHandle<R>, id: String) -> Result<()
     let entry = streams.get(&id).ok_or_else(not_registered)?;
     let client = super::http_client(&app)?;
 
-    let (status, content_type, bytes) = fetch_whole(&client, &entry).await?;
-    log::debug!("yt_prefetch {id}: status {status}, {} bytes", bytes.len());
-    if !(200..300).contains(&status) {
-        // The URL was refused on the first request: registered stale.
-        streams.remove(&id);
-        return Err(YtError::new(
-            YtErrorKind::Network,
-            format!("prefetch failed: upstream status {status}"),
-        ));
-    }
+    let (content_type, bytes) = match fetch_ranged_bytes(&client, &entry).await {
+        Ok(fetched) => fetched,
+        Err(e) => {
+            if e.starts_with("upstream status") {
+                // googlevideo refused the registered URL: stale, drop it so
+                // the next play re-resolves.
+                streams.remove(&id);
+                return Err(YtError::new(
+                    YtErrorKind::Network,
+                    format!("prefetch failed: {e}"),
+                ));
+            }
+            return Err(YtError::from(e));
+        }
+    };
+    log::debug!("yt_prefetch {id}: {} bytes", bytes.len());
 
     if !app.state::<YtAudioCache>().insert(id, content_type, bytes) {
         return Err(YtError::from(
@@ -213,45 +228,74 @@ pub async fn yt_prefetch<R: Runtime>(app: AppHandle<R>, id: String) -> Result<()
     Ok(())
 }
 
-/// One GET for the whole file: `(status, content_type, bytes)`. Over-cap
-/// tracks are refused from Content-Length before any body is read.
-async fn fetch_whole(
+/// Walks the whole file in [`YT_RANGE_SPAN`] ranges (see there for why not
+/// one request): `(content_type, bytes)`. Over-cap tracks are refused as
+/// soon as the first Content-Range reveals the total, before the bandwidth
+/// is spent.
+async fn fetch_ranged_bytes(
     client: &reqwest::Client,
     entry: &StreamEntry,
-) -> Result<(u16, String, Bytes), String> {
-    let mut req = client.get(&entry.url);
-    for (name, value) in &entry.headers {
-        req = req.header(name.as_str(), value.as_str());
-    }
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| format!("request failed: {}", e.without_url()))?;
-    let status = resp.status().as_u16();
-    let content_type = resp
-        .headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("audio/mp4")
-        .to_owned();
-    if !(200..300).contains(&status) {
-        return Ok((status, content_type, Bytes::new()));
-    }
-    if let Some(len) = resp.content_length() {
-        if len > MAX_PREFETCHED_YT_BYTES as u64 {
-            return Err(format!(
-                "prefetch skipped: track is {len} bytes, over the cache cap"
-            ));
+) -> Result<(String, Bytes), String> {
+    let mut buf: Vec<u8> = Vec::new();
+    let mut content_type = "audio/mp4".to_owned();
+    let mut total: Option<u64> = None;
+
+    loop {
+        let start = buf.len() as u64;
+        let Some(resp) =
+            get_range(client, &entry.url, &entry.headers, start, YT_RANGE_SPAN).await?
+        else {
+            break;
+        };
+        let status = resp.status().as_u16();
+        if start == 0 {
+            if let Some(ct) = resp
+                .headers()
+                .get(reqwest::header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok())
+            {
+                content_type = ct.to_owned();
+            }
+            total = if status == 200 {
+                resp.content_length()
+            } else {
+                resp.headers()
+                    .get(reqwest::header::CONTENT_RANGE)
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(content_range_total)
+            };
+            if let Some(total) = total {
+                if total > MAX_PREFETCHED_YT_BYTES as u64 {
+                    return Err(format!(
+                        "prefetch skipped: track is {total} bytes, over the cache cap"
+                    ));
+                }
+            }
+        }
+
+        let bytes = resp
+            .bytes()
+            .await
+            .map_err(|e| format!("download failed: {}", e.without_url()))?;
+        if status == 200 {
+            // The server ignored the range: the body already is the whole file.
+            return Ok((content_type, bytes));
+        }
+        let short_chunk = (bytes.len() as u64) < YT_RANGE_SPAN;
+        buf.extend_from_slice(&bytes);
+        if buf.len() > MAX_PREFETCHED_YT_BYTES {
+            return Err("prefetch skipped: track exceeds the cache cap".into());
+        }
+        let done = match total {
+            Some(total) => buf.len() as u64 >= total,
+            None => short_chunk,
+        };
+        if done || bytes.is_empty() {
+            break;
         }
     }
-    let bytes = resp
-        .bytes()
-        .await
-        .map_err(|e| format!("download failed: {}", e.without_url()))?;
-    if bytes.len() > MAX_PREFETCHED_YT_BYTES {
-        return Err("prefetch skipped: track exceeds the cache cap".into());
-    }
-    Ok((status, content_type, bytes))
+
+    Ok((content_type, Bytes::from(buf)))
 }
 
 /// Handles `/{token}/yt/<videoId>`: proxied googlevideo audio, served from
@@ -284,7 +328,16 @@ pub(crate) async fn serve_yt<R: Runtime>(
         return status_response(502, origin);
     };
 
-    match forward_stream(client, &entry.url, &entry.headers, range, None, origin).await {
+    match forward_stream(
+        client,
+        &entry.url,
+        &entry.headers,
+        range,
+        Some(YT_RANGE_SPAN),
+        origin,
+    )
+    .await
+    {
         Ok(response) if response.status().as_u16() >= 400 => {
             log::info!(
                 "media yt/{id}: upstream status {}, dropping the registered stream",

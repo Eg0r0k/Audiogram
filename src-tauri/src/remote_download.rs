@@ -134,10 +134,10 @@ fn normalized_suffix(suffix: Option<&str>) -> Option<String> {
     Some(s)
 }
 
-/// Streams the whole upstream file into `<tmp_dir>/<file_stem>.<ext>`,
-/// reporting progress over the channel. Cancellation is polled between
-/// chunks; a cancelled download removes its partial file and errors with
-/// "cancelled". Errors never embed the URL (nd URLs carry auth tokens).
+/// Streams the whole upstream file into `<tmp_dir>/<file_stem>.<ext>` in
+/// one request, reporting progress over the channel. Cancellation is polled
+/// between chunks; a cancelled download removes its partial file and errors
+/// with "cancelled". Errors never embed the URL (nd URLs carry auth tokens).
 pub async fn fetch_to_tmp(
     client: &reqwest::Client,
     tmp_dir: &Path,
@@ -145,21 +145,123 @@ pub async fn fetch_to_tmp(
     on_progress: &Channel<DownloadEvent>,
     cancelled: &AtomicBool,
 ) -> Result<DownloadResult, String> {
-    let mut request = client.get(req.url);
-    for (name, value) in req.headers {
-        request = request.header(name.as_str(), value.as_str());
-    }
-    let mut resp = request
-        .send()
-        .await
-        .map_err(|e| format!("request failed: {}", e.without_url()))?;
-
+    let mut resp = send_get(client, req.url, req.headers, None).await?;
     let status = resp.status().as_u16();
     if status != 200 {
         return Err(format!("upstream status {status}"));
     }
+    let ext = ext_for(&req, &resp);
+    let total = resp.content_length();
+    let (path, mut file) = create_target(tmp_dir, req.file_stem, &ext).await?;
+    let written = copy_body(&mut resp, &mut file, on_progress, cancelled, 0, total).await;
+    finish(path, ext, file, written, on_progress).await
+}
 
-    let ext = normalized_suffix(req.suffix)
+/// Like [`fetch_to_tmp`], but walks the file in `span`-byte Range requests.
+/// googlevideo throttles an unranged or open-ended request on a long stream
+/// to ~30 KB/s while bounded ranges come at full speed — measured 2026-09-17
+/// on a 1 h mix: `bytes=0-` gave 0.9 MB in 30 s, 10 MiB ranges 2–3 s each.
+pub async fn fetch_to_tmp_ranged(
+    client: &reqwest::Client,
+    tmp_dir: &Path,
+    req: DownloadRequest<'_>,
+    span: u64,
+    on_progress: &Channel<DownloadEvent>,
+    cancelled: &AtomicBool,
+) -> Result<DownloadResult, String> {
+    let mut target: Option<(PathBuf, tokio::fs::File, String)> = None;
+    let mut total: Option<u64> = None;
+    let mut start: u64 = 0;
+
+    let outcome: Result<u64, String> = async {
+        loop {
+            if cancelled.load(Ordering::SeqCst) {
+                return Err("cancelled".into());
+            }
+            let Some(mut resp) = get_range(client, req.url, req.headers, start, span).await? else {
+                break;
+            };
+            let status = resp.status().as_u16();
+            if target.is_none() {
+                total = if status == 200 {
+                    resp.content_length()
+                } else {
+                    resp.headers()
+                        .get(reqwest::header::CONTENT_RANGE)
+                        .and_then(|v| v.to_str().ok())
+                        .and_then(content_range_total)
+                };
+                let ext = ext_for(&req, &resp);
+                let (path, file) = create_target(tmp_dir, req.file_stem, &ext).await?;
+                target = Some((path, file, ext));
+            }
+            let (_, file, _) = target.as_mut().expect("target created above");
+            let written = copy_body(&mut resp, file, on_progress, cancelled, start, total).await?;
+            start += written;
+            // A 200 means the server ignored the range and sent everything;
+            // a short chunk means it ran out before the span did.
+            if status == 200 || written < span || total.is_some_and(|total| start >= total) {
+                break;
+            }
+        }
+        Ok(start)
+    }
+    .await;
+
+    let Some((path, file, ext)) = target else {
+        return Err(outcome
+            .err()
+            .unwrap_or_else(|| "upstream served no data".into()));
+    };
+    finish(path, ext, file, outcome, on_progress).await
+}
+
+/// GET `url` with the source's headers and an optional Range. Errors never
+/// embed the URL.
+async fn send_get(
+    client: &reqwest::Client,
+    url: &str,
+    headers: &[(String, String)],
+    range: Option<String>,
+) -> Result<reqwest::Response, String> {
+    let mut request = client.get(url);
+    for (name, value) in headers {
+        request = request.header(name.as_str(), value.as_str());
+    }
+    if let Some(range) = range {
+        request = request.header(reqwest::header::RANGE, range);
+    }
+    request
+        .send()
+        .await
+        .map_err(|e| format!("request failed: {}", e.without_url()))
+}
+
+/// GETs `bytes=start-(start+span-1)`. `Ok(None)` when the server answers
+/// 416 (one past the end of a total-less file); other 4xx/5xx are errors.
+pub(crate) async fn get_range(
+    client: &reqwest::Client,
+    url: &str,
+    headers: &[(String, String)],
+    start: u64,
+    span: u64,
+) -> Result<Option<reqwest::Response>, String> {
+    let range = format!("bytes={start}-{}", start + span - 1);
+    let resp = send_get(client, url, headers, Some(range)).await?;
+    match resp.status().as_u16() {
+        416 => Ok(None),
+        status if status >= 400 => Err(format!("upstream status {status}")),
+        _ => Ok(Some(resp)),
+    }
+}
+
+/// Total size from a `Content-Range: bytes X-Y/total` value; None for `*`.
+pub(crate) fn content_range_total(value: &str) -> Option<u64> {
+    value.rsplit('/').next()?.trim().parse().ok()
+}
+
+fn ext_for(req: &DownloadRequest<'_>, resp: &reqwest::Response) -> String {
+    normalized_suffix(req.suffix)
         .or_else(|| {
             resp.headers()
                 .get(reqwest::header::CONTENT_TYPE)
@@ -167,24 +269,38 @@ pub async fn fetch_to_tmp(
                 .and_then(ext_from_content_type)
                 .map(str::to_owned)
         })
-        .unwrap_or_else(|| "bin".to_owned());
-    let total = resp.content_length();
+        .unwrap_or_else(|| "bin".to_owned())
+}
 
+async fn create_target(
+    tmp_dir: &Path,
+    file_stem: &str,
+    ext: &str,
+) -> Result<(PathBuf, tokio::fs::File), String> {
     tokio::fs::create_dir_all(tmp_dir)
         .await
         .map_err(|e| e.to_string())?;
-    let path = tmp_dir.join(format!("{}.{ext}", req.file_stem));
-
-    let mut file = tokio::fs::File::create(&path)
+    let path = tmp_dir.join(format!("{file_stem}.{ext}"));
+    let file = tokio::fs::File::create(&path)
         .await
         .map_err(|e| e.to_string())?;
-    let written = copy_body(&mut resp, &mut file, on_progress, cancelled, total).await;
+    Ok((path, file))
+}
+
+/// Closes the file and either reports the finished download or removes the
+/// partial file — whatever stopped the copy (cancellation, a dropped
+/// connection, a full disk), a half-written file must never survive.
+async fn finish(
+    path: PathBuf,
+    ext: String,
+    file: tokio::fs::File,
+    written: Result<u64, String>,
+    on_progress: &Channel<DownloadEvent>,
+) -> Result<DownloadResult, String> {
     // Waits for the blocking pool's in-flight write and closes the handle —
     // Windows refuses to delete a file that is still open.
     drop(file.into_std().await);
 
-    // A half-written file must never survive, whatever stopped the copy
-    // (cancellation, a dropped connection, a full disk).
     let downloaded = match written {
         Ok(downloaded) => downloaded,
         Err(e) => {
@@ -204,17 +320,20 @@ pub async fn fetch_to_tmp(
 }
 
 /// Streams the response body into `file`, polling `cancelled` between
-/// chunks. Async fs on purpose: a 250 MB FLAC landing on a slow disk through
-/// `std::fs` would pin a runtime worker for seconds — the same runtime the
-/// loopback media server answers the player from.
+/// chunks; returns the bytes this call wrote, reporting `offset + written`
+/// so a ranged walk shows one growing number. Async fs on purpose: a 250 MB
+/// FLAC landing on a slow disk through `std::fs` would pin a runtime worker
+/// for seconds — the same runtime the loopback media server answers the
+/// player from.
 async fn copy_body(
     resp: &mut reqwest::Response,
     file: &mut tokio::fs::File,
     on_progress: &Channel<DownloadEvent>,
     cancelled: &AtomicBool,
+    offset: u64,
     total: Option<u64>,
 ) -> Result<u64, String> {
-    let mut downloaded: u64 = 0;
+    let mut written: u64 = 0;
     let mut last_emitted: u64 = 0;
 
     loop {
@@ -227,15 +346,18 @@ async fn copy_body(
             Err(e) => return Err(format!("download failed: {}", e.without_url())),
         };
         file.write_all(&chunk).await.map_err(|e| e.to_string())?;
-        downloaded += chunk.len() as u64;
-        if downloaded - last_emitted >= PROGRESS_EMIT_STEP {
-            last_emitted = downloaded;
-            let _ = on_progress.send(DownloadEvent::Progress { downloaded, total });
+        written += chunk.len() as u64;
+        if written - last_emitted >= PROGRESS_EMIT_STEP {
+            last_emitted = written;
+            let _ = on_progress.send(DownloadEvent::Progress {
+                downloaded: offset + written,
+                total,
+            });
         }
     }
 
     file.flush().await.map_err(|e| e.to_string())?;
-    Ok(downloaded)
+    Ok(written)
 }
 
 #[cfg(test)]
@@ -423,5 +545,168 @@ mod tests {
         assert_eq!(result.unwrap_err(), "upstream status 403");
         assert!(!tmp.exists());
         assert!(seen.lock().expect("events").is_empty());
+    }
+
+    /// An upstream that honours `Range` over `body`, like googlevideo:
+    /// 206 + Content-Range for a slice, 416 past the end.
+    async fn spawn_range_upstream(body: Vec<u8>) -> String {
+        spawn_upstream(move |req| {
+            let len = body.len() as u64;
+            let range = req
+                .headers()
+                .get("range")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.strip_prefix("bytes="))
+                .and_then(|v| v.split_once('-'))
+                .and_then(|(a, b)| Some((a.parse::<u64>().ok()?, b.parse::<u64>().ok()?)));
+            match range {
+                Some((start, _)) if start >= len => http::Response::builder()
+                    .status(416)
+                    .body(http_body_util::Full::new(bytes::Bytes::new()))
+                    .expect("416"),
+                Some((start, end)) => {
+                    let end = end.min(len - 1);
+                    http::Response::builder()
+                        .status(206)
+                        .header("Content-Type", "audio/mp4")
+                        .header("Content-Range", format!("bytes {start}-{end}/{len}"))
+                        .body(http_body_util::Full::new(bytes::Bytes::copy_from_slice(
+                            &body[start as usize..=end as usize],
+                        )))
+                        .expect("206")
+                }
+                None => http::Response::builder()
+                    .status(200)
+                    .header("Content-Type", "audio/mp4")
+                    .body(http_body_util::Full::new(bytes::Bytes::from(body.clone())))
+                    .expect("200"),
+            }
+        })
+        .await
+    }
+
+    #[test]
+    fn parses_the_total_out_of_content_range() {
+        assert_eq!(
+            content_range_total("bytes 0-1048575/157286400"),
+            Some(157_286_400)
+        );
+        assert_eq!(content_range_total("bytes 0-1023/*"), None);
+        assert_eq!(content_range_total("garbage"), None);
+    }
+
+    #[tokio::test]
+    async fn a_ranged_walk_reassembles_the_file_with_cumulative_progress() {
+        let body: Vec<u8> = (0..2_500_000u32).map(|i| (i % 253) as u8).collect();
+        let upstream = spawn_range_upstream(body.clone()).await;
+        let tmp = test_tmp_dir();
+        let (channel, seen) = collecting_channel();
+
+        let result = fetch_to_tmp_ranged(
+            &reqwest::Client::new(),
+            &tmp,
+            DownloadRequest {
+                url: &format!("{upstream}/videoplayback"),
+                headers: &[],
+                file_stem: "v1",
+                suffix: None,
+            },
+            1024 * 1024,
+            &channel,
+            &AtomicBool::new(false),
+        )
+        .await
+        .expect("download");
+
+        assert_eq!(result.ext, "m4a");
+        assert_eq!(std::fs::read(&result.path).expect("file"), body);
+
+        let events: Vec<serde_json::Value> = seen
+            .lock()
+            .expect("events")
+            .iter()
+            .map(|json| serde_json::from_str(json).expect("json"))
+            .collect();
+        let downloaded: Vec<u64> = events
+            .iter()
+            .map(|e| e["data"]["downloaded"].as_u64().unwrap())
+            .collect();
+        assert!(
+            downloaded.windows(2).all(|pair| pair[0] <= pair[1]),
+            "monotonic: {downloaded:?}"
+        );
+        assert_eq!(downloaded.last(), Some(&(body.len() as u64)));
+        assert_eq!(events[0]["data"]["total"], body.len());
+
+        let _ = std::fs::remove_dir_all(tmp);
+    }
+
+    #[tokio::test]
+    async fn a_ranged_walk_accepts_a_server_that_ignores_the_range() {
+        let body = b"whole file at once".to_vec();
+        let served = body.clone();
+        let upstream = spawn_upstream(move |_req| {
+            http::Response::builder()
+                .status(200)
+                .header("Content-Type", "audio/webm")
+                .body(http_body_util::Full::new(bytes::Bytes::from(
+                    served.clone(),
+                )))
+                .expect("200")
+        })
+        .await;
+        let tmp = test_tmp_dir();
+        let (channel, _seen) = collecting_channel();
+
+        let result = fetch_to_tmp_ranged(
+            &reqwest::Client::new(),
+            &tmp,
+            DownloadRequest {
+                url: &upstream,
+                headers: &[],
+                file_stem: "v1",
+                suffix: None,
+            },
+            4,
+            &channel,
+            &AtomicBool::new(false),
+        )
+        .await
+        .expect("download");
+
+        assert_eq!(result.ext, "webm");
+        assert_eq!(std::fs::read(&result.path).expect("file"), body);
+        let _ = std::fs::remove_dir_all(tmp);
+    }
+
+    #[tokio::test]
+    async fn a_refused_range_fails_the_walk_and_leaves_no_file() {
+        let upstream = spawn_upstream(|_req| {
+            http::Response::builder()
+                .status(403)
+                .body(http_body_util::Full::new(bytes::Bytes::new()))
+                .expect("403")
+        })
+        .await;
+        let tmp = test_tmp_dir();
+        let (channel, _seen) = collecting_channel();
+
+        let result = fetch_to_tmp_ranged(
+            &reqwest::Client::new(),
+            &tmp,
+            DownloadRequest {
+                url: &upstream,
+                headers: &[],
+                file_stem: "v1",
+                suffix: None,
+            },
+            1024,
+            &channel,
+            &AtomicBool::new(false),
+        )
+        .await;
+
+        assert_eq!(result.unwrap_err(), "upstream status 403");
+        assert!(!tmp.exists());
     }
 }
