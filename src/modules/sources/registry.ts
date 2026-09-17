@@ -1,14 +1,11 @@
 import { parseTrackRef, type SourceKind } from "@/types/track-ref";
 import type { TrackId } from "@/types/ids";
 import type { SourceProvider } from "./types";
-import { ndSourceProvider } from "./providers/nd.provider";
 
-// ND is part of this module; feature-owned providers (YouTube) register at
-// bootstrap (src/main.ts). "local" is deliberately not a provider: the
-// registry only special-cases it below.
-const providers: Partial<Record<SourceKind, SourceProvider>> = {
-  nd: ndSourceProvider,
-};
+// Every provider registers at bootstrap (src/main.ts); the registry knows
+// none of them. "local" is deliberately not a provider: the registry only
+// special-cases it below.
+const providers: Partial<Record<SourceKind, SourceProvider>> = {};
 
 export const sources = {
   register(provider: SourceProvider): void {

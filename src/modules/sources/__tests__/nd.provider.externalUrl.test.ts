@@ -18,7 +18,7 @@ vi.mock(import("@tauri-apps/api/core"), async (importOriginal) => {
   return { ...actual, invoke: vi.fn(), Channel: MockChannel as unknown as typeof actual.Channel };
 });
 
-import { ndSourceProvider } from "../providers/nd.provider";
+import { ndSourceProvider } from "../navidrome/provider";
 
 describe("ndSourceProvider.externalUrl", () => {
   beforeEach(() => {

@@ -7,8 +7,13 @@ import { setMediaServerBaseForTests } from "@/lib/stream-url";
 import type { Track } from "@/modules/player/types";
 import type { SourceTrackDTO } from "@/types/source-dto";
 import TrackRow from "../TrackRow.vue";
+import { sources } from "@/modules/sources/registry";
+import { ndSourceProvider } from "@/modules/sources/navidrome/provider";
 
 vi.mock("@/lib/environment/userAgent", () => ({ IS_TAURI: true, IS_MOBILE: false, IS_WINDOWS: false }));
+
+// Bootstrap registers the providers (src/main.ts); the row asks the registry about its source.
+sources.register(ndSourceProvider);
 vi.mock("vue-router", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/modules/tracks/composables/useTrackMenu", () => ({
   useTrackMenu: () => ({ openMenu: vi.fn(), openDropdown: vi.fn(), isMenuOpenFor: () => false }),
