@@ -5,11 +5,8 @@ import type { YtMusicTrack } from "@/modules/youtube/types";
 
 const detailsMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/modules/youtube/api/youtubeApi", () => ({
-  getYoutubeMusicDetails: detailsMock,
-}));
 vi.mock("@/modules/youtube/provider", () => ({
-  youtubeProvider: { isAvailable: true },
+  youtubeProvider: { isAvailable: true, track: detailsMock },
 }));
 
 import { ytSourceProvider } from "../source-provider";

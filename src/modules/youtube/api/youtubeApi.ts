@@ -4,25 +4,14 @@ import { ResultAsync } from "neverthrow";
 import type {
   YoutubeError,
   YoutubeErrorKind,
-  YtAlbumDetail,
-  YtArtistDetail,
   YtDownloadEvent,
   YtDownloadResult,
-  YtMusicEntity,
-  YtMusicSearchKind,
-  YtMusicTrack,
-  YtPage,
-  YtPlaylistDetail,
-  YtSearchResult,
   YtTrackMeta,
 } from "../types";
 
 /** Backend `YtErrorKind` values that map 1:1 onto frontend kinds. */
 const BACKEND_KIND_MAP: Partial<Record<string, YoutubeErrorKind>> = {
   NOT_FOUND: "NOT_FOUND",
-  // Backend UNAVAILABLE = geoblocked/premium/private content; the frontend
-  // reserves plain UNAVAILABLE for "no YouTube on this platform".
-  UNAVAILABLE: "UNAVAILABLE_REGION",
   NETWORK: "NETWORK",
   CANCELLED: "CANCELLED",
 };
@@ -39,19 +28,18 @@ const toYoutubeError = (raw: unknown, fallbackKind: YoutubeErrorKind): YoutubeEr
   return { kind: fallbackKind, message };
 };
 
-export const searchYoutube = (
-  query: string,
-): ResultAsync<YtSearchResult[], YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytSearch, { query }).then(page => page.items),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-export const resolveYoutube = (
+/** Hands the engine's resolved googlevideo stream to the Rust `yt/` route, prefetch and download. */
+export const registerYoutubeStream = (
   id: string,
-): ResultAsync<string, YoutubeError> =>
+  stream: { url: string; headers: [string, string][]; expiresAt: number | null },
+): ResultAsync<void, YoutubeError> =>
   ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytResolve, { id }),
+    invokeCommand(COMMANDS.ytRegisterStream, {
+      id,
+      url: stream.url,
+      headers: stream.headers,
+      expiresAt: stream.expiresAt,
+    }),
     e => toYoutubeError(e, "DOWNLOAD_FAILED"),
   );
 
@@ -82,72 +70,4 @@ export const cancelYoutubeDownload = (id: string): ResultAsync<void, YoutubeErro
   ResultAsync.fromPromise(
     invokeCommand(COMMANDS.ytDownloadCancel, { id }),
     e => toYoutubeError(e, "DOWNLOAD_FAILED"),
-  );
-
-export const searchYoutubeVideosPage = (
-  query: string,
-): ResultAsync<YtPage<YtSearchResult>, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytSearch, { query }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-export const continueYoutubeVideos = (
-  continuation: string,
-): ResultAsync<YtPage<YtSearchResult>, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytSearchContinue, { continuation }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-/** Full metadata for one track — the pin-time safety net for search rows
- *  that slipped past server-side enrichment. */
-export const getYoutubeMusicDetails = (
-  id: string,
-): ResultAsync<YtMusicTrack, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytMusicDetails, { id }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-export const searchYoutubeMusic = (
-  query: string,
-  kind: YtMusicSearchKind,
-): ResultAsync<YtPage<YtMusicEntity>, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytMusicSearch, { query, kind }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-export const continueYoutubeMusic = (
-  continuation: string,
-  kind: YtMusicSearchKind,
-): ResultAsync<YtPage<YtMusicEntity>, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytContinue, { continuation, kind }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-export const getYoutubePlaylist = (
-  id: string,
-): ResultAsync<YtPlaylistDetail, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytMusicPlaylist, { id }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-export const getYoutubeAlbum = (
-  id: string,
-): ResultAsync<YtAlbumDetail, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytMusicAlbum, { id }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-export const getYoutubeArtist = (
-  id: string,
-): ResultAsync<YtArtistDetail, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytMusicArtist, { id }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
   );

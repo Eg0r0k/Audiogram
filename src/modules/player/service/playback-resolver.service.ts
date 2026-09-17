@@ -147,8 +147,18 @@ const resolveEphemeral = (track: EphemeralTrack): ResultAsync<PlaybackSource, Pl
     case "path":
       if (!platformCaps.hasFs) return unavailable("path-based ephemeral tracks require native FS");
       return fromStorage(track.source.path);
-    case "url":
+    case "url": {
+      // A proxied remote stream still goes through its source's resolve: for
+      // YouTube that is what registers the googlevideo URL with the route
+      // (Rust no longer resolves on a miss); for the others it is a pure URL.
+      const remoteId = trackIdFromStreamUrl(track.source.url);
+      if (remoteId) {
+        return sources.forTrack(remoteId).resolveStreamUrl(remoteId)
+          .map(url => classifyUrl(url, { corsFallback: true }))
+          .mapErr((cause): PlaybackError => ({ kind: "source", cause }));
+      }
       return okAsync(classifyUrl(track.source.url, { corsFallback: true }));
+    }
   }
 };
 

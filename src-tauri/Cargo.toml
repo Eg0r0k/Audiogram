@@ -28,7 +28,7 @@ time = { version = "0.3", features = ["formatting"] }
 tauri-plugin-process = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-log = "2"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-webpki-roots", "stream", "socks"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-webpki-roots", "stream", "socks", "json"] }
 tokio = { version = "1", features = ["fs", "io-util", "net", "rt", "sync", "time"] }
 tokio-util = { version = "0.7", features = ["io"] }
 futures-util = "0.3"
@@ -49,7 +49,7 @@ symphonia = { version = "0.5", default-features = false, features = ["alac", "is
 hound = "3.5"
 ape-decoder = "0.3"
 percent-encoding = "2"
-tauri-plugin-http = "2.5.9"
+tauri-plugin-http = { version = "2.5.9", features = ["unsafe-headers"] }
 # The Yandex Music OAuth token lives in managed state; SecretString keeps it
 # out of every Debug/Display path.
 secrecy = "0.10"
@@ -83,9 +83,6 @@ opt-level = 3
 opt-level = 3
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-# rquickjs (via rustypipe) ships no prebuilt bindings for mobile targets;
-# the youtube module that needs it is desktop-only anyway.
-rustypipe = { version = "0.11.4", default-features = false, features = ["rustls-tls-webpki-roots"] }
 discord-rich-presence = "1.1.0"
 tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"

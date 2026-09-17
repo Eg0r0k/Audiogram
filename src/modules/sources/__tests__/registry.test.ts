@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { okAsync } from "neverthrow";
+import { errAsync, okAsync } from "neverthrow";
 import { TrackId } from "@/types/ids";
 import { ytTrackId } from "@/types/track-ref";
 
@@ -19,7 +19,8 @@ vi.mock("@/modules/youtube/provider", () => ({
       return providerState.isAvailable;
     },
     resolve: vi.fn((id: string) => okAsync(id)),
-    download: vi.fn(() => okAsync({ path: "C:/tmp/a.m4a" })),
+    download: vi.fn(() => okAsync({ path: "C:/tmp/a.m4a", ext: "m4a" })),
+    track: vi.fn(() => errAsync({ kind: "NETWORK", message: "offline" })),
     searchMusic: vi.fn(() => okAsync({ items: [], continuation: null, total: null, correctedQuery: null })),
   },
 }));

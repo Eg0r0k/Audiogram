@@ -14,23 +14,52 @@ vi.mock("@/modules/youtube/provider", () => ({
     searchMusic: vi.fn(),
     continueMusic: vi.fn(),
     prefetch: vi.fn(),
+    track: vi.fn(),
   },
 }));
 
 describe("ytSourceProvider.downloadToFile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(youtubeProvider.track).mockReturnValue(
+      errAsync({ kind: "NETWORK", message: "offline" }),
+    );
   });
 
-  it("returns the downloaded file path for a yt track id", async () => {
+  it("returns the downloaded file path for a yt track id, without tags when the lookup fails", async () => {
     vi.mocked(youtubeProvider.download).mockReturnValue(
-      okAsync({ path: "C:/cache/abc.m4a" }),
+      okAsync({ path: "C:/cache/abc.m4a", ext: "m4a" }),
     );
 
     const result = await ytSourceProvider.downloadToFile(ytTrackId("dQw4w9WgXcQ"));
 
     expect(result._unsafeUnwrap()).toEqual({ path: "C:/cache/abc.m4a" });
-    expect(youtubeProvider.download).toHaveBeenCalledWith("dQw4w9WgXcQ", undefined);
+    expect(youtubeProvider.download).toHaveBeenCalledWith("dQw4w9WgXcQ", undefined, undefined);
+  });
+
+  it("passes the catalog's title, artists, album and cover as the tags to write", async () => {
+    vi.mocked(youtubeProvider.track).mockReturnValue(okAsync({
+      id: "dQw4w9WgXcQ",
+      title: "Never Gonna Give You Up",
+      artists: [{ id: "UC1", name: "Rick Astley" }],
+      album: { id: "MPREb_1", name: "Whenever You Need Somebody" },
+      duration: 213,
+      thumbnail: "https://lh3.googleusercontent.com/c=w544",
+      isVideo: false,
+      trackNr: null,
+    }));
+    vi.mocked(youtubeProvider.download).mockReturnValue(
+      okAsync({ path: "C:/cache/abc.m4a", ext: "m4a" }),
+    );
+
+    await ytSourceProvider.downloadToFile(ytTrackId("dQw4w9WgXcQ"));
+
+    expect(youtubeProvider.download).toHaveBeenCalledWith("dQw4w9WgXcQ", undefined, {
+      title: "Never Gonna Give You Up",
+      artists: ["Rick Astley"],
+      album: "Whenever You Need Somebody",
+      coverUrl: "https://lh3.googleusercontent.com/c=w544",
+    });
   });
 
   it("maps a cancelled download onto the CANCELLED kind the manager expects", async () => {

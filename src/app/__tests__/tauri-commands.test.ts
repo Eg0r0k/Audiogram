@@ -11,10 +11,10 @@ describe("invokeCommand", () => {
   });
 
   it("forwards the command name and its arguments", async () => {
-    mocks.invoke.mockResolvedValue("https://x");
+    mocks.invoke.mockResolvedValue(undefined);
 
-    await expect(invokeCommand(COMMANDS.ytResolve, { id: "abc" })).resolves.toBe("https://x");
-    expect(mocks.invoke).toHaveBeenCalledWith("yt_resolve", { id: "abc" });
+    await expect(invokeCommand(COMMANDS.ytPrefetch, { id: "abc" })).resolves.toBeUndefined();
+    expect(mocks.invoke).toHaveBeenCalledWith("yt_prefetch", { id: "abc" });
   });
 
   it("calls argument-less commands with the name alone", async () => {

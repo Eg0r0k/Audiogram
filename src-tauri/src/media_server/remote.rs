@@ -22,8 +22,8 @@ pub(crate) trait RemoteRoutes: Clone + Send + Sync + 'static {
     ) -> impl Future<Output = Option<http::Response<Body>>> + Send;
 }
 
-/// Production remote routes backed by the tauri app (nd/yt modules read
-/// their managed state and, for yt, spawn the resolver sidecar).
+/// Production remote routes backed by the tauri app (the nd/ym/yt modules
+/// read their managed state).
 pub(crate) struct AppRoutes<R: Runtime>(pub AppHandle<R>);
 
 impl<R: Runtime> Clone for AppRoutes<R> {
@@ -83,16 +83,12 @@ impl<R: Runtime> RemoteRoutes for AppRoutes<R> {
                 crate::ym::serve_cover(&client, cover_ref, query.as_deref(), origin).await,
             );
         }
-        #[cfg(desktop)]
         if let Some(id) = rest.strip_prefix("yt/") {
             return Some(crate::youtube::serve_yt(app, &client, id, range, origin).await);
         }
-        #[cfg(desktop)]
         if let Some(url) = rest.strip_prefix("ytimg/") {
             return Some(crate::youtube::serve_image(&client, url, origin).await);
         }
-        #[cfg(not(desktop))]
-        let _ = range;
 
         None
     }

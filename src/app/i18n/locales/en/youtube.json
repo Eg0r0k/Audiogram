@@ -1,6 +1,6 @@
 {
   "title": "YouTube",
-  "unavailable": "YouTube search is only available in the desktop app.",
+  "unavailable": "YouTube search is only available in the app.",
   "noResults": "Nothing found for \"{query}\".",
   "errorPrefix": "Error: {message}",
   "botError": "YouTube is temporarily blocking anonymous requests from your network (bot check). Try again later or enable a proxy in the settings.",

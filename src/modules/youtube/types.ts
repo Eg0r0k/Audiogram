@@ -130,6 +130,8 @@ export interface YtPlayable {
 export interface YtDownloadResult {
   /** Absolute path to the downloaded audio file, ready for the import pipeline. */
   path: string;
+  /** Extension the file was written with (`m4a` for AAC, `webm` for Opus). */
+  ext: string;
 }
 
 /** Progress channel payload emitted by the `yt_download` command. */

@@ -276,10 +276,10 @@ pub(crate) async fn forward_image(
 /// and seek form) and over-long explicit ranges become `bytes=X-(X+span-1)`.
 ///
 /// Sole remaining reason (the in-memory buffering one died with `stream://`):
-/// googlevideo outright rejects large spans on URLs resolved without a PO
-/// token (measured 2026-08: ≤1 MiB → 206, 2 MiB → 403, larger/open → 302
-/// bounce), so the YT side must stay under that. A capped 206 +
-/// Content-Range makes the element stream progressively.
+/// googlevideo throttles open-ended ranges on long streams to a trickle
+/// while bounded ones stream at full speed (see `youtube::YT_RANGE_SPAN`),
+/// so the YT side stays under that. A capped 206 + Content-Range makes the
+/// element stream progressively.
 ///
 /// Absent headers and malformed/suffix specs pass through untouched.
 pub(crate) fn cap_range_span(range: Option<String>, max_span: u64) -> Option<String> {

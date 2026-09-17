@@ -19,7 +19,6 @@ mod discord;
 #[cfg(desktop)]
 mod discord_utils;
 
-#[cfg(desktop)]
 mod youtube;
 
 mod audio_cache;
@@ -169,16 +168,13 @@ pub fn run() {
         .manage(ym::YmState::default())
         .manage(ym::YmLinkCache::default())
         .manage(ym::YmAudioCache::default())
+        .manage(youtube::YtStreamCache::default())
+        .manage(youtube::YtAudioCache::default())
         .manage(media_state);
 
     #[cfg(desktop)]
     let builder = builder
         .manage(discord::DiscordPresenceState::default())
-        .manage(youtube::YtStreamCache::default())
-        .manage(youtube::YtAudioCache::default())
-        .manage(youtube::YtClient::default())
-        .manage(youtube::YtDownloadRegistry::default())
-        .manage(youtube::YtDlpUpdater::default())
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             let files: Vec<String> = args.into_iter().skip(1).collect();
 
@@ -203,16 +199,7 @@ pub fn run() {
         thumbbar::thumbbar_set_state,
         updater::check_update,
         updater::install_update,
-        youtube::yt_search,
-        youtube::yt_search_continue,
-        youtube::yt_music_search,
-        youtube::yt_music_details,
-        youtube::yt_continue,
-        youtube::yt_music_suggest,
-        youtube::yt_music_playlist,
-        youtube::yt_music_album,
-        youtube::yt_music_artist,
-        youtube::yt_resolve,
+        youtube::yt_register_stream,
         youtube::yt_prefetch,
         youtube::yt_download,
         youtube::yt_download_cancel,
@@ -252,6 +239,10 @@ pub fn run() {
         ym::ym_prefetch,
         ym::ym_download,
         ym::ym_download_cancel,
+        youtube::yt_register_stream,
+        youtube::yt_prefetch,
+        youtube::yt_download,
+        youtube::yt_download_cancel,
     ]);
 
     builder
@@ -270,14 +261,6 @@ pub fn run() {
             {
                 tray::setup_tray(app)?;
                 thumbbar::setup(app)?;
-
-                // YouTube outruns any bundled yt-dlp within weeks; refresh
-                // the sidecar in the background before the first track asks
-                // for it (later runs re-check on their own, throttled).
-                let updater_handle = app.handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    youtube::ensure_fresh(&updater_handle, None).await;
-                });
 
                 let files: Vec<String> = std::env::args().skip(1).collect();
                 if !files.is_empty() {

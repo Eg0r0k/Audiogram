@@ -33,14 +33,11 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Stand in for the build inputs tauri checks at compile time
-        # `generate_context!` embeds `frontendDist` and tauri-build verifies the
-        # yt-dlp sidecar exists. Neither is exercised by lint or tests, so
-        # placeholders keep the job off the frontend build and the network.
+      - name: Stand in for the frontend build tauri embeds at compile time
+        # `generate_context!` embeds `frontendDist`, which lint and tests never
+        # exercise, so a placeholder keeps the job off the frontend build.
         run: |
           mkdir -p dist && echo '<!doctype html>' > dist/index.html
-          mkdir -p src-tauri/binaries
-          touch src-tauri/binaries/yt-dlp-x86_64-unknown-linux-gnu
 
       - name: rustfmt
         working-directory: src-tauri

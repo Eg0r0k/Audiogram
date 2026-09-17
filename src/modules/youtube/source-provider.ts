@@ -2,7 +2,6 @@ import type { ResultAsync } from "neverthrow";
 import { errAsync, okAsync } from "neverthrow";
 import { ytStreamUrl } from "@/lib/stream-url";
 import { youtubeProvider } from "./provider";
-import { getYoutubeMusicDetails } from "./api/youtubeApi";
 import { ytMusicTrackToDto } from "./lib/playable";
 import { ytErrorToSource as mapError } from "./lib/errors";
 import { proxiedThumbnail } from "./lib/thumbnail";
@@ -14,6 +13,8 @@ import type {
   YtMusicEntity,
   YtMusicPlaylist,
   YtMusicSearchKind,
+  YtMusicTrack,
+  YtTrackMeta,
 } from "./types";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 import type {
@@ -115,6 +116,13 @@ const mapYtPlaylist = (playlist: YtPlaylistLike): SourcePlaylistDTO => ({
 const mapMusicTrack = (entity: YtMusicEntity & { kind: "track" }): SourceTrackDTO =>
   ytMusicTrackToDto(entity);
 
+const trackMeta = (track: YtMusicTrack): YtTrackMeta => ({
+  title: track.title,
+  artists: track.artists.map(artist => artist.name),
+  album: track.album?.name ?? null,
+  coverUrl: track.thumbnail,
+});
+
 /** Generic search scope → the YT Music search tab that answers it. */
 const SEARCH_KIND: Record<SourceSearchScope, YtMusicSearchKind> = {
   all: "all",
@@ -176,8 +184,9 @@ export const ytSourceProvider: SourceProvider = {
     return youtubeProvider.isAvailable;
   },
 
-  // A cold yt-dlp run (sidecar start, bot-check challenge, format probing)
-  // routinely takes longer than a local lookup or a Subsonic stream URL.
+  // A cold resolve builds the Innertube session first (visitor page, player
+  // JS, all through the user's proxy) — well past a local lookup or a
+  // Subsonic stream URL.
   resolveTimeoutMs: 45_000,
 
   // A search fans out into several Innertube requests — as-you-type would
@@ -313,7 +322,8 @@ export const ytSourceProvider: SourceProvider = {
   getTrack(id) {
     const videoId = ytIdOf(id);
     if (!videoId) return errAsync({ kind: "PARSE", message: `Not a YouTube track id: ${id}` });
-    return getYoutubeMusicDetails(videoId)
+    return youtubeProvider
+      .track(videoId)
       .mapErr(mapError)
       .map(track => ytMusicTrackToDto(track));
   },
@@ -337,12 +347,19 @@ export const ytSourceProvider: SourceProvider = {
     return youtubeProvider.prefetch(videoId).mapErr(mapError);
   },
 
+  /**
+   * The tags written into the file come from the catalog, looked up here:
+   * a download started from a search row, a link or an old queue entry has
+   * nothing better than a title, and a lookup that fails still downloads.
+   */
   downloadToFile(id, onProgress) {
     const videoId = ytIdOf(id);
     if (!videoId) return errAsync({ kind: "PARSE", message: `Not a YouTube track id: ${id}` });
     return youtubeProvider
-      .download(videoId, onProgress)
-      .mapErr(mapError)
+      .track(videoId)
+      .map((track): YtTrackMeta | undefined => trackMeta(track))
+      .orElse(() => okAsync(undefined))
+      .andThen(meta => youtubeProvider.download(videoId, onProgress, meta).mapErr(mapError))
       .map(result => ({ path: result.path }));
   },
 

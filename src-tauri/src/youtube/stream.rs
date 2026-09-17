@@ -1,63 +1,93 @@
-//! Stream resolution (yt-dlp `--get-url`) and the yt route of the loopback
-//! media server. The server itself and its dispatcher live in
-//! `crate::media_server`; this module only serves `yt/<videoId>` paths.
+//! The stream registry and the `yt/<videoId>` route of the loopback media
+//! server. Resolution is the webview's job; this side only forwards what was
+//! registered and warms the prefetch cache.
 
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use bytes::Bytes;
 use tauri::{AppHandle, Manager, Runtime};
-use tauri_plugin_shell::process::CommandEvent;
-use tauri_plugin_shell::ShellExt;
 
 use crate::audio_cache::{AudioCache, CachedAudio};
 use crate::media_server::{forward_stream, memory_range_response, status_response};
+use crate::remote_download::{content_range_total, get_range};
 
-use super::{kill_sidecar_tree, proxy_args, validate_id, ProxyState, YtError, SIDECAR_YTDLP};
+use super::{validate_id, YtError, YtErrorKind};
 
-/// A resolved googlevideo stream: the URL plus the request headers yt-dlp
-/// would fetch it with. googlevideo binds URLs to the resolving client —
-/// downloading with mismatched headers (most visibly the User-Agent) gets
-/// 403, so the exact `http_headers` of the selected format ride along.
-#[derive(Clone)]
+/// A registered googlevideo stream: the URL plus the request headers the
+/// resolving client used. googlevideo binds URLs to that client —
+/// downloading with a mismatched User-Agent gets 403 — so the headers ride
+/// along with every request this side makes.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StreamEntry {
-    url: String,
-    headers: Vec<(String, String)>,
+    pub(super) url: String,
+    pub(super) headers: Vec<(String, String)>,
+    /// Unix seconds from the URL's `expire=` parameter; the entry is dead past it.
+    expires_at: Option<u64>,
 }
 
-/// In-memory map of video id → resolved stream entry, populated by `yt_resolve`
-/// and consumed by the media server's `yt/` route so seeks reuse a single
-/// resolution.
+impl StreamEntry {
+    fn is_expired(&self, now: u64) -> bool {
+        self.expires_at.is_some_and(|expires_at| now >= expires_at)
+    }
+}
+
+/// Video id → registered stream, filled by `yt_register_stream` and read by
+/// the `yt/` route, prefetch and download. Expired entries read as absent.
 #[derive(Default)]
 pub struct YtStreamCache {
-    urls: Mutex<HashMap<String, StreamEntry>>,
+    entries: Mutex<HashMap<String, StreamEntry>>,
+}
+
+fn unix_now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs())
+        .unwrap_or(0)
 }
 
 impl YtStreamCache {
     fn insert(&self, id: String, entry: StreamEntry) {
-        if let Ok(mut map) = self.urls.lock() {
+        if let Ok(mut map) = self.entries.lock() {
             map.insert(id, entry);
         }
     }
 
-    fn get(&self, id: &str) -> Option<StreamEntry> {
-        self.urls.lock().ok().and_then(|map| map.get(id).cloned())
+    pub(super) fn get(&self, id: &str) -> Option<StreamEntry> {
+        self.get_at(id, unix_now())
+    }
+
+    fn get_at(&self, id: &str, now: u64) -> Option<StreamEntry> {
+        self.entries
+            .lock()
+            .ok()
+            .and_then(|map| map.get(id).cloned())
+            .filter(|entry| !entry.is_expired(now))
+    }
+
+    /// Drops an entry upstream refused, so the next play re-resolves instead
+    /// of hammering a dead URL.
+    pub(super) fn remove(&self, id: &str) {
+        if let Ok(mut map) = self.entries.lock() {
+            map.remove(id);
+        }
     }
 }
 
 /// Long uploads (2h mixes) are refused: warming them would pin hundreds of
-/// MB of audio in memory for a head start the capped-range streaming path
-/// already provides.
+/// MB of audio in memory for a head start streaming already provides.
 const MAX_PREFETCHED_TRACKS: usize = 3;
 const MAX_PREFETCHED_YT_BYTES: usize = 128 * 1024 * 1024;
 
-/// Per-request range window for googlevideo. Measured 2026-08: spans up to
-/// 1 MiB answer 206, 2 MiB answers 403, larger/open ranges bounce with 302 —
-/// URLs resolved without a PO token are hard-limited, so every request
-/// (streaming AND prefetch) must stay under this.
-const YT_RANGE_SPAN: u64 = 1024 * 1024;
+/// Per-request range window for googlevideo, on the route and on every
+/// whole-file walk (prefetch, download). Measured 2026-09-17 on the VISIONOS
+/// URLs the engine resolves: an unranged request is throttled to ~30 KB/s,
+/// an open-ended range too on a 1 h mix (0.9 MB in 30 s), while bounded
+/// 10 MiB ranges — yt-dlp's chunk size — stream at full speed. A capped 206
+/// + Content-Range makes the media element ask for the next window itself.
+pub(crate) const YT_RANGE_SPAN: u64 = 10 * 1024 * 1024;
 
 /// The YouTube instance of [`AudioCache`], keyed by video id — a newtype
 /// because tauri manages state by type, and the nd path has its own.
@@ -80,18 +110,23 @@ impl Deref for YtAudioCache {
     }
 }
 
-/// A wedged yt-dlp (stalled network, hung challenge) must not pin the player
-/// on "loading" forever — the sidecar is killed and the call fails instead.
-const RESOLVE_TIMEOUT: Duration = Duration::from_secs(25);
+/// A googlevideo URL is a few KiB; anything past this is not one.
+const MAX_STREAM_URL_LEN: usize = 16 * 1024;
 
-/// The selected format's fields from `yt-dlp -j` (single-format selection
-/// merges them into the top-level info dict).
-#[derive(serde::Deserialize)]
-struct ResolvedInfo {
-    url: Option<String>,
-    format_id: Option<String>,
-    #[serde(default)]
-    http_headers: HashMap<String, String>,
+/// Only googlevideo over https is ever forwarded: the route would otherwise
+/// be an open proxy for whatever the webview registers.
+fn validate_stream_url(url: &str) -> Result<String, String> {
+    if url.len() > MAX_STREAM_URL_LEN {
+        return Err("stream url too long".into());
+    }
+    let parsed = tauri::Url::parse(url).map_err(|_| "stream url is not a url".to_string())?;
+    let host = parsed.host_str().unwrap_or_default();
+    if parsed.scheme() != "https"
+        || !(host == "googlevideo.com" || host.ends_with(".googlevideo.com"))
+    {
+        return Err("stream url must be an https googlevideo url".into());
+    }
+    Ok(url.to_owned())
 }
 
 /// Hop-by-hop headers reqwest must own. Accept-Encoding stays out so reqwest
@@ -104,32 +139,10 @@ fn is_forwardable_header(name: &str) -> bool {
     )
 }
 
-/// What [`parse_resolve_output`] pulls out of `yt-dlp -j`.
-struct ResolvedStream {
-    url: String,
-    /// yt-dlp's format id (`140`, `251`…), for the log line only.
-    format_id: String,
-    headers: Vec<(String, String)>,
-}
-
-/// Extracts the stream URL, format id and request headers from `yt-dlp -j`
-/// stdout — the last JSON line, in case the extractor chatters before it.
-fn parse_resolve_output(stdout: &str) -> Result<ResolvedStream, String> {
-    let line = stdout
-        .lines()
-        .map(str::trim)
-        .rfind(|line| line.starts_with('{'))
-        .ok_or_else(|| "no json in yt-dlp output".to_string())?;
-    let info: ResolvedInfo =
-        serde_json::from_str(line).map_err(|e| format!("yt-dlp json parse failed: {e}"))?;
-
-    let url = info
-        .url
-        .filter(|url| url.starts_with("http"))
-        .ok_or_else(|| "no stream url returned".to_string())?;
-
-    let mut headers: Vec<(String, String)> = info
-        .http_headers
+/// Keeps the headers googlevideo checks and guarantees a User-Agent, the one
+/// header a mismatch on is fatal.
+fn forwardable_headers(headers: Vec<(String, String)>) -> Vec<(String, String)> {
+    let mut headers: Vec<(String, String)> = headers
         .into_iter()
         .filter(|(name, _)| is_forwardable_header(name))
         .collect();
@@ -139,139 +152,73 @@ fn parse_resolve_output(stdout: &str) -> Result<ResolvedStream, String> {
     {
         headers.push(("User-Agent".into(), "Mozilla/5.0".into()));
     }
-
-    Ok(ResolvedStream {
-        url,
-        format_id: info.format_id.unwrap_or_default(),
-        headers,
-    })
+    headers
 }
 
-/// Resolves the best audio stream URL (with its request headers) via the
-/// yt-dlp sidecar and caches it for the `yt/` route.
-async fn resolve_stream<R: Runtime>(app: &AppHandle<R>, id: &str) -> Result<StreamEntry, String> {
-    let url = format!("https://www.youtube.com/watch?v={id}");
-    let mut args: Vec<String> = vec![
-        url,
-        "-f".into(),
-        "bestaudio[ext=m4a]/bestaudio".into(),
-        "--no-playlist".into(),
-        "--no-warnings".into(),
-        "-j".into(),
-    ];
-    args.extend(proxy_args(app));
-
-    super::ensure_fresh_throttled(app).await;
-    let (mut rx, child) = app
-        .shell()
-        .sidecar(SIDECAR_YTDLP)
-        .map_err(|e| e.to_string())?
-        .args(args)
-        .spawn()
-        .map_err(|e| e.to_string())?;
-
-    let collected = tokio::time::timeout(RESOLVE_TIMEOUT, async {
-        let mut stdout = String::new();
-        let mut stderr = String::new();
-        let mut exit_code: Option<i32> = None;
-
-        while let Some(event) = rx.recv().await {
-            match event {
-                CommandEvent::Stdout(bytes) => {
-                    stdout.push_str(&String::from_utf8_lossy(&bytes));
-                    stdout.push('\n');
-                }
-                CommandEvent::Stderr(bytes) => {
-                    stderr.push_str(&String::from_utf8_lossy(&bytes));
-                    stderr.push('\n');
-                }
-                CommandEvent::Terminated(payload) => exit_code = payload.code,
-                _ => {}
-            }
-        }
-
-        (stdout, stderr, exit_code)
-    })
-    .await;
-
-    let (stdout, stderr, exit_code) = match collected {
-        Ok(collected) => collected,
-        Err(_) => {
-            // The whole tree goes: a dead resolve must not keep a process
-            // and the network busy.
-            log::warn!("yt_resolve {id}: sidecar wedged, killing it");
-            kill_sidecar_tree(child);
-            return Err(format!(
-                "yt-dlp resolve timed out after {}s",
-                RESOLVE_TIMEOUT.as_secs()
-            ));
-        }
-    };
-
-    if exit_code != Some(0) {
-        return Err(format!("yt-dlp resolve failed: {}", stderr.trim()));
-    }
-
-    let ResolvedStream {
-        url: stream_url,
-        format_id,
-        headers,
-    } = parse_resolve_output(&stdout)?;
-    log::info!(
-        "yt_resolve {id}: format {format_id}, {} request headers",
-        headers.len()
-    );
-
-    let entry = StreamEntry {
-        url: stream_url,
-        headers,
-    };
-    app.state::<YtStreamCache>()
-        .insert(id.to_owned(), entry.clone());
-    Ok(entry)
-}
-
+/// Registers the stream the webview resolved for `id`. The frontend plays
+/// `/{token}/yt/<id>` on the media server, which maps it back to this URL,
+/// so seeks and the prefetch/download commands reuse a single resolution.
 #[tauri::command]
-pub async fn yt_resolve<R: Runtime>(app: AppHandle<R>, id: String) -> Result<String, YtError> {
+pub fn yt_register_stream<R: Runtime>(
+    app: AppHandle<R>,
+    id: String,
+    url: String,
+    headers: Vec<(String, String)>,
+    expires_at: Option<u64>,
+) -> Result<(), YtError> {
     let id = validate_id(&id).map_err(YtError::invalid_input)?;
+    let url = validate_stream_url(&url).map_err(YtError::invalid_input)?;
+    let entry = StreamEntry {
+        url,
+        headers: forwardable_headers(headers),
+        expires_at,
+    };
+    log::debug!(
+        "yt_register_stream {id}: {} request headers, expires {:?}",
+        entry.headers.len(),
+        entry.expires_at
+    );
+    app.state::<YtStreamCache>().insert(id, entry);
+    Ok(())
+}
 
-    // Cache under the id; the frontend plays `/{token}/yt/<id>` on the media
-    // server, which maps it back to this URL (no yt-dlp run per seek).
-    resolve_stream(&app, &id).await?;
-    Ok(id)
+fn not_registered() -> YtError {
+    YtError::new(
+        YtErrorKind::NotFound,
+        "stream not registered — resolve it first",
+    )
 }
 
 /// Downloads the whole audio file for `id` into the in-memory prefetch cache
 /// so the `yt/` route answers the upcoming track's requests instantly.
-/// Called by the frontend for the next queue entry while the current track is
-/// still playing.
+/// Called by the frontend for the next queue entry while the current track
+/// still plays; the entry must have been registered.
 #[tauri::command]
 pub async fn yt_prefetch<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), YtError> {
     let id = validate_id(&id).map_err(YtError::invalid_input)?;
     if app.state::<YtAudioCache>().contains(&id) {
         return Ok(());
     }
+    let streams = app.state::<YtStreamCache>();
+    let entry = streams.get(&id).ok_or_else(not_registered)?;
+    let client = super::http_client(&app)?;
 
-    let client = app.state::<ProxyState>().client()?;
-    let entry = match app.state::<YtStreamCache>().get(&id) {
-        Some(entry) => entry,
-        None => resolve_stream(&app, &id).await?,
+    let (content_type, bytes) = match fetch_ranged_bytes(&client, &entry).await {
+        Ok(fetched) => fetched,
+        Err(e) => {
+            if e.starts_with("upstream status") {
+                // googlevideo refused the registered URL: stale, drop it so
+                // the next play re-resolves.
+                streams.remove(&id);
+                return Err(YtError::new(
+                    YtErrorKind::Network,
+                    format!("prefetch failed: {e}"),
+                ));
+            }
+            return Err(YtError::from(e));
+        }
     };
-
-    let mut result = fetch_bytes(&client, &entry.url, &entry.headers).await?;
-    if result.0 == 403 {
-        // Expired googlevideo URL (app restart, proxy IP change) — one retry.
-        let entry = resolve_stream(&app, &id).await?;
-        result = fetch_bytes(&client, &entry.url, &entry.headers).await?;
-    }
-
-    let (status, content_type, bytes) = result;
-    log::debug!("yt_prefetch {id}: status {status}, {} bytes", bytes.len());
-    if !(200..300).contains(&status) {
-        return Err(YtError::from(format!(
-            "prefetch failed: upstream status {status}"
-        )));
-    }
+    log::debug!("yt_prefetch {id}: {} bytes", bytes.len());
 
     if !app.state::<YtAudioCache>().insert(id, content_type, bytes) {
         return Err(YtError::from(
@@ -281,11 +228,81 @@ pub async fn yt_prefetch<R: Runtime>(app: AppHandle<R>, id: String) -> Result<()
     Ok(())
 }
 
-/// Handles `/{token}/yt/<videoId>`: proxied googlevideo audio (bypassing the
-/// webview's CORS block), served from the prefetch cache when warm, streamed
-/// through otherwise. The cached googlevideo URL is transparently re-resolved
-/// when it is missing (app restart) or rejected with 403 (URL expired after
-/// ~6 h, IP change behind a rotating proxy, or a flagged session).
+/// Walks the whole file in [`YT_RANGE_SPAN`] ranges (see there for why not
+/// one request): `(content_type, bytes)`. Over-cap tracks are refused as
+/// soon as the first Content-Range reveals the total, before the bandwidth
+/// is spent.
+async fn fetch_ranged_bytes(
+    client: &reqwest::Client,
+    entry: &StreamEntry,
+) -> Result<(String, Bytes), String> {
+    let mut buf: Vec<u8> = Vec::new();
+    let mut content_type = "audio/mp4".to_owned();
+    let mut total: Option<u64> = None;
+
+    loop {
+        let start = buf.len() as u64;
+        let Some(resp) =
+            get_range(client, &entry.url, &entry.headers, start, YT_RANGE_SPAN).await?
+        else {
+            break;
+        };
+        let status = resp.status().as_u16();
+        if start == 0 {
+            if let Some(ct) = resp
+                .headers()
+                .get(reqwest::header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok())
+            {
+                content_type = ct.to_owned();
+            }
+            total = if status == 200 {
+                resp.content_length()
+            } else {
+                resp.headers()
+                    .get(reqwest::header::CONTENT_RANGE)
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(content_range_total)
+            };
+            if let Some(total) = total {
+                if total > MAX_PREFETCHED_YT_BYTES as u64 {
+                    return Err(format!(
+                        "prefetch skipped: track is {total} bytes, over the cache cap"
+                    ));
+                }
+            }
+        }
+
+        let bytes = resp
+            .bytes()
+            .await
+            .map_err(|e| format!("download failed: {}", e.without_url()))?;
+        if status == 200 {
+            // The server ignored the range: the body already is the whole file.
+            return Ok((content_type, bytes));
+        }
+        let short_chunk = (bytes.len() as u64) < YT_RANGE_SPAN;
+        buf.extend_from_slice(&bytes);
+        if buf.len() > MAX_PREFETCHED_YT_BYTES {
+            return Err("prefetch skipped: track exceeds the cache cap".into());
+        }
+        let done = match total {
+            Some(total) => buf.len() as u64 >= total,
+            None => short_chunk,
+        };
+        if done || bytes.is_empty() {
+            break;
+        }
+    }
+
+    Ok((content_type, Bytes::from(buf)))
+}
+
+/// Handles `/{token}/yt/<videoId>`: proxied googlevideo audio, served from
+/// the prefetch cache when warm, streamed through otherwise. Upstream refusing
+/// the registered URL (expired after ~6 h, IP change behind a rotating proxy)
+/// drops the entry and answers 502 — the media element errors, and the
+/// player's retry re-resolves through the engine.
 pub(crate) async fn serve_yt<R: Runtime>(
     app: &AppHandle<R>,
     client: &reqwest::Client,
@@ -297,7 +314,6 @@ pub(crate) async fn serve_yt<R: Runtime>(
         return status_response(404, origin);
     }
 
-    // Prefetched track: serve straight from memory, no network round-trip.
     if let Some(CachedAudio {
         content_type,
         bytes,
@@ -306,35 +322,12 @@ pub(crate) async fn serve_yt<R: Runtime>(
         return memory_range_response(&content_type, &bytes, range.as_deref(), origin);
     }
 
-    if let Some(entry) = app.state::<YtStreamCache>().get(id) {
-        match forward_stream(
-            client,
-            &entry.url,
-            &entry.headers,
-            range.clone(),
-            Some(YT_RANGE_SPAN),
-            origin,
-        )
-        .await
-        {
-            Ok(response) if response.status() != http::StatusCode::FORBIDDEN => return response,
-            // Routine after ~6 h: googlevideo URLs expire and a re-resolve
-            // is the designed recovery, not a fault.
-            Ok(_) => log::info!("media yt/{id}: upstream returned 403, re-resolving stream URL"),
-            Err(e) => {
-                log::warn!("media yt/{id}: {e}");
-                return status_response(502, origin);
-            }
-        }
-    }
-
-    let entry = match resolve_stream(app, id).await {
-        Ok(entry) => entry,
-        Err(e) => {
-            log::warn!("media yt/{id}: re-resolve failed: {e}");
-            return status_response(502, origin);
-        }
+    let streams = app.state::<YtStreamCache>();
+    let Some(entry) = streams.get(id) else {
+        log::info!("media yt/{id}: no registered stream (missing or expired)");
+        return status_response(502, origin);
     };
+
     match forward_stream(
         client,
         &entry.url,
@@ -345,18 +338,15 @@ pub(crate) async fn serve_yt<R: Runtime>(
     )
     .await
     {
-        Ok(response) => {
-            if response.status().as_u16() >= 400 {
-                // A fresh URL still refused: headers/IP no longer satisfy
-                // googlevideo — worth its own line, the webview only sees a
-                // generic media error.
-                log::warn!(
-                    "media yt/{id}: upstream status {} on a freshly resolved URL",
-                    response.status()
-                );
-            }
-            response
+        Ok(response) if response.status().as_u16() >= 400 => {
+            log::info!(
+                "media yt/{id}: upstream status {}, dropping the registered stream",
+                response.status()
+            );
+            streams.remove(id);
+            status_response(502, origin)
         }
+        Ok(response) => response,
         Err(e) => {
             log::warn!("media yt/{id}: {e}");
             status_response(502, origin)
@@ -364,161 +354,72 @@ pub(crate) async fn serve_yt<R: Runtime>(
     }
 }
 
-/// Total size from a `Content-Range: bytes X-Y/total` value; None for `*`.
-fn content_range_total(value: &str) -> Option<usize> {
-    value.rsplit('/').next()?.trim().parse().ok()
-}
-
-/// Downloads a full upstream body in [`YT_RANGE_SPAN`]-sized sequential
-/// chunks (googlevideo rejects larger requests outright): `(status,
-/// content_type, bytes)`. A non-2xx FIRST chunk returns with its status and
-/// an empty body so the caller can run the expired-URL retry; failures past
-/// that become errors. Over-cap tracks are refused as soon as the first
-/// chunk's Content-Range reveals the total, before the bandwidth is spent.
-async fn fetch_bytes(
-    client: &reqwest::Client,
-    url: &str,
-    headers: &[(String, String)],
-) -> Result<(u16, String, Bytes), String> {
-    let chunk = YT_RANGE_SPAN as usize;
-    let mut buf: Vec<u8> = Vec::new();
-    let mut content_type = "audio/mp4".to_owned();
-    let mut total: Option<usize> = None;
-
-    loop {
-        let start = buf.len();
-        let mut req = client.get(url);
-        for (name, value) in headers {
-            req = req.header(name.as_str(), value.as_str());
-        }
-        let resp = req
-            .header(
-                reqwest::header::RANGE,
-                format!("bytes={start}-{}", start + chunk - 1),
-            )
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-        let status = resp.status().as_u16();
-
-        if start == 0 {
-            if let Some(ct) = resp
-                .headers()
-                .get(reqwest::header::CONTENT_TYPE)
-                .and_then(|v| v.to_str().ok())
-            {
-                content_type = ct.to_owned();
-            }
-            if !(200..300).contains(&status) {
-                return Ok((status, content_type, Bytes::new()));
-            }
-        } else if status == 416 {
-            // One past the end: a total-less server told us we are done.
-            break;
-        } else if !(200..300).contains(&status) {
-            return Err(format!(
-                "prefetch chunk failed: upstream status {status} at byte {start}"
-            ));
-        }
-
-        if total.is_none() {
-            total = resp
-                .headers()
-                .get(reqwest::header::CONTENT_RANGE)
-                .and_then(|v| v.to_str().ok())
-                .and_then(content_range_total);
-            if let Some(total) = total {
-                if total > MAX_PREFETCHED_YT_BYTES {
-                    return Err(format!(
-                        "prefetch skipped: track is {total} bytes, over the cache cap"
-                    ));
-                }
-            }
-        }
-
-        let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
-        if status == 200 {
-            // Server ignored the range: the body already is the whole file.
-            return Ok((200, content_type, bytes));
-        }
-
-        let short_chunk = bytes.len() < chunk;
-        buf.extend_from_slice(&bytes);
-        if buf.len() > MAX_PREFETCHED_YT_BYTES {
-            return Err("prefetch skipped: track exceeds the cache cap".into());
-        }
-        match total {
-            Some(total) if buf.len() >= total => break,
-            None if short_chunk => break,
-            _ => {}
-        }
-        if bytes.is_empty() {
-            break;
-        }
-    }
-
-    Ok((206, content_type, Bytes::from(buf)))
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{content_range_total, parse_resolve_output, ResolvedStream};
+    use super::*;
 
-    #[test]
-    fn parses_the_total_out_of_content_range() {
-        assert_eq!(
-            content_range_total("bytes 0-1048575/157286400"),
-            Some(157_286_400)
-        );
-        assert_eq!(content_range_total("bytes 0-1023/*"), None);
-        assert_eq!(content_range_total("garbage"), None);
+    fn entry(expires_at: Option<u64>) -> StreamEntry {
+        StreamEntry {
+            url: "https://rr1---sn-x.googlevideo.com/videoplayback?x=1".into(),
+            headers: vec![("User-Agent".into(), "ua".into())],
+            expires_at,
+        }
     }
 
     #[test]
-    fn parses_url_format_and_headers_past_yt_dlp_chatter() {
-        let stdout = concat!(
-            "[youtube] Extracting URL\n",
-            r#"{"url": "https://rr3---sn.googlevideo.com/videoplayback?x=1", "format_id": "140", "http_headers": {"User-Agent": "com.google.ios.youtube/20.10.4 (iPhone16,2)", "Accept": "*/*", "Host": "rr3---sn.googlevideo.com", "Accept-Encoding": "gzip, deflate"}}"#,
-            "\n",
+    fn accepts_https_googlevideo_urls_only() {
+        assert!(
+            validate_stream_url("https://rr1---sn-x.googlevideo.com/videoplayback?x=1").is_ok()
         );
-
-        let ResolvedStream {
-            url,
-            format_id,
-            headers,
-        } = parse_resolve_output(stdout).expect("parsed");
-
-        assert_eq!(url, "https://rr3---sn.googlevideo.com/videoplayback?x=1");
-        assert_eq!(format_id, "140");
-        // The resolving client's identity survives; hop-by-hop headers do not.
-        assert!(headers
-            .iter()
-            .any(|(name, value)| name == "User-Agent" && value.starts_with("com.google.ios")));
-        assert!(headers.iter().any(|(name, _)| name == "Accept"));
-        assert!(!headers
-            .iter()
-            .any(|(name, _)| name.eq_ignore_ascii_case("host")));
-        assert!(!headers
-            .iter()
-            .any(|(name, _)| name.eq_ignore_ascii_case("accept-encoding")));
+        assert!(validate_stream_url("https://googlevideo.com/v").is_ok());
+        assert!(validate_stream_url("http://rr1---sn-x.googlevideo.com/v").is_err());
+        assert!(validate_stream_url("https://evil.example/googlevideo.com").is_err());
+        assert!(validate_stream_url("https://notgooglevideo.com/v").is_err());
+        assert!(validate_stream_url("not a url").is_err());
+        assert!(validate_stream_url(&format!(
+            "https://a.googlevideo.com/{}",
+            "x".repeat(MAX_STREAM_URL_LEN)
+        ))
+        .is_err());
     }
 
     #[test]
-    fn falls_back_to_a_browser_ua_when_yt_dlp_sends_no_headers() {
-        let stdout = r#"{"url": "https://example.googlevideo.com/v", "format_id": "251"}"#;
-
-        let headers = parse_resolve_output(stdout).expect("parsed").headers;
+    fn keeps_client_headers_drops_hop_by_hop_ones_and_guarantees_a_user_agent() {
+        let headers = forwardable_headers(vec![
+            ("User-Agent".into(), "Mozilla/5.0 (Macintosh)".into()),
+            ("Accept".into(), "*/*".into()),
+            ("Host".into(), "rr1.googlevideo.com".into()),
+            ("Accept-Encoding".into(), "gzip".into()),
+            ("Range".into(), "bytes=0-1".into()),
+        ]);
 
         assert_eq!(
             headers,
-            vec![("User-Agent".to_owned(), "Mozilla/5.0".to_owned())],
+            vec![
+                (
+                    "User-Agent".to_owned(),
+                    "Mozilla/5.0 (Macintosh)".to_owned()
+                ),
+                ("Accept".to_owned(), "*/*".to_owned()),
+            ]
+        );
+        assert_eq!(
+            forwardable_headers(Vec::new()),
+            vec![("User-Agent".to_owned(), "Mozilla/5.0".to_owned())]
         );
     }
 
     #[test]
-    fn reports_output_without_json_or_url() {
-        assert!(parse_resolve_output("ERROR: unable to extract\n").is_err());
-        assert!(parse_resolve_output("").is_err());
-        assert!(parse_resolve_output(r#"{"format_id": "140"}"#).is_err());
+    fn an_expired_entry_reads_as_absent() {
+        let cache = YtStreamCache::default();
+        cache.insert("v1".into(), entry(Some(1_000)));
+        cache.insert("v2".into(), entry(None));
+
+        assert_eq!(cache.get_at("v1", 999), Some(entry(Some(1_000))));
+        assert_eq!(cache.get_at("v1", 1_000), None);
+        assert_eq!(cache.get_at("v2", u64::MAX), Some(entry(None)));
+
+        cache.remove("v2");
+        assert_eq!(cache.get_at("v2", 0), None);
     }
 }
