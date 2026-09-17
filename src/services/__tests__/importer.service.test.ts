@@ -101,7 +101,7 @@ vi.mock("@/db/unit-of-work", () => ({
 
 // EntityResolver accesses @/db directly; mock to prevent IndexedDB init
 vi.mock("@/db", () => {
-  const chain = { equals: vi.fn().mockReturnThis(), anyOf: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) };
+  const chain = { equals: vi.fn().mockReturnThis(), anyOf: vi.fn().mockReturnThis(), and: vi.fn().mockReturnThis(), modify: vi.fn().mockResolvedValue(0), toArray: vi.fn().mockResolvedValue([]) };
   return {
     db: {
       artists: { where: vi.fn().mockReturnValue(chain), toArray: vi.fn().mockResolvedValue([]) },
