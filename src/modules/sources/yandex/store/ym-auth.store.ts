@@ -2,11 +2,6 @@ import { defineStore } from "pinia";
 import { computed, ref, shallowRef } from "vue";
 import type { YmAuthEvent, YmAuthStatus, YmDeviceCode } from "../api/types";
 
-/**
- * Where the sign-in stands. `pending` holds the code the user is typing at
- * Yandex; `expired` is a working session that stopped working (shown as a
- * banner until the user signs in again or dismisses it by signing out).
- */
 export type YmAuthStep
   = | { kind: "idle" }
     | { kind: "pending"; userCode: string; verificationUrl: string; expiresAt: number }
@@ -14,19 +9,12 @@ export type YmAuthStep
     | { kind: "error"; message: string }
     | { kind: "expired" };
 
-/**
- * Who is signed in to Yandex Music, as far as the frontend may know: no
- * token ever lands here. Not persisted — Rust restores the session from its
- * own store on launch and `useYmSourceSync` copies the status over.
- */
 export const useYmAuthStore = defineStore("ym-auth", () => {
   const loggedIn = ref(false);
   const uid = ref<number | null>(null);
   const hasPlus = ref(false);
   const displayName = ref<string | null>(null);
   const step = ref<YmAuthStep>({ kind: "idle" });
-  // Raw Yandex ids of the account's liked tracks — what a catalog row's
-  // heart starts from. Replaced whole on load, patched on each toggle.
   const likedTrackIds = shallowRef<ReadonlySet<string>>(new Set());
 
   const isPending = computed(() => step.value.kind === "pending");
@@ -82,7 +70,6 @@ export const useYmAuthStore = defineStore("ym-auth", () => {
   const applyEvent = (event: YmAuthEvent) => {
     switch (event.status) {
       case "pending":
-        // The code is already on screen when the poll starts; nothing new.
         break;
       case "ok":
         setAccount(event);

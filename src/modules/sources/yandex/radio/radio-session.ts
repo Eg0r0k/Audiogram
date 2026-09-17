@@ -12,18 +12,9 @@ import type { YmStationTracks } from "../api/types";
 import { mapYmTrack } from "../mappers";
 import { ymSourceProvider } from "../provider";
 
-//
-// "My Wave" and the other rotor stations. A session is a chain of tracks
-// plus the feedback loop Yandex trains the station on: it hears each
-// track start and end from the player and reports it under the batch the
-// track came in. Feedback is fire-and-forget with a short retry; it must
-// never hold the queue up.
-//
-
 export const MY_WAVE_STATION = "user:onyourwave";
 
 const MAX_FEEDBACK_ATTEMPTS = 3;
-/** Chains arrive ~5 long; warming two keeps the transition inside the wave gapless. */
 const PREFETCH_AHEAD = 2;
 
 export interface RadioDeps {

@@ -14,12 +14,6 @@ import type { YmAuthEvent } from "../api/types";
 
 const INVALIDATE_DEBOUNCE_MS = 400;
 
-/**
- * Keeps the frontend's view of the Yandex session in step with Rust: the
- * stored sign-in on launch, then every `ym:auth` event. Runs once at app
- * root (behind `platformCaps.hasMediaServer`) so a session that expires
- * while no settings page is open still reaches the store.
- */
 export const useYmSourceSync = () => {
   const store = useYmAuthStore();
   const { enabled } = useYmSourceSettings();

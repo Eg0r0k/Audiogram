@@ -8,11 +8,6 @@ import type {
 } from "@/types/source-dto";
 import type { YmAlbum, YmArtist, YmPlaylist, YmTrack } from "./api/types";
 
-//
-// Yandex shapes → normalized DTOs. Cover refs stay the raw `%%` URIs; the
-// media server route substitutes the size and adds the scheme.
-//
-
 /** The album a track is mapped under, when the caller already knows it. */
 export interface YmAlbumContext {
   id: number | string;

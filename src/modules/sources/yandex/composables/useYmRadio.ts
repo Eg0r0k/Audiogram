@@ -5,7 +5,6 @@ import { getLogger } from "@/lib/logger";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { createYmRadioSession, MY_WAVE_STATION } from "../radio/radio-session";
 
-/** Starts a Yandex station in the queue; "My Wave" by default. */
 export const useYmRadio = () => {
   const queue = useQueueStore();
   const { t } = useI18n();

@@ -34,6 +34,6 @@ export const setYmHasPlus = (hasPlus: boolean): void => {
     useYmAuthStore().hasPlus = hasPlus;
   }
   catch {
-    // No store yet: nothing to correct.
+    // noop
   }
 };
