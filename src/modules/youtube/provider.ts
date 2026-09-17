@@ -20,7 +20,7 @@ import {
   downloadYoutube,
   prefetchYoutube,
 } from "./api/youtubeApi";
-import { ytEngine, type YtEngine } from "./engine/engine";
+import type { YtEngine } from "./engine/engine";
 import { toYoutubeError } from "./engine/errors";
 
 /**
@@ -64,31 +64,38 @@ const unavailable = <T>(): ResultAsync<T, YoutubeError> =>
     message: "YouTube is only available in the app",
   });
 
-const fromEngine = <T>(run: () => Promise<T>, fallback: YoutubeErrorKind): ResultAsync<T, YoutubeError> =>
-  ResultAsync.fromPromise(run(), error => toYoutubeError(error, fallback));
+type EngineLoader = () => Promise<YtEngine>;
 
-export const createInnertubeProvider = (engine: YtEngine): YoutubeProvider => ({
-  isAvailable: true,
-  search: query => fromEngine(() => engine.searchVideos(query), "SEARCH_FAILED").map(page => page.items),
-  searchVideos: query => fromEngine(() => engine.searchVideos(query), "SEARCH_FAILED"),
-  continueVideos: continuation => fromEngine(() => engine.continueVideos(continuation), "SEARCH_FAILED"),
-  searchMusic: (query, kind) => fromEngine(() => engine.searchMusic(query, kind), "SEARCH_FAILED"),
-  // The token knows which listing it continues; `kind` only exists for the contract.
-  continueMusic: continuation => fromEngine(() => engine.continueMusic(continuation), "SEARCH_FAILED"),
-  playlist: id => fromEngine(() => engine.playlist(id), "SEARCH_FAILED"),
-  album: id => fromEngine(() => engine.album(id), "SEARCH_FAILED"),
-  artist: id => fromEngine(() => engine.artist(id), "SEARCH_FAILED"),
-  track: id => fromEngine(() => engine.track(id), "SEARCH_FAILED"),
-  // Resolving registers the stream with the Rust route; the id is what the
-  // frontend plays, `ytStreamUrl(id)` maps it back on the media server.
-  resolve: id => fromEngine(() => engine.resolveStream(id), "DOWNLOAD_FAILED").map(() => id),
-  prefetch: id => fromEngine(() => engine.resolveStream(id), "NETWORK").andThen(() => prefetchYoutube(id)),
-  // Retries belong to the download manager (single layer, with backoff) —
-  // one provider call is exactly one yt_download run.
-  download: (id, onEvent, meta) =>
-    fromEngine(() => engine.resolveStream(id), "DOWNLOAD_FAILED").andThen(() => downloadYoutube(id, onEvent, meta)),
-  cancelDownload: id => cancelYoutubeDownload(id),
-});
+/** youtubei.js is a large dependency; it loads with the first YouTube call, not at startup. */
+const loadEngine: EngineLoader = () => import("./engine/engine").then(module => module.ytEngine);
+
+export const createInnertubeProvider = (engine: EngineLoader): YoutubeProvider => {
+  const fromEngine = <T>(run: (engine: YtEngine) => Promise<T>, fallback: YoutubeErrorKind): ResultAsync<T, YoutubeError> =>
+    ResultAsync.fromPromise(engine().then(run), error => toYoutubeError(error, fallback));
+
+  return {
+    isAvailable: true,
+    search: query => fromEngine(yt => yt.searchVideos(query), "SEARCH_FAILED").map(page => page.items),
+    searchVideos: query => fromEngine(yt => yt.searchVideos(query), "SEARCH_FAILED"),
+    continueVideos: continuation => fromEngine(yt => yt.continueVideos(continuation), "SEARCH_FAILED"),
+    searchMusic: (query, kind) => fromEngine(yt => yt.searchMusic(query, kind), "SEARCH_FAILED"),
+    // The token knows which listing it continues; `kind` only exists for the contract.
+    continueMusic: continuation => fromEngine(yt => yt.continueMusic(continuation), "SEARCH_FAILED"),
+    playlist: id => fromEngine(yt => yt.playlist(id), "SEARCH_FAILED"),
+    album: id => fromEngine(yt => yt.album(id), "SEARCH_FAILED"),
+    artist: id => fromEngine(yt => yt.artist(id), "SEARCH_FAILED"),
+    track: id => fromEngine(yt => yt.track(id), "SEARCH_FAILED"),
+    // Resolving registers the stream with the Rust route; the id is what the
+    // frontend plays, `ytStreamUrl(id)` maps it back on the media server.
+    resolve: id => fromEngine(yt => yt.resolveStream(id), "DOWNLOAD_FAILED").map(() => id),
+    prefetch: id => fromEngine(yt => yt.resolveStream(id), "NETWORK").andThen(() => prefetchYoutube(id)),
+    // Retries belong to the download manager (single layer, with backoff) —
+    // one provider call is exactly one yt_download run.
+    download: (id, onEvent, meta) =>
+      fromEngine(yt => yt.resolveStream(id), "DOWNLOAD_FAILED").andThen(() => downloadYoutube(id, onEvent, meta)),
+    cancelDownload: id => cancelYoutubeDownload(id),
+  };
+};
 
 const noopProvider: YoutubeProvider = {
   isAvailable: false,
@@ -108,4 +115,4 @@ const noopProvider: YoutubeProvider = {
 };
 
 export const youtubeProvider: YoutubeProvider
-  = platformCaps.hasYoutube ? createInnertubeProvider(ytEngine) : noopProvider;
+  = platformCaps.hasYoutube ? createInnertubeProvider(loadEngine) : noopProvider;

@@ -72,7 +72,7 @@ Lyrics: LRC. Chapters: CUE.
 | Windows (x64) | yes | yes | yes | installer, auto-update, tray, thumbbar |
 | macOS (Intel + Apple Silicon) | yes | yes | yes | universal build |
 | Linux (x64) | yes | yes | yes | AppImage |
-| Android (arm64) | yes | yes | no | APK, background playback |
+| Android (arm64) | yes | yes | yes | APK, background playback |
 | Web / PWA | yes | no | no | files are stored in the browser (OPFS), works offline |
 
 ## Download
@@ -96,7 +96,10 @@ Yes. Audiogram is open source under GPLv3 for personal use. There is no paid tie
 No. It's a player for music you already own or self-host, closer to foobar2000, MusicBee or Strawberry than to a streaming service, except that it also runs on Android and in the browser.
 
 **Does YouTube work on Android or in the browser?**
-Not yet. YouTube search, streaming and downloads go through a bundled `yt-dlp` sidecar, which only exists in the desktop builds. YouTube also sometimes blocks anonymous requests from a network (bot check); if that happens, a proxy can be set in Settings.
+On Android, yes: search, streaming and downloads work the same as on desktop. Not in the browser, where YouTube's servers refuse cross-origin requests. YouTube also sometimes blocks anonymous requests from a network (bot check); if that happens, a proxy can be set in Settings.
+
+**YouTube stopped working after a while. What now?**
+Update the app. YouTube changes its API every few weeks and the app talks to it directly (no `yt-dlp`), so an older build eventually stops resolving streams. Updates ship as soon as a change is caught.
 
 **Where is my library stored?**
 In the desktop and Android apps: on disk in the app data folder, with an IndexedDB database for metadata. In the browser: in the origin's private file system (OPFS). Nothing leaves your device in either case.
@@ -118,8 +121,6 @@ pnpm tauri build        # production desktop bundle
 pnpm dev                # web version on http://localhost:1420
 pnpm tauri android dev  # Android (needs Android SDK + NDK)
 ```
-
-YouTube features need a `yt-dlp` binary in `src-tauri/binaries/`, named for your target triple. The exact names are in `.github/workflows/release.yml`.
 
 ### Tech stack
 
