@@ -131,6 +131,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The action's default is "tools platform-tools"; Google stopped
+          # serving the deprecated tools package, so sdkmanager exits 1.
+          packages: platform-tools
 
       - name: Install NDK
         shell: bash
