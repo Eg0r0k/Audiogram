@@ -21,12 +21,32 @@ const messageOf = (cause: unknown, fallback: string): string => {
 const toError = (message: string) => (cause: unknown) =>
   new ProxyError(messageOf(cause, message), cause);
 
+type ProxyListener = (url: string | null) => void;
+
+let currentUrl: string | null = null;
+const listeners = new Set<ProxyListener>();
+
+/** The proxy URL last pushed by {@link applyProxy} — the same one the TS YouTube transport must use. */
+export const currentProxyUrl = (): string | null => currentUrl;
+
+/** Runs `listener` whenever {@link applyProxy} changes the URL; returns the unsubscribe. */
+export const onProxyChange = (listener: ProxyListener): (() => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
 /**
  * Pushes the active proxy URL (or `null` to clear) to the Rust side, where the
- * Innertube client and the `stream://` client pick it up. A no-op outside Tauri.
+ * media-server routes pick it up, and to the TS YouTube engine. A no-op outside Tauri.
  */
 export const applyProxy = (url: string | null): ResultAsync<void, ProxyError> => {
   if (!platformCaps.hasNativeProxy) return okAsync(undefined);
+  if (currentUrl !== url) {
+    currentUrl = url;
+    listeners.forEach(listener => listener(url));
+  }
 
   return ResultAsync.fromPromise(
     invokeCommand(COMMANDS.setProxy, { url }),

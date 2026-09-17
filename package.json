@@ -42,7 +42,6 @@
     "@vueuse/core": "^14.1.0",
     "@vueuse/integrations": "^14.4.0",
     "audio-decode": "^3.10.1",
-    "bgutils-js": "4.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cropperjs": "^1.6.2",

@@ -71,9 +71,6 @@ importers:
       audio-decode:
         specifier: ^3.10.1
         version: 3.10.1
-      bgutils-js:
-        specifier: 4.0.3
-        version: 4.0.3
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -2729,9 +2726,6 @@ packages:
   baseline-browser-mapping@2.8.32:
     resolution: {integrity: sha512-OPz5aBThlyLFgxyhdwf/s2+8ab3OvT7AdTNvKHBwpXomIYeXqpUUuT8LrdtxZSsWJ4R4CU1un4XGh5Ez3nlTpw==}
     hasBin: true
-
-  bgutils-js@4.0.3:
-    resolution: {integrity: sha512-nvhrzqRYqFcC3AJbf1fENc/jzyMk95wH9UC9ruQzTZCq+itYWuHi2a9leK/bC1lLfi+R4a28wJZxpD5KiTFf+w==}
 
   birpc@2.8.0:
     resolution: {integrity: sha512-Bz2a4qD/5GRhiHSwj30c/8kC8QGj12nNDwz3D4ErQ4Xhy35dsSDvF+RA/tWpjyU0pdGtSDiEk6B5fBGE1qNVhw==}
@@ -8637,8 +8631,6 @@ snapshots:
   baseline-browser-mapping@2.10.25: {}
 
   baseline-browser-mapping@2.8.32: {}
-
-  bgutils-js@4.0.3: {}
 
   birpc@2.8.0: {}
 
