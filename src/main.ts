@@ -15,6 +15,7 @@ import { getLogger, initLogging } from "./lib/logger";
 import { initMediaServerBase } from "./lib/stream-url";
 import { initPlayerLifecycle } from "@/modules/player/player-lifecycle";
 import { initDownloadManager } from "@/modules/downloads/service/manager";
+import { migrateOfflineCopies } from "@/modules/downloads/service/migrate-offline-copies";
 import { sweepOrphanedEntities } from "@/services/library-gc";
 import { hideAndroidSplash } from "@/lib/android-splash";
 import { initZoom } from "@/modules/settings/composables/useZoom";
@@ -97,6 +98,12 @@ onAllDataCleared(invalidateWeightsCache);
 // No-op outside Tauri. Failures must not block app startup.
 initDownloadManager().catch(error =>
   getLogger().error(`[Downloads] Init failed: ${String(error)}`),
+);
+
+// One-time (flagged in localStorage): pre-v16 offline copies become local
+// tracks and remote pinned rows demote — see migrate-offline-copies.ts.
+migrateOfflineCopies().catch(error =>
+  getLogger().error(`[Migration] download-is-import failed: ${String(error)}`),
 );
 
 // One-off per launch: drop album/artist rows that lost their last track
