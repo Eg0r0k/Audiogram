@@ -66,7 +66,8 @@ impl YmError {
     /// its errors as `{"error": {"name", "message"}}`, which is the message
     /// worth showing; anything else falls back to the status.
     pub fn from_status(status: u16, body: &str, retry_after_ms: Option<u64>) -> Self {
-        let message = api_error_message(body).unwrap_or_else(|| format!("upstream status {status}"));
+        let message =
+            api_error_message(body).unwrap_or_else(|| format!("upstream status {status}"));
         let kind = match status {
             401 => YmErrorKind::Auth,
             403 => YmErrorKind::Forbidden,
@@ -392,8 +393,10 @@ mod tests {
         }
     }
 
-    const LIKES: &str = r#"{"invocationInfo":{"req-id":"1"},"result":{"library":{"uid":42,"tracks":[]}}}"#;
-    const NEW_TOKEN: &str = r#"{"access_token":"tok-new","refresh_token":"refresh-2","expires_in":3600}"#;
+    const LIKES: &str =
+        r#"{"invocationInfo":{"req-id":"1"},"result":{"library":{"uid":42,"tracks":[]}}}"#;
+    const NEW_TOKEN: &str =
+        r#"{"access_token":"tok-new","refresh_token":"refresh-2","expires_in":3600}"#;
 
     #[test]
     fn the_allowlist_fills_in_the_uid_and_refuses_everything_else() {
@@ -444,7 +447,10 @@ mod tests {
         assert_eq!(allowed_path("/albums/../with-tracks", 42), None);
         assert_eq!(allowed_path("/albums//with-tracks", 42), None);
         assert_eq!(allowed_path("/tracks/1/download-info/extra", 42), None);
-        assert_eq!(allowed_path("/albums/{uid}/with-tracks/../../account/x", 42), None);
+        assert_eq!(
+            allowed_path("/albums/{uid}/with-tracks/../../account/x", 42),
+            None
+        );
     }
 
     #[tokio::test]
@@ -480,7 +486,10 @@ mod tests {
             assert_eq!(req.uri().path(), "/users/42/likes/tracks");
             assert_eq!(req.uri().query(), Some("rich=true"));
             assert_eq!(req.headers()["Authorization"], "OAuth tok-old");
-            assert_eq!(req.headers()["X-Yandex-Music-Client"], "YandexMusicAndroid/24023621");
+            assert_eq!(
+                req.headers()["X-Yandex-Music-Client"],
+                "YandexMusicAndroid/24023621"
+            );
             json(200, LIKES)
         })
         .await;
@@ -512,7 +521,9 @@ mod tests {
             path: "/rotor/station/user:onyourwave/feedback".into(),
             query: BTreeMap::new(),
             form: None,
-            json: Some(serde_json::json!({ "type": "radioStarted", "timestamp": "2026-09-16T00:00:00Z" })),
+            json: Some(
+                serde_json::json!({ "type": "radioStarted", "timestamp": "2026-09-16T00:00:00Z" }),
+            ),
         };
 
         let outcome = call(&state, &reqwest::Client::new(), &req).await;
@@ -550,15 +561,21 @@ mod tests {
     async fn a_401_is_refreshed_once_and_the_request_retried_with_the_new_token() {
         let upstream = spawn_upstream(|req| match req.uri().path() {
             "/token" => json(200, NEW_TOKEN),
-            _ if req.headers()["Authorization"] == "OAuth tok-old" => {
-                json(401, r#"{"error":{"name":"session-expired","message":"expired"}}"#)
-            }
+            _ if req.headers()["Authorization"] == "OAuth tok-old" => json(
+                401,
+                r#"{"error":{"name":"session-expired","message":"expired"}}"#,
+            ),
             _ => json(200, LIKES),
         })
         .await;
         let state = signed_in(&upstream);
 
-        let outcome = call(&state, &reqwest::Client::new(), &get("/users/{uid}/likes/tracks")).await;
+        let outcome = call(
+            &state,
+            &reqwest::Client::new(),
+            &get("/users/{uid}/likes/tracks"),
+        )
+        .await;
 
         assert!(outcome.result.is_ok());
         let SessionChange::Refreshed(session) = outcome.session else {
@@ -567,19 +584,30 @@ mod tests {
         assert_eq!(session.authorization(), "OAuth tok-new");
         assert_eq!(session.refresh_token(), Some("refresh-2"));
         assert_eq!(session.uid, 42);
-        assert_eq!(state.session().expect("live session").authorization(), "OAuth tok-new");
+        assert_eq!(
+            state.session().expect("live session").authorization(),
+            "OAuth tok-new"
+        );
     }
 
     #[tokio::test]
     async fn a_second_401_after_the_refresh_drops_the_session() {
         let upstream = spawn_upstream(|req| match req.uri().path() {
             "/token" => json(200, NEW_TOKEN),
-            _ => json(401, r#"{"error":{"name":"session-expired","message":"expired"}}"#),
+            _ => json(
+                401,
+                r#"{"error":{"name":"session-expired","message":"expired"}}"#,
+            ),
         })
         .await;
         let state = signed_in(&upstream);
 
-        let outcome = call(&state, &reqwest::Client::new(), &get("/users/{uid}/likes/tracks")).await;
+        let outcome = call(
+            &state,
+            &reqwest::Client::new(),
+            &get("/users/{uid}/likes/tracks"),
+        )
+        .await;
 
         assert_eq!(outcome.result.unwrap_err().kind, YmErrorKind::Auth);
         assert!(matches!(outcome.session, SessionChange::Lost));
@@ -627,18 +655,41 @@ mod tests {
 
         assert_eq!(error.kind, YmErrorKind::RateLimited);
         assert_eq!(error.retry_after_ms, Some(3000));
-        assert!(state.session().is_some(), "a rate limit is not a lost session");
+        assert!(
+            state.session().is_some(),
+            "a rate limit is not a lost session"
+        );
     }
 
     #[tokio::test]
     async fn status_codes_map_onto_the_shared_error_kinds_with_the_api_message() {
         for (status, body, kind, message) in [
-            (403, r#"{"error":{"name":"not-allowed","message":"premium only"}}"#, YmErrorKind::Forbidden, "premium only"),
+            (
+                403,
+                r#"{"error":{"name":"not-allowed","message":"premium only"}}"#,
+                YmErrorKind::Forbidden,
+                "premium only",
+            ),
             (404, "{}", YmErrorKind::NotFound, "upstream status 404"),
-            (400, r#"{"error":{"name":"validate","message":"Parameters requirements are not met"}}"#, YmErrorKind::Unknown, "Parameters requirements are not met"),
+            (
+                400,
+                r#"{"error":{"name":"validate","message":"Parameters requirements are not met"}}"#,
+                YmErrorKind::Unknown,
+                "Parameters requirements are not met",
+            ),
             // An empty message hides the cause; the name is the next best thing.
-            (400, r#"{"error":{"name":"condition is not met","message":""}}"#, YmErrorKind::Unknown, "condition is not met"),
-            (502, "<html>bad gateway</html>", YmErrorKind::Unavailable, "upstream status 502"),
+            (
+                400,
+                r#"{"error":{"name":"condition is not met","message":""}}"#,
+                YmErrorKind::Unknown,
+                "condition is not met",
+            ),
+            (
+                502,
+                "<html>bad gateway</html>",
+                YmErrorKind::Unavailable,
+                "upstream status 502",
+            ),
         ] {
             let upstream = spawn_upstream(move |_req| json(status, body)).await;
             let state = signed_in(&upstream);
@@ -650,7 +701,10 @@ mod tests {
 
             assert_eq!(error.kind, kind, "status {status}");
             assert_eq!(error.message, message, "status {status}");
-            assert!(state.session().is_some(), "status {status} keeps the session");
+            assert!(
+                state.session().is_some(),
+                "status {status} keeps the session"
+            );
         }
     }
 

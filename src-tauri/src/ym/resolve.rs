@@ -84,7 +84,10 @@ pub fn parse_download_xml(xml: &str) -> Result<XmlInfo, String> {
 pub fn signed_url(info: &XmlInfo, scheme: &str) -> String {
     let path_tail = info.path.strip_prefix('/').unwrap_or(&info.path);
     let sign = hex::encode(Md5::digest(format!("{SIGN_SALT}{path_tail}{}", info.s)));
-    format!("{scheme}://{}/get-mp3/{sign}/{}{}", info.host, info.ts, info.path)
+    format!(
+        "{scheme}://{}/get-mp3/{sign}/{}{}",
+        info.host, info.ts, info.path
+    )
 }
 
 async fn text_of(resp: reqwest::Response) -> Result<(u16, String), YmError> {
@@ -121,7 +124,10 @@ pub async fn resolve(
     let infos: Vec<DownloadInfo> = serde_json::from_value(json["result"].clone())
         .map_err(|e| YmError::unknown(format!("download-info: {e}")))?;
     let Some(best) = pick_best(&infos) else {
-        return Err(YmError::new(YmErrorKind::Unavailable, "no mp3 encoding offered"));
+        return Err(YmError::new(
+            YmErrorKind::Unavailable,
+            "no mp3 encoding offered",
+        ));
     };
 
     let resp = client
@@ -227,19 +233,37 @@ mod tests {
 
     #[test]
     fn the_xml_parser_needs_every_piece() {
-        assert!(parse_download_xml("<download-info><host>h</host><path>/p</path><ts>1</ts></download-info>").is_err());
-        assert!(parse_download_xml("<download-info><host></host><path>/p</path><ts>1</ts><s>s</s></download-info>").is_err());
+        assert!(parse_download_xml(
+            "<download-info><host>h</host><path>/p</path><ts>1</ts></download-info>"
+        )
+        .is_err());
+        assert!(parse_download_xml(
+            "<download-info><host></host><path>/p</path><ts>1</ts><s>s</s></download-info>"
+        )
+        .is_err());
         assert!(parse_download_xml("not xml").is_err());
         assert_eq!(
-            parse_download_xml("<download-info><host>h</host><path>/p</path><ts>1</ts><s>s</s></download-info>"),
-            Ok(XmlInfo { host: "h".into(), path: "/p".into(), ts: "1".into(), s: "s".into() })
+            parse_download_xml(
+                "<download-info><host>h</host><path>/p</path><ts>1</ts><s>s</s></download-info>"
+            ),
+            Ok(XmlInfo {
+                host: "h".into(),
+                path: "/p".into(),
+                ts: "1".into(),
+                s: "s".into()
+            })
         );
     }
 
     #[test]
     fn the_cache_forgets_a_link_before_the_upstream_does() {
         let cache = YmLinkCache::default();
-        let link = ResolvedTrack { url: "u".into(), preview: false, codec: "mp3".into(), bitrate: 320 };
+        let link = ResolvedTrack {
+            url: "u".into(),
+            preview: false,
+            codec: "mp3".into(),
+            bitrate: 320,
+        };
         let t0 = Instant::now();
         cache.insert_at("1", link, t0);
 
@@ -247,7 +271,16 @@ mod tests {
         assert!(cache.get_at("1", t0 + Duration::from_secs(46)).is_none());
         assert!(cache.get_at("2", t0).is_none());
 
-        cache.insert_at("1", ResolvedTrack { url: "u2".into(), preview: false, codec: "mp3".into(), bitrate: 320 }, t0);
+        cache.insert_at(
+            "1",
+            ResolvedTrack {
+                url: "u2".into(),
+                preview: false,
+                codec: "mp3".into(),
+                bitrate: 320,
+            },
+            t0,
+        );
         cache.invalidate("1");
         assert!(cache.get_at("1", t0).is_none());
     }
@@ -285,12 +318,21 @@ mod tests {
         .await;
         *upstream_holder.lock().expect("base") = upstream.clone();
 
-        let resolved = resolve(&reqwest::Client::new(), &upstream, "http", &session(), "40144")
-            .await
-            .expect("resolved");
+        let resolved = resolve(
+            &reqwest::Client::new(),
+            &upstream,
+            "http",
+            &session(),
+            "40144",
+        )
+        .await
+        .expect("resolved");
 
         let expected_sign = hex::encode(Md5::digest(format!("{SIGN_SALT}p/x.mp3sig")));
-        assert_eq!(resolved.url, format!("{upstream}/get-mp3/{expected_sign}/1a0/p/x.mp3"));
+        assert_eq!(
+            resolved.url,
+            format!("{upstream}/get-mp3/{expected_sign}/1a0/p/x.mp3")
+        );
         assert_eq!(resolved.bitrate, 320);
         assert!(!resolved.preview);
         assert_eq!(hits.load(Ordering::SeqCst), 2);
@@ -300,7 +342,10 @@ mod tests {
     async fn a_403_on_download_info_is_forbidden_and_a_401_is_auth() {
         for (status, kind) in [(403, YmErrorKind::Forbidden), (401, YmErrorKind::Auth)] {
             let upstream = spawn_upstream(move |_req| {
-                http::Response::builder().status(status).body(Full::new(bytes::Bytes::new())).unwrap()
+                http::Response::builder()
+                    .status(status)
+                    .body(Full::new(bytes::Bytes::new()))
+                    .unwrap()
             })
             .await;
 
