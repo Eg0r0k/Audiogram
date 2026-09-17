@@ -782,4 +782,44 @@ describe("ImportPipeline", () => {
       expect(item.ext).toBe("");
     });
   });
+
+  // ── Known metadata (downloads) ────────────────────────────────
+
+  describe("known metadata (downloads)", () => {
+    it("merges the source's identity over the parsed tags and stamps sourceRef on the saved row", async () => {
+      fakes.parse.mockResolvedValue(makeMeta({ title: "Unknown Title", artists: [], album: "" }));
+      const [item] = nativeItems("150478627.mp3");
+      item.known = {
+        sourceRef: "ym:150478627" as never,
+        title: "По глазам",
+        artistName: "Artist A",
+        albumTitle: "ДЕФО",
+        year: 2021,
+        trackNo: 2,
+      };
+
+      const result = await makePipeline(fakes).run([item]);
+
+      expect(result.successful).toHaveLength(1);
+      expect(result.successful[0]).toMatchObject({ title: "По глазам", artist: "Artist A", album: "ДЕФО" });
+      const [rows] = mockTrackCreateMany.mock.calls[0];
+      expect(rows[0]).toMatchObject({
+        title: "По глазам",
+        artistName: "Artist A",
+        albumTitle: "ДЕФО",
+        trackNo: 2,
+        sourceRef: "ym:150478627",
+        source: "local_internal",
+        pinned: 1,
+      });
+      expect(rows[0].storagePath).toMatch(/^tracks\/.+\.mp3$/);
+    });
+
+    it("leaves sourceRef undefined for ordinary imports", async () => {
+      await makePipeline(fakes).run(nativeItems("song.mp3"));
+
+      const [rows] = mockTrackCreateMany.mock.calls[0];
+      expect(rows[0].sourceRef).toBeUndefined();
+    });
+  });
 });

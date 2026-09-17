@@ -24,6 +24,7 @@ import {
   PROCESS_CONCURRENCY,
 } from "./constants";
 import type { ImportItemIO } from "./item-io";
+import { applyKnownMetadata } from "./known-metadata";
 import type { MetadataParser } from "./metadata-parser";
 import { persistTracks } from "./track-persister";
 import { isCancelled, yieldToEventLoop } from "./shared";
@@ -364,7 +365,8 @@ export class ImportPipeline {
               storagePath,
               fingerprint: item.fingerprint ?? "",
               source: TrackSource.LOCAL_INTERNAL,
-              meta,
+              sourceRef: item.known?.sourceRef,
+              meta: item.known ? applyKnownMetadata(meta, item.known) : meta,
             };
           })(),
           (e): ImportError => e instanceof ImportError ? e : ImportError.storageFailed(item.name, e),

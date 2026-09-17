@@ -84,6 +84,24 @@ export interface ImportControl {
   isCancelled?: () => boolean;
 }
 
+/**
+ * What a source already knows about a downloaded file. Identity fields win
+ * over the file's own tags (a ЯМ mp3 usually has none); everything the file
+ * alone knows (duration, format, loudness, fingerprint) still comes from it.
+ */
+export interface KnownMetadata {
+  /** The remote id the file was downloaded from — stored as TrackEntity.sourceRef. */
+  sourceRef: TrackId;
+  title: string;
+  /** Joined display string; split by the same rules as the pin cascade. */
+  artistName?: string;
+  albumTitle?: string;
+  year?: number;
+  trackNo?: number;
+  discNo?: number;
+  cover?: Blob;
+}
+
 export interface ImportItem {
   type: "native" | "web";
   name: string;
@@ -92,6 +110,7 @@ export interface ImportItem {
   path?: string;
   fileSize: number;
   fingerprint?: string;
+  known?: KnownMetadata;
 }
 
 export interface TrackToSave {
@@ -100,5 +119,6 @@ export interface TrackToSave {
   storagePath: string;
   fingerprint: string;
   source: TrackSource;
+  sourceRef?: TrackId;
   meta: BaseMetadata;
 }

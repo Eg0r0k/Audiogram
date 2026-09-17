@@ -135,6 +135,7 @@ export async function persistTracks(
       playCount: 0,
       addedAt: now,
       fingerprint: item.fingerprint,
+      sourceRef: item.sourceRef,
       integratedLufs: item.meta.integratedLufs,
       truePeakDbtp: item.meta.truePeakDbtp,
       replayGainDb: item.meta.replayGainDb,
