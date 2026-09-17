@@ -84,10 +84,10 @@ vi.mock("@/db/storage", () => ({
   },
 }));
 
-const offlineCopyMock = vi.hoisted(() => ({ findById: vi.fn() }));
+const trackRepoMock = vi.hoisted(() => ({ findBySourceRef: vi.fn() }));
 
 vi.mock("@/db/repositories", () => ({
-  offlineCopyRepository: offlineCopyMock,
+  trackRepository: trackRepoMock,
 }));
 
 const sourcesMock = vi.hoisted(() => ({ forTrack: vi.fn() }));
@@ -676,26 +676,27 @@ describe("player.store", () => {
     });
 
     beforeEach(() => {
-      offlineCopyMock.findById.mockResolvedValue(ok(undefined));
+      trackRepoMock.findBySourceRef.mockResolvedValue(ok(undefined));
     });
 
-    it("plays the offline copy before asking the source", async () => {
-      offlineCopyMock.findById.mockResolvedValue(ok({
-        trackId: "yt:dQw4w9WgXcQ",
-        storagePath: "offline/yt/dQw4w9WgXcQ.m4a",
-        sizeBytes: 1,
-        format: {},
-        downloadedAt: 0,
-      }));
+    it("plays the downloaded local copy before asking the source", async () => {
+      trackRepoMock.findBySourceRef.mockResolvedValue(ok(createLibraryTrack({
+        id: "local:dQw4w9WgXcQ" as never,
+        storagePath: "tracks/dQw4w9WgXcQ.m4a",
+      })));
+      // The registry is consulted for the source's resolve deadline before
+      // the copy lookup; what must not happen is a stream resolution.
+      const resolveStreamUrl = vi.fn();
+      sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl });
       const store = usePlayerStore();
 
       await store.playPlayerTrack(remoteTrack());
 
-      expect(storageMock.getAudioUrl).toHaveBeenCalledWith("offline/yt/dQw4w9WgXcQ.m4a");
-      expect(sourcesMock.forTrack).not.toHaveBeenCalled();
+      expect(storageMock.getAudioUrl).toHaveBeenCalledWith("tracks/dQw4w9WgXcQ.m4a");
+      expect(resolveStreamUrl).not.toHaveBeenCalled();
     });
 
-    it("falls back to the source stream when no offline copy exists", async () => {
+    it("falls back to the source stream when nothing was downloaded", async () => {
       const resolveStreamUrl = vi.fn(() => okAsync("http://127.0.0.1:60123/deadbeef/yt/dQw4w9WgXcQ"));
       sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl });
       const store = usePlayerStore();
@@ -705,8 +706,8 @@ describe("player.store", () => {
       expect(sourcesMock.forTrack).toHaveBeenCalledWith("yt:dQw4w9WgXcQ");
       expect(resolveStreamUrl).toHaveBeenCalledWith("yt:dQw4w9WgXcQ");
       expect(mockPlayerMethods.load).toHaveBeenCalledWith("http://127.0.0.1:60123/deadbeef/yt/dQw4w9WgXcQ");
-      // The offline copy was checked first and came back empty.
-      expect(offlineCopyMock.findById).toHaveBeenCalledWith("yt:dQw4w9WgXcQ");
+      // The local copy was looked up first and came back empty.
+      expect(trackRepoMock.findBySourceRef).toHaveBeenCalledWith("yt:dQw4w9WgXcQ");
     });
 
     it("surfaces a typed source error as a player error", async () => {
@@ -721,12 +722,12 @@ describe("player.store", () => {
       expect((failure as PlaybackFailure).error).toMatchObject({ kind: "source", cause: { kind: "NETWORK" } });
     });
 
-    it("never touches offline copies or sources for local tracks", async () => {
+    it("never looks up a local copy or a source for local tracks", async () => {
       const store = usePlayerStore();
 
       await store.playPlayerTrack(createLibraryTrack());
 
-      expect(offlineCopyMock.findById).not.toHaveBeenCalled();
+      expect(trackRepoMock.findBySourceRef).not.toHaveBeenCalled();
       expect(sourcesMock.forTrack).not.toHaveBeenCalled();
       expect(storageMock.getAudioUrl).toHaveBeenCalledWith("/path/to/track.mp3");
     });
@@ -1610,7 +1611,7 @@ describe("player.store", () => {
         .mockReturnValueOnce(errAsync({ kind: "NETWORK", message: "upstream down" }))
         .mockReturnValueOnce(okAsync("http://127.0.0.1:60123/deadbeef/yt/x"));
       sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl });
-      offlineCopyMock.findById.mockResolvedValue(ok(undefined));
+      trackRepoMock.findBySourceRef.mockResolvedValue(ok(undefined));
       const store = usePlayerStore();
 
       await store.playPlayerTrack(createLibraryTrack({ id: "yt:x" as never, source: TrackSource.REMOTE_YT, storagePath: "" }));
@@ -2323,7 +2324,7 @@ describe("player.store", () => {
         .mockReturnValueOnce(errAsync({ kind: "NETWORK", message: "upstream down" }))
         .mockReturnValueOnce(okAsync("http://127.0.0.1:60123/deadbeef/yt/x"));
       sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl });
-      offlineCopyMock.findById.mockResolvedValue(ok(undefined));
+      trackRepoMock.findBySourceRef.mockResolvedValue(ok(undefined));
       const store = usePlayerStore();
 
       await store.playPlayerTrack(createLibraryTrack({ id: "yt:x" as never, source: TrackSource.REMOTE_YT, storagePath: "" }));
@@ -2405,8 +2406,9 @@ describe("player.store", () => {
 
     it("gives a YouTube resolve a longer leash than a local file", async () => {
       const resolveStreamUrl = vi.fn(() => new ResultAsync(new Promise<never>(() => {})));
-      sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl });
-      offlineCopyMock.findById.mockResolvedValue(ok(undefined));
+      // The leash is the provider's own declaration (ytSourceProvider.resolveTimeoutMs).
+      sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl, resolveTimeoutMs: 45_000 });
+      trackRepoMock.findBySourceRef.mockResolvedValue(ok(undefined));
       const store = usePlayerStore();
 
       const failure = store.playPlayerTrack(createLibraryTrack({ id: "yt:x" as never, source: TrackSource.REMOTE_YT, storagePath: "" }))

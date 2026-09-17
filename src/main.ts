@@ -15,6 +15,7 @@ import { getLogger, initLogging } from "./lib/logger";
 import { initMediaServerBase } from "./lib/stream-url";
 import { initPlayerLifecycle } from "@/modules/player/player-lifecycle";
 import { initDownloadManager } from "@/modules/downloads/service/manager";
+import { migrateOfflineCopies } from "@/modules/downloads/service/migrate-offline-copies";
 import { sweepOrphanedEntities } from "@/services/library-gc";
 import { hideAndroidSplash } from "@/lib/android-splash";
 import { initZoom } from "@/modules/settings/composables/useZoom";
@@ -25,6 +26,8 @@ import { resetSearchIndex } from "@/modules/search/service/searchIndex";
 import { openDatabase } from "@/db";
 import { sources } from "@/modules/sources/registry";
 import { ytSourceProvider } from "@/modules/youtube/source-provider";
+import { ymSourceProvider } from "@/modules/sources/yandex/provider";
+import { ndSourceProvider } from "@/modules/sources/navidrome/provider";
 import { registerAutoplaySource } from "@/modules/queue/lib/queue-autoplay";
 import { getRecommendations } from "@/modules/recommendations/service/recommender.service";
 import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
@@ -51,7 +54,9 @@ if (dbOpen.isErr()) {
 
 // Feature → core registrations (ARCHITECTURE.md §3), before any store can
 // ask the registry: persisted stores resolve sources on first use.
+sources.register(ndSourceProvider);
 sources.register(ytSourceProvider);
+sources.register(ymSourceProvider);
 registerAutoplaySource(getRecommendations);
 statsService.onChange(markRecommenderContextDirty);
 statsService.onListenRecorded(markRecommenderContextDirty);
@@ -95,6 +100,12 @@ onAllDataCleared(invalidateWeightsCache);
 // No-op outside Tauri. Failures must not block app startup.
 initDownloadManager().catch(error =>
   getLogger().error(`[Downloads] Init failed: ${String(error)}`),
+);
+
+// Post-open half of the v16 upgrade: pre-v16 offline copies become local
+// tracks (no-op once the table is empty) — see migrate-offline-copies.ts.
+migrateOfflineCopies().catch(error =>
+  getLogger().error(`[Migration] download-is-import failed: ${String(error)}`),
 );
 
 // One-off per launch: drop album/artist rows that lost their last track

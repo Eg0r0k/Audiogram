@@ -2,7 +2,7 @@ import { isLibraryTrack, type PlayerTrack, type Track } from "@/modules/player/t
 import type { ContextActions, TrackMenuSubject } from "@/modules/tracks/components/menu/type";
 import { ensurePinned } from "@/modules/tracks/service/ensurePinned";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
-import type { ArtistId, PlaylistId, QueueItemId, TrackId } from "@/types/ids";
+import type { AlbumId, ArtistId, PlaylistId, QueueItemId, TrackId } from "@/types/ids";
 
 import { useQueryClient } from "@tanstack/vue-query";
 import { toast } from "vue-sonner";
@@ -22,14 +22,14 @@ import { isRemoteTrack, trackHasLocalFile } from "@/modules/tracks/lib/trackPred
 import { promoteTrackToLibrary, removeTrackFromLibrary } from "@/modules/tracks/service/libraryMembership";
 import { downloadSubject } from "@/modules/downloads/service/enqueue";
 import { cancelTrackDownload } from "@/modules/downloads/service/manager";
-import { removeOfflineCopy as removeOfflineCopyFile } from "@/modules/downloads/service/removeCopy";
+import { removeLocalCopy } from "@/modules/downloads/service/removeCopy";
 import { useDownloadsStore } from "@/modules/downloads/store/downloads.store";
 import { invalidateLibraryData } from "@/queries/library.queries";
-import { getOfflineCopy } from "@/queries/offlineCopy.queries";
+import { getLocalCopy } from "@/queries/localCopy.queries";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { parseTrackRef } from "@/types/track-ref";
-import { ytVideoIdFromStreamUrl } from "@/lib/stream-url";
-import { getNdConfig } from "@/modules/sources/navidrome/config";
+import { trackIdFromStreamUrl } from "@/lib/stream-url";
+import { sources } from "@/modules/sources";
 import {
   addTrackToPlaylistAndSync,
   removeTrackFromPlaylistAndSync,
@@ -96,8 +96,8 @@ export const useTrackContextActions = (
     const subject = toValue(options.subject);
     if (subject?.kind !== "remote") return null;
     try {
-      const pinned = await ensurePinned(subject);
-      // The pin may have made its album/artist visible in the library.
+      // Playlists and lyrics need a row, not a library member (§1).
+      const pinned = await ensurePinned(subject, { pinned: 0 });
       await invalidateLibraryData(queryClient);
       return pinned;
     }
@@ -189,13 +189,13 @@ export const useTrackContextActions = (
 
   /**
    * Picks the file the "Save as…" export reads from: the track's own local
-   * file, or its offline copy. Remote tracks without a copy have nothing to
-   * export — storagePath is never read blindly.
+   * file, or its downloaded local copy. Remote tracks without a copy have
+   * nothing to export — storagePath is never read blindly.
    */
   const resolveExportPath = async (current: Track): Promise<string | null> => {
     if (trackHasLocalFile(current)) return current.storagePath;
 
-    const copy = await getOfflineCopy(current.id);
+    const copy = await getLocalCopy(current.id);
     return copy?.storagePath ?? null;
   };
 
@@ -287,14 +287,14 @@ export const useTrackContextActions = (
     if (job) await cancelTrackDownload(job.jobId);
   };
 
-  const removeOfflineCopy = async () => {
+  const removeDownload = async () => {
     const trackId = subjectTrackId();
     if (!trackId) return;
     try {
-      await removeOfflineCopyFile(trackId);
+      await removeLocalCopy(trackId);
     }
     catch (error) {
-      getLogger().error(`[Downloads] Removing the offline copy of ${trackId} failed: ${String(error)}`);
+      getLogger().error(`[Downloads] Removing the downloaded copy of ${trackId} failed: ${String(error)}`);
       toast.error(t("track.removeDownloadFailed"));
     }
   };
@@ -333,34 +333,29 @@ export const useTrackContextActions = (
     }
   };
 
-  /** yt → the watch page; nd → the server page (wired with ND settings, M2). */
+  /** The track's page at its source; a playing stream names its source in the proxied URL. */
   const externalUrl = (): string | null => {
     const subject = toValue(options.subject);
-    if (subject?.kind === "ephemeral" && subject.track.source.type === "url") {
-      const videoId = ytVideoIdFromStreamUrl(subject.track.source.url);
-      return videoId ? `https://www.youtube.com/watch?v=${videoId}` : null;
-    }
-
     const current = toValue(track);
-    let id = null;
-    if (subject?.kind === "remote") id = subject.dto.id;
-    else if (isLibraryTrack(current)) id = current.id;
+
+    let id: TrackId | null = null;
+    let albumId: AlbumId | undefined;
+    if (subject?.kind === "ephemeral") {
+      id = subject.track.source.type === "url" ? trackIdFromStreamUrl(subject.track.source.url) : null;
+    }
+    else if (subject?.kind === "remote") {
+      id = subject.dto.id;
+      albumId = subject.dto.albumId;
+    }
+    else if (isLibraryTrack(current)) {
+      id = current.id;
+      albumId = current.albumId;
+    }
     if (!id) return null;
 
-    const ref = parseTrackRef(id);
-    if (ref.kind === "yt") return `https://www.youtube.com/watch?v=${ref.videoId}`;
-    if (ref.kind === "nd") {
-      const config = getNdConfig();
-      if (!config) return null;
-      let albumId;
-      if (subject?.kind === "remote") albumId = subject.dto.albumId;
-      else if (isLibraryTrack(current)) albumId = current.albumId;
-      const albumRef = albumId ? parseTrackRef(albumId as unknown as typeof id) : null;
-      return albumRef?.kind === "nd"
-        ? `${config.baseUrl}/app/#/album/${albumRef.songId}/show`
-        : config.baseUrl;
-    }
-    return null;
+    const kind = parseTrackRef(id).kind;
+    if (kind === "local") return null;
+    return sources.get(kind).externalUrl?.({ id, albumId }) ?? null;
   };
 
   const openExternal = async () => {
@@ -391,7 +386,7 @@ export const useTrackContextActions = (
     exportFile: guarded("exportFile", exportFile),
     downloadOffline: guarded("downloadOffline", downloadOffline),
     cancelOfflineDownload: guarded("cancelOfflineDownload", cancelOfflineDownload),
-    removeOfflineCopy: guarded("removeOfflineCopy", removeOfflineCopy),
+    removeDownload: guarded("removeDownload", removeDownload),
     addToLibrary: guarded("addToLibrary", addToLibrary),
     removeFromLibrary: guarded("removeFromLibrary", removeFromLibrary),
     openExternal: guarded("openExternal", openExternal),

@@ -135,6 +135,7 @@ export async function persistTracks(
       playCount: 0,
       addedAt: now,
       fingerprint: item.fingerprint,
+      sourceRef: item.sourceRef,
       integratedLufs: item.meta.integratedLufs,
       truePeakDbtp: item.meta.truePeakDbtp,
       replayGainDb: item.meta.replayGainDb,
@@ -161,6 +162,11 @@ export async function persistTracks(
     ),
   );
 
+  // Existing rows the batch attaches to may be remote shadows (pinned = 0):
+  // a local track under them makes them library members.
+  const referencedArtistIds = [...new Set(items.flatMap(artistIdsOf))];
+  const referencedAlbumIds = [...new Set(tracksToCreate.map(track => track.albumId).filter(Boolean))];
+
   const uowResult = await unitOfWork.runScoped(
     [db.tracks, db.artists, db.albums, db.covers],
     async () => {
@@ -185,6 +191,12 @@ export async function persistTracks(
       }
       if (tracksToCreate.length > 0) {
         await unwrapResult(trackRepository.createMany(tracksToCreate));
+      }
+      if (referencedArtistIds.length > 0) {
+        await db.artists.where("id").anyOf(referencedArtistIds).and(artist => artist.pinned === 0).modify({ pinned: 1 });
+      }
+      if (referencedAlbumIds.length > 0) {
+        await db.albums.where("id").anyOf(referencedAlbumIds).and(album => album.pinned === 0).modify({ pinned: 1 });
       }
     });
 

@@ -14,7 +14,11 @@ export { unwrapResult } from "@/lib/result";
  * retried.
  */
 export class SourceQueryError extends Error {
-  constructor(public readonly kind: SourceErrorKind, message: string) {
+  constructor(
+    public readonly kind: SourceErrorKind,
+    message: string,
+    public readonly retryAfterMs?: number,
+  ) {
     super(message);
     this.name = "SourceQueryError";
   }
@@ -35,7 +39,7 @@ export const unwrapSourceResult = async <T>(
   if (result.isErr()) {
     getLogger().error(`[Source] ${result.error.kind}: ${result.error.message}`);
     if (kind) reportSourceError(kind, result.error);
-    throw new SourceQueryError(result.error.kind, result.error.message);
+    throw new SourceQueryError(result.error.kind, result.error.message, result.error.retryAfterMs);
   }
 
   if (kind) reportSourceOk(kind);

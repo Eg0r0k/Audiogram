@@ -10,7 +10,6 @@ import type { Track } from "../../types";
 
 vi.mock("@/db/repositories", () => ({
   trackRepository: { findByIds: vi.fn() },
-  offlineCopyRepository: { findById: vi.fn() },
 }));
 
 vi.mock("@/modules/recommendations/service/recommender.service", () => ({

@@ -208,6 +208,7 @@ export function useArtistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Re
   });
 
   return {
+    remoteKind,
     artist,
     albums,
     albumCovers,

@@ -64,6 +64,7 @@ import WhatsNewDialog from "@/modules/update/components/WhatsNewDialog.vue";
 import { useTrayBehavior } from "@/modules/settings/composables/useTrayBehavior";
 import { useProxySync } from "@/modules/settings/composables/useProxySync";
 import { useNdSourceSync } from "@/modules/settings/composables/useNdSourceSync";
+import { useYmSourceSync } from "@/modules/sources/yandex/composables/useYmSourceSync";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { ephemeralFromPath } from "@/modules/player/types";
 import { DialogSummonHost } from "@/components/dialogs/summon";
@@ -170,6 +171,7 @@ useChangelogOnStartup();
 if (platformCaps.hasNativeWindow) useTrayBehavior();
 if (platformCaps.hasNativeProxy) useProxySync();
 if (platformCaps.canProxyStream) useNdSourceSync();
+if (platformCaps.hasMediaServer) useYmSourceSync();
 
 watch(() => currentRoute.fullPath, (fullPath) => {
   rightPanelStore.invalidateRouteScope(fullPath);

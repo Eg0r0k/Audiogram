@@ -1,17 +1,22 @@
-import { describe, expect, it, vi } from "vitest";
-import type { ArtistEntity } from "@/db/entities";
+import "fake-indexeddb/auto";
+import { beforeEach, describe, expect, it } from "vitest";
+import { db } from "@/db";
+import type { ArtistEntity, PinnedFlag } from "@/db/entities";
 import { ArtistId } from "@/types/ids";
 import { ndArtistId, ytAlbumId, ytArtistId, ytTrackId } from "@/types/track-ref";
 import type { SourceTrackDTO } from "@/modules/sources";
-import { alignArtists, splitArtistNames } from "../entity-resolver";
-
-vi.mock("@/db", () => ({ db: {} }));
+import type { BaseMetadata } from "@/workers/types";
+import { EntityResolver, alignArtists, splitArtistNames } from "../entity-resolver";
 
 const localId = ArtistId("41180b61-7c4a-44aa-bcd7-166e6b0e4b50");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-function artist(id: ArtistId, name: string): ArtistEntity {
-  return { id, name, pinned: 1, addedAt: 1, updatedAt: 1 };
+function artist(id: ArtistId, name: string, pinned: PinnedFlag = 1): ArtistEntity {
+  return { id, name, pinned, addedAt: 1, updatedAt: 1 };
+}
+
+function meta(artists: string[]): BaseMetadata {
+  return { title: "t", artists, album: "", duration: 1, format: {} };
 }
 
 const dto: SourceTrackDTO = {
@@ -97,5 +102,41 @@ describe("alignArtists", () => {
     const result = alignArtists(paired, [artist(localId, "niker")]);
 
     expect(result.artistIds).toEqual([ytArtistId("UCm"), localId]);
+  });
+});
+
+describe("EntityResolver.resolveArtists — local vs shadow identity", () => {
+  beforeEach(async () => {
+    await db.open();
+    await db.artists.clear();
+  });
+
+  it("a same-named local artist row wins over a remote shadow row regardless of insertion order", async () => {
+    // `db.artists.toArray()` is ordered by primary key, not insertion call
+    // order — "a-local" and "z-local" pin the local row on either side of
+    // the shadow row's key so both scan orders are exercised.
+    await db.artists.bulkAdd([
+      artist(ArtistId("ym:artist:5"), "Artist A", 0),
+      artist(ArtistId("a-local"), "Artist A", 1),
+    ]);
+    await db.artists.bulkAdd([
+      artist(ArtistId("ym:artist:6"), "Artist B", 0),
+      artist(ArtistId("z-local"), "Artist B", 1),
+    ]);
+    const resolver = new EntityResolver();
+
+    await resolver.resolve([meta(["Artist A", "Artist B"])]);
+
+    expect(resolver.getArtistId("Artist A")).toBe(ArtistId("a-local"));
+    expect(resolver.getArtistId("Artist B")).toBe(ArtistId("z-local"));
+  });
+
+  it("uses the shadow row when no local artist has that name", async () => {
+    await db.artists.add(artist(ArtistId("ym:artist:5"), "Artist A", 0));
+    const resolver = new EntityResolver();
+
+    await resolver.resolve([meta(["Artist A"])]);
+
+    expect(resolver.getArtistId("Artist A")).toBe(ArtistId("ym:artist:5"));
   });
 });

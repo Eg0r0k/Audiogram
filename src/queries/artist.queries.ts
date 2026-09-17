@@ -31,7 +31,6 @@ import {
 import { assertValidName } from "@/lib/limits";
 import { sortTracks, unwrapResult, unique } from "./shared";
 import {
-  findOfflineCopiesOf,
   purgeTracksInTx,
   syncAfterTrackPurge,
   trackCascadeTables,
@@ -332,7 +331,6 @@ export async function deleteArtistAndSync(
     [...rawTracks, ...albumTracks].map(track => [track.id, track]),
   ).values()];
   const affectedTrackIds = affectedTracks.map(track => track.id);
-  const copies = cascadeTracks ? await findOfflineCopiesOf(affectedTrackIds) : [];
   const now = Date.now();
   const remainingArtistIds = unique(
     affectedTracks.flatMap(track => track.artistIds.filter(id => id !== artistEntity.id)),
@@ -366,7 +364,7 @@ export async function deleteArtistAndSync(
       // The purge GCs albums that lost their last track; the artist's own
       // albums are dropped explicitly right after, empty or not.
       const removals = cascadeTracks
-        ? await purgeTracksInTx(affectedTracks, copies, now)
+        ? await purgeTracksInTx(affectedTracks, now)
         : [];
 
       if (!cascadeTracks && trackUpdates.length > 0) {
@@ -391,7 +389,6 @@ export async function deleteArtistAndSync(
     queryClient,
     cascadeTracks ? affectedTrackIds : [],
     txResult.value,
-    copies,
   );
 
   for (const album of albums) {

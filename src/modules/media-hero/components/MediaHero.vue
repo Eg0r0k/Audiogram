@@ -50,6 +50,14 @@
               :data="data"
             />
 
+            <RouterLink
+              v-if="props.catalogRoute"
+              :to="props.catalogRoute"
+              class="mt-3 inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white/90 hover:bg-white/25 transition-colors"
+            >
+              {{ $t('media.openInCatalog') }}
+            </RouterLink>
+
             <p
               v-if="descriptionText"
               class="mt-3 max-w-2xl text-sm leading-6 text-white/80 line-clamp-3 @lg:max-w-none"
@@ -68,6 +76,7 @@
           :is-playlist-owner="isPlaylist(data) ? data.isOwner : undefined"
           :show-menu="hasMenuItems"
           :filterable="props.filterable"
+          :like="props.like"
           @play="$emit('play')"
           @shuffle="$emit('shuffle')"
         />
@@ -79,6 +88,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { RouterLink } from "vue-router";
+import type { RouteLocationRaw } from "vue-router";
 import { toast } from "vue-sonner";
 import { useImageColor } from "@/composables/useImageColor";
 import { platformCaps } from "@/lib/environment/platformCaps";
@@ -97,6 +108,7 @@ import MediaHeroMeta from "./MediaHeroMeta.vue";
 import MediaHeroActions from "./MediaHeroActions.vue";
 import type { QueueSource } from "@/modules/queue/types";
 import type { MediaData } from "@/types/media-data";
+import type { EntityLikeState } from "@/modules/sources/composables/useEntityLike";
 import { isAlbum, isArtist, isLiked, isPlaylist } from "@/types/media-data";
 
 const props = withDefaults(defineProps<{
@@ -109,9 +121,18 @@ const props = withDefaults(defineProps<{
   isLibraryEntity?: boolean;
   /** Shows the track filter; the page narrows its list by the `filter` model. */
   filterable?: boolean;
+  /** The entity's like at its source, handed down to the actions row. */
+  like?: EntityLikeState;
+  /** An own catalog playlist its source can delete — "Delete" without a Dexie row. */
+  canDeleteAtSource?: boolean;
+  /** The catalog view behind this library view, when one exists. */
+  catalogRoute?: RouteLocationRaw | null;
 }>(), {
   isLibraryEntity: true,
   filterable: false,
+  like: undefined,
+  canDeleteAtSource: false,
+  catalogRoute: null,
 });
 
 const filter = defineModel<string>("filter", { default: "" });
@@ -185,6 +206,7 @@ provideMediaContext({
   delete: () => emit("delete"),
   share: () => emit("share"),
   canManage,
+  canDeleteAtSource: computed(() => props.canDeleteAtSource),
   canDownloadOffline,
   downloadOffline: () => {
     startOfflineDownload()

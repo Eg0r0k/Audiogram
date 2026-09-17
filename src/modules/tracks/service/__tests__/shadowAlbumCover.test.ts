@@ -3,13 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { coverCache } from "@/modules/covers/lib/cover-cache";
 import { ytAlbumId, ytTrackId } from "@/types/track-ref";
+import { THUMB_SIZE_FULL } from "@/lib/media/cover-sizes";
 import { ensureShadowCover } from "../shadowAlbumCover";
 
 const logger = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => logger }));
 vi.mock("@/modules/sources", () => ({
   sources: {
-    get: () => ({ coverUrl: (ref: string) => `proxied://${ref}` }),
+    get: () => ({ coverUrl: (ref: string, size?: number) => `proxied://${ref}?size=${size}` }),
   },
 }));
 
@@ -27,13 +28,13 @@ describe("ensureShadowCover", () => {
     logger.warn.mockClear();
   });
 
-  it("fetches the proxied cover and stores it for the album", async () => {
+  it("fetches the proxied cover at the full rendition and stores it for the album", async () => {
     const blob = new Blob(["img"], { type: "image/jpeg" });
     vi.stubGlobal("fetch", vi.fn(async () => new Response(blob, { status: 200 })));
 
     await ensureShadowCover("album", albumId, "https://i.ytimg.com/vi/x/hq.jpg");
 
-    expect(fetch).toHaveBeenCalledWith("proxied://https://i.ytimg.com/vi/x/hq.jpg");
+    expect(fetch).toHaveBeenCalledWith(`proxied://https://i.ytimg.com/vi/x/hq.jpg?size=${THUMB_SIZE_FULL}`);
     const cover = await db.covers.where("[ownerType+ownerId]").equals(["album", albumId]).first();
     expect(cover).toMatchObject({ ownerType: "album", ownerId: albumId });
   });

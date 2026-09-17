@@ -6,6 +6,8 @@
   "pinFailed": "Не удалось добавить трек в библиотеку",
   "addedToLibrary": "Добавлено в библиотеку",
   "removedFromLibrary": "Удалено из библиотеки",
+  "unavailable": "Недоступен в источнике",
+  "preview": "Фрагмент",
   "removeFromLibraryFailed": "Не удалось удалить трек из библиотеки",
   "removeFromHistoryFailed": "Не удалось удалить трек из истории",
   "favorite": {

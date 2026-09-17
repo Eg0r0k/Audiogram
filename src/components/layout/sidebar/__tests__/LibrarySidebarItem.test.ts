@@ -85,6 +85,26 @@ describe("LibrarySidebarItem", () => {
     expect(pushSpy).toHaveBeenCalledWith("/playlist/p1");
   });
 
+  it("emits startRadio instead of navigating for station rows", async () => {
+    const pushSpy = vi.spyOn(router, "push");
+    const { emitted } = await renderItem(createItem({
+      id: "user:onyourwave",
+      type: "radio",
+      title: "My Wave",
+      subtitle: "Yandex Music",
+      to: "/",
+      rounded: true,
+      isCatalog: true,
+    }));
+
+    await fireEvent.click(screen.getByRole("button"));
+
+    expect(emitted().startRadio).toEqual([["user:onyourwave"]]);
+    expect(emitted().openFolder).toBeUndefined();
+    expect(pushSpy).not.toHaveBeenCalled();
+    expect(screen.getByText(/Station/)).toBeTruthy();
+  });
+
   it("emits openFolder instead of navigating for folder rows", async () => {
     const pushSpy = vi.spyOn(router, "push");
     const { emitted } = await renderItem(createItem({

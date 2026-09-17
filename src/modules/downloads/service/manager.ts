@@ -2,14 +2,14 @@ import pLimit from "p-limit";
 import { toast } from "vue-sonner";
 import { i18n } from "@/app/i18n";
 import type { DownloadJobEntity } from "@/db/entities";
-import { downloadJobRepository, offlineCopyRepository, trackRepository } from "@/db/repositories";
+import { downloadJobRepository, trackRepository } from "@/db/repositories";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { getLogger } from "@/lib/logger";
 import { sources } from "@/modules/sources";
 import type { SourceError } from "@/modules/sources";
 import { unwrapResult } from "@/queries/shared";
 import type { TrackId } from "@/types/ids";
-import { finalizeOfflineCopy } from "./finalize";
+import { finalizeDownloadImport } from "./finalize";
 import { useDownloadsStore, type DownloadRuntime } from "../store/downloads.store";
 
 //
@@ -35,8 +35,8 @@ type DownloadFinalizer = (
   file: { path: string; format?: { codec?: string } },
 ) => Promise<void>;
 
-/** Offline-copy import + cache sync; replaceable in unit tests. */
-let finalizeDownload: DownloadFinalizer = finalizeOfflineCopy;
+/** Library import + cache sync; replaceable in unit tests. */
+let finalizeDownload: DownloadFinalizer = finalizeDownloadImport;
 
 export function setDownloadFinalizer(finalizer: DownloadFinalizer): void {
   finalizeDownload = finalizer;
@@ -55,18 +55,18 @@ function runtimeOf(job: DownloadJobEntity): DownloadRuntime {
 }
 
 function isRetriable(error: SourceError): boolean {
-  return error.kind === "NETWORK" || error.kind === "UNKNOWN";
+  return error.kind === "NETWORK" || error.kind === "UNKNOWN" || error.kind === "RATE_LIMITED";
 }
 
 /**
  * Queues a download for the track. Returns the job id, reusing an active
- * job for the same track; null when an offline copy already exists.
+ * job for the same track; null when a local copy already exists.
  */
 export async function enqueueTrackDownload(trackId: TrackId, batchId?: string): Promise<string | null> {
   const active = await unwrapResult(downloadJobRepository.findActiveByTrackId(trackId));
   if (active) return active.id;
 
-  const copy = await unwrapResult(offlineCopyRepository.findById(trackId));
+  const copy = await unwrapResult(trackRepository.findBySourceRef(trackId));
   if (copy) return null;
 
   // A terminal error from a previous run is superseded by this attempt.
@@ -234,8 +234,8 @@ async function runJob(jobId: string): Promise<void> {
       await failJob(job, { kind: "UNKNOWN", message: `finalize failed: ${String(error)}` });
       return;
     }
-    // Done = deleted: offlineCopies is the ledger of finished downloads,
-    // keeping a "done" row would only accumulate garbage.
+    // Done = deleted: the imported local row (sourceRef) is the ledger of
+    // finished downloads, keeping a "done" row would only accumulate garbage.
     await unwrapResult(downloadJobRepository.delete(jobId));
     store.remove(jobId);
     if (job.batchId) store.bumpBatch(job.batchId, "finished");
@@ -265,7 +265,9 @@ async function failJob(job: DownloadJobEntity, error: SourceError): Promise<void
       attempts,
       error: error.message,
     }));
-    retryAt.set(job.id, Date.now() + RETRY_BASE_MS * 2 ** (attempts - 1));
+    // A source that named its own wait (429 Retry-After) is not asked sooner.
+    const backoff = Math.max(RETRY_BASE_MS * 2 ** (attempts - 1), error.retryAfterMs ?? 0);
+    retryAt.set(job.id, Date.now() + backoff);
     store.upsert(runtimeOf({ ...job, attempts }));
     getLogger().warn(`[Downloads] Retry ${attempts}/${MAX_ATTEMPTS} for ${job.trackId}: ${error.message}`);
     return;

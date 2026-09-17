@@ -7,6 +7,8 @@ export interface MediaContextActions {
   share: () => void;
   /** See {@link MediaActions.canManage} — library row vs live catalog entity. */
   canManage?: ComputedRef<boolean>;
+  /** An own catalog playlist its source can delete (Yandex). Absent = no. */
+  canDeleteAtSource?: ComputedRef<boolean>;
   /** M4: ND album / any playlist — batch offline download. Absent = hidden. */
   canDownloadOffline?: ComputedRef<boolean>;
   downloadOffline?: () => void;

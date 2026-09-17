@@ -103,7 +103,7 @@ describe("v9 → v10 upgrade (integration)", () => {
     const { db } = await import("@/db");
     await db.open();
 
-    expect(db.verno).toBe(15);
+    expect(db.verno).toBe(16);
 
     const track = await db.tracks.get("t1" as never);
     expect(track).toMatchObject({ id: "t1", pinned: 1, likedAt: 42, playCount: 3 });
@@ -111,7 +111,6 @@ describe("v9 → v10 upgrade (integration)", () => {
     expect((await db.artists.get("ar1" as never))?.pinned).toBe(1);
 
     // New tables exist and are empty.
-    expect(await db.offlineCopies.count()).toBe(0);
     expect(await db.downloadJobs.count()).toBe(0);
 
     // v11 removed the empty-key chapters row and left the real one.
@@ -155,6 +154,7 @@ describe("v9 → v10 upgrade (integration)", () => {
     const indexNames = (name: keyof typeof db) => (db[name] as { schema: { indexes: { name: string }[] } }).schema.indexes.map(i => i.name);
     expect(indexNames("tracks")).not.toContain("state");
     expect(indexNames("tracks")).not.toContain("source");
+    expect(indexNames("tracks")).toContain("sourceRef");
     expect(indexNames("albums")).not.toContain("[artistId+year]");
     expect(indexNames("downloadJobs")).not.toContain("batchId");
     expect(indexNames("folders")).toEqual([]);

@@ -25,6 +25,8 @@ export type SourceHealth
  */
 const SOURCE_LEVEL: ReadonlySet<SourceErrorKind> = new Set<SourceErrorKind>([
   "AUTH",
+  "FORBIDDEN",
+  "RATE_LIMITED",
   "NETWORK",
   "UNAVAILABLE",
 ]);

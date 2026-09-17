@@ -4,12 +4,13 @@ import type { StorageError } from "@/db/errors/storage.errors";
 import type { SourceError } from "@/types/source-dto";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { storageService } from "@/db/storage";
-import { offlineCopyRepository } from "@/db/repositories";
+import { trackRepository } from "@/db/repositories";
 import { sources } from "@/modules/sources";
 import { ensurePinned } from "@/modules/tracks/service/ensurePinned";
 import { getLogger } from "@/lib/logger";
-import { ytVideoIdFromStreamUrl } from "@/lib/stream-url";
-import { parseTrackRef } from "@/types/track-ref";
+import { trackIdFromStreamUrl } from "@/lib/stream-url";
+import { isRemoteTrackSource, parseTrackRef } from "@/types/track-ref";
+import type { TrackId } from "@/types/ids";
 import {
   type PlayerTrack,
   type EphemeralTrack,
@@ -76,16 +77,18 @@ export const isEngineFailure = (error: PlaybackError): boolean =>
   error.kind === "engine" || (error.kind === "timeout" && error.phase === "loading");
 
 const RESOLVE_TIMEOUT_MS = 15_000;
-// A cold yt-dlp run (sidecar start, bot-check challenge, format probing)
-// routinely takes longer than a local lookup or a Subsonic stream URL.
-const YT_RESOLVE_TIMEOUT_MS = 45_000;
+
+/** The branded id a track resolves under; a proxied ephemeral stream names its source in the URL. */
+const trackIdOf = (track: PlayerTrack): TrackId | null => {
+  if (!isEphemeralTrack(track)) return track.id;
+  return track.source.type === "url" ? trackIdFromStreamUrl(track.source.url) : null;
+};
 
 /** How long resolvePlaybackSource may take for this track before the watchdog gives up. */
 export const resolveTimeoutMsFor = (track: PlayerTrack): number => {
-  const isYt = isEphemeralTrack(track)
-    ? track.source.type === "url" && ytVideoIdFromStreamUrl(track.source.url) !== null
-    : parseTrackRef(track.id).kind === "yt";
-  return isYt ? YT_RESOLVE_TIMEOUT_MS : RESOLVE_TIMEOUT_MS;
+  const id = trackIdOf(track);
+  if (!id || parseTrackRef(id).kind === "local") return RESOLVE_TIMEOUT_MS;
+  return sources.forTrack(id).resolveTimeoutMs ?? RESOLVE_TIMEOUT_MS;
 };
 
 /** Wraps whatever the engine threw so every failure leaving the store carries a kind. */
@@ -99,6 +102,9 @@ export const toPlaybackFailure = (thrown: unknown, track: PlayerTrack): Playback
 export const checkPlayable = (track: PlayerTrack): Result<void, PlaybackError> => {
   if (isLibraryTrack(track) && track.state === TrackState.BROKEN) {
     return err({ kind: "broken", trackId: track.id });
+  }
+  if (isLibraryTrack(track) && track.sourceDto?.availability === "unavailable") {
+    return err({ kind: "unavailable", reason: "the source marks this track as not available" });
   }
   // A dropped File does not survive persistence: the restored entry carries
   // an empty object where the handle was, and no load can fix that.
@@ -157,10 +163,10 @@ const resolveRemote = (track: Track): ResultAsync<PlaybackSource, PlaybackError>
   }
 
   // A failed lookup is treated as "no copy": the stream is still playable.
-  return ResultAsync.fromSafePromise(offlineCopyRepository.findById(track.id))
+  return ResultAsync.fromSafePromise(trackRepository.findBySourceRef(track.id))
     .andThen((copyResult) => {
       const copy = copyResult.isOk() ? copyResult.value : undefined;
-      if (copy) return fromStorage(copy.storagePath);
+      if (copy?.storagePath) return fromStorage(copy.storagePath);
       return sources.forTrack(track.id).resolveStreamUrl(track.id)
         .map(url => classifyUrl(url))
         .mapErr((cause): PlaybackError => ({ kind: "source", cause }));
@@ -174,9 +180,7 @@ const resolveLibrary = (track: Track): ResultAsync<PlaybackSource, PlaybackError
     return okAsync(classifyUrl(track.storagePath));
   }
 
-  const isRemote = track.source === TrackSource.REMOTE_SUBSONIC
-    || track.source === TrackSource.REMOTE_YT;
-  if (isRemote) return resolveRemote(track);
+  if (isRemoteTrackSource(track.source)) return resolveRemote(track);
 
   if (track.source === TrackSource.LOCAL_EXTERNAL && !platformCaps.hasFs) {
     return unavailable("LOCAL_EXTERNAL tracks require native FS");
@@ -190,7 +194,7 @@ const resolveLibrary = (track: Track): ResultAsync<PlaybackSource, PlaybackError
  *
  * Library tracks:
  *   1. local file (LOCAL_INTERNAL/LOCAL_EXTERNAL) → storageService.getAudioUrl
- *   2. remote with an offline copy → storageService.getAudioUrl(copy path)
+ *   2. remote with a downloaded local copy (`sourceRef`) → storageService.getAudioUrl(copy path)
  *   3. remote otherwise → sources.forTrack(id).resolveStreamUrl(id)
  *
  * Ephemeral tracks:

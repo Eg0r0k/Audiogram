@@ -34,11 +34,9 @@ import {
 } from "./cache";
 import { unique, unwrapResult } from "./shared";
 import {
-  findOfflineCopiesOf,
   purgeTracksInTx,
   syncAfterTrackPurge,
   trackCascadeTables,
-  type TrackPurgeSyncOptions,
 } from "./track-cascade";
 import type { LikedTracksPageData, PaginatedTracksResult } from "./types";
 import { getAlbumByIdOrThrow } from "./album.queries";
@@ -411,7 +409,6 @@ export async function setTracksLikedAndSync(
 export async function deleteTracksAndSync(
   queryClient: QueryClient,
   ids: TrackId[],
-  options: TrackPurgeSyncOptions = {},
 ): Promise<number> {
   if (ids.length === 0) return 0;
   const tracks = await unwrapResult(trackRepository.findByIds(ids));
@@ -419,20 +416,19 @@ export async function deleteTracksAndSync(
 
   const trackIds = tracks.map(track => track.id);
   const now = Date.now();
-  const copies = await findOfflineCopiesOf(trackIds);
 
   const txResult = await unitOfWork.runScoped(
     trackCascadeTables(),
     // The arrow must `await` inside its body: a bare passthrough settles the
     // outer promise outside the Dexie transaction zone and throws
     // PrematureCommitError. Do not "simplify" this back to a plain return.
-    async () => await purgeTracksInTx(tracks, copies, now),
+    async () => await purgeTracksInTx(tracks, now),
   );
   if (txResult.isErr()) throw txResult.error;
   const removals = txResult.value;
 
   await settleLibraryReads(queryClient);
-  await syncAfterTrackPurge(queryClient, trackIds, removals, copies, [], options);
+  await syncAfterTrackPurge(queryClient, trackIds, removals);
   const idSet = new Set<string>(trackIds);
   queryClient.removeQueries({
     predicate: query => query.queryKey[0] === "tracks" && idSet.has(query.queryKey[1] as string),

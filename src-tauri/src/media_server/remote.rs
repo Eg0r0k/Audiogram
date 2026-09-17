@@ -1,5 +1,5 @@
-//! Remote routes (`nd/…`, `yt/…`) behind a trait so the HTTP core needs no
-//! `AppHandle`; the production impl wraps one, tests use a stub.
+//! Remote routes (`nd/…`, `ym/…`, `yt/…`) behind a trait so the HTTP core
+//! needs no `AppHandle`; the production impl wraps one, tests use a stub.
 
 use std::future::Future;
 
@@ -8,7 +8,7 @@ use tauri::{AppHandle, Runtime};
 use super::primitives::status_response;
 use super::Body;
 
-/// Remote (non-local-file) routes: `nd/…` and `yt/…`. Split behind a trait
+/// Remote (non-local-file) routes: `nd/…`, `ym/…` and `yt/…`. Split behind a trait
 /// so the HTTP core needs no `AppHandle` — the production impl wraps one,
 /// tests use a stub.
 pub(crate) trait RemoteRoutes: Clone + Send + Sync + 'static {
@@ -67,6 +67,20 @@ impl<R: Runtime> RemoteRoutes for AppRoutes<R> {
             let config = app.state::<crate::nd::NdState>().get();
             return Some(
                 crate::nd::serve_cover(config, &client, id, query.as_deref(), origin).await,
+            );
+        }
+        if let Some(id) = rest.strip_prefix("ym/track/") {
+            crate::ym::load_session_if_needed(app);
+            let state = app.state::<crate::ym::YmState>();
+            let links = app.state::<crate::ym::YmLinkCache>();
+            let cache = app.state::<crate::ym::YmAudioCache>();
+            return Some(
+                crate::ym::serve_track(&state, &links, &cache, &client, id, range, origin).await,
+            );
+        }
+        if let Some(cover_ref) = rest.strip_prefix("ym/cover/") {
+            return Some(
+                crate::ym::serve_cover(&client, cover_ref, query.as_deref(), origin).await,
             );
         }
         #[cfg(desktop)]

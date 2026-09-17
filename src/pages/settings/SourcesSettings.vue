@@ -76,6 +76,7 @@ import { sourceUI } from "@/modules/sources/lib/source-ui";
 import { checkSource } from "@/modules/sources/composables/useSourceHealth";
 import { sourceHealth } from "@/modules/sources/lib/health";
 import NdSettingsSection from "@/modules/sources/components/settings/NdSettingsSection.vue";
+import YmSettingsSection from "@/modules/sources/components/settings/YmSettingsSection.vue";
 import type { SourceKind } from "@/types/track-ref";
 
 //
@@ -91,6 +92,7 @@ import type { SourceKind } from "@/types/track-ref";
 
 const SOURCE_SETTINGS: Partial<Record<SourceKind, Component>> = {
   nd: NdSettingsSection,
+  ym: YmSettingsSection,
 };
 
 const { t } = useI18n();

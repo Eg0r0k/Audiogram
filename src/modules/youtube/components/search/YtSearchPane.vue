@@ -64,7 +64,7 @@
         />
 
         <Scrollable
-          v-if="!submittedYtQuery"
+          v-if="!submittedQuery"
           class="flex-1 min-h-0"
         >
           <div class="flex flex-col py-6 gap-4 px-4 pt-0">
@@ -85,13 +85,13 @@
 
         <YtSearchAllSections
           v-else-if="ytChip === 'all'"
-          :query="submittedYtQuery"
+          :query="submittedQuery"
           @show-all="setYtChip"
         />
         <YtSearchList
           v-else
           :chip="ytChip"
-          :query="submittedYtQuery"
+          :query="submittedQuery"
         />
       </template>
     </template>
@@ -132,12 +132,12 @@ const {
   query,
   ytChip,
   setYtChip,
-  submittedYtQuery,
+  submittedQuery,
   recentQueries,
   removeHistoryItem,
   clearHistory,
   applyHistoryItem,
-  submitYtSearch,
+  submitSearch,
 } = useSearch();
 
 const { t } = useI18n();
@@ -225,6 +225,6 @@ watch(linkTarget, async (target) => {
 
 function applyYtHistoryItem(value: string) {
   applyHistoryItem(value);
-  submitYtSearch();
+  submitSearch();
 }
 </script>

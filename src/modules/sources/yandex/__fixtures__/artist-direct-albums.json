@@ -1,0 +1,97 @@
+{
+  "result": {
+    "pager": {
+      "page": 0,
+      "perPage": 18,
+      "total": 18
+    },
+    "albums": [
+      {
+        "id": 43676684,
+        "title": "Дождь для нас",
+        "type": "single",
+        "year": 2026,
+        "coverUri": "avatars.yandex.net/get-music-content/20608190/50c62a3f.a.43676684-1/%%",
+        "trackCount": 1,
+        "available": true,
+        "availableForPremiumUsers": true,
+        "genre": "electronics",
+        "artists": [
+          {
+            "id": 41075,
+            "name": "КИНО",
+            "various": false,
+            "composer": false,
+            "cover": {
+              "type": "from-artist-photos",
+              "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+              "prefix": "c6d507c7.p.41075/"
+            },
+            "available": true
+          },
+          {
+            "id": 9425887,
+            "name": "TÆT",
+            "various": false,
+            "composer": false,
+            "cover": {
+              "type": "from-artist-photos",
+              "uri": "avatars.yandex.net/get-music-content/8316823/1cee2de5.p.9425887/%%",
+              "prefix": "1cee2de5.p.9425887/"
+            },
+            "available": true
+          }
+        ]
+      },
+      {
+        "id": 38434696,
+        "title": "МОЛНИИ ИНДРЫ",
+        "version": "Deluxe Version",
+        "year": 2025,
+        "coverUri": "avatars.yandex.net/get-music-content/15134515/39d9e012.a.38434696-1/%%",
+        "trackCount": 25,
+        "available": true,
+        "availableForPremiumUsers": true,
+        "genre": "rusrock",
+        "artists": [
+          {
+            "id": 41075,
+            "name": "КИНО",
+            "various": false,
+            "composer": false,
+            "cover": {
+              "type": "from-artist-photos",
+              "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+              "prefix": "c6d507c7.p.41075/"
+            },
+            "available": true
+          }
+        ]
+      },
+      {
+        "id": 30059156,
+        "title": "Это не любовь (Remake 2024)",
+        "year": 2024,
+        "coverUri": "avatars.yandex.net/get-music-content/10874616/02181998.a.30059156-1/%%",
+        "trackCount": 11,
+        "available": true,
+        "availableForPremiumUsers": true,
+        "genre": "rusrock",
+        "artists": [
+          {
+            "id": 41075,
+            "name": "КИНО",
+            "various": false,
+            "composer": false,
+            "cover": {
+              "type": "from-artist-photos",
+              "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+              "prefix": "c6d507c7.p.41075/"
+            },
+            "available": true
+          }
+        ]
+      }
+    ]
+  }
+}

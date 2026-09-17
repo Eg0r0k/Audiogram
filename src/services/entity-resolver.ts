@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import {
   TrackState,
-  TrackSource,
+  type TrackSource,
   type AlbumEntity,
   type ArtistEntity,
   type PinnedFlag,
@@ -9,7 +9,7 @@ import {
 } from "@/db/entities";
 import { identityKey, splitArtistNames } from "@/lib/artist-names";
 import { AlbumId, ArtistId } from "@/types/ids";
-import { parseTrackRef } from "@/types/track-ref";
+import { parseTrackRef, remoteTrackSource, sourceKindOfId } from "@/types/track-ref";
 import type { SourceTrackDTO } from "@/types/source-dto";
 import type { BaseMetadata } from "@/workers/types";
 
@@ -45,11 +45,8 @@ function mergePinned(existing: PinnedFlag | undefined, requested: PinnedFlag): P
 
 function trackSourceOf(dto: SourceTrackDTO): TrackSource {
   const ref = parseTrackRef(dto.id);
-  switch (ref.kind) {
-    case "nd": return TrackSource.REMOTE_SUBSONIC;
-    case "yt": return TrackSource.REMOTE_YT;
-    case "local": throw new Error(`Not a remote track id: ${dto.id}`);
-  }
+  if (ref.kind === "local") throw new Error(`Not a remote track id: ${dto.id}`);
+  return remoteTrackSource(ref.kind);
 }
 
 /**
@@ -168,7 +165,7 @@ export function alignArtists(
   const ownShadows = new Map<string, ArtistId>();
   for (const artist of allArtists) {
     let bucket: Map<string, ArtistId> | null = locals;
-    if (/^(?:nd|yt):/.test(artist.id)) {
+    if (sourceKindOfId(artist.id) !== "local") {
       bucket = artist.id.startsWith(ownPrefix) ? ownShadows : null;
     }
     if (!bucket) continue;
@@ -233,9 +230,14 @@ export class EntityResolver {
 
     const existing = await db.artists.toArray();
     const wanted = new Set(uniqueKeys);
+    // A local row always wins over a same-named remote shadow row: downloads
+    // must join the library's own artist, never a catalog placeholder.
     for (const artist of existing) {
       const key = identityKey(artist.name);
-      if (wanted.has(key) && !this.artists.has(key)) {
+      if (!wanted.has(key)) continue;
+      const current = this.artists.get(key);
+      const isLocal = sourceKindOfId(artist.id) === "local";
+      if (!current || (isLocal && sourceKindOfId(current) !== "local")) {
         this.artists.set(key, artist.id);
       }
     }

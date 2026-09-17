@@ -8,10 +8,10 @@ import { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { ytAlbumId, ytArtistId, ytTrackId } from "@/types/track-ref";
 
 //
-// Deleting an album with `deleteTracks` cascades: its tracks, their offline
-// copies and files go with it, GC drops the orphaned artist. Without the flag
-// the album only ungroups — its tracks stay, downloads intact, but must not be
-// left with a dangling albumId.
+// Deleting an album with `deleteTracks` cascades: its track rows go with it
+// and GC drops the orphaned artist. Without the flag the album only ungroups
+// — its tracks stay, but must not be left with a dangling albumId. No file on
+// disk is touched either way; a downloaded copy is its own local track.
 //
 
 const storageMock = vi.hoisted(() => ({
@@ -69,39 +69,31 @@ describe("deleteAlbumAndSync cascade (integration)", () => {
     await Promise.all(db.tables.map(table => table.clear()));
   });
 
-  it("deletes a remote album with its tracks, copies and files; GC takes the artist", async () => {
+  it("deletes a remote album with its tracks; GC takes the artist", async () => {
     await db.artists.put({ id: ytArtist, name: "Shadow Artist", pinned: 1, addedAt: 1, updatedAt: 1 });
     const album: AlbumEntity = { id: ytAlbum, title: "Shadow Album", artistId: ytArtist, pinned: 1, addedAt: 1, updatedAt: 1 };
     await db.albums.put(album);
     await db.tracks.bulkPut([ytTrack("v1", "One"), ytTrack("v2", "Two")]);
-    await db.offlineCopies.bulkPut([
-      { trackId: ytTrackId("v1"), storagePath: "offline/yt/v1.m4a", sizeBytes: 1, format: {}, downloadedAt: 1 },
-      { trackId: ytTrackId("v2"), storagePath: "offline/yt/v2.m4a", sizeBytes: 1, format: {}, downloadedAt: 1 },
-    ]);
 
     await deleteAlbumAndSync(queryClient, album, { deleteTracks: true });
 
     expect(await db.tracks.count()).toBe(0);
-    expect(await db.offlineCopies.count()).toBe(0);
     expect(await db.albums.count()).toBe(0);
     expect(await db.artists.count()).toBe(0);
-    const deletedPaths = storageMock.deleteFile.mock.calls.map(call => call[0]).sort();
-    expect(deletedPaths).toEqual(["offline/yt/v1.m4a", "offline/yt/v2.m4a"]);
+    expect(storageMock.deleteFile).not.toHaveBeenCalled();
   });
 
-  it("ungroups a remote album without the flag, keeping its tracks and downloads", async () => {
+  it("ungroups a remote album without the flag, keeping its tracks", async () => {
     await db.artists.put({ id: ytArtist, name: "Shadow Artist", pinned: 1, addedAt: 1, updatedAt: 1 });
     const album: AlbumEntity = { id: ytAlbum, title: "Shadow Album", artistId: ytArtist, pinned: 1, addedAt: 1, updatedAt: 1 };
     await db.albums.put(album);
     await db.tracks.put(ytTrack("v1", "One"));
-    await db.offlineCopies.put({ trackId: ytTrackId("v1"), storagePath: "offline/yt/v1.m4a", sizeBytes: 1, format: {}, downloadedAt: 1 });
 
     await deleteAlbumAndSync(queryClient, album);
 
     const track = await db.tracks.get(ytTrackId("v1"));
     expect(track?.albumId).toBe("");
     expect(track?.albumTitle).toBe("");
-    expect(await db.offlineCopies.count()).toBe(1);
     expect(await db.albums.count()).toBe(0);
     // The tracks still credit them, so the artist is not orphaned.
     expect(await db.artists.count()).toBe(1);
@@ -140,16 +132,14 @@ describe("deleteAlbumAndSync cascade (integration)", () => {
     expect(storageMock.deleteFile).not.toHaveBeenCalled();
   });
 
-  it("deleting a single downloaded track also removes its offline copy", async () => {
+  it("deleting a single remote track drops the row without touching any file", async () => {
     await db.artists.put({ id: ytArtist, name: "Shadow Artist", pinned: 1, addedAt: 1, updatedAt: 1 });
     await db.albums.put({ id: ytAlbum, title: "Shadow Album", artistId: ytArtist, pinned: 1, addedAt: 1, updatedAt: 1 });
     await db.tracks.put(ytTrack("v1", "One"));
-    await db.offlineCopies.put({ trackId: ytTrackId("v1"), storagePath: "offline/yt/v1.m4a", sizeBytes: 1, format: {}, downloadedAt: 1 });
 
     await deleteTrackAndSync(queryClient, { id: ytTrackId("v1") } as unknown as Track);
 
     expect(await db.tracks.count()).toBe(0);
-    expect(await db.offlineCopies.count()).toBe(0);
-    expect(storageMock.deleteFile).toHaveBeenCalledWith("offline/yt/v1.m4a");
+    expect(storageMock.deleteFile).not.toHaveBeenCalled();
   });
 });

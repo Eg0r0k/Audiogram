@@ -6,6 +6,8 @@
   "pinFailed": "Failed to add the track to the library",
   "addedToLibrary": "Added to library",
   "removedFromLibrary": "Removed from library",
+  "unavailable": "Not available at the source",
+  "preview": "Preview",
   "removeFromLibraryFailed": "Failed to remove the track from the library",
   "removeFromHistoryFailed": "Failed to remove track from history",
   "contextMenu": {

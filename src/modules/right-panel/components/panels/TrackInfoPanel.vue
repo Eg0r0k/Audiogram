@@ -221,7 +221,7 @@ import { formatBitrate, formatSampleRate } from "@/lib/format/audio";
 import { getLogger } from "@/lib/logger";
 import { trackQueries } from "@/queries/track.queries";
 import { useTrackDeletion } from "@/modules/tracks/composables/useTrackDeletion";
-import { offlineCopyQueries } from "@/queries/offlineCopy.queries";
+import { localCopyQueries } from "@/queries/localCopy.queries";
 import type { Track } from "@/modules/player/types";
 import { isRemoteTrack } from "@/modules/tracks/lib/trackPredicates";
 import { resolveTrackFormat, trackSourceLabelKey, trackStateLabelKey } from "@/modules/tracks/lib/trackDetails";
@@ -266,12 +266,12 @@ const { data: entity } = useQuery(computed(() => trackQueries.detail(payloadTrac
 const track = computed<Track>(() =>
   entity.value ? mapTrackEntityToPlayerTrack(entity.value) : payloadTrack.value);
 
-const { data: offlineCopy } = useQuery(computed(() =>
-  offlineCopyQueries.detail(isRemoteTrack(track.value) ? track.value.id : null),
+const { data: localCopy } = useQuery(computed(() =>
+  localCopyQueries.byRemoteId(isRemoteTrack(track.value) ? track.value.id : null),
 ));
 
 const storagePathValue = computed(() =>
-  track.value.storagePath || offlineCopy.value?.storagePath || "—",
+  track.value.storagePath || localCopy.value?.storagePath || "—",
 );
 
 const { confirmDeletion, deleteWithUndo } = useTrackDeletion();
@@ -287,7 +287,7 @@ const labelOr = (key: string | null) => (key ? t(key) : "—");
 const sourceLabel = computed(() => labelOr(trackSourceLabelKey(track.value.source)));
 const stateLabel = computed(() => labelOr(trackStateLabelKey(track.value.state)));
 
-const effectiveFormat = computed(() => resolveTrackFormat(entity.value?.format, offlineCopy.value?.format));
+const effectiveFormat = computed(() => resolveTrackFormat(entity.value?.format, localCopy.value?.format));
 
 const formattedBitrate = computed(() => formatBitrate(effectiveFormat.value.bitrate));
 const formattedSampleRate = computed(() => formatSampleRate(effectiveFormat.value.sampleRate));

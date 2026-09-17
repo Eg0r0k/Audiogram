@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ok, okAsync, errAsync } from "neverthrow";
+import { ok } from "neverthrow";
 import { PlaylistId, TrackId } from "@/types/ids";
 import { ndAlbumId, ndArtistId, ndTrackId } from "@/types/track-ref";
 
 const repos = vi.hoisted(() => ({
   track: { findById: vi.fn(), update: vi.fn() },
   playlist: { findAll: vi.fn(), update: vi.fn() },
-  offlineCopy: { findById: vi.fn(), delete: vi.fn() },
 }));
 
 const uow = vi.hoisted(() => ({ runScoped: vi.fn() }));
@@ -15,17 +14,17 @@ const dexie = vi.hoisted(() => {
   return {
     albums: { update: vi.fn() },
     artists: { update: vi.fn() },
+    playlists: {},
     tracks: { where: vi.fn(() => ({ equals: vi.fn(() => ({ and: vi.fn(() => ({ count })), count })) })) },
     pinnedCount: count,
   };
 });
 const storage = vi.hoisted(() => ({ deleteFile: vi.fn() }));
 
-vi.mock("@/db", () => ({ db: { tracks: dexie.tracks, albums: dexie.albums, artists: dexie.artists, playlists: {}, offlineCopies: {} } }));
+vi.mock("@/db", () => ({ db: { tracks: dexie.tracks, albums: dexie.albums, artists: dexie.artists, playlists: dexie.playlists } }));
 vi.mock("@/db/repositories", () => ({
   trackRepository: repos.track,
   playlistRepository: repos.playlist,
-  offlineCopyRepository: repos.offlineCopy,
 }));
 vi.mock("@/db/unit-of-work", () => ({ unitOfWork: uow }));
 vi.mock("@/db/storage", () => ({ storageService: storage }));
@@ -87,32 +86,33 @@ describe("removeTrackFromLibrary", () => {
       artistIds: [ndArtistId("artist1")],
     }));
     dexie.pinnedCount.mockResolvedValue(0);
-    repos.offlineCopy.findById.mockResolvedValue(ok({
-      trackId: TRACK_ID,
-      storagePath: "offline/nd/song1.flac",
-      sizeBytes: 1,
-      format: {},
-      downloadedAt: 0,
-    }));
-    repos.offlineCopy.delete.mockResolvedValue(ok(undefined));
     repos.playlist.findAll.mockResolvedValue(ok([
       { id: PlaylistId("p1"), trackIds: [TRACK_ID, TrackId("other")] },
       { id: PlaylistId("p2"), trackIds: [TrackId("other")] },
     ]));
     repos.playlist.update.mockResolvedValue(ok(1));
     repos.track.update.mockResolvedValue(ok(1));
-    storage.deleteFile.mockReturnValue(okAsync(undefined));
   });
 
-  it("degrades the row to shadow, cascades playlists/like/copy and deletes the file", async () => {
+  it("degrades the row to shadow and cascades playlists/like", async () => {
     await removeTrackFromLibrary(TRACK_ID);
 
     expect(uow.runScoped).toHaveBeenCalledTimes(1);
     expect(repos.playlist.update).toHaveBeenCalledTimes(1);
     expect(repos.playlist.update).toHaveBeenCalledWith(PlaylistId("p1"), { trackIds: [TrackId("other")] });
     expect(repos.track.update).toHaveBeenCalledWith(TRACK_ID, { pinned: 0, likedAt: undefined });
-    expect(repos.offlineCopy.delete).toHaveBeenCalledWith(TRACK_ID);
-    expect(storage.deleteFile).toHaveBeenCalledWith("offline/nd/song1.flac");
+  });
+
+  it("does not touch files or the offline table when removing a remote row from the library", async () => {
+    await removeTrackFromLibrary(TRACK_ID);
+
+    expect(storage.deleteFile).not.toHaveBeenCalled();
+    expect(uow.runScoped.mock.calls[0]?.[0]).toEqual([
+      dexie.tracks,
+      dexie.albums,
+      dexie.artists,
+      dexie.playlists,
+    ]);
   });
 
   it("degrades the shadow album/artist when no pinned tracks remain", async () => {
@@ -147,19 +147,5 @@ describe("removeTrackFromLibrary", () => {
     await removeTrackFromLibrary(TRACK_ID);
 
     expect(searchIndex.removeSearchDocuments).toHaveBeenCalledWith([`track:${TRACK_ID}`]);
-  });
-
-  it("skips file deletion when there is no offline copy", async () => {
-    repos.offlineCopy.findById.mockResolvedValue(ok(undefined));
-
-    await removeTrackFromLibrary(TRACK_ID);
-
-    expect(storage.deleteFile).not.toHaveBeenCalled();
-  });
-
-  it("survives a failing file delete (DB cascade already committed)", async () => {
-    storage.deleteFile.mockReturnValue(errAsync(new Error("locked")));
-
-    await expect(removeTrackFromLibrary(TRACK_ID)).resolves.toBeUndefined();
   });
 });

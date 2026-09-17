@@ -13,11 +13,12 @@ import {
   searchDocuments,
 } from "../service/searchIndex";
 import { getLogger } from "@/lib/logger";
+import { sources } from "@/modules/sources/registry";
 import type { SourceKind } from "@/types/track-ref";
 
 const DEBOUNCE_MS = 150;
-/** YT search fans out to several network requests — pause a bit longer. */
-const YT_DEBOUNCE_MS = 400;
+/** A submit-mode source pays for every request — pause longer before committing. */
+const SUBMIT_DEBOUNCE_MS = 400;
 const TOP_RESULTS_COUNT = 6;
 const MAX_HISTORY_ITEMS = 6;
 const SEARCH_HISTORY_KEY = "audiogram-search-history";
@@ -31,10 +32,13 @@ const query = ref("");
 const source = ref<SearchSource>("local");
 const ytChip = ref<YtChip>("all");
 /**
- * The query YT results search for: typing auto-commits it after a pause,
- * Enter commits instantly and (unlike auto-commits) writes history.
+ * The query a submit-mode source searches for: typing auto-commits it after
+ * a pause, Enter commits instantly and (unlike auto-commits) writes history.
+ * Stays empty for live sources, whose panes search the typed query directly.
  */
-const submittedYtQuery = ref("");
+const submittedQuery = ref("");
+// Which mode applies is the provider's declaration, not a kind check here.
+const isSubmitMode = computed(() => sources.find(source.value)?.searchMode === "submit");
 const activeFilter = ref<SearchFilter>("all");
 const results = shallowRef<GroupedResults>(createEmptyResults());
 const isSearching = ref(false);
@@ -93,24 +97,24 @@ watch([query, activeFilter], ([q, filter]) => {
   debouncedSearch(trimmed, filter).catch(() => {});
 });
 
-const debouncedYtCommit = useDebounceFn((trimmed: string) => {
+const debouncedCommit = useDebounceFn((trimmed: string) => {
   // The source may have switched away during the pause.
-  if (source.value !== "yt") return;
-  submittedYtQuery.value = trimmed;
-}, YT_DEBOUNCE_MS);
+  if (!isSubmitMode.value) return;
+  submittedQuery.value = trimmed;
+}, SUBMIT_DEBOUNCE_MS);
 
 watch(query, (q) => {
-  if (source.value !== "yt") return;
+  if (!isSubmitMode.value) return;
   const trimmed = q.trim();
 
   if (!trimmed) {
-    submittedYtQuery.value = "";
+    submittedQuery.value = "";
     return;
   }
 
   // The debounced body only assigns a ref, and a superseded call is dropped
   // rather than rejected — there is no failure to report.
-  debouncedYtCommit(trimmed).catch(() => {});
+  debouncedCommit(trimmed).catch(() => {});
 });
 
 const availableFilters: { label: string; value: SearchFilter }[] = [
@@ -159,18 +163,20 @@ export function useSearch() {
     isSearchOpen.value = false;
   };
 
-  const submitYtSearch = () => {
+  /** Enter in the search field: a no-op for live sources, which never wait for it. */
+  const submitSearch = () => {
+    if (!isSubmitMode.value) return;
     const trimmed = query.value.trim();
     if (!trimmed) return;
-    submittedYtQuery.value = trimmed;
+    submittedQuery.value = trimmed;
     saveQueryToHistory(trimmed);
   };
 
   const setSource = (next: SearchSource) => {
     source.value = next;
-    // Switching to YouTube with a pending query commits it right away.
-    if (next === "yt" && query.value.trim() && query.value.trim() !== submittedYtQuery.value) {
-      submitYtSearch();
+    // Switching to a submit-mode source with a pending query commits it right away.
+    if (isSubmitMode.value && query.value.trim() && query.value.trim() !== submittedQuery.value) {
+      submitSearch();
     }
   };
 
@@ -178,7 +184,8 @@ export function useSearch() {
     query,
     source: readonly(source),
     ytChip: readonly(ytChip),
-    submittedYtQuery: readonly(submittedYtQuery),
+    submittedQuery: readonly(submittedQuery),
+    isSubmitMode,
     activeFilter,
     availableFilters,
     recentQueries: readonly(recentQueries),
@@ -194,7 +201,7 @@ export function useSearch() {
 
     setSource,
     setYtChip: (chip: YtChip) => { ytChip.value = chip; },
-    submitYtSearch,
+    submitSearch,
 
     setFilter: (filter: SearchFilter) => { activeFilter.value = filter; },
     saveQueryToHistory,
@@ -205,7 +212,7 @@ export function useSearch() {
     clear: () => {
       query.value = "";
       activeFilter.value = "all";
-      submittedYtQuery.value = "";
+      submittedQuery.value = "";
     },
     rebuildIndex: async () => {
       await rebuildSearchIndex();

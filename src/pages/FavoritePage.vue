@@ -43,7 +43,7 @@
           </template>
 
           <template #leading>
-            <div class="px-4">
+            <div class="px-4 mb-2">
               <AddTrackRow @add="openAddTracksPanel" />
             </div>
           </template>

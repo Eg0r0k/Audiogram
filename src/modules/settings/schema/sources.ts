@@ -11,8 +11,16 @@ export const NdSourceSettingsSchema = object({
 
 export type NdSourceSettings = InferOutput<typeof NdSourceSettingsSchema>;
 
+/** Only the switch: the sign-in itself lives on the Rust side, never in settings. */
+export const YmSourceSettingsSchema = object({
+  enabled: optional(boolean(), true),
+});
+
+export type YmSourceSettings = InferOutput<typeof YmSourceSettingsSchema>;
+
 export const SourcesSettingsSchema = object({
   nd: optional(NdSourceSettingsSchema, parse(NdSourceSettingsSchema, {})),
+  ym: optional(YmSourceSettingsSchema, parse(YmSourceSettingsSchema, {})),
 });
 
 export type SourcesSettings = InferOutput<typeof SourcesSettingsSchema>;

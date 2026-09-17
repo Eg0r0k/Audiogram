@@ -1,7 +1,7 @@
 import { ref, computed } from "vue";
 import { useQueryClient } from "@tanstack/vue-query";
 import type { StorageInfo } from "../schema/storage";
-import { collectStorageInfo, clearAllData, clearFoldersData, clearLyricsData, clearOfflineData, clearTimingsData } from "@/services/storage-info.service";
+import { collectStorageInfo, clearAllData, clearFoldersData, clearLyricsData, clearTimingsData } from "@/services/storage-info.service";
 import { formatBytes } from "@/lib/format/memory";
 import { useLibraryStore } from "@/modules/library/store/library.store";
 import { clearLibraryData } from "@/queries/library.queries";
@@ -19,8 +19,7 @@ export function useStorageSettings() {
 
   const totalUsedByApp = computed(() => {
     if (!info.value) return 0;
-    return info.value.tracksSize + info.value.lyricsSize + info.value.dbSize
-      + info.value.offlineNdSize + info.value.offlineYtSize;
+    return info.value.tracksSize + info.value.lyricsSize + info.value.dbSize;
   });
 
   const formatted = computed(() => {
@@ -28,10 +27,6 @@ export function useStorageSettings() {
       return {
         tracksSize: "—",
         lyricsSize: "—",
-        offlineTotal: "—",
-        offlineNdSize: "—",
-        offlineYtSize: "—",
-        hasOffline: false,
         dbSize: "—",
         totalUsed: "—",
         quotaTotal: "—",
@@ -50,10 +45,6 @@ export function useStorageSettings() {
     return {
       tracksSize: formatBytes(i.tracksSize),
       lyricsSize: formatBytes(i.lyricsSize),
-      offlineTotal: formatBytes(i.offlineNdSize + i.offlineYtSize),
-      offlineNdSize: formatBytes(i.offlineNdSize),
-      offlineYtSize: formatBytes(i.offlineYtSize),
-      hasOffline: i.offlineNdSize + i.offlineYtSize > 0,
       dbSize: formatBytes(i.dbSize),
       totalUsed: formatBytes(totalUsedByApp.value),
       quotaTotal: i.quotaTotal > 0 ? formatBytes(i.quotaTotal) : null,
@@ -116,18 +107,6 @@ export function useStorageSettings() {
     }
   }
 
-  async function clearOfflineDataHandler() {
-    isClearing.value = true;
-    try {
-      await clearOfflineData();
-      await queryClient.invalidateQueries({ queryKey: queryKeys.offlineCopies.all() });
-      await refresh();
-    }
-    finally {
-      isClearing.value = false;
-    }
-  }
-
   async function clearTimingsDataHandler() {
     isClearing.value = true;
     try {
@@ -150,7 +129,6 @@ export function useStorageSettings() {
     clearAllData: clearAllDataHandler,
     clearLyricsData: clearLyricsDataHandler,
     clearFoldersData: clearFoldersDataHandler,
-    clearOfflineData: clearOfflineDataHandler,
     clearTimingsData: clearTimingsDataHandler,
   };
 }

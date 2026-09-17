@@ -14,10 +14,7 @@
 //! while this was the `ytimg://` custom scheme, whose responses WebView2
 //! refuses to HTTP-cache — the same reason the nd cover route moved.)
 
-use futures_util::TryStreamExt;
-use http_body_util::{BodyExt, StreamBody};
-
-use crate::media_server::{cors, status_response, Body};
+use crate::media_server::{forward_image, status_response, Body, ImageError};
 
 /// Hosts the route may fetch from (video thumbnails, channel art, YT Music
 /// covers). Exact googleusercontent hosts only — the wildcard domain hosts
@@ -57,55 +54,26 @@ async fn proxy_image(
     url: &str,
     origin: Option<&str>,
 ) -> http::Response<Body> {
-    let response = match client.get(url).send().await {
+    match forward_image(client, url, origin).await {
         Ok(response) => response,
         // Debug on both: with YouTube unreachable every card on a search page
         // would log a line, and the search itself already reports the fault.
-        Err(e) => {
+        Err(ImageError::Request(e)) => {
             log::debug!("media ytimg: request failed: {e}");
-            return status_response(502, origin);
+            status_response(502, origin)
         }
-    };
-    if response.status().as_u16() != 200 {
-        log::debug!(
-            "media ytimg: upstream status {} for {url}",
-            response.status()
-        );
-        return status_response(502, origin);
+        Err(ImageError::Status(status)) => {
+            log::debug!("media ytimg: upstream status {status} for {url}");
+            status_response(502, origin)
+        }
     }
-
-    let content_type = response
-        .headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("image/jpeg")
-        .to_owned();
-    let content_length = response
-        .headers()
-        .get(reqwest::header::CONTENT_LENGTH)
-        .and_then(|v| v.to_str().ok())
-        .map(str::to_owned);
-
-    let mut builder = cors(http::Response::builder().status(200), origin)
-        .header("Content-Type", content_type)
-        .header("Cache-Control", "public, max-age=86400");
-    if let Some(len) = content_length {
-        builder = builder.header("Content-Length", len);
-    }
-
-    let stream = response
-        .bytes_stream()
-        .map_err(|e| std::io::Error::other(e.to_string()))
-        .map_ok(hyper::body::Frame::data);
-    builder
-        .body(StreamBody::new(stream).boxed())
-        .unwrap_or_else(|_| status_response(500, origin))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::media_server::test_support::spawn_upstream;
+    use http_body_util::BodyExt;
 
     #[test]
     fn allows_https_on_known_hosts_only() {

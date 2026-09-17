@@ -9,11 +9,11 @@
 mod config;
 mod cover;
 mod download;
-mod prefetch;
+mod stream;
 
 // Glob re-exports: `generate_handler!` resolves the hidden `__cmd__*` items
 // through `nd::`, which explicit re-exports would have to list by hand.
 pub use config::*;
 pub(crate) use cover::*;
 pub use download::*;
-pub(crate) use prefetch::*;
+pub(crate) use stream::*;

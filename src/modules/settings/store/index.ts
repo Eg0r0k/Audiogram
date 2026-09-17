@@ -6,7 +6,8 @@ import type {
   NdSourceSettings,
   PlaybackSettings,
   ProxySettings,
-  Settings } from "../schema";
+  Settings,
+  YmSourceSettings } from "../schema";
 import {
   DEFAULT_SETTINGS,
   SettingsSchema,
@@ -60,6 +61,13 @@ export const useSettingsStore = defineStore("settings", () => {
     settings.value.sources = {
       ...settings.value.sources,
       nd: { ...settings.value.sources.nd, ...partial },
+    };
+  };
+
+  const updateYmSource = (partial: Partial<YmSourceSettings>) => {
+    settings.value.sources = {
+      ...settings.value.sources,
+      ym: { ...settings.value.sources.ym, ...partial },
     };
   };
 
@@ -133,6 +141,7 @@ export const useSettingsStore = defineStore("settings", () => {
     updateAudio,
     updateProxy,
     updateNdSource,
+    updateYmSource,
     reset,
     resetSection,
     exportToJSON,

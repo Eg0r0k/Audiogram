@@ -14,6 +14,12 @@ export interface DeleteConfirmData {
    * remote album) turn it on so the destructive default stays the old one.
    */
   defaultDeleteTracks?: boolean;
+  /**
+   * Set when the entity is deleted at its source rather than from the
+   * library: the description names the source and the "delete tracks"
+   * checkbox does not apply.
+   */
+  atSource?: string;
 }
 
 export interface DeleteConfirmResult {

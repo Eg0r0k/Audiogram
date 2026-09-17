@@ -78,9 +78,19 @@ const isChecking = computed(() => health.value.state === "checking");
 
 const title = computed(() => {
   const source = props.kind ? t(`source.${props.kind}`) : "";
-  return failure.value?.kind === "AUTH"
-    ? t("source.health.authFailed", { source })
-    : t("source.health.unreachable", { source });
+  const current = failure.value;
+  switch (current?.kind) {
+    case "AUTH":
+      return t("source.health.authFailed", { source });
+    case "FORBIDDEN":
+      return t("source.health.forbidden", { source });
+    case "RATE_LIMITED":
+      return current.retryAfterMs
+        ? t("source.health.rateLimitedIn", { source, seconds: Math.ceil(current.retryAfterMs / 1000) })
+        : t("source.health.rateLimited", { source });
+    default:
+      return t("source.health.unreachable", { source });
+  }
 });
 
 const retry = () => {

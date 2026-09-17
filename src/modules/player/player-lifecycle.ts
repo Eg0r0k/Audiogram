@@ -10,7 +10,7 @@ import { registerPlaybackPort } from "@/modules/queue/lib/playback-port";
 import { createPlayerPlaybackPort } from "./lib/queue-playback-port";
 import { playbackStalledEvent, trackSkippedEvent } from "@/modules/queue/lib/queue-events";
 import { isLibraryTrack } from "./types";
-import { trackChangedEvent, trackEndedEvent } from "./lib/player-events";
+import { listenEndedEvent, trackChangedEvent, trackEndedEvent } from "./lib/player-events";
 import { resolveListenOrigin, resolveListenPick } from "./lib/listen-origin";
 import { initNextTrackPrefetch } from "./service/prefetch-next";
 import { statsService } from "@/services/stats.service";
@@ -48,8 +48,11 @@ export function initPlayerLifecycle(): void {
     const player = usePlayerStore();
 
     if (isLibraryTrack(player.currentTrack)) {
-      statsService.stopListening(player.getListenedSeconds(), { completed: true })
+      const seconds = player.getListenedSeconds();
+      statsService.stopListening(seconds, { completed: true })
         .catch(err => getLogger().error(`[Stats] ${String(err)}`));
+      // Before advance(): the next track's start must find this listen closed.
+      useEventBus(listenEndedEvent).emit({ track: player.currentTrack, seconds, reason: "completed" });
     }
 
     // Detached on purpose: the bus handler is synchronous. advance() knows it

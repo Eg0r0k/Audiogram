@@ -42,3 +42,20 @@ export const useNdSourceSettings = () => {
     update,
   };
 };
+
+/**
+ * The Yandex Music switch. Signing in is Rust's business (the token never
+ * enters settings); this is only whether a signed-in account is used.
+ */
+export const useYmSourceSettings = () => {
+  const store = useSettingsStore();
+
+  const enabled = computed(() => store.sources.ym.enabled);
+  const setEnabled = (value: boolean) => store.updateYmSource({ enabled: value });
+
+  return {
+    enabled,
+    isSupported: platformCaps.hasMediaServer,
+    setEnabled,
+  };
+};

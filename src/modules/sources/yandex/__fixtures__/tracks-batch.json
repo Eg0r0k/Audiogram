@@ -1,0 +1,267 @@
+{
+  "result": [
+    {
+      "id": "40144",
+      "realId": "40144",
+      "title": "Read Your Mind",
+      "available": true,
+      "availableForPremiumUsers": true,
+      "availableFullWithoutPermission": false,
+      "durationMs": 263540,
+      "previewDurationMs": 30000,
+      "artists": [
+        {
+          "id": 16313,
+          "name": "Avant",
+          "various": false,
+          "composer": false,
+          "available": true,
+          "cover": {
+            "type": "from-album-cover",
+            "uri": "avatars.yandex.net/get-music-content/49876/3f64f12d.a.85739-1/%%",
+            "prefix": "3f64f12d.a.85739-1"
+          },
+          "genres": [],
+          "disclaimers": []
+        }
+      ],
+      "albums": [
+        {
+          "id": 3328,
+          "title": "Private Room",
+          "metaType": "music",
+          "year": 2007,
+          "releaseDate": "2007-03-29T00:00:00+04:00",
+          "coverUri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+          "ogImage": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+          "genre": "rnb",
+          "trackCount": 16,
+          "likesCount": 16,
+          "recent": false,
+          "veryImportant": false,
+          "artists": [
+            {
+              "id": 16313,
+              "name": "Avant",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-album-cover",
+                "uri": "avatars.yandex.net/get-music-content/49876/3f64f12d.a.85739-1/%%",
+                "prefix": "3f64f12d.a.85739-1"
+              },
+              "genres": [],
+              "disclaimers": []
+            }
+          ],
+          "labels": [
+            {
+              "id": 1448,
+              "name": "Geffen"
+            }
+          ],
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableForOptions": [
+            "bookmate"
+          ],
+          "availableForMobile": true,
+          "availablePartially": false,
+          "bests": [
+            40144
+          ],
+          "disclaimers": [],
+          "listeningFinished": false,
+          "trackPosition": {
+            "volume": 1,
+            "index": 3
+          }
+        }
+      ],
+      "coverUri": "avatars.yandex.net/get-music-content/49876/0758f836.a.3328-1/%%",
+      "lyricsInfo": {
+        "hasAvailableSyncLyrics": false,
+        "hasAvailableTextLyrics": true
+      },
+      "type": "music"
+    },
+    {
+      "id": "38633756",
+      "realId": "38633756",
+      "title": "Кончится лето",
+      "available": true,
+      "availableForPremiumUsers": true,
+      "availableFullWithoutPermission": false,
+      "durationMs": 354670,
+      "previewDurationMs": 30000,
+      "artists": [
+        {
+          "id": 41075,
+          "name": "КИНО",
+          "various": false,
+          "composer": false,
+          "available": true,
+          "cover": {
+            "type": "from-artist-photos",
+            "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+            "prefix": "c6d507c7.p.41075/"
+          },
+          "genres": [],
+          "disclaimers": []
+        }
+      ],
+      "albums": [
+        {
+          "id": 5307396,
+          "title": "Легенда",
+          "metaType": "music",
+          "contentWarning": "explicit",
+          "year": 2018,
+          "releaseDate": "2018-04-24T00:00:00+03:00",
+          "coverUri": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%",
+          "ogImage": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%",
+          "genre": "rusrock",
+          "trackCount": 85,
+          "likesCount": 207565,
+          "recent": false,
+          "veryImportant": false,
+          "artists": [
+            {
+              "id": 41075,
+              "name": "КИНО",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-artist-photos",
+                "uri": "avatars.yandex.net/get-music-content/33216/c6d507c7.p.41075/%%",
+                "prefix": "c6d507c7.p.41075/"
+              },
+              "genres": [],
+              "disclaimers": []
+            }
+          ],
+          "labels": [
+            {
+              "id": 1137247,
+              "name": "Наследники В. Цоя & Г. Гурьянова"
+            }
+          ],
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableForOptions": [
+            "bookmate"
+          ],
+          "availableForMobile": true,
+          "availablePartially": false,
+          "bests": [
+            38633756,
+            38633712,
+            38634578
+          ],
+          "disclaimers": [
+            "explicit",
+            "exclamationIcon:671a23afcec5646906723a52",
+            "descriptionText:67370c8e13b92b0a60256675"
+          ],
+          "listeningFinished": false,
+          "trackPosition": {
+            "volume": 1,
+            "index": 51
+          }
+        }
+      ],
+      "coverUri": "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%",
+      "lyricsInfo": {
+        "hasAvailableSyncLyrics": true,
+        "hasAvailableTextLyrics": true
+      },
+      "type": "music"
+    },
+    {
+      "id": "1",
+      "realId": "1",
+      "title": "アズ・ロング・アズ・ユーアー・リヴィング",
+      "available": true,
+      "availableForPremiumUsers": true,
+      "availableFullWithoutPermission": false,
+      "durationMs": 357020,
+      "previewDurationMs": 30000,
+      "artists": [
+        {
+          "id": 5,
+          "name": "Max Roach",
+          "various": false,
+          "composer": false,
+          "available": true,
+          "cover": {
+            "type": "from-album-cover",
+            "uri": "avatars.yandex.net/get-music-content/49707/f788daa7.a.1128660-1/%%",
+            "prefix": "f788daa7.a.1128660-1"
+          },
+          "genres": [],
+          "disclaimers": []
+        }
+      ],
+      "albums": [
+        {
+          "id": 1,
+          "title": "Quiet As It's Kept",
+          "metaType": "music",
+          "year": 2009,
+          "releaseDate": "2009-06-09T00:00:00+04:00",
+          "coverUri": "avatars.yandex.net/get-music-content/15018579/38c24803.a.1-4/%%",
+          "ogImage": "avatars.yandex.net/get-music-content/15018579/38c24803.a.1-4/%%",
+          "genre": "jazz",
+          "trackCount": 6,
+          "likesCount": 174,
+          "recent": false,
+          "veryImportant": false,
+          "artists": [
+            {
+              "id": 5,
+              "name": "Max Roach",
+              "various": false,
+              "composer": false,
+              "available": true,
+              "cover": {
+                "type": "from-album-cover",
+                "uri": "avatars.yandex.net/get-music-content/49707/f788daa7.a.1128660-1/%%",
+                "prefix": "f788daa7.a.1128660-1"
+              },
+              "genres": [],
+              "disclaimers": []
+            }
+          ],
+          "labels": [
+            {
+              "id": 448622,
+              "name": "The Verve"
+            },
+            {
+              "id": 448618,
+              "name": "universal music publishing"
+            }
+          ],
+          "available": true,
+          "availableForPremiumUsers": true,
+          "availableForOptions": [
+            "bookmate"
+          ],
+          "availableForMobile": true,
+          "availablePartially": false,
+          "bests": [],
+          "disclaimers": [],
+          "listeningFinished": false
+        }
+      ],
+      "coverUri": "avatars.yandex.net/get-music-content/15018579/38c24803.a.1-4/%%",
+      "lyricsInfo": {
+        "hasAvailableSyncLyrics": false,
+        "hasAvailableTextLyrics": false
+      },
+      "type": "music"
+    }
+  ]
+}

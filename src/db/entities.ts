@@ -7,6 +7,7 @@ export enum TrackSource {
   REMOTE_HLS = "remote_hls",
   REMOTE_SUBSONIC = "remote_subsonic",
   REMOTE_YT = "remote_yt",
+  REMOTE_YM = "remote_ym",
 }
 
 //
@@ -92,7 +93,7 @@ export interface TrackEntity {
   albumId: AlbumId;
   tagIds: TagId[];
   source: TrackSource;
-  /** Empty for remote tracks; an offline copy's path lives in offlineCopies. */
+  /** Empty for remote rows; a download is imported as its own local track. */
   storagePath?: string;
   pinned: PinnedFlag;
   state: TrackState;
@@ -106,6 +107,12 @@ export interface TrackEntity {
   addedAt: number;
   fingerprint?: string;
   lyricsPath?: string;
+  /**
+   * Remote id this local file was downloaded from ("ym:123"). Only set on
+   * LOCAL_INTERNAL rows created by the download manager; the playback
+   * resolver uses it to play the file instead of the stream.
+   */
+  sourceRef?: TrackId;
 
   integratedLufs?: number;
   truePeakDbtp?: number;
@@ -183,8 +190,8 @@ export interface AudioFeaturesEntity {
 }
 
 //
-// Offline copy of a remote track — a separate entity so downloading/removing
-// the copy never mutates the track row itself.
+// Legacy: v≤15 offline copies; drained by migrateOfflineCopies, dropped with
+// the store later.
 //
 export interface OfflineCopyEntity {
   trackId: TrackId;

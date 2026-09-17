@@ -33,7 +33,7 @@
       :track-id="libTrack.id"
       @download="actions.downloadOffline"
       @cancel-download="actions.cancelOfflineDownload"
-      @remove-offline-copy="actions.removeOfflineCopy"
+      @remove-download="actions.removeDownload"
     />
 
     <MoreSub

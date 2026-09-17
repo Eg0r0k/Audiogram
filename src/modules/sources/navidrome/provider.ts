@@ -67,6 +67,15 @@ export const ndSourceProvider: SourceProvider = {
     return getNdConfig() !== null;
   },
 
+  /** Navidrome has album pages, not track pages; without an nd album the server root is the best it can offer. */
+  externalUrl({ id, albumId }) {
+    if (!ndIdOf(id)) return null;
+    const config = getNdConfig();
+    if (!config) return null;
+    const album = albumId ? ndIdOf(albumId) : null;
+    return album ? `${config.baseUrl}/app/#/album/${album}/show` : config.baseUrl;
+  },
+
   /** Subsonic `ping`: reaches the server and validates the credentials. */
   checkConnection() {
     return withConfig(config => subsonicFetch(config, "ping").map(() => undefined));

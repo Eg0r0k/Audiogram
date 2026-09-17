@@ -43,6 +43,8 @@
                 :has-tracks="tracks.length > 0"
                 :is-library-entity="!!album"
                 :filterable="!!album"
+                :catalog-route="catalogViewRoute('album', albumId, !!album)"
+                :like="like.state.value"
                 @play="handlePlayAll"
                 @shuffle="handleShuffle"
                 @edit="openEditDialog"
@@ -52,7 +54,7 @@
             </template>
 
             <template #leading>
-              <div class="px-4">
+              <div class="px-4 mb-2">
                 <AddTrackRow
                   v-if="album"
                   @add="openAddTracksPanel"
@@ -100,6 +102,7 @@
 
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from "vue";
+import { catalogViewRoute } from "@/app/router/route-locations";
 import { sourceKindOf } from "@/modules/sources/lib/display";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
@@ -113,6 +116,7 @@ import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.stor
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import { useAlbumPage } from "@/modules/albums/composables/useAlbumPage";
+import { useEntityLike } from "@/modules/sources/composables/useEntityLike";
 import { getAlbumPageData } from "@/queries/album.queries";
 import { searchAlbumTracks } from "@/queries/track.queries";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
@@ -138,6 +142,7 @@ const sortKey = ref<TrackSortKey | null>(null);
 const searchQuery = ref("");
 
 const {
+  remoteKind,
   album,
   tracks,
   canSort,
@@ -156,6 +161,9 @@ const {
   isTracksLoading,
   isFetchingNextPage,
 } = useAlbumPage(sortKey, searchQuery);
+
+const albumId = computed(() => route.params.id as string);
+const like = useEntityLike(remoteKind, "album", albumId);
 
 const editAlbum = useEditAlbumDialog();
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);

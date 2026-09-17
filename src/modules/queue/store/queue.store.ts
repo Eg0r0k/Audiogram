@@ -24,7 +24,10 @@ import {
   type PersistedQueueSnapshot,
 } from "../service/queue-persistence";
 import { createAutoplayRecommender } from "../lib/queue-autoplay";
+import { RADIO_LOOKAHEAD, type RadioSession } from "../lib/queue-radio";
 import { shadowPinRemoteTracks } from "../lib/shadow-pin";
+import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
+import type { SourceError } from "@/types/source-dto";
 
 const RESTART_THRESHOLD = 3;
 // Transient failures in a row that mean the environment is broken, not the
@@ -87,6 +90,11 @@ export const useQueueStore = defineStore("queue", () => {
   // What happens after a track ends — loop it, loop the queue, or stop — is
   // a queue decision, not an engine one.
   const repeatMode = ref<RepeatMode>("off");
+  // The station feeding the queue, while one is. Raw: a session holds
+  // subscriptions and timers, nothing a reactive proxy should walk.
+  const radio = shallowRef<RadioSession | null>(null);
+  const isRadio = computed(() => radio.value !== null);
+  let _radioTopUp: Promise<boolean> | null = null;
 
   // Bumped by every commit. restorePersistedQueue captures it before its
   // async DB read and refuses to commit when the user acted in that gap
@@ -346,6 +354,8 @@ export const useQueueStore = defineStore("queue", () => {
     try {
       await playback().playPlayerTrack(item.track);
       _transientFailures = 0;
+      // A station is topped up while a track plays, never at the tail.
+      if (radio.value) ensureRadioAhead().catch(() => {});
       return ok(undefined);
     }
     catch (thrown) {
@@ -436,6 +446,8 @@ export const useQueueStore = defineStore("queue", () => {
       return;
     }
 
+    // Playing anything that is not the station ends the station.
+    if (source.type !== "radio") stopRadio();
     shadowPinRemoteTracks(tracks);
     const nextItems = createQueueItems(tracks, source);
     const shouldShuffle = options?.shuffled ?? isShuffled.value;
@@ -497,6 +509,72 @@ export const useQueueStore = defineStore("queue", () => {
     addMultipleToQueue([track], source);
   }
 
+  /** The user took the queue over by hand: the station stops feeding it. */
+  const leaveRadioFor = (source: QueueSource) => {
+    if (source.type !== "radio") stopRadio();
+  };
+
+  const stopRadio = (): void => {
+    const session = radio.value;
+    if (!session) return;
+    radio.value = null;
+    session.stop();
+  };
+
+  /**
+   * Replaces the queue with the station's first chain and keeps feeding it.
+   * Repeat and shuffle are off for the duration: a station is an order the
+   * source chose, and its feedback assumes tracks play once, in that order.
+   */
+  async function startRadio(session: RadioSession): Promise<Result<void, SourceError>> {
+    stopRadio();
+    const first = await session.start();
+    if (first.isErr()) {
+      session.stop();
+      return err(first.error);
+    }
+    radio.value = markRaw(session);
+    repeatMode.value = "off";
+    const source: QueueSource = { type: "radio", station: session.station };
+    await setQueue(first.value.map(sourceTrackToDisplay), 0, source, { shuffled: false });
+    return ok(undefined);
+  }
+
+  /**
+   * Asks the station for its next chain once the queue is within
+   * RADIO_LOOKAHEAD entries of its tail. One request at a time; entries the
+   * queue already holds are not appended twice. Resolves to whether
+   * anything was appended.
+   */
+  const ensureRadioAhead = (): Promise<boolean> => {
+    const session = radio.value;
+    if (!session) return Promise.resolve(false);
+    const remaining = queue.value.length - 1 - currentIndex.value;
+    if (remaining > RADIO_LOOKAHEAD) return Promise.resolve(false);
+    if (_radioTopUp) return _radioTopUp;
+
+    _radioTopUp = session.next()
+      .match(
+        (chain) => {
+          // The station may have been stopped or replaced meanwhile.
+          if (radio.value !== session) return false;
+          const known = new Set(items.value.map(item => item.track.id));
+          const fresh = chain.filter(dto => !known.has(dto.id)).map(sourceTrackToDisplay);
+          if (fresh.length === 0) return false;
+          appendItems(fresh.map(track => ({ track, source: { type: "radio", station: session.station } })));
+          return true;
+        },
+        (error) => {
+          getLogger().error(`[Queue] The station ${session.station} could not continue (${error.kind}): ${error.message}`);
+          return false;
+        },
+      )
+      .finally(() => {
+        _radioTopUp = null;
+      });
+    return _radioTopUp;
+  };
+
   function appendItems(entries: readonly { track: PlayerTrack; source: QueueSource }[]): void {
     const added = entries.map(e => createItem(e.track, e.source));
     commit({
@@ -511,6 +589,7 @@ export const useQueueStore = defineStore("queue", () => {
     tracks: PlayerTrack[],
     source: QueueSource = { type: "manual" },
   ): void {
+    leaveRadioFor(source);
     appendItems(tracks.map(track => ({ track, source })));
   }
 
@@ -521,7 +600,8 @@ export const useQueueStore = defineStore("queue", () => {
     currentItem: () => currentItem.value,
     append: entries => appendItems(entries.map(({ track, pick }) => ({ track, source: { type: "autoplay", pick } }))),
   });
-  const ensureAutoplayRecommendations = () => autoplay.ensure();
+  // Under a station the station is what keeps the queue going.
+  const ensureAutoplayRecommendations = () => (radio.value ? ensureRadioAhead() : autoplay.ensure());
 
   // Goes right after the current entry in BOTH orders: after it in the
   // playback order the user is looking at, and after it in the original
@@ -531,6 +611,7 @@ export const useQueueStore = defineStore("queue", () => {
     track: PlayerTrack,
     source: QueueSource = { type: "manual" },
   ): QueueItem {
+    leaveRadioFor(source);
     const item = createItem(track, source);
     const current = currentItem.value;
 
@@ -553,6 +634,7 @@ export const useQueueStore = defineStore("queue", () => {
     source: QueueSource = { type: "manual" },
   ): QueueItem[] {
     if (tracks.length === 0) return [];
+    leaveRadioFor(source);
     const added = tracks.map(t => createItem(t, source));
     const current = currentItem.value;
 
@@ -727,6 +809,7 @@ export const useQueueStore = defineStore("queue", () => {
   }
 
   function shuffle(): void {
+    if (radio.value) return;
     const current = currentItem.value;
     const currentOriginalIndex = current
       ? items.value.findIndex(item => item.id === current.id)
@@ -745,11 +828,13 @@ export const useQueueStore = defineStore("queue", () => {
   }
 
   const toggleRepeat = () => {
+    if (radio.value) return;
     const idx = REPEAT_MODES.indexOf(repeatMode.value);
     repeatMode.value = REPEAT_MODES[(idx + 1) % REPEAT_MODES.length];
   };
 
   function toggleShuffle(): void {
+    if (radio.value) return;
     if (isShuffled.value) {
       unshuffle();
     }
@@ -759,6 +844,7 @@ export const useQueueStore = defineStore("queue", () => {
   }
 
   function clear(): void {
+    stopRadio();
     commit(EMPTY_STATE);
     const player = playback();
     player.stop();
@@ -770,6 +856,7 @@ export const useQueueStore = defineStore("queue", () => {
     originalQueue,
     currentIndex,
     isShuffled,
+    isRadio,
     persistedSnapshot,
     repeatMode,
 
@@ -793,6 +880,8 @@ export const useQueueStore = defineStore("queue", () => {
     advance,
     previous,
     ensureAutoplayRecommendations,
+    startRadio,
+    stopRadio,
     jumpTo,
     jumpToId,
     removeFromQueue,

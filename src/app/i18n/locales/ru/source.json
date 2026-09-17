@@ -2,8 +2,12 @@
   "local": "Моя медиатека",
   "nd": "Navidrome",
   "yt": "YouTube",
+  "ym": "Яндекс Музыка",
   "health": {
     "authFailed": "{source}: не удалось войти",
+    "forbidden": "{source}: нет доступа — возможно, нужна подписка",
+    "rateLimited": "{source}: слишком много запросов, попробуйте позже",
+    "rateLimitedIn": "{source}: слишком много запросов, попробуйте через {seconds} с",
     "unreachable": "{source}: нет связи",
     "retry": "Проверить снова",
     "settings": "Настройки"

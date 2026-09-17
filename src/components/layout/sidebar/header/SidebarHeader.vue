@@ -259,7 +259,7 @@ const router = useRouter();
 const theme = useTheme();
 const headerTransition = { duration: 0.3, ease: [0.23, 1, 0.32, 1] as const };
 
-const { query, source, setSource, isSearchOpen, openSearch, closeSearch, submitYtSearch, clear, focusRequests }
+const { query, source, setSource, isSearchOpen, openSearch, closeSearch, submitSearch, clear, focusRequests }
   = useSearch();
 
 // `ref="inputRef"` in the template had no declaration behind it, so nothing
@@ -318,7 +318,7 @@ function selectSource(next: SearchSource) {
 }
 
 function handleEnter() {
-  if (source.value === "yt") submitYtSearch();
+  submitSearch();
 }
 
 const themeIcon = computed(() => (theme.isDark.value ? IconSun : IconMoon));

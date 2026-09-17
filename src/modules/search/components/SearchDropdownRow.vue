@@ -5,8 +5,11 @@ import type { Track } from "@/modules/player/types";
 import type { LibraryItem } from "@/modules/library/types";
 import type { RouteLocationRaw } from "vue-router";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
+import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
+import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import LibrarySidebarItem from "@/components/layout/sidebar/library-item/LibrarySidebarItem.vue";
-import { routeLocation } from "@/app/router/route-locations";
+import { routeLocation, type ViewIntent } from "@/app/router/route-locations";
+import { sourceKindOf } from "@/modules/sources/lib/display";
 
 const props = defineProps<{
   item: SearchResultItem;
@@ -16,14 +19,19 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ click: [] }>();
 
-function routeForItem(item: SearchResultItem): RouteLocationRaw {
+// A source's search answers with its catalog rows: no Dexie row behind them,
+// and their links ask for the source's view of the entity.
+const isCatalog = computed(() => sourceKindOf(props.item.entityId) !== "local");
+const intent = computed<ViewIntent | undefined>(() => (isCatalog.value ? { catalog: true } : undefined));
+
+const routeForItem = (item: SearchResultItem): RouteLocationRaw => {
   switch (item.type) {
-    case "artist": return routeLocation.artist(item.entityId);
-    case "album": return routeLocation.album(item.entityId);
-    case "playlist": return routeLocation.playlist(item.entityId);
+    case "artist": return routeLocation.artist(item.entityId, intent.value);
+    case "album": return routeLocation.album(item.entityId, intent.value);
+    case "playlist": return routeLocation.playlist(item.entityId, intent.value);
     default: return routeLocation.home();
   }
-}
+};
 
 const libraryItem = computed<LibraryItem>(() => ({
   id: props.item.entityId,
@@ -32,6 +40,7 @@ const libraryItem = computed<LibraryItem>(() => ({
   subtitle: props.item.artist,
   image: props.item.coverPath,
   isPinned: false,
+  isCatalog: isCatalog.value,
   addedAt: 0,
   rounded: props.item.type === "artist",
   to: props.to ?? routeForItem(props.item),
@@ -39,14 +48,20 @@ const libraryItem = computed<LibraryItem>(() => ({
 </script>
 
 <template>
-  <TrackRow
-    v-if="item.type === 'track' && track"
-    :track="track"
-    :cover-url="item.coverPath"
-    hide-index
-    menu-target="search"
-    @play="emit('click')"
-  />
+  <template v-if="item.type === 'track' && track">
+    <TrackContextMenu context="search-top">
+      <div data-track-menu-scope>
+        <TrackRow
+          :track="track"
+          :cover-url="item.coverPath"
+          hide-index
+          menu-target="search-top"
+          @play="emit('click')"
+        />
+      </div>
+    </TrackContextMenu>
+    <TrackDropdown context="search-top" />
+  </template>
 
   <LibrarySidebarItem
     v-else-if="item.type !== 'track'"

@@ -9,8 +9,8 @@ import { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 //
 // The "also delete the tracks inside" opt-in. Without it album/artist/playlist
 // deletion leaves the tracks in the library (ungrouped, detached, unreferenced);
-// with it the tracks, their offline copies, files and playlist references go
-// too, and GC takes whatever that empties.
+// with it the track rows and their playlist references go too, and GC takes
+// whatever that empties. No file on disk is touched either way.
 //
 
 const storageMock = vi.hoisted(() => ({
@@ -65,13 +65,6 @@ const seedLibrary = async () => {
   await db.artists.put(artist);
   await db.albums.put(album);
   await db.tracks.bulkPut([localTrack("t-1", "One"), localTrack("t-2", "Two")]);
-  await db.offlineCopies.put({
-    trackId: TrackId("t-1"),
-    storagePath: "offline/t-1.m4a",
-    sizeBytes: 1,
-    format: {},
-    downloadedAt: 1,
-  } as never);
 };
 
 describe("deleteTracks option (integration)", () => {
@@ -85,7 +78,7 @@ describe("deleteTracks option (integration)", () => {
     await Promise.all(db.tables.map(table => table.clear()));
   });
 
-  it("a local album takes its tracks, copies and files, and GC takes the artist", async () => {
+  it("a local album takes its tracks, and GC takes the artist", async () => {
     await seedLibrary();
     await db.playlists.put({
       id: playlistId,
@@ -98,11 +91,10 @@ describe("deleteTracks option (integration)", () => {
     await deleteAlbumAndSync(queryClient, album, { deleteTracks: true });
 
     expect(await db.tracks.count()).toBe(0);
-    expect(await db.offlineCopies.count()).toBe(0);
     expect(await db.albums.count()).toBe(0);
     expect(await db.artists.count()).toBe(0);
     expect((await db.playlists.get(playlistId))?.trackIds).toEqual([]);
-    expect(storageMock.deleteFile).toHaveBeenCalledWith("offline/t-1.m4a");
+    expect(storageMock.deleteFile).not.toHaveBeenCalled();
   });
 
   it("a local album without the opt-in still only ungroups its tracks", async () => {
@@ -111,7 +103,6 @@ describe("deleteTracks option (integration)", () => {
     await deleteAlbumAndSync(queryClient, album, { deleteTracks: false });
 
     expect(await db.tracks.count()).toBe(2);
-    expect(await db.offlineCopies.count()).toBe(1);
     expect(await db.artists.count()).toBe(1);
     expect(storageMock.deleteFile).not.toHaveBeenCalled();
   });
@@ -122,10 +113,9 @@ describe("deleteTracks option (integration)", () => {
     await deleteArtistAndSync(queryClient, artist, { deleteTracks: true });
 
     expect(await db.tracks.count()).toBe(0);
-    expect(await db.offlineCopies.count()).toBe(0);
     expect(await db.albums.count()).toBe(0);
     expect(await db.artists.count()).toBe(0);
-    expect(storageMock.deleteFile).toHaveBeenCalledWith("offline/t-1.m4a");
+    expect(storageMock.deleteFile).not.toHaveBeenCalled();
   });
 
   it("an artist without the opt-in keeps the tracks and detaches them", async () => {
@@ -160,7 +150,7 @@ describe("deleteTracks option (integration)", () => {
     expect(await db.tracks.get(TrackId("t-1"))).toBeUndefined();
     expect(await db.tracks.get(TrackId("t-2"))).toBeDefined();
     expect((await db.playlists.get(otherId))?.trackIds).toEqual([TrackId("t-2")]);
-    expect(storageMock.deleteFile).toHaveBeenCalledWith("offline/t-1.m4a");
+    expect(storageMock.deleteFile).not.toHaveBeenCalled();
   });
 
   it("a playlist without the opt-in leaves every track in the library", async () => {

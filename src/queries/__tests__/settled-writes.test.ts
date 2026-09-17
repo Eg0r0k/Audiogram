@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryObserver } from "@tanstack/vue-query";
 import { TrackId } from "@/types/ids";
-import type { OfflineCopyEntity } from "@/db/entities";
+import type { TrackEntity } from "@/db/entities";
 
 vi.mock("@/modules/covers/lib/cover-cache", () => ({
   coverCache: { invalidateAll: vi.fn(), invalidate: vi.fn(), set: vi.fn() },
 }));
 
 import { invalidateLibraryData } from "../library.queries";
-import { syncOfflineCopyCache } from "../offlineCopy.queries";
+import { syncLocalCopyCache } from "../localCopy.queries";
 import { queryKeys } from "../query-keys";
 
 //
@@ -69,17 +69,17 @@ describe("invalidateLibraryData", () => {
   });
 });
 
-describe("syncOfflineCopyCache", () => {
-  const trackId = TrackId("nd:1");
-  const copy = { trackId, storagePath: "offline/nd/1.m4a", sizeBytes: 1, format: {}, downloadedAt: 1 } as OfflineCopyEntity;
+describe("syncLocalCopyCache", () => {
+  const remoteId = TrackId("nd:1");
+  const copy = { id: TrackId("local:1"), storagePath: "tracks/1.m4a", sourceRef: remoteId } as TrackEntity;
 
   it("keeps the written copy over a first-load read that overlapped the write", async () => {
     const queryClient = new QueryClient();
-    const key = queryKeys.offlineCopies.detail(trackId);
+    const key = queryKeys.tracks.localCopy(remoteId);
     const read = overlappingFirstLoad(queryClient, key);
     await tick();
 
-    await syncOfflineCopyCache(queryClient, trackId, copy);
+    await syncLocalCopyCache(queryClient, remoteId, copy);
     read.releaseStaleRead();
     await until(() => queryClient.isFetching({ queryKey: key }) === 0);
 

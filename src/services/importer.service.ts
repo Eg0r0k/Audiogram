@@ -6,7 +6,8 @@ import type { ScannedFile, SyncResult, WatchedFolder } from "@/types/watched-fol
 import { WorkerPool } from "./worker-pool";
 import type {
   ImportBatchResult,
-  ImportControl } from "./types";
+  ImportControl,
+  ImportItem } from "./types";
 import {
   ImportError,
   ImportErrorCode,
@@ -84,6 +85,21 @@ export class MusicLibraryEngine {
     await storageService.warmup(["tracks", "lyrics"]);
 
     return importQueue(() => this.pipeline.run(itemsFromPaths(paths), onProgress, control));
+  }
+
+  /**
+   * Imports pre-built items — the download manager's path: it knows the
+   * file's remote identity (`item.known`) and the temp path. Shares
+   * `importQueue` with folder syncs so runs never interleave.
+   */
+  async importFromItems(items: ImportItem[]): Promise<ImportBatchResult> {
+    if (!hasNativeSupport(storageService)) {
+      return this.emptyFailResult(items.map(item => item.path ?? item.name), "Native support missing");
+    }
+
+    await storageService.warmup(["tracks"]);
+
+    return importQueue(() => this.pipeline.run(items));
   }
 
   async importFiles(

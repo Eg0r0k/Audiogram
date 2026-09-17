@@ -64,4 +64,43 @@ describe("persistTracks", () => {
     expect(await db.tracks.count()).toBe(1);
     expect((await db.tracks.get("t1" as TrackId))?.artistName).toBe("Old");
   });
+
+  it("promotes a matched shadow artist and album to library members", async () => {
+    await db.artists.add({
+      id: "ym:artist:5" as never, name: "Artist A", pinned: 0, addedAt: 1, updatedAt: 1,
+    });
+    await db.albums.add({
+      id: "ym:album:9" as never, title: "ДЕФО", artistId: "ym:artist:5" as never, pinned: 0, addedAt: 1, updatedAt: 1,
+    });
+    const base = itemFor("t1", "Artist A");
+    const item: TrackToSave = { ...base, meta: { ...base.meta, album: "ДЕФО" } };
+    const resolver = new EntityResolver();
+    await resolver.resolve([item.meta]);
+
+    await persistTracks([item], resolver);
+
+    const saved = await db.tracks.get("t1" as TrackId);
+    expect(saved?.artistIds).toEqual(["ym:artist:5"]);
+    expect(saved?.albumId).toBe("ym:album:9");
+    expect((await db.artists.get("ym:artist:5" as never))?.pinned).toBe(1);
+    expect((await db.albums.get("ym:album:9" as never))?.pinned).toBe(1);
+    expect(await db.artists.count()).toBe(1);
+    expect(await db.albums.count()).toBe(1);
+  });
+
+  it("leaves unrelated shadow rows untouched", async () => {
+    await db.artists.add({
+      id: "ym:artist:5" as never, name: "Artist A", pinned: 0, addedAt: 1, updatedAt: 1,
+    });
+    await db.artists.add({
+      id: "ym:artist:7" as never, name: "Someone Else", pinned: 0, addedAt: 1, updatedAt: 1,
+    });
+    const item = itemFor("t1", "Artist A");
+    const resolver = new EntityResolver();
+    await resolver.resolve([item.meta]);
+
+    await persistTracks([item], resolver);
+
+    expect((await db.artists.get("ym:artist:7" as never))?.pinned).toBe(0);
+  });
 });

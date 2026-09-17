@@ -98,6 +98,8 @@ export const useQueueSourceLink = () => {
       case "autoplay":
       case "recommendation":
         return { label: t("queue.fromRecommendations") };
+      case "radio":
+        return { label: current.station === "user:onyourwave" ? t("queue.myWave") : t("queue.fromStation") };
       default:
         return null;
     }

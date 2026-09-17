@@ -43,6 +43,11 @@ const hasStaticImage = computed(() => !!props.item.image);
         <IconFolder class="size-8" />
       </div>
 
+      <div
+        v-else-if="item.type === 'radio'"
+        class="wave-tile size-full"
+      />
+
       <EntityCoverImage
         v-else
         :owner-type="coverOwnerType"
@@ -73,3 +78,28 @@ const hasStaticImage = computed(() => !!props.item.image);
     </span>
   </div>
 </template>
+
+<style scoped>
+.wave-tile {
+  background-color: #6d4dff;
+  background-image:
+    radial-gradient(circle at 50% 50%, #ff5ea8 0%, rgb(255 94 168 / 0) 62%),
+    radial-gradient(circle at 50% 50%, #ffb347 0%, rgb(255 179 71 / 0) 58%),
+    radial-gradient(circle at 50% 50%, #38d9f5 0%, rgb(56 217 245 / 0) 62%),
+    radial-gradient(circle at 50% 50%, #b47cff 0%, rgb(180 124 255 / 0) 65%);
+  background-size: 170% 170%;
+  background-repeat: no-repeat;
+  animation: wave-drift 14s ease-in-out infinite alternate;
+}
+
+@keyframes wave-drift {
+  0% { background-position: 0% 0%, 100% 20%, 40% 100%, 100% 100%; }
+  33% { background-position: 80% 30%, 20% 100%, 100% 0%, 0% 60%; }
+  66% { background-position: 100% 100%, 0% 0%, 20% 40%, 70% 10%; }
+  100% { background-position: 30% 90%, 90% 70%, 0% 0%, 40% 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave-tile { animation: none; }
+}
+</style>

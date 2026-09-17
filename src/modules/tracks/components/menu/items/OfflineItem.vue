@@ -12,8 +12,8 @@
 
     <component
       :is="Item"
-      v-else-if="caps.hasOfflineCopy"
-      @click="emit('removeOfflineCopy')"
+      v-else-if="caps.hasLocalCopy"
+      @click="emit('removeDownload')"
     >
       <IconCloudOff class="size-5.5" />
       {{ $t("track.contextMenu.removeDownload") }}
@@ -21,7 +21,7 @@
 
     <component
       :is="Item"
-      v-else-if="caps.canOffline"
+      v-else-if="caps.canDownload"
       @click="emit('download')"
     >
       <IconDownload class="size-5.5" />
@@ -53,7 +53,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   download: [];
   cancelDownload: [];
-  removeOfflineCopy: [];
+  removeDownload: [];
 }>();
 
 const { Item } = useTrackMenuComponents();

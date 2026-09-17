@@ -5,7 +5,12 @@ const configState = vi.hoisted(() => ({ current: null as object | null }));
 
 vi.mock("../../navidrome/config", () => ({ getNdConfig: () => configState.current }));
 
+import { sources } from "../../registry";
+import { ndSourceProvider } from "../../navidrome/provider";
 import { useCurrentSourceStore } from "../currentSource.store";
+
+// Bootstrap registers the providers (src/main.ts); the store reads the registry.
+sources.register(ndSourceProvider);
 
 describe("currentSource store", () => {
   beforeEach(() => {

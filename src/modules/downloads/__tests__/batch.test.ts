@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { errAsync, okAsync } from "neverthrow";
 import { ndAlbumId, ndArtistId, ndPlaylistId, ndTrackId } from "@/types/track-ref";
-import { PlaylistId } from "@/types/ids";
+import { AlbumId, PlaylistId, TrackId } from "@/types/ids";
+import { TrackSource, TrackState } from "@/db/entities";
 import type { SourceTrackDTO } from "@/modules/sources/types";
 
 const providerMock = vi.hoisted(() => ({
@@ -26,7 +27,7 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   remove: vi.fn(async () => {}),
 }));
 vi.mock("../service/finalize", () => ({
-  finalizeOfflineCopy: vi.fn(async () => {}),
+  finalizeDownloadImport: vi.fn(async () => {}),
 }));
 vi.mock("@/queries/library.queries", () => ({
   invalidateLibraryData: vi.fn(async () => {}),
@@ -61,28 +62,40 @@ describe("batch downloads", () => {
     await Promise.all(db.tables.map(table => table.clear()));
   });
 
-  it("album batch pins every track, skips existing copies, aggregates progress", async () => {
+  it("album batch shadow-pins every track, skips existing copies, aggregates progress", async () => {
     providerMock.getAlbum.mockReturnValue(okAsync({
       album: { id: ndAlbumId("album1"), title: "Remote Album" },
       tracks: [ndDto("s1"), ndDto("s2"), ndDto("copied")],
     }));
-    await db.offlineCopies.put({
-      trackId: ndTrackId("copied"),
-      storagePath: "offline/nd/copied.flac",
-      sizeBytes: 1,
+    // "copied" was already downloaded: its imported local row is the ledger.
+    await db.tracks.put({
+      id: TrackId("local-nd:copied"),
+      title: "Song copied",
+      artistName: "Artist A",
+      albumTitle: "Remote Album",
+      artistIds: [],
+      albumId: AlbumId(""),
+      tagIds: [],
+      source: TrackSource.LOCAL_INTERNAL,
+      pinned: 1,
+      state: TrackState.READY,
+      storagePath: "tracks/local-nd:copied.flac",
+      duration: 0,
       format: {},
-      downloadedAt: 0,
+      playCount: 0,
+      addedAt: 1,
+      sourceRef: ndTrackId("copied"),
     });
 
     const batchId = await enqueueCollectionDownload("album", ndAlbumId("album1"));
 
     expect(batchId).not.toBeNull();
 
-    // Download = membership: the whole cascade is pinned at 1.
-    expect((await db.tracks.get(ndTrackId("s1")))?.pinned).toBe(1);
-    expect((await db.tracks.get(ndTrackId("copied")))?.pinned).toBe(1);
-    expect((await db.albums.get(ndAlbumId("album1")))?.pinned).toBe(1);
-    expect((await db.artists.get(ndArtistId("artist1")))?.pinned).toBe(1);
+    // Download = import: the cascade stays a shadow, the copy is a row of its own.
+    expect((await db.tracks.get(ndTrackId("s1")))?.pinned).toBe(0);
+    expect((await db.tracks.get(ndTrackId("copied")))?.pinned).toBe(0);
+    expect((await db.albums.get(ndAlbumId("album1")))?.pinned).toBe(0);
+    expect((await db.artists.get(ndArtistId("artist1")))?.pinned).toBe(0);
 
     const store = useDownloadsStore();
     expect(store.batches[batchId!]?.total).toBe(2);
@@ -106,7 +119,7 @@ describe("batch downloads", () => {
     });
   });
 
-  it("local playlist batch takes only ND tracks and promotes shadows", async () => {
+  it("local playlist batch takes only ND tracks and leaves shadows alone", async () => {
     // A mixed local playlist: one local track, one ND shadow row.
     await db.tracks.bulkPut([
       {
@@ -131,7 +144,7 @@ describe("batch downloads", () => {
 
     const jobs = await db.downloadJobs.filter(job => job.batchId === batchId).toArray();
     expect(jobs.map(job => job.trackId)).toEqual([ndTrackId("shadow")]);
-    expect((await db.tracks.get(ndTrackId("shadow")))?.pinned).toBe(1);
+    expect((await db.tracks.get(ndTrackId("shadow")))?.pinned).toBe(0);
 
     const store = useDownloadsStore();
     expect(store.batches[batchId!]?.total).toBe(1);

@@ -7,6 +7,8 @@ vi.mock("../../service/searchIndex", () => ({
   searchDocuments: vi.fn(async () => ({ results: [], total: 0, totalDuration: 0 })),
 }));
 
+import { sources } from "@/modules/sources/registry";
+import type { SourceProvider } from "@/modules/sources/types";
 import { useSearch } from "../useSearch";
 
 // YT search auto-commits after a typing pause; only explicit submits write
@@ -15,6 +17,8 @@ import { useSearch } from "../useSearch";
 describe("useSearch вЂ” debounced YouTube auto-commit", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    // Submit mode is the provider's declaration; main.ts registers the real one.
+    sources.register({ id: "yt", searchMode: "submit", isAvailable: true } as unknown as SourceProvider);
     const search = useSearch();
     search.clear();
     search.clearHistory();
@@ -32,10 +36,10 @@ describe("useSearch вЂ” debounced YouTube auto-commit", () => {
 
     search.query.value = "lofi beats";
     await nextTick();
-    expect(search.submittedYtQuery.value).toBe("");
+    expect(search.submittedQuery.value).toBe("");
 
     await vi.advanceTimersByTimeAsync(500);
-    expect(search.submittedYtQuery.value).toBe("lofi beats");
+    expect(search.submittedQuery.value).toBe("lofi beats");
     // Auto-commits never write history вЂ” only explicit submits do.
     expect(search.recentQueries.value).toEqual([]);
   });
@@ -54,7 +58,7 @@ describe("useSearch вЂ” debounced YouTube auto-commit", () => {
     await nextTick();
     await vi.advanceTimersByTimeAsync(500);
 
-    expect(search.submittedYtQuery.value).toBe("lofi beats");
+    expect(search.submittedQuery.value).toBe("lofi beats");
   });
 
   it("clearing the query resets the committed one immediately", async () => {
@@ -64,11 +68,11 @@ describe("useSearch вЂ” debounced YouTube auto-commit", () => {
     search.query.value = "lofi";
     await nextTick();
     await vi.advanceTimersByTimeAsync(500);
-    expect(search.submittedYtQuery.value).toBe("lofi");
+    expect(search.submittedQuery.value).toBe("lofi");
 
     search.query.value = "   ";
     await nextTick();
-    expect(search.submittedYtQuery.value).toBe("");
+    expect(search.submittedQuery.value).toBe("");
   });
 
   it("does not auto-commit while another source is active", async () => {
@@ -79,7 +83,7 @@ describe("useSearch вЂ” debounced YouTube auto-commit", () => {
     await nextTick();
     await vi.advanceTimersByTimeAsync(500);
 
-    expect(search.submittedYtQuery.value).toBe("");
+    expect(search.submittedQuery.value).toBe("");
   });
 
   it("explicit submit still commits instantly and records history", async () => {
@@ -88,9 +92,9 @@ describe("useSearch вЂ” debounced YouTube auto-commit", () => {
 
     search.query.value = "lofi beats";
     await nextTick();
-    search.submitYtSearch();
+    search.submitSearch();
 
-    expect(search.submittedYtQuery.value).toBe("lofi beats");
+    expect(search.submittedQuery.value).toBe("lofi beats");
     expect(search.recentQueries.value).toEqual(["lofi beats"]);
   });
 });

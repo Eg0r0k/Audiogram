@@ -142,11 +142,12 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     }
   }
 
+  /** Library members only — a shadow row under a library album is the streaming twin of a downloaded track. */
   async countByAlbumId(albumId: AlbumId): Promise<Result<number, Error>> {
     try {
       const count = await this.table
-        .where("albumId")
-        .equals(albumId)
+        .where("[albumId+pinned]")
+        .equals([albumId, 1])
         .count();
       return ok(count);
     }
@@ -245,8 +246,8 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     try {
       let total = 0;
       await this.table
-        .where("albumId")
-        .equals(albumId)
+        .where("[albumId+pinned]")
+        .equals([albumId, 1])
         .each((track) => { total += track.duration; });
       return ok(total);
     }
@@ -583,10 +584,10 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     limit: number,
   ): Promise<Result<TrackEntity[], Error>> {
     try {
-      const all = await this.table
+      const all = (await this.table
         .where("albumId")
         .equals(albumId)
-        .toArray();
+        .toArray()).filter(track => this.isLibraryMember(track));
       all.sort((a, b) =>
         (a.diskNo ?? 1) - (b.diskNo ?? 1) || (a.trackNo ?? 0) - (b.trackNo ?? 0),
       );
@@ -620,6 +621,17 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   async findByStoragePath(path: string): Promise<Result<TrackEntity | undefined, Error>> {
     try {
       const track = await this.table.where("storagePath").equals(path).first();
+      return ok(track);
+    }
+    catch (error) {
+      return err(toDbError(error));
+    }
+  }
+
+  /** The local row downloaded from `remoteId`, if any (see TrackEntity.sourceRef). */
+  async findBySourceRef(remoteId: TrackId): Promise<Result<TrackEntity | undefined, Error>> {
+    try {
+      const track = await this.table.where("sourceRef").equals(remoteId).first();
       return ok(track);
     }
     catch (error) {

@@ -36,6 +36,8 @@
               :has-tracks="tracks.length > 0"
               :is-library-entity="!!artist"
               :filterable="!!artist"
+              :catalog-route="catalogViewRoute('artist', artistId, !!artist)"
+              :like="like.state.value"
               @play="handlePlayAll"
               @shuffle="handleShuffle"
               @edit="openEditDialog"
@@ -107,7 +109,7 @@
           </template>
 
           <template #leading>
-            <div class="px-4">
+            <div class="px-4 mb-2">
               <AddTrackRow
                 v-if="artist"
                 @add="openAddTracksPanel"
@@ -162,6 +164,7 @@ import { Spinner } from "@/components/ui/spinner";
 import IconChevronRight from "~icons/tabler/chevron-right";
 
 import { useArtistPage } from "@/modules/artists/composables/useArtistPage";
+import { useEntityLike } from "@/modules/sources/composables/useEntityLike";
 import { getArtistPageData } from "@/queries/artist.queries";
 import { searchArtistTracks } from "@/queries/track.queries";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
@@ -180,7 +183,7 @@ import CreateAlbumCard from "@/modules/albums/components/CreateAlbumCard.vue";
 import { useCreateAlbum } from "@/modules/albums/composables/useCreateAlbum";
 import { usePlayAlbum } from "@/modules/albums/composables/usePlayAlbum";
 import { ScrollableSlider } from "@/components/ui/scrollable";
-import { routeLocation } from "@/app/router/route-locations";
+import { catalogViewRoute, routeLocation } from "@/app/router/route-locations";
 import type { LibraryItem } from "@/modules/library/types";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
 import LibraryContextMenu from "@/modules/library/components/LibraryContextMenu.vue";
@@ -203,6 +206,7 @@ const searchQuery = ref("");
 const artistId = computed(() => route.params.id as string);
 
 const {
+  remoteKind,
   artist,
   albums,
   albumCovers,
@@ -225,6 +229,8 @@ const {
   isTracksLoading,
   isFetchingNextTrackPage,
 } = useArtistPage(sortKey, searchQuery);
+
+const like = useEntityLike(remoteKind, "artist", artistId);
 
 const editArtist = useEditArtistDialog();
 const createAlbum = useCreateAlbum();

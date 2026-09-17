@@ -41,6 +41,9 @@
               :has-tracks="tracks.length > 0"
               :is-library-entity="!!playlist"
               :filterable="!!playlist"
+              :catalog-route="catalogViewRoute('playlist', playlistId, !!playlist)"
+              :like="playlistData.isOwner ? undefined : like.state.value"
+              :can-delete-at-source="canDeleteAtSource"
               @play="handlePlayAll"
               @shuffle="handleShuffle"
               @edit="openEditDialog"
@@ -51,7 +54,7 @@
           </template>
 
           <template #leading>
-            <div class="px-4">
+            <div class="px-4 mb-2">
               <AddTrackRow
                 v-if="playlist"
                 @add="openAddTracksPanel"
@@ -101,6 +104,7 @@ import { computed, ref, useTemplateRef } from "vue";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
+import { catalogViewRoute } from "@/app/router/route-locations";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import PageErrorState from "@/components/common/PageErrorState.vue";
@@ -110,6 +114,7 @@ import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.stor
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import { usePlaylistPage } from "@/modules/playlist/composables/usePlaylistPage";
+import { useEntityLike } from "@/modules/sources/composables/useEntityLike";
 import MediaHero from "@/modules/media-hero/components/MediaHero.vue";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 import { summonDialog } from "@/components/dialogs/summonDialog";
@@ -133,6 +138,7 @@ const sortKey = ref<TrackSortKey | null>(null);
 const searchQuery = ref("");
 
 const {
+  remoteKind,
   playlist,
   tracks,
   canSort,
@@ -145,6 +151,8 @@ const {
   trackCount,
   error,
   deletePlaylist,
+  canDeleteAtSource,
+  deleteAtSource,
   updatePlaylist,
   refetch,
   fetchNextPage,
@@ -152,6 +160,9 @@ const {
   isTracksLoading,
   isFetchingNextPage,
 } = usePlaylistPage(sortKey, searchQuery);
+
+const playlistId = computed(() => route.params.id as string);
+const like = useEntityLike(remoteKind, "playlist", playlistId);
 
 const editPlaylist = useEditPlaylistDialog();
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
@@ -213,18 +224,34 @@ function handleShare() {
   toast.info(t("common.comingSoon"));
 }
 
-async function openDeleteDialog() {
-  if (!playlist.value) return;
-  const result = await summonDialog("deleteConfirm", {
+const openDeleteDialog = async () => {
+  if (playlist.value) {
+    const result = await summonDialog("deleteConfirm", {
+      data: {
+        type: "playlist",
+        id: playlist.value.id,
+        name: playlist.value.name,
+        trackCount: trackCount.value,
+      },
+    }, { key: `delete:${playlist.value.id}` });
+    if (result) await handleDelete(result.deleteTracks);
+    return;
+  }
+
+  const data = playlistData.value;
+  if (!data || !canDeleteAtSource.value || !remoteKind.value) return;
+  const confirmed = await summonDialog("deleteConfirm", {
     data: {
       type: "playlist",
-      id: playlist.value.id,
-      name: playlist.value.name,
-      trackCount: trackCount.value,
+      id: data.id,
+      name: data.title,
+      trackCount: data.trackCount,
+      atSource: t(`source.${remoteKind.value}`),
     },
-  }, { key: `delete:${playlist.value.id}` });
-  if (result) await handleDelete(result.deleteTracks);
-}
+  }, { key: `delete:${data.id}` });
+  if (!confirmed) return;
+  if (!(await deleteAtSource())) toast.error(t("playlist.deleteFailed"));
+};
 
 async function handleDelete(deleteTracks: boolean) {
   try {

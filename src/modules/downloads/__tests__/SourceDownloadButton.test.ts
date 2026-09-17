@@ -18,7 +18,7 @@ vi.mock("vue-sonner", () => ({
 }));
 
 vi.mock("@/db/repositories", () => ({
-  offlineCopyRepository: { findById: vi.fn().mockResolvedValue({ isErr: () => false, isOk: () => true, value: null }) },
+  trackRepository: { findBySourceRef: vi.fn().mockResolvedValue({ isErr: () => false, isOk: () => true, value: undefined }) },
 }));
 
 const dto: SourceTrackDTO = {

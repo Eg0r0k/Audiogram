@@ -30,7 +30,6 @@ import {
 import { assertValidName } from "@/lib/limits";
 import { sortTracks, unique, unwrapResult } from "./shared";
 import {
-  findOfflineCopiesOf,
   purgeTracksInTx,
   syncAfterTrackPurge,
   trackCascadeTables,
@@ -271,13 +270,12 @@ export async function deletePlaylistAndSync(
     ? await unwrapResult(trackRepository.findByIds(currentPlaylist.trackIds))
     : [];
   const trackIds = tracks.map(track => track.id);
-  const copies = await findOfflineCopiesOf(trackIds);
   const now = Date.now();
 
   const txResult = await unitOfWork.runScoped(
     trackCascadeTables(),
     async () => {
-      const removals = await purgeTracksInTx(tracks, copies, now);
+      const removals = await purgeTracksInTx(tracks, now);
       await unwrapResult(coverRepository.deletePlaylistCover(currentPlaylist.id));
       await unwrapResult(playlistRepository.delete(currentPlaylist.id));
       return removals;
@@ -287,7 +285,7 @@ export async function deletePlaylistAndSync(
 
   await settleLibraryReads(queryClient);
   // This playlist is gone — re-syncing its caches would put it back.
-  await syncAfterTrackPurge(queryClient, trackIds, txResult.value, copies, [currentPlaylist.id]);
+  await syncAfterTrackPurge(queryClient, trackIds, txResult.value, [currentPlaylist.id]);
   await removeSearchDocuments([`playlist:${currentPlaylist.id}`]);
 
   removePlaylistCaches(queryClient, currentPlaylist.id);

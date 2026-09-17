@@ -3,7 +3,7 @@ import type { Track } from "@/modules/player/types";
 import type { AlbumData, ArtistData, PlaylistData } from "@/types/media-data";
 import type { PlaylistId } from "@/types/ids";
 import { AlbumId } from "@/types/ids";
-import { parseTrackRef, type SourceKind } from "@/types/track-ref";
+import { remoteTrackSource, sourceKindOfId, type SourceKind } from "@/types/track-ref";
 import { THUMB_SIZE_FULL } from "@/lib/media/cover-sizes";
 import { sources } from "../registry";
 import type { SourceAlbumDTO, SourceArtistDTO, SourcePlaylistDTO, SourceTrackDTO } from "../types";
@@ -22,12 +22,12 @@ export function sourceCoverUrl(kind: SourceKind, coverRef: string | undefined, s
 
 /** Source kind of any branded id string (track/album/artist/playlist). */
 export function sourceKindOf(id: string): SourceKind {
-  return parseTrackRef(id as Parameters<typeof parseTrackRef>[0]).kind;
+  return sourceKindOfId(id);
 }
 
 /** Display-only Track for shared rows; never a source of DB writes. */
 export function sourceTrackToDisplay(dto: SourceTrackDTO): Track {
-  const kind = parseTrackRef(dto.id).kind;
+  const kind = sourceKindOfId(dto.id);
   return {
     kind: "library",
     id: dto.id,
@@ -37,11 +37,12 @@ export function sourceTrackToDisplay(dto: SourceTrackDTO): Track {
     albumId: dto.albumId ?? AlbumId(""),
     albumName: dto.albumTitle ?? "",
     storagePath: "",
-    source: kind === "yt" ? TrackSource.REMOTE_YT : TrackSource.REMOTE_SUBSONIC,
+    source: kind === "local" ? TrackSource.LOCAL_INTERNAL : remoteTrackSource(kind),
     state: TrackState.READY,
     pinned: 0,
     duration: dto.duration ?? 0,
-    isLiked: false,
+    // A source that keeps its own likes says whether this row is one.
+    isLiked: kind !== "local" && (sources.find(kind)?.isTrackLiked?.(dto.id) ?? false),
     trackNo: dto.trackNo,
     diskNo: dto.discNo,
     sourceDto: dto,
@@ -86,7 +87,7 @@ export function sourcePlaylistToPlaylistData(dto: SourcePlaylistDTO, id: Playlis
     id,
     title: dto.name,
     image: sourceCoverUrl(sourceKindOf(id), dto.coverRef, THUMB_SIZE_FULL),
-    isOwner: false,
+    isOwner: dto.isOwner ?? false,
     trackCount: dto.trackCount,
   };
 }

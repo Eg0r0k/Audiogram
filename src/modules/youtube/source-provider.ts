@@ -176,6 +176,19 @@ export const ytSourceProvider: SourceProvider = {
     return youtubeProvider.isAvailable;
   },
 
+  // A cold yt-dlp run (sidecar start, bot-check challenge, format probing)
+  // routinely takes longer than a local lookup or a Subsonic stream URL.
+  resolveTimeoutMs: 45_000,
+
+  // A search fans out into several Innertube requests — as-you-type would
+  // fire them on every keystroke.
+  searchMode: "submit",
+
+  externalUrl({ id }) {
+    const videoId = ytIdOf(id);
+    return videoId ? `https://www.youtube.com/watch?v=${videoId}` : null;
+  },
+
   // No catalog to enumerate: YouTube has no "all albums" to walk, only
   // entities reached by id from a search or a link.
   listArtists: () => unsupported("artist browsing"),

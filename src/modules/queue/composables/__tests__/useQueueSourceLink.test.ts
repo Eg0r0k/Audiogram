@@ -57,8 +57,10 @@ vi.mock("@tanstack/vue-query", () => ({
 import { useQueueSourceLink } from "../useQueueSourceLink";
 import { sources } from "@/modules/sources/registry";
 import { ytSourceProvider } from "@/modules/youtube/source-provider";
+import { ndSourceProvider } from "@/modules/sources/navidrome/provider";
 
 // main.ts does this at bootstrap; the catalog-kind lookup below needs it.
+sources.register(ndSourceProvider);
 sources.register(ytSourceProvider);
 
 const track = (overrides: Partial<PlayerTrack> = {}): PlayerTrack => ({

@@ -44,6 +44,9 @@ export type SourceSearchHit
 /** Collections a source can expose. */
 export type SourceEntity = "artists" | "albums" | "playlists";
 
+/** A collection a source keeps likes for; the like list is what `listArtists` & co. answer. */
+export type LikeableEntity = "artist" | "album" | "playlist";
+
 /**
  * What a source can do with one collection. Listing and opening are separate
  * questions: YouTube has no browsable album catalog, yet a single album opens
@@ -81,6 +84,47 @@ export interface SourceProvider {
   readonly capabilities: SourceCapabilities;
   /** Platform + settings gate (platformCaps, ND configured, …). */
   readonly isAvailable: boolean;
+
+  /**
+   * How long resolving a stream URL may take before the player gives up.
+   * Optional: a source whose resolve is one cheap request keeps the default.
+   */
+  readonly resolveTimeoutMs?: number;
+  /**
+   * "live" (the default) searches as the user types; "submit" waits for a
+   * typing pause or Enter — for sources whose search fans out into several
+   * requests or is rate-limited.
+   */
+  readonly searchMode?: "live" | "submit";
+  /**
+   * The track's page at the source, for "open in …". The album is passed
+   * along because some sources have no track pages, only album pages.
+   * Optional; null when the source has no page to open right now.
+   */
+  externalUrl?(track: { id: TrackId; albumId?: AlbumId }): string | null;
+  /**
+   * The source keeps its own likes (Yandex "Мне нравится"): a like on one
+   * of its tracks is sent there too, and the like button of its catalog
+   * rows starts from what the source knows. Both optional; a source
+   * without them keeps likes local.
+   */
+  setTrackLiked?(id: TrackId, liked: boolean): ResultAsync<void, SourceError>;
+  /** Synchronous, from the source's cached like list — a row is built without a request. */
+  isTrackLiked?(id: TrackId): boolean;
+
+  /**
+   * The source keeps its own likes of whole entities too (Yandex "Мне
+   * нравится" for artists, albums, playlists). For such a source the
+   * listArtists / listAlbums / listPlaylists collections ARE the liked ones,
+   * so the like state of a page is read off those lists and a like is
+   * followed by their invalidation. Optional; absent = no entity likes.
+   */
+  setEntityLiked?(entity: LikeableEntity, id: string, liked: boolean): ResultAsync<void, SourceError>;
+  /**
+   * Deletes a playlist the signed-in account owns (`SourcePlaylistDTO.isOwner`)
+   * at the source. Optional; absent = own playlists cannot be deleted from here.
+   */
+  deletePlaylist?(id: PlaylistId): ResultAsync<void, SourceError>;
 
   /**
    * The cheapest request that proves the configured source answers — a

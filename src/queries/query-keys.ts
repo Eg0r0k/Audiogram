@@ -62,16 +62,14 @@ export const queryKeys = {
     },
     likedTotalDuration: () => ["tracks", "liked", "totalDuration"] as const,
     byIds: (ids: readonly TrackId[]) => ["tracks", "byIds", ...ids] as const,
+    /** The local track downloaded from a remote id (null result when none). */
+    localCopy: (remoteId: TrackId) => ["tracks", "localCopy", remoteId] as const,
     allPaginated: (search = "") => ["tracks", "all", "paginated", search] as const,
     indexInfinite: (sortKey: TrackSortKey | null, search = "") => ["tracks", "index", "infinite", sortKey, search] as const,
     indexTotalDuration: (search = "") => ["tracks", "index", "totalDuration", search] as const,
   },
   trackChapters: {
     detail: (trackId: TrackId) => ["trackChapters", trackId] as const,
-  },
-  offlineCopies: {
-    all: () => ["offlineCopies"] as const,
-    detail: (trackId: TrackId) => ["offlineCopies", trackId] as const,
   },
   tags: {
     all: () => ["tags"] as const,
@@ -89,6 +87,8 @@ export const queryKeys = {
     /** One source's slice of the above. */
     ofKind: (kind: SourceKind) => ["source", kind] as const,
     artists: (kind: SourceKind | null) => ["source", kind, "artists"] as const,
+    /** Every album page of a source, whatever the sort — the prefix of albumsInf. */
+    albums: (kind: SourceKind | null) => ["source", kind, "albums"] as const,
     albumsInf: (kind: SourceKind | null, sort: string) => ["source", kind, "albums", sort] as const,
     // Null ids come from skipToken-parked options.
     album: (kind: SourceKind | null, id: AlbumId | null) => ["source", kind, "album", id] as const,

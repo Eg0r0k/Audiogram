@@ -32,7 +32,7 @@ vi.mock(import("@tauri-apps/api/core"), async (importOriginal) => {
 });
 
 import { setMediaServerBaseForTests } from "@/lib/stream-url";
-import { ndSourceProvider } from "../providers/nd.provider";
+import { ndSourceProvider } from "../navidrome/provider";
 
 const MEDIA_BASE = "http://127.0.0.1:4321/tok";
 setMediaServerBaseForTests(MEDIA_BASE);

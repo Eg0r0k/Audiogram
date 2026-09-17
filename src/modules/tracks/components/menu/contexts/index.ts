@@ -12,6 +12,7 @@ export const trackContextComponents: Record<TrackContext, Component> = {
   "default": DefaultContext,
   "current-track": CurrentTrackContext,
   "search": DefaultContext,
+  "search-top": DefaultContext,
   "liked": LikedContext,
   "artist": DefaultContext,
   "queue": QueueContext,

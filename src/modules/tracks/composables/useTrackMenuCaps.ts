@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/vue-query";
 import { parseTrackRef, type SourceKind } from "@/types/track-ref";
 import { ytVideoIdFromStreamUrl } from "@/lib/stream-url";
 import { sources } from "@/modules/sources";
-import { offlineCopyQueries } from "@/queries/offlineCopy.queries";
+import { localCopyQueries } from "@/queries/localCopy.queries";
 import { trackHasLocalFile } from "@/modules/tracks/lib/trackPredicates";
 import type { TrackId } from "@/types/ids";
 import type { TrackMenuSubject } from "../components/menu/type";
@@ -20,11 +20,12 @@ export interface TrackMenuCaps {
   isInLibrary: boolean;
   /** A Dexie row exists at all (shadow rows included). */
   isPinned: boolean;
-  hasOfflineCopy: boolean;
-  /** Local file OR offline copy on disk → "Save as…" can produce a file. */
+  /** A local track downloaded from this remote id exists (TrackEntity.sourceRef). */
+  hasLocalCopy: boolean;
+  /** Local file OR downloaded copy → "Save as…" can produce a file. */
   canExportFile: boolean;
   /** The source can hand over a file and no copy exists yet. */
-  canOffline: boolean;
+  canDownload: boolean;
   /** Lyrics attach to library rows only (stored locally on the pinned row). */
   canAttachLyrics: boolean;
   canOpenExternal: boolean;
@@ -61,8 +62,9 @@ function sourceCanDownload(kind: SourceKind): boolean {
 
 /**
  * Computes the capability set for the active menu subject. The synchronous
- * part derives from the subject itself; the offline copy comes from the
- * `offlineCopy(trackId)` query (cache-synced by the download manager).
+ * part derives from the subject itself; the local copy comes from the
+ * `localCopyQueries.byRemoteId(trackId)` query (cache-synced by the download
+ * manager, which imports the download as a local track).
  *
  * Shells compute this once per active subject and pass it down next to
  * `actions` — item components receive ready-made booleans.
@@ -72,21 +74,21 @@ export function useTrackMenuCaps(subject: Ref<TrackMenuSubject | null>): Ref<Tra
   const isRemote = computed(() => source.value !== "local");
   const trackId = computed(() => (isRemote.value ? subjectTrackId(subject.value) : null));
 
-  const { data: offlineCopy } = useQuery(computed(() => offlineCopyQueries.detail(trackId.value)));
+  const { data: localCopy } = useQuery(computed(() => localCopyQueries.byRemoteId(trackId.value)));
 
   return computed<TrackMenuCaps>(() => {
     const current = subject.value;
     const isLibrary = current?.kind === "library";
-    const hasOfflineCopy = !!offlineCopy.value;
+    const hasLocalCopy = !!localCopy.value;
     const hasLocalFile = isLibrary && trackHasLocalFile(current.track);
 
     return {
       source: source.value,
       isInLibrary: isLibrary && (current.track.pinned ?? 1) === 1,
       isPinned: isLibrary,
-      hasOfflineCopy,
-      canExportFile: hasLocalFile || hasOfflineCopy,
-      canOffline: isRemote.value && sourceCanDownload(source.value) && !hasOfflineCopy,
+      hasLocalCopy,
+      canExportFile: hasLocalFile || hasLocalCopy,
+      canDownload: isRemote.value && sourceCanDownload(source.value) && !hasLocalCopy,
       canAttachLyrics: isLibrary,
       canOpenExternal: isRemote.value,
     };

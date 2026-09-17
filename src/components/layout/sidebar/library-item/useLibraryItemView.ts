@@ -50,6 +50,8 @@ export const useLibraryItemView = (itemSource: MaybeRefOrGetter<LibraryItem>) =>
         return source.type === "liked";
       case "allMedia":
         return source.type === "allMedia";
+      case "radio":
+        return source.type === "radio" && source.station === item.value.id;
       default:
         return false;
     }
