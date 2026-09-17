@@ -33,7 +33,6 @@ vi.mock("@/modules/search/service/buildDocuments", () => ({
 import { db } from "@/db";
 import { coverCache } from "@/modules/covers/lib/cover-cache";
 import { deleteTracksWithUndo } from "../track-undo";
-import { queryKeys } from "../query-keys";
 
 const artistId = ArtistId("a-1");
 const albumId = AlbumId("al-1");
@@ -84,13 +83,6 @@ describe("deleteTracksWithUndo (integration)", () => {
     await db.artists.put(artist);
     await db.albums.put(album);
     await db.tracks.bulkPut([localTrack("t-1", "One"), localTrack("t-2", "Two"), localTrack("t-3", "Three")]);
-    await db.offlineCopies.put({
-      trackId: TrackId("t-1"),
-      storagePath: "offline/t-1.m4a",
-      sizeBytes: 1,
-      format: {},
-      downloadedAt: 1,
-    } as never);
     await db.covers.bulkPut([
       cover("c-t1", "track", "t-1"),
       cover("c-al1", "album", albumId),
@@ -105,45 +97,31 @@ describe("deleteTracksWithUndo (integration)", () => {
     } satisfies PlaylistEntity);
   });
 
-  it("deletes like the plain cascade but keeps the copy files until finalize", async () => {
+  it("deletes like the plain cascade and never touches a file on disk", async () => {
     const undo = await deleteTracksWithUndo(queryClient, [TrackId("t-1"), TrackId("t-2")]);
 
     expect(undo.deleted).toBe(2);
     expect(ids(await db.tracks.toArray())).toEqual(["t-3"]);
-    expect(await db.offlineCopies.count()).toBe(0);
     expect(ids(await db.covers.toArray())).toEqual(["c-a1", "c-al1"]);
     expect((await db.playlists.get(playlistId))?.trackIds).toEqual([TrackId("t-3")]);
     expect(storageMock.deleteFile).not.toHaveBeenCalled();
 
     await undo.finalize();
-    expect(storageMock.deleteFile).toHaveBeenCalledWith("offline/t-1.m4a");
+    expect(storageMock.deleteFile).not.toHaveBeenCalled();
   });
 
-  it("restore brings back rows, covers, copies and the playlist order, never touching files", async () => {
+  it("restore brings back rows, covers and the playlist order, never touching files", async () => {
     const undo = await deleteTracksWithUndo(queryClient, [TrackId("t-1"), TrackId("t-2")]);
 
     await undo.restore();
 
     expect(ids(await db.tracks.toArray())).toEqual(["t-1", "t-2", "t-3"]);
-    expect(await db.offlineCopies.get(TrackId("t-1"))).toMatchObject({ storagePath: "offline/t-1.m4a" });
     expect(ids(await db.covers.toArray())).toEqual(["c-a1", "c-al1", "c-t1"]);
     expect((await db.playlists.get(playlistId))?.trackIds).toEqual([TrackId("t-1"), TrackId("t-3"), TrackId("t-2")]);
     expect(searchMock.indexImportedTracks).toHaveBeenCalledWith([TrackId("t-1"), TrackId("t-2")]);
 
     await undo.finalize();
     expect(storageMock.deleteFile).not.toHaveBeenCalled();
-  });
-
-  // The delete parks every copy's cache entry on null (the row is gone); a
-  // restore that only puts the rows back leaves the download button lit.
-  it("restore puts the offline copies back into the query cache", async () => {
-    const key = queryKeys.offlineCopies.detail(TrackId("t-1"));
-    const undo = await deleteTracksWithUndo(queryClient, [TrackId("t-1"), TrackId("t-2")]);
-    expect(queryClient.getQueryData(key)).toBeNull();
-
-    await undo.restore();
-
-    expect(queryClient.getQueryData(key)).toMatchObject({ storagePath: "offline/t-1.m4a" });
   });
 
   it("restores the album and artist the cascade took along with their covers", async () => {

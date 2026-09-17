@@ -93,7 +93,7 @@ export interface TrackEntity {
   albumId: AlbumId;
   tagIds: TagId[];
   source: TrackSource;
-  /** Empty for remote tracks; an offline copy's path lives in offlineCopies. */
+  /** Empty for remote rows; a download is imported as its own local track. */
   storagePath?: string;
   pinned: PinnedFlag;
   state: TrackState;
@@ -190,8 +190,8 @@ export interface AudioFeaturesEntity {
 }
 
 //
-// Offline copy of a remote track — a separate entity so downloading/removing
-// the copy never mutates the track row itself.
+// Legacy: v≤15 offline copies; drained by migrateOfflineCopies, dropped with
+// the store later.
 //
 export interface OfflineCopyEntity {
   trackId: TrackId;

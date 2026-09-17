@@ -26,7 +26,6 @@ import {
 import { assertValidName } from "@/lib/limits";
 import { sortTracks, unwrapResult, unique } from "./shared";
 import {
-  findOfflineCopiesOf,
   purgeTracksInTx,
   syncAfterTrackPurge,
   trackCascadeTables,
@@ -258,10 +257,10 @@ export async function updateAlbumAndSync(
 }
 
 /**
- * `deleteTracks` cascades the album's tracks, their offline copies/files and
- * their playlist references in one transaction; cache and search sync run
- * strictly after it. Without it the album only ungroups — its tracks stay in
- * the library, remote ones included, keeping whatever is downloaded.
+ * `deleteTracks` cascades the album's tracks and their playlist references in
+ * one transaction; cache and search sync run strictly after it. Without it the
+ * album only ungroups — its tracks stay in the library, remote ones included,
+ * keeping whatever is downloaded.
  */
 export async function deleteAlbumAndSync(
   queryClient: QueryClient,
@@ -277,14 +276,12 @@ export async function deleteAlbumAndSync(
   const trackIds = rawTracks.map(track => track.id);
   const now = Date.now();
 
-  const copies = cascadeTracks ? await findOfflineCopiesOf(trackIds) : [];
-
   const txResult = await unitOfWork.runScoped(
     trackCascadeTables(),
     async () => {
       // An empty shadow album (0 tracks) is deleted explicitly below.
       const removals = cascadeTracks
-        ? await purgeTracksInTx(rawTracks, copies, now)
+        ? await purgeTracksInTx(rawTracks, now)
         : [];
 
       if (!cascadeTracks && rawTracks.length > 0) {
@@ -308,7 +305,6 @@ export async function deleteAlbumAndSync(
     queryClient,
     cascadeTracks ? trackIds : [],
     txResult.value,
-    copies,
   );
   await removeSearchDocuments([`album:${albumEntity.id}`]);
   if (!cascadeTracks) {

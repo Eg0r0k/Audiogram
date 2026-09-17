@@ -13,7 +13,7 @@
     <component
       :is="Item"
       v-else-if="caps.hasLocalCopy"
-      @click="emit('removeOfflineCopy')"
+      @click="emit('removeDownload')"
     >
       <IconCloudOff class="size-5.5" />
       {{ $t("track.contextMenu.removeDownload") }}
@@ -53,7 +53,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   download: [];
   cancelDownload: [];
-  removeOfflineCopy: [];
+  removeDownload: [];
 }>();
 
 const { Item } = useTrackMenuComponents();

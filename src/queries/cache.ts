@@ -209,7 +209,6 @@ const LIBRARY_ROOTS: ReadonlySet<unknown> = new Set([
   "albums",
   "artists",
   "playlists",
-  "offlineCopies",
 ]);
 
 const isLibraryRead = (query: Query) => LIBRARY_ROOTS.has(query.queryKey[0]);

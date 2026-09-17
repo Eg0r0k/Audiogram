@@ -4,7 +4,7 @@ import type { SourceTrackDTO } from "@/types/source-dto";
 import type { Track } from "../types";
 
 vi.mock("@/db/storage", () => ({ storageService: { getAudioUrl: vi.fn() } }));
-vi.mock("@/db/repositories", () => ({ offlineCopyRepository: { findById: vi.fn() } }));
+vi.mock("@/db/repositories", () => ({ trackRepository: { findBySourceRef: vi.fn() } }));
 vi.mock("@/modules/sources", () => ({ sources: { get: vi.fn(), forTrack: vi.fn() } }));
 vi.mock("@/lib/environment/platformCaps", () => ({ platformCaps: { hasFs: true } }));
 vi.mock("@/modules/tracks/service/ensurePinned", () => ({ ensurePinned: vi.fn() }));

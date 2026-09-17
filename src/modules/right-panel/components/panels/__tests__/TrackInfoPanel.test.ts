@@ -12,11 +12,11 @@ vi.mock("@/queries/track.queries", () => ({
     detail: (id: string) => ({ queryKey: ["tracks", id], queryFn: () => queries.getTrackEntityById(id) }),
   },
 }));
-vi.mock("@/queries/offlineCopy.queries", async () => {
+vi.mock("@/queries/localCopy.queries", async () => {
   const { skipToken } = await import("@tanstack/vue-query");
   return {
-    offlineCopyQueries: {
-      detail: () => ({ queryKey: ["offlineCopies", "none"], queryFn: skipToken }),
+    localCopyQueries: {
+      byRemoteId: () => ({ queryKey: ["tracks", "localCopy", "none"], queryFn: skipToken }),
     },
   };
 });

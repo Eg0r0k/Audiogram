@@ -53,17 +53,17 @@ export interface ContextActions {
   removeFromHistory?: () => void;
   goToArtist: (artistId: ArtistId) => void;
   goToAlbum: () => void;
-  /** "Save as…" — exports the local file or the offline copy to user disk. */
+  /** "Save as…" — exports the local file or the downloaded copy to user disk. */
   exportFile: () => void;
   /** Queues an offline download (pins the subject — download = membership). */
   downloadOffline: () => void;
   /** Cancels the track's queued/running download job. */
   cancelOfflineDownload: () => void;
-  /** Deletes the offline copy (row + file); the track stays, streams live. */
-  removeOfflineCopy: () => void;
+  /** Deletes the downloaded local copy (row + file); the remote row streams live again. */
+  removeDownload: () => void;
   /** Pins a remote subject with pinned = 1 (or upgrades a shadow row). */
   addToLibrary: () => void;
-  /** Degrades a remote row to shadow: playlists/like/offline copy cascade. */
+  /** Degrades a remote row to shadow: playlists/like cascade. */
   removeFromLibrary: () => void;
   /** Opens the track's page at its source (yt/nd) via plugin-opener. */
   openExternal: () => void;

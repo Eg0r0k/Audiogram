@@ -4,25 +4,22 @@ import {
   albumRepository,
   artistRepository,
   coverRepository,
-  offlineCopyRepository,
   playlistRepository,
   trackRepository,
 } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
-import { cleanupOfflineCopyFiles } from "@/modules/downloads/service/removeCopy";
 import { indexImportedTracks } from "@/modules/search/service/searchIndex";
 import type { TrackId } from "@/types/ids";
 import { invalidateForTrackMutation, removeCoverCache, settleLibraryReads } from "./cache";
-import { queryKeys } from "./query-keys";
 import { unique, unwrapResult } from "./shared";
-import { findOfflineCopiesOf, trackCascadeTables } from "./track-cascade";
+import { trackCascadeTables } from "./track-cascade";
 import { deleteTracksAndSync } from "./track.queries";
 
 export interface TrackDeletionUndo {
   deleted: number;
   /** Puts every deleted row back; a no-op once finalized. */
   restore: () => Promise<void>;
-  /** Deletes the offline copy files the cascade left behind; a no-op once restored. */
+  /** Kept for the undo window API; nothing is deferred any more. */
   finalize: () => Promise<void>;
 }
 
@@ -33,10 +30,10 @@ const gone = <T extends { id: string }>(before: readonly T[], after: readonly T[
   return before.filter(row => !alive.has(row.id));
 };
 
-// Local audio files are never part of the track cascade, so undo is a row
-// snapshot: what the cascade deletes (tracks, their covers, offline copies,
-// playlist references, orphaned albums and artists) is read before it runs
-// and written back on restore. Only copy files on disk are deferred.
+// Audio files are never part of the track cascade, so undo is a row snapshot:
+// what the cascade deletes (tracks, their covers, playlist references,
+// orphaned albums and artists) is read before it runs and written back on
+// restore. Nothing outside the database is deferred.
 export const deleteTracksWithUndo = async (
   queryClient: QueryClient,
   ids: TrackId[],
@@ -53,9 +50,8 @@ export const deleteTracksWithUndo = async (
     ...albums.map(album => album.artistId),
   ]);
 
-  const [artists, copies, trackCovers, albumCovers, artistCovers, playlists] = await Promise.all([
+  const [artists, trackCovers, albumCovers, artistCovers, playlists] = await Promise.all([
     unwrapResult(artistRepository.findByIds(artistIds)),
-    findOfflineCopiesOf(trackIds),
     unwrapResult(coverRepository.findByOwners("track", trackIds)),
     unwrapResult(coverRepository.findByOwners("album", albumIds)),
     unwrapResult(coverRepository.findByOwners("artist", artistIds)),
@@ -65,7 +61,7 @@ export const deleteTracksWithUndo = async (
     .filter(playlist => playlist.trackIds.some(id => trackIdSet.has(id)))
     .map(playlist => ({ id: playlist.id, trackIds: [...playlist.trackIds] }));
 
-  const deleted = await deleteTracksAndSync(queryClient, trackIds, { deferCopyFiles: true });
+  const deleted = await deleteTracksAndSync(queryClient, trackIds);
 
   const [albumsAfter, artistsAfter] = await Promise.all([
     unwrapResult(albumRepository.findByIds(albumIds)),
@@ -82,10 +78,11 @@ export const deleteTracksWithUndo = async (
 
   let settled = false;
 
-  const finalize = async () => {
-    if (settled) return;
+  // Nothing is deferred any more; the call only closes the undo window so a
+  // late `restore` cannot resurrect rows the user let go.
+  const finalize = (): Promise<void> => {
     settled = true;
-    await cleanupOfflineCopyFiles(copies);
+    return Promise.resolve();
   };
 
   const restore = async () => {
@@ -96,7 +93,6 @@ export const deleteTracksWithUndo = async (
       if (goneArtists.length > 0) await unwrapResult(artistRepository.upsertMany(goneArtists));
       if (goneAlbums.length > 0) await unwrapResult(albumRepository.upsertMany(goneAlbums));
       await unwrapResult(trackRepository.upsertMany(tracks));
-      if (copies.length > 0) await unwrapResult(offlineCopyRepository.upsertMany(copies));
       if (covers.length > 0) await unwrapResult(coverRepository.upsertMany(covers));
 
       const existing = new Set(
@@ -116,8 +112,6 @@ export const deleteTracksWithUndo = async (
     // invalidation would make every visible cover blink.
     for (const cover of covers) removeCoverCache(cover.ownerType, cover.ownerId);
     for (const id of trackIds) removeCoverCache("track", id);
-    // The delete parked these on null; no invalidation reaches offlineCopies.
-    for (const copy of copies) queryClient.setQueryData(queryKeys.offlineCopies.detail(copy.trackId), copy);
     invalidateForTrackMutation(queryClient, { kind: "relations" });
   };
 

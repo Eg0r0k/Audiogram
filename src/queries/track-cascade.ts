@@ -1,12 +1,10 @@
-import type { OfflineCopyEntity, PlaylistEntity, TrackEntity } from "@/db/entities";
+import type { PlaylistEntity, TrackEntity } from "@/db/entities";
 import { db } from "@/db";
-import { offlineCopyRepository, playlistRepository, trackRepository } from "@/db/repositories";
-import { cleanupOfflineCopyFiles } from "@/modules/downloads/service/removeCopy";
+import { playlistRepository, trackRepository } from "@/db/repositories";
 import { removeSearchDocuments } from "@/modules/search/service/searchIndex";
 import { cleanupAfterTrackRemoval } from "@/services/library-gc";
 import type { PlaylistId, TrackId } from "@/types/ids";
 import type { QueryClient } from "@tanstack/vue-query";
-import { queryKeys } from "@/queries/query-keys";
 import { removeTracksFromCaches, syncPlaylistCaches } from "./cache";
 import { unwrapResult } from "./shared";
 
@@ -14,8 +12,7 @@ import { unwrapResult } from "./shared";
 // Deleting a container (album, artist, playlist) can take its tracks with it.
 // The cascade is the same wherever it is triggered from, so it lives here:
 // rows die inside the caller's transaction, everything outside the database
-// (copy files, query caches, the search index) is synced strictly after the
-// commit.
+// (query caches, the search index) is synced strictly after the commit.
 //
 
 /** Transaction scope a track purge needs — pass to `unitOfWork.runScoped`. */
@@ -25,7 +22,6 @@ export const trackCascadeTables = () => [
   db.artists,
   db.playlists,
   db.covers,
-  db.offlineCopies,
 ];
 
 /** A playlist that lost track references, plus which ones it lost. */
@@ -34,12 +30,6 @@ export interface PlaylistTrackRemoval {
   removedIds: TrackId[];
 }
 
-/** Offline copies of the given tracks — read before the transaction opens. */
-export const findOfflineCopiesOf = async (
-  trackIds: readonly TrackId[],
-): Promise<OfflineCopyEntity[]> =>
-  trackIds.length > 0 ? unwrapResult(offlineCopyRepository.findByIds([...trackIds])) : [];
-
 /**
  * Deletes the track rows and everything that points at them. Runs INSIDE an
  * open transaction scoped to `trackCascadeTables()`; the returned playlist
@@ -47,7 +37,6 @@ export const findOfflineCopiesOf = async (
  */
 export const purgeTracksInTx = async (
   tracks: readonly TrackEntity[],
-  copies: readonly OfflineCopyEntity[],
   now: number,
 ): Promise<PlaylistTrackRemoval[]> => {
   if (tracks.length === 0) return [];
@@ -75,9 +64,6 @@ export const purgeTracksInTx = async (
       changes: { trackIds: next.trackIds, updatedAt: next.updatedAt },
     }))));
   }
-  if (copies.length > 0) {
-    await unwrapResult(offlineCopyRepository.deleteMany(copies.map(copy => copy.trackId)));
-  }
   await unwrapResult(trackRepository.deleteMany(trackIds));
   // The album dies with its last track, the artist with their last album.
   await cleanupAfterTrackRemoval([...tracks]);
@@ -85,34 +71,18 @@ export const purgeTracksInTx = async (
   return removals;
 };
 
-export interface TrackPurgeSyncOptions {
-  /** Leave the copy files on disk; the caller deletes them later (undo window). */
-  deferCopyFiles?: boolean;
-}
-
 /**
- * Post-commit fan-out for a purge: copy files on disk, query caches and the
- * search index. `skipPlaylistIds` drops playlists that were deleted alongside
- * the tracks — re-syncing their caches would resurrect them. The purged rows
- * leave every paged list, the playlists' included, in one pass.
+ * Post-commit fan-out for a purge: query caches and the search index.
+ * `skipPlaylistIds` drops playlists that were deleted alongside the tracks —
+ * re-syncing their caches would resurrect them. The purged rows leave every
+ * paged list, the playlists' included, in one pass.
  */
 export const syncAfterTrackPurge = async (
   queryClient: QueryClient,
   trackIds: readonly TrackId[],
   playlistRemovals: readonly PlaylistTrackRemoval[],
-  copies: readonly OfflineCopyEntity[],
   skipPlaylistIds: readonly PlaylistId[] = [],
-  options: TrackPurgeSyncOptions = {},
 ) => {
-  if (options.deferCopyFiles) {
-    for (const copy of copies) {
-      queryClient.setQueryData(queryKeys.offlineCopies.detail(copy.trackId), null);
-    }
-  }
-  else {
-    await cleanupOfflineCopyFiles(copies);
-  }
-
   const skipped = new Set(skipPlaylistIds);
   for (const { next } of playlistRemovals) {
     if (!skipped.has(next.id)) syncPlaylistCaches(queryClient, next);

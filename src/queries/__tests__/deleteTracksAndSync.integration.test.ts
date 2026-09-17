@@ -66,13 +66,6 @@ describe("deleteTracksAndSync (integration)", () => {
     await db.artists.put(artist);
     await db.albums.put(album);
     await db.tracks.bulkPut([localTrack("t-1", "One"), localTrack("t-2", "Two"), localTrack("t-3", "Three")]);
-    await db.offlineCopies.put({
-      trackId: TrackId("t-1"),
-      storagePath: "offline/t-1.m4a",
-      sizeBytes: 1,
-      format: {},
-      downloadedAt: 1,
-    } as never);
     await db.playlists.put({
       id: playlistId,
       name: "Mix",
@@ -82,13 +75,12 @@ describe("deleteTracksAndSync (integration)", () => {
     } satisfies PlaylistEntity);
   });
 
-  it("removes rows, copies, files and playlist refs for all ids, keeps the rest", async () => {
+  it("removes rows and playlist refs for all ids, keeps the rest", async () => {
     const deleted = await deleteTracksAndSync(queryClient, [TrackId("t-1"), TrackId("t-2")]);
 
     expect(deleted).toBe(2);
     expect((await db.tracks.toArray()).map(t => t.id)).toEqual([TrackId("t-3")]);
-    expect(await db.offlineCopies.count()).toBe(0);
-    expect(storageMock.deleteFile).toHaveBeenCalledWith("offline/t-1.m4a");
+    expect(storageMock.deleteFile).not.toHaveBeenCalled();
     expect((await db.playlists.get(playlistId))?.trackIds).toEqual([TrackId("t-3")]);
     expect(await db.albums.count()).toBe(1);
     expect(await db.artists.count()).toBe(1);

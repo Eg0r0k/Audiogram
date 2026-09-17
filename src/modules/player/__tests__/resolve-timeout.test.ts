@@ -5,7 +5,7 @@ import type { EphemeralTrack, Track } from "../types";
 const sourcesMock = vi.hoisted(() => ({ forTrack: vi.fn() }));
 
 vi.mock("@/db/storage", () => ({ storageService: { getAudioUrl: vi.fn() } }));
-vi.mock("@/db/repositories", () => ({ offlineCopyRepository: { findById: vi.fn() } }));
+vi.mock("@/db/repositories", () => ({ trackRepository: { findBySourceRef: vi.fn() } }));
 vi.mock("@/modules/sources", () => ({ sources: sourcesMock }));
 vi.mock("@/lib/environment/platformCaps", () => ({ platformCaps: { hasFs: true } }));
 vi.mock("@/modules/tracks/service/ensurePinned", () => ({ ensurePinned: vi.fn() }));

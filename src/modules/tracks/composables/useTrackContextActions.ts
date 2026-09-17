@@ -287,14 +287,14 @@ export const useTrackContextActions = (
     if (job) await cancelTrackDownload(job.jobId);
   };
 
-  const removeOfflineCopy = async () => {
+  const removeDownload = async () => {
     const trackId = subjectTrackId();
     if (!trackId) return;
     try {
       await removeLocalCopy(trackId);
     }
     catch (error) {
-      getLogger().error(`[Downloads] Removing the offline copy of ${trackId} failed: ${String(error)}`);
+      getLogger().error(`[Downloads] Removing the downloaded copy of ${trackId} failed: ${String(error)}`);
       toast.error(t("track.removeDownloadFailed"));
     }
   };
@@ -386,7 +386,7 @@ export const useTrackContextActions = (
     exportFile: guarded("exportFile", exportFile),
     downloadOffline: guarded("downloadOffline", downloadOffline),
     cancelOfflineDownload: guarded("cancelOfflineDownload", cancelOfflineDownload),
-    removeOfflineCopy: guarded("removeOfflineCopy", removeOfflineCopy),
+    removeDownload: guarded("removeDownload", removeDownload),
     addToLibrary: guarded("addToLibrary", addToLibrary),
     removeFromLibrary: guarded("removeFromLibrary", removeFromLibrary),
     openExternal: guarded("openExternal", openExternal),

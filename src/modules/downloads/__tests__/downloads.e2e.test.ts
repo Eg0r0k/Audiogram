@@ -134,7 +134,6 @@ describe("downloads end-to-end", () => {
       // Download = import: the remote row stays a shadow.
       expect((await db.tracks.get(ndTrackId(rawId)))?.pinned).toBe(0);
     }
-    expect(await db.offlineCopies.count()).toBe(0);
 
     const [items] = engineMock.importFromItems.mock.calls[0] as [ImportItem[]];
     expect(items[0]).toMatchObject({

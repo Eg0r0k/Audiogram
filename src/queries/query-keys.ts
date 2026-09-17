@@ -71,10 +71,6 @@ export const queryKeys = {
   trackChapters: {
     detail: (trackId: TrackId) => ["trackChapters", trackId] as const,
   },
-  offlineCopies: {
-    all: () => ["offlineCopies"] as const,
-    detail: (trackId: TrackId) => ["offlineCopies", trackId] as const,
-  },
   tags: {
     all: () => ["tags"] as const,
     detail: (id: TagId) => ["tags", id] as const,

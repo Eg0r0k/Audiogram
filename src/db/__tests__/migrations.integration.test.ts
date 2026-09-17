@@ -111,7 +111,6 @@ describe("v9 → v10 upgrade (integration)", () => {
     expect((await db.artists.get("ar1" as never))?.pinned).toBe(1);
 
     // New tables exist and are empty.
-    expect(await db.offlineCopies.count()).toBe(0);
     expect(await db.downloadJobs.count()).toBe(0);
 
     // v11 removed the empty-key chapters row and left the real one.

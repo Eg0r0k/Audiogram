@@ -7,8 +7,8 @@ import { TrackSource, TrackState } from "@/db/entities";
 import { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 import { ytAlbumId, ytArtistId, ytTrackId } from "@/types/track-ref";
 
-// Destructive multi-table cascades are one Dexie transaction; file cleanup
-// and search sync run strictly after the commit.
+// Destructive multi-table cascades are one Dexie transaction; cache and
+// search sync run strictly after the commit.
 
 const storageMock = vi.hoisted(() => ({
   deleteFile: vi.fn(),
@@ -40,7 +40,7 @@ vi.mock("@/services/library-gc", async (importOriginal) => {
 });
 
 import { db } from "@/db";
-import { artistRepository, offlineCopyRepository } from "@/db/repositories";
+import { artistRepository, trackRepository } from "@/db/repositories";
 import { removeSearchDocuments } from "@/modules/search/service/searchIndex";
 import { deleteAlbumAndSync } from "../album.queries";
 import { deleteArtistAndSync } from "../artist.queries";
@@ -75,10 +75,6 @@ async function seedRemoteAlbum() {
   const album: AlbumEntity = { id: ytAlbum, title: "Shadow Album", artistId: ytArtist, pinned: 1, addedAt: 1, updatedAt: 1 };
   await db.albums.put(album);
   await db.tracks.bulkPut([ytTrack("v1", "One"), ytTrack("v2", "Two")]);
-  await db.offlineCopies.bulkPut([
-    { trackId: ytTrackId("v1"), storagePath: "offline/yt/v1.m4a", sizeBytes: 1, format: {}, downloadedAt: 1 },
-    { trackId: ytTrackId("v2"), storagePath: "offline/yt/v2.m4a", sizeBytes: 1, format: {}, downloadedAt: 1 },
-  ]);
   await db.playlists.put({
     id: playlistId,
     name: "Mix",
@@ -95,7 +91,6 @@ async function snapshotCounts() {
     albums: await db.albums.count(),
     artists: await db.artists.count(),
     playlists: await db.playlists.count(),
-    offlineCopies: await db.offlineCopies.count(),
     covers: await db.covers.count(),
   };
 }
@@ -193,12 +188,12 @@ describe("deletion transactionality (integration)", () => {
     await seedRemoteAlbum();
 
     // Deterministically land a concurrent metadata edit in the window
-    // between the pre-reads and the transaction: the offline-copy pre-read
-    // is the last await before the transaction opens.
-    const spy = vi.spyOn(offlineCopyRepository, "findByIds")
+    // between the pre-reads and the transaction: the track pre-read is the
+    // last await before the transaction opens.
+    const spy = vi.spyOn(trackRepository, "findByIds")
       .mockImplementationOnce(async (ids) => {
         await db.playlists.update(playlistId, { name: "Renamed mid-flight" });
-        return ok((await db.offlineCopies.bulkGet(ids)).filter(copy => copy !== undefined));
+        return ok((await db.tracks.bulkGet([...ids])).filter(track => track !== undefined));
       });
     try {
       await deleteTrackAndSync(queryClient, { id: ytTrackId("v1") } as unknown as Track);
@@ -215,10 +210,10 @@ describe("deletion transactionality (integration)", () => {
   it("deleteAlbumAndSync (remote): a rename racing the cascade survives", async () => {
     const album = await seedRemoteAlbum();
 
-    const spy = vi.spyOn(offlineCopyRepository, "findByIds")
-      .mockImplementationOnce(async (ids) => {
+    const spy = vi.spyOn(trackRepository, "findByAlbumId")
+      .mockImplementationOnce(async (id) => {
         await db.playlists.update(playlistId, { name: "Renamed mid-flight" });
-        return ok((await db.offlineCopies.bulkGet(ids)).filter(copy => copy !== undefined));
+        return ok((await db.tracks.toArray()).filter(track => track.albumId === id));
       });
     try {
       await deleteAlbumAndSync(queryClient, album, { deleteTracks: true });

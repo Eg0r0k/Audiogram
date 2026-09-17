@@ -98,7 +98,7 @@ async function getDbSize(): Promise<number> {
 
 export async function collectStorageInfo(): Promise<StorageInfo> {
   const [folderSizes, dbSize, quota, storagePath, [tracksCount, albumsCount, artistsCount]] = await Promise.all([
-    calculateFolderSizeParallel(["tracks", "lyrics", "offline/nd", "offline/yt"]),
+    calculateFolderSizeParallel(["tracks", "lyrics"]),
     getDbSize(),
     getQuotaInfo(),
     getStoragePath(),
@@ -109,8 +109,6 @@ export async function collectStorageInfo(): Promise<StorageInfo> {
     tracksSize: folderSizes.get("tracks") ?? 0,
     coversSize: 0,
     lyricsSize: folderSizes.get("lyrics") ?? 0,
-    offlineNdSize: folderSizes.get("offline/nd") ?? 0,
-    offlineYtSize: folderSizes.get("offline/yt") ?? 0,
     dbSize,
     quotaTotal: quota.total,
     quotaUsed: quota.used,
@@ -119,17 +117,6 @@ export async function collectStorageInfo(): Promise<StorageInfo> {
     artistsCount,
     storagePath,
   };
-}
-
-/**
- * Deletes every offline copy — rows first (a dangling row is worse than a
- * leftover file), then the files. Tracks and playlists stay untouched and
- * play over the live stream again.
- */
-export async function clearOfflineData(): Promise<void> {
-  const copies = await db.offlineCopies.toArray();
-  await db.offlineCopies.clear();
-  await Promise.all(copies.map(copy => storageService.deleteFile(copy.storagePath)));
 }
 
 export async function clearLyricsData(): Promise<void> {

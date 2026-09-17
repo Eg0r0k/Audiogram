@@ -6,7 +6,6 @@ const repositories = vi.hoisted(() => ({
   albumRepository: { findAllSortedByTitle: vi.fn(), search: vi.fn() },
   trackRepository: {},
   coverRepository: {},
-  offlineCopyRepository: {},
   playlistRepository: {},
 }));
 

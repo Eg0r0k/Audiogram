@@ -14,7 +14,6 @@ const repositories = vi.hoisted(() => ({
   albumRepository: { findByIds: vi.fn(async () => ok([])) },
   artistRepository: { findByIds: vi.fn(async () => ok([])) },
   coverRepository: {},
-  offlineCopyRepository: {},
   playlistRepository: {},
 }));
 

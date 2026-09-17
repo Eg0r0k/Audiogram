@@ -1,7 +1,6 @@
 import { db } from "@/db";
-import { offlineCopyRepository, playlistRepository, trackRepository } from "@/db/repositories";
+import { playlistRepository, trackRepository } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
-import { storageService } from "@/db/storage";
 import { unwrapResult } from "@/queries/shared";
 import { getLogger } from "@/lib/logger";
 import { indexImportedTracks, removeSearchDocuments } from "@/modules/search/service/searchIndex";
@@ -36,14 +35,12 @@ export async function promoteTrackToLibrary(trackId: TrackId): Promise<void> {
 }
 
 /**
- * Remote counterpart of "Delete track": cascades playlists/like/offline copy
- * in one unitOfWork; the row degrades to a shadow so history survives.
+ * Remote counterpart of "Delete track": cascades playlists/like in one
+ * unitOfWork; the row degrades to a shadow so history survives.
  */
 export async function removeTrackFromLibrary(trackId: TrackId): Promise<void> {
-  const copy = await unwrapResult(offlineCopyRepository.findById(trackId));
-
   const result = await unitOfWork.runScoped(
-    [db.tracks, db.albums, db.artists, db.playlists, db.offlineCopies],
+    [db.tracks, db.albums, db.artists, db.playlists],
     async () => {
       const track = await unwrapResult(trackRepository.findById(trackId));
 
@@ -56,7 +53,6 @@ export async function removeTrackFromLibrary(trackId: TrackId): Promise<void> {
       }
 
       await unwrapResult(trackRepository.update(trackId, { pinned: 0, likedAt: undefined }));
-      await unwrapResult(offlineCopyRepository.delete(trackId));
 
       // Recalculate the album/artist pinned flags — no ghost albums after
       // the last library track leaves. Local rows are never touched.
@@ -89,12 +85,4 @@ export async function removeTrackFromLibrary(trackId: TrackId): Promise<void> {
   removeSearchDocuments([`track:${trackId}`, ...result.value]).catch((error) => {
     getLogger().warn(`[Search] De-indexing removed ${trackId} failed: ${String(error)}`);
   });
-
-  // File deletion happens strictly after the DB transaction.
-  if (copy) {
-    const deleted = await storageService.deleteFile(copy.storagePath);
-    if (deleted.isErr()) {
-      getLogger().warn(`[Library] Failed to delete offline copy file: ${deleted.error.message}`);
-    }
-  }
 }
