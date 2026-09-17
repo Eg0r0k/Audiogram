@@ -64,7 +64,9 @@ vi.mock("@/db", () => {
   const chain = {
     equals: vi.fn().mockReturnThis(),
     anyOf: vi.fn().mockReturnThis(),
+    and: vi.fn().mockReturnThis(),
     toArray: vi.fn().mockResolvedValue([]),
+    modify: vi.fn().mockResolvedValue(0),
   };
   return {
     db: {

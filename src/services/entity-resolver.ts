@@ -230,9 +230,14 @@ export class EntityResolver {
 
     const existing = await db.artists.toArray();
     const wanted = new Set(uniqueKeys);
+    // A local row always wins over a same-named remote shadow row: downloads
+    // must join the library's own artist, never a catalog placeholder.
     for (const artist of existing) {
       const key = identityKey(artist.name);
-      if (wanted.has(key) && !this.artists.has(key)) {
+      if (!wanted.has(key)) continue;
+      const current = this.artists.get(key);
+      const isLocal = sourceKindOfId(artist.id) === "local";
+      if (!current || (isLocal && sourceKindOfId(current) !== "local")) {
         this.artists.set(key, artist.id);
       }
     }
