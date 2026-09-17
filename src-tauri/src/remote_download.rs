@@ -75,12 +75,13 @@ impl DownloadRegistry {
     }
 }
 
-/// Same wire shape as `YtDownloadEvent` — the download manager is
-/// source-agnostic over `{ type, data }` progress events.
+/// The `{ type, data }` progress events the download manager consumes,
+/// source-agnostically. `Processing` marks post-copy work (yt tagging).
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
 pub enum DownloadEvent {
     Progress { downloaded: u64, total: Option<u64> },
+    Processing,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -116,6 +117,7 @@ fn ext_from_content_type(content_type: &str) -> Option<&'static str> {
         "audio/flac" | "audio/x-flac" => Some("flac"),
         "audio/mpeg" => Some("mp3"),
         "audio/mp4" | "audio/m4a" | "audio/x-m4a" => Some("m4a"),
+        "audio/webm" => Some("webm"),
         "audio/ogg" | "application/ogg" => Some("ogg"),
         "audio/opus" => Some("opus"),
         "audio/wav" | "audio/x-wav" => Some("wav"),
@@ -309,7 +311,9 @@ mod tests {
                 .status(200)
                 .header("Content-Type", "audio/mpeg")
                 .header("Content-Length", served.len())
-                .body(http_body_util::Full::new(bytes::Bytes::from(served.clone())))
+                .body(http_body_util::Full::new(bytes::Bytes::from(
+                    served.clone(),
+                )))
                 .expect("upstream response")
         })
         .await;
@@ -343,7 +347,8 @@ mod tests {
             events.len() >= 2,
             "progress every 256 KiB plus the final one: {events:?}"
         );
-        let last: serde_json::Value = serde_json::from_str(events.last().expect("final")).expect("json");
+        let last: serde_json::Value =
+            serde_json::from_str(events.last().expect("final")).expect("json");
         assert_eq!(last["type"], "progress");
         assert_eq!(last["data"]["downloaded"], body.len());
         assert_eq!(last["data"]["total"], body.len());
@@ -357,7 +362,9 @@ mod tests {
             http::Response::builder()
                 .status(200)
                 .header("Content-Type", "audio/flac")
-                .body(http_body_util::Full::new(bytes::Bytes::from_static(b"flacbody")))
+                .body(http_body_util::Full::new(bytes::Bytes::from_static(
+                    b"flacbody",
+                )))
                 .expect("upstream response")
         })
         .await;
@@ -379,7 +386,10 @@ mod tests {
         .await;
 
         assert_eq!(result.unwrap_err(), "cancelled");
-        assert!(!tmp.join("s1.flac").exists(), "partial file must be removed");
+        assert!(
+            !tmp.join("s1.flac").exists(),
+            "partial file must be removed"
+        );
 
         let _ = std::fs::remove_dir_all(tmp);
     }

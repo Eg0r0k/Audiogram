@@ -86,39 +86,6 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Download yt-dlp sidecar (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
-        shell: bash
-        run: |
-          mkdir -p src-tauri/binaries
-          curl -fsSL -o src-tauri/binaries/yt-dlp-x86_64-unknown-linux-gnu \
-            https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp_linux
-          chmod +x src-tauri/binaries/yt-dlp-x86_64-unknown-linux-gnu
-
-      - name: Download yt-dlp sidecar (Windows)
-        if: matrix.platform == 'windows-latest'
-        shell: bash
-        run: |
-          mkdir -p src-tauri/binaries
-          curl -fsSL -o src-tauri/binaries/yt-dlp-x86_64-pc-windows-msvc.exe \
-            https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp.exe
-
-      - name: Download yt-dlp sidecar (macOS)
-        if: matrix.platform == 'macos-latest'
-        shell: bash
-        run: |
-          mkdir -p src-tauri/binaries
-          # yt-dlp_macos is already a universal (arm64 + x86_64) binary.
-          # tauri-build checks for a sidecar per compiled target triple and
-          # the bundler looks up the universal name, so the same file is
-          # stored under all three.
-          curl -fsSL -o src-tauri/binaries/yt-dlp-universal-apple-darwin \
-            https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp_macos
-          for triple in aarch64-apple-darwin x86_64-apple-darwin; do
-            cp src-tauri/binaries/yt-dlp-universal-apple-darwin "src-tauri/binaries/yt-dlp-$triple"
-          done
-          chmod +x src-tauri/binaries/yt-dlp-*-apple-darwin
-
       - name: Install frontend deps
         run: pnpm install
 

@@ -5,10 +5,8 @@
 #[derive(Debug, Clone, Copy, serde::Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum YtErrorKind {
-    /// The requested video/playlist/album/artist does not exist.
+    /// No stream is registered for the video (or it expired).
     NotFound,
-    /// Content exists but cannot be served (geoblocked, premium, private, …).
-    Unavailable,
     /// Transport-level failure (offline, proxy down, HTTP 5xx).
     Network,
     /// Malformed input (bad id, empty query).
@@ -52,21 +50,7 @@ impl std::fmt::Display for YtError {
     }
 }
 
-impl From<rustypipe::error::Error> for YtError {
-    fn from(e: rustypipe::error::Error) -> Self {
-        use rustypipe::error::{Error, ExtractionError};
-        let kind = match &e {
-            Error::Extraction(ExtractionError::NotFound { .. }) => YtErrorKind::NotFound,
-            Error::Extraction(ExtractionError::Unavailable { .. }) => YtErrorKind::Unavailable,
-            Error::Extraction(ExtractionError::BadRequest(_)) => YtErrorKind::InvalidInput,
-            Error::Http(_) | Error::HttpStatus(..) => YtErrorKind::Network,
-            _ => YtErrorKind::Unknown,
-        };
-        Self::new(kind, e.to_string())
-    }
-}
-
-/// Legacy string errors from internal helpers (yt-dlp invocations, fs, …).
+/// String errors from internal helpers (fs, the shared download machinery, …).
 impl From<String> for YtError {
     fn from(message: String) -> Self {
         Self::unknown(message)

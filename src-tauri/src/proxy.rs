@@ -1,6 +1,7 @@
 //! The user-configured network proxy shared by every Rust HTTP layer: the
-//! yt-dlp sidecar, the rustypipe search client and the remote routes of the
-//! loopback media server (YouTube and Navidrome alike).
+//! remote routes of the loopback media server (YouTube, Navidrome and Yandex
+//! alike), prefetch and downloads. The webview's Innertube engine reads the
+//! same URL from the frontend side of `set_proxy`.
 //!
 //! The shared [`reqwest::Client`] lives here too: the media element opens a
 //! fresh Range request per seek and every ~1 MiB of a YouTube stream, and a
@@ -47,10 +48,6 @@ impl ProxyState {
         }
     }
 
-    pub(crate) fn get(&self) -> Option<String> {
-        self.0.lock().ok().and_then(|inner| inner.url.clone())
-    }
-
     /// The shared client for the current proxy, built on first use after
     /// every proxy change. `reqwest::Client` is an `Arc` inside, so the clone
     /// is a refcount bump and every caller shares one connection pool.
@@ -74,8 +71,8 @@ impl ProxyState {
 }
 
 /// A reqwest builder with the proxy applied — the one place a proxy URL is
-/// parsed, so every client (including the one handed to rustypipe) agrees
-/// on what an invalid URL means: an error, never a silent direct connection.
+/// parsed, so every client agrees on what an invalid URL means: an error,
+/// never a silent direct connection.
 pub(crate) fn client_builder(proxy: Option<&str>) -> Result<reqwest::ClientBuilder, String> {
     let mut builder = reqwest::Client::builder();
     if let Some(url) = proxy {
@@ -104,16 +101,13 @@ pub(crate) fn http_client<R: Runtime>(app: &AppHandle<R>) -> Result<reqwest::Cli
 
 /// Stores the proxy URL for later streaming use. An empty/blank URL clears it.
 #[tauri::command]
-pub async fn set_proxy<R: Runtime>(app: AppHandle<R>, url: Option<String>) {
+pub fn set_proxy<R: Runtime>(app: AppHandle<R>, url: Option<String>) {
     let normalized = url.map(|u| u.trim().to_owned()).filter(|u| !u.is_empty());
     match &normalized {
         Some(url) => log::info!("proxy set to {}", redacted(url)),
         None => log::info!("proxy cleared, connecting directly"),
     }
     app.state::<ProxyState>().set(normalized);
-    // Drop the cached Innertube client so the next query picks up the new proxy.
-    #[cfg(desktop)]
-    app.state::<crate::youtube::YtClient>().reset().await;
 }
 
 /// Verifies the proxy actually connects by fetching a lightweight endpoint
