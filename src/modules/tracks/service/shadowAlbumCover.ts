@@ -1,6 +1,7 @@
 import type { CoverOwnerType } from "@/db/entities";
 import { coverRepository } from "@/db/repositories";
 import { getLogger } from "@/lib/logger";
+import { THUMB_SIZE_FULL } from "@/lib/media/cover-sizes";
 import { sources } from "@/modules/sources";
 import type { TrackId } from "@/types/ids";
 import { parseTrackRef } from "@/types/track-ref";
@@ -26,7 +27,10 @@ export async function ensureShadowCover(
     const existing = await unwrapResult(coverRepository.findByOwner(ownerType, ownerId));
     if (existing) return;
 
-    const response = await fetch(sources.get(kind).coverUrl(coverRef));
+    // The stored blob is the ONLY rendition the row ever shows (hero, now
+    // playing, cards), so it is fetched at the full size — a source's own
+    // no-size default may be a small list thumbnail.
+    const response = await fetch(sources.get(kind).coverUrl(coverRef, THUMB_SIZE_FULL));
     if (!response.ok) {
       getLogger().warn(`[Covers] Shadow cover for ${ownerType} ${ownerId} answered HTTP ${response.status}`);
       return;
