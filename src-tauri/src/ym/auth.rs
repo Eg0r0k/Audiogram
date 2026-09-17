@@ -159,8 +159,7 @@ fn device_name() -> &'static str {
 fn now_secs() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0)
+        .map_or(0, |d| d.as_secs())
 }
 
 pub fn expires_at_from(expires_in: Option<u64>) -> Option<u64> {
