@@ -1,66 +1,40 @@
-name: Fixup
+name: Bump
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "New version, without the v"
+        required: true
+        default: "0.2.14"
 
 jobs:
-  fixup:
+  bump:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: fix/ci-green
+          ref: main
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
-
-      - name: Apply the clippy patch
+      - name: Bump the version in all four files
+        env:
+          NEW: ${{ inputs.version }}
         run: |
-          cat > /tmp/clippy.patch <<'PATCH'
-          diff --git a/src-tauri/src/ym/auth.rs b/src-tauri/src/ym/auth.rs
-          --- a/src-tauri/src/ym/auth.rs
-          +++ b/src-tauri/src/ym/auth.rs
-          @@ -157,10 +157,7 @@ fn device_name() -> &'static str {
-           }
-           
-           fn now_secs() -> u64 {
-          -    SystemTime::now()
-          -        .duration_since(UNIX_EPOCH)
-          -        .map(|d| d.as_secs())
-          -        .unwrap_or(0)
-          +    SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs())
-           }
-           
-           pub fn expires_at_from(expires_in: Option<u64>) -> Option<u64> {
-          diff --git a/src-tauri/src/youtube/stream.rs b/src-tauri/src/youtube/stream.rs
-          --- a/src-tauri/src/youtube/stream.rs
-          +++ b/src-tauri/src/youtube/stream.rs
-          @@ -44,8 +44,7 @@ pub struct YtStreamCache {
-           fn unix_now() -> u64 {
-               SystemTime::now()
-                   .duration_since(UNIX_EPOCH)
-          -        .map(|elapsed| elapsed.as_secs())
-          -        .unwrap_or(0)
-          +        .map_or(0, |elapsed| elapsed.as_secs())
-           }
-           
-           impl YtStreamCache {
-          PATCH
-          sed -i 's/^          //' /tmp/clippy.patch
-          git apply --recount --ignore-whitespace --verbose /tmp/clippy.patch
+          set -euo pipefail
+          sed -i "0,/\"version\": \"[^\"]*\"/s//\"version\": \"$NEW\"/" package.json
+          sed -i "0,/\"version\": \"[^\"]*\"/s//\"version\": \"$NEW\"/" src-tauri/tauri.conf.json
+          sed -i "0,/^version = \"[^\"]*\"/s//version = \"$NEW\"/" src-tauri/Cargo.toml
+          sed -i "/^name = \"audiogram\"$/{n;s/^version = .*/version = \"$NEW\"/}" src-tauri/Cargo.lock
+          git --no-pager diff --stat
 
-      - name: rustfmt
-        working-directory: src-tauri
-        run: cargo fmt
-
-      - name: Push it back to the PR branch
+      - name: Commit it to main
+        env:
+          NEW: ${{ inputs.version }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -am "fix(clippy): map_or instead of map().unwrap_or()"
-          git push origin fix/ci-green
-          git show --stat --oneline HEAD
+          git commit -am "chore(version): bump version to $NEW"
+          git push origin main
