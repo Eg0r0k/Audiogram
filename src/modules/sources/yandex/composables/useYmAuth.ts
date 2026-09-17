@@ -4,13 +4,8 @@ import { queryClient } from "@/queries/client";
 import { invalidateSource } from "@/queries/source.queries";
 import { forgetSourceHealth } from "@/modules/sources/lib/health";
 import { ymAuthCancel, ymAuthLogout, ymAuthStart } from "../api/auth";
+import { mapYmError } from "../api/client";
 import { useYmAuthStore } from "../store/ym-auth.store";
-
-const messageOf = (error: unknown): string => {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "object" && error !== null && "message" in error) return String(error.message);
-  return String(error);
-};
 
 /**
  * The sign-in actions. Progress arrives over `ym:auth`, which
@@ -26,8 +21,8 @@ export const useYmAuth = () => {
       store.beginPending(code, Date.now());
     }
     catch (error) {
-      getLogger().warn(`[YM] Starting the sign-in failed: ${messageOf(error)}`);
-      store.failed(messageOf(error));
+      getLogger().warn(`[YM] Starting the sign-in failed: ${mapYmError(error).message}`);
+      store.failed(mapYmError(error).message);
     }
   };
 
@@ -36,7 +31,7 @@ export const useYmAuth = () => {
       await ymAuthCancel();
     }
     catch (error) {
-      getLogger().warn(`[YM] Cancelling the sign-in failed: ${messageOf(error)}`);
+      getLogger().warn(`[YM] Cancelling the sign-in failed: ${mapYmError(error).message}`);
     }
     // Rust reports the cancel over the event too; this keeps the card honest
     // even if that event is late.
