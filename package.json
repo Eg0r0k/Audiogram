@@ -42,6 +42,7 @@
     "@vueuse/core": "^14.1.0",
     "@vueuse/integrations": "^14.4.0",
     "audio-decode": "^3.10.1",
+    "bgutils-js": "4.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cropperjs": "^1.6.2",
@@ -74,7 +75,8 @@
     "vue-i18n": "^11.2.2",
     "vue-router": "^4.6.3",
     "vue-sonner": "^2.0.9",
-    "workbox-window": "^7.4.0"
+    "workbox-window": "^7.4.0",
+    "youtubei.js": "18.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

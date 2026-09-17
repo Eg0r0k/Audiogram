@@ -49,7 +49,7 @@ symphonia = { version = "0.5", default-features = false, features = ["alac", "is
 hound = "3.5"
 ape-decoder = "0.3"
 percent-encoding = "2"
-tauri-plugin-http = "2.5.9"
+tauri-plugin-http = { version = "2.5.9", features = ["unsafe-headers"] }
 # The Yandex Music OAuth token lives in managed state; SecretString keeps it
 # out of every Debug/Display path.
 secrecy = "0.10"
