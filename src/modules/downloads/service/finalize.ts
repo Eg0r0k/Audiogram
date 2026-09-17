@@ -2,6 +2,7 @@ import type { DownloadJobEntity, TrackEntity } from "@/db/entities";
 import { albumRepository, coverRepository, trackRepository } from "@/db/repositories";
 import { getLogger } from "@/lib/logger";
 import { trackCoverOwner } from "@/modules/covers/composables/useTrackCover";
+import { indexImportedTracks } from "@/modules/search/service/searchIndex";
 import { queryClient } from "@/queries/client";
 import { invalidateLibraryData } from "@/queries/library.queries";
 import { syncLocalCopyCache } from "@/queries/localCopy.queries";
@@ -57,7 +58,17 @@ export const importDownloadedFile = async (remoteId: TrackId, absolutePath: stri
     getLogger().warn(`[Downloads] ${remoteId}: the file is already in the library (same fingerprint), nothing imported`);
     return null;
   }
-  return result.successful[0].trackId;
+  const localId = result.successful[0].trackId;
+  // The session's search index is built once (like the UI import path, this
+  // feeds it by hand). Best-effort: a failed index update never fails the
+  // download itself.
+  try {
+    await indexImportedTracks([localId]);
+  }
+  catch (error) {
+    getLogger().warn(`[Search] Indexing the downloaded ${localId} failed: ${String(error)}`);
+  }
+  return localId;
 };
 
 /**

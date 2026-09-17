@@ -35,6 +35,7 @@ const providerMock = vi.hoisted(() => ({
   cancelDownload: vi.fn(),
 }));
 const engineMock = vi.hoisted(() => ({ importFromItems: vi.fn() }));
+const searchMock = vi.hoisted(() => ({ indexImportedTracks: vi.fn(async () => {}) }));
 
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
@@ -55,6 +56,7 @@ vi.mock("@/queries/library.queries", () => ({
 }));
 // The real engine would spin up the import worker pool.
 vi.mock("@/services/importer.service", () => ({ musicLibraryEngine: engineMock }));
+vi.mock("@/modules/search/service/searchIndex", () => searchMock);
 
 import { db } from "@/db";
 
@@ -174,6 +176,9 @@ describe("downloads end-to-end", () => {
     expect((await db.tracks.get(ytTrackId("dQw4w9WgXcQ")))?.pinned).toBe(0);
     // The finalizer cleans the source temp file once the import landed.
     expect(fsMock.remove).toHaveBeenCalledWith("C:/yt-cache/dQw4w9WgXcQ.m4a");
+    // The session's search index is built once: the new local row is fed to it.
+    const localId = (await db.tracks.where("sourceRef").equals(ytTrackId("dQw4w9WgXcQ")).first())?.id;
+    expect(searchMock.indexImportedTracks).toHaveBeenCalledWith([localId]);
   });
 
   it("resumes the persisted queue after the manager is recreated", async () => {
