@@ -4,16 +4,8 @@ import { ResultAsync } from "neverthrow";
 import type {
   YoutubeError,
   YoutubeErrorKind,
-  YtAlbumDetail,
-  YtArtistDetail,
   YtDownloadEvent,
   YtDownloadResult,
-  YtMusicEntity,
-  YtMusicSearchKind,
-  YtMusicTrack,
-  YtPage,
-  YtPlaylistDetail,
-  YtSearchResult,
   YtTrackMeta,
 } from "../types";
 
@@ -38,14 +30,6 @@ const toYoutubeError = (raw: unknown, fallbackKind: YoutubeErrorKind): YoutubeEr
   const message = raw instanceof Error ? raw.message : String(raw);
   return { kind: fallbackKind, message };
 };
-
-export const searchYoutube = (
-  query: string,
-): ResultAsync<YtSearchResult[], YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytSearch, { query }).then(page => page.items),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
 
 export const resolveYoutube = (
   id: string,
@@ -82,72 +66,4 @@ export const cancelYoutubeDownload = (id: string): ResultAsync<void, YoutubeErro
   ResultAsync.fromPromise(
     invokeCommand(COMMANDS.ytDownloadCancel, { id }),
     e => toYoutubeError(e, "DOWNLOAD_FAILED"),
-  );
-
-export const searchYoutubeVideosPage = (
-  query: string,
-): ResultAsync<YtPage<YtSearchResult>, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytSearch, { query }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-export const continueYoutubeVideos = (
-  continuation: string,
-): ResultAsync<YtPage<YtSearchResult>, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytSearchContinue, { continuation }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-/** Full metadata for one track — the pin-time safety net for search rows
- *  that slipped past server-side enrichment. */
-export const getYoutubeMusicDetails = (
-  id: string,
-): ResultAsync<YtMusicTrack, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytMusicDetails, { id }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-export const searchYoutubeMusic = (
-  query: string,
-  kind: YtMusicSearchKind,
-): ResultAsync<YtPage<YtMusicEntity>, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytMusicSearch, { query, kind }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-export const continueYoutubeMusic = (
-  continuation: string,
-  kind: YtMusicSearchKind,
-): ResultAsync<YtPage<YtMusicEntity>, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytContinue, { continuation, kind }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-export const getYoutubePlaylist = (
-  id: string,
-): ResultAsync<YtPlaylistDetail, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytMusicPlaylist, { id }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-export const getYoutubeAlbum = (
-  id: string,
-): ResultAsync<YtAlbumDetail, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytMusicAlbum, { id }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
-  );
-
-export const getYoutubeArtist = (
-  id: string,
-): ResultAsync<YtArtistDetail, YoutubeError> =>
-  ResultAsync.fromPromise(
-    invokeCommand(COMMANDS.ytMusicArtist, { id }),
-    e => toYoutubeError(e, "SEARCH_FAILED"),
   );

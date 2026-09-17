@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const caps = vi.hoisted(() => ({ canShellSpawn: true }));
+const caps = vi.hoisted(() => ({ hasYoutube: true }));
 vi.mock("@/lib/environment/platformCaps", () => ({ platformCaps: caps }));
 
 import { setMediaServerBaseForTests } from "@/lib/stream-url";
@@ -12,7 +12,7 @@ const COVER = "https://lh3.googleusercontent.com/cover=w120-h120-l90-rj";
 const SHARP_ROW = "https://lh3.googleusercontent.com/cover=w226-h226-l90-rj";
 
 beforeEach(() => {
-  caps.canShellSpawn = true;
+  caps.hasYoutube = true;
   setMediaServerBaseForTests(BASE);
 });
 
@@ -23,7 +23,7 @@ describe("proxiedThumbnail", () => {
   });
 
   it("returns the sharp URL untouched where the route does not exist", () => {
-    caps.canShellSpawn = false;
+    caps.hasYoutube = false;
     expect(proxiedThumbnail(COVER, THUMB_SIZE_ROW)).toBe(SHARP_ROW);
   });
 });

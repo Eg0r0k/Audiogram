@@ -7,18 +7,11 @@ const apiMock = vi.hoisted(() => ({ downloadYoutube: vi.fn() }));
 vi.mock("@/lib/environment/userAgent", () => ({ IS_TAURI: true, IS_MOBILE: false, IS_WINDOWS: false }));
 vi.mock("@/modules/youtube/api/youtubeApi", () => ({
   cancelYoutubeDownload: vi.fn(),
-  continueYoutubeMusic: vi.fn(),
-  continueYoutubeVideos: vi.fn(),
   downloadYoutube: apiMock.downloadYoutube,
-  getYoutubeAlbum: vi.fn(),
-  getYoutubeArtist: vi.fn(),
-  getYoutubePlaylist: vi.fn(),
   prefetchYoutube: vi.fn(),
   resolveYoutube: vi.fn(),
-  searchYoutube: vi.fn(),
-  searchYoutubeMusic: vi.fn(),
-  searchYoutubeVideosPage: vi.fn(),
 }));
+vi.mock("@/modules/youtube/engine/engine", () => ({ ytEngine: {} }));
 
 import { youtubeProvider } from "../provider";
 

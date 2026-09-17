@@ -1,13 +1,15 @@
-import { type ResultAsync, errAsync } from "neverthrow";
+import { ResultAsync, errAsync } from "neverthrow";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import type {
   YoutubeError,
+  YoutubeErrorKind,
   YtAlbumDetail,
   YtArtistDetail,
   YtDownloadEvent,
   YtDownloadResult,
   YtMusicEntity,
   YtMusicSearchKind,
+  YtMusicTrack,
   YtPage,
   YtPlaylistDetail,
   YtSearchResult,
@@ -15,24 +17,18 @@ import type {
 } from "./types";
 import {
   cancelYoutubeDownload,
-  continueYoutubeMusic,
-  continueYoutubeVideos,
   downloadYoutube,
-  getYoutubeAlbum,
-  getYoutubeArtist,
-  getYoutubePlaylist,
   prefetchYoutube,
   resolveYoutube,
-  searchYoutube,
-  searchYoutubeMusic,
-  searchYoutubeVideosPage,
 } from "./api/youtubeApi";
+import { ytEngine, type YtEngine } from "./engine/engine";
+import { toYoutubeError } from "./engine/errors";
 
 /**
- * Platform-agnostic YouTube access. Desktop resolves through the Rust
- * Innertube client (rustypipe), fully anonymous — no cookies or login;
- * web/mobile stay behind {@link noopProvider} until a self-hosted
- * Piped/Invidious backend is wired up.
+ * Platform-agnostic YouTube access. In the app the catalog (search, browse,
+ * details) is served by the Innertube engine running in the webview, fully
+ * anonymous — no cookies or login; streams and downloads go through the
+ * Rust transport. The web build stays behind {@link noopProvider}.
  */
 export interface YoutubeProvider {
   readonly isAvailable: boolean;
@@ -50,6 +46,8 @@ export interface YoutubeProvider {
   playlist(id: string): ResultAsync<YtPlaylistDetail, YoutubeError>;
   album(id: string): ResultAsync<YtAlbumDetail, YoutubeError>;
   artist(id: string): ResultAsync<YtArtistDetail, YoutubeError>;
+  /** Full metadata for one track — the pin-time safety net for rows that slipped past search enrichment. */
+  track(id: string): ResultAsync<YtMusicTrack, YoutubeError>;
   resolve(id: string): ResultAsync<string, YoutubeError>;
   /** Warms the backend audio cache so the track starts instantly when played. */
   prefetch(id: string): ResultAsync<void, YoutubeError>;
@@ -64,26 +62,31 @@ export interface YoutubeProvider {
 const unavailable = <T>(): ResultAsync<T, YoutubeError> =>
   errAsync<T, YoutubeError>({
     kind: "UNAVAILABLE",
-    message: "YouTube is only available in the desktop app",
+    message: "YouTube is only available in the app",
   });
 
-const desktopProvider: YoutubeProvider = {
+const fromEngine = <T>(run: () => Promise<T>, fallback: YoutubeErrorKind): ResultAsync<T, YoutubeError> =>
+  ResultAsync.fromPromise(run(), error => toYoutubeError(error, fallback));
+
+export const createInnertubeProvider = (engine: YtEngine): YoutubeProvider => ({
   isAvailable: true,
-  search: query => searchYoutube(query),
-  searchVideos: query => searchYoutubeVideosPage(query),
-  continueVideos: continuation => continueYoutubeVideos(continuation),
-  searchMusic: (query, kind) => searchYoutubeMusic(query, kind),
-  continueMusic: (continuation, kind) => continueYoutubeMusic(continuation, kind),
-  playlist: id => getYoutubePlaylist(id),
-  album: id => getYoutubeAlbum(id),
-  artist: id => getYoutubeArtist(id),
+  search: query => fromEngine(() => engine.searchVideos(query), "SEARCH_FAILED").map(page => page.items),
+  searchVideos: query => fromEngine(() => engine.searchVideos(query), "SEARCH_FAILED"),
+  continueVideos: continuation => fromEngine(() => engine.continueVideos(continuation), "SEARCH_FAILED"),
+  searchMusic: (query, kind) => fromEngine(() => engine.searchMusic(query, kind), "SEARCH_FAILED"),
+  // The token knows which listing it continues; `kind` only exists for the contract.
+  continueMusic: continuation => fromEngine(() => engine.continueMusic(continuation), "SEARCH_FAILED"),
+  playlist: id => fromEngine(() => engine.playlist(id), "SEARCH_FAILED"),
+  album: id => fromEngine(() => engine.album(id), "SEARCH_FAILED"),
+  artist: id => fromEngine(() => engine.artist(id), "SEARCH_FAILED"),
+  track: id => fromEngine(() => engine.track(id), "SEARCH_FAILED"),
   resolve: id => resolveYoutube(id),
   prefetch: id => prefetchYoutube(id),
   // Retries belong to the download manager (single layer, with backoff) —
   // one provider call is exactly one yt_download run.
   download: (id, onEvent, meta) => downloadYoutube(id, onEvent, meta),
   cancelDownload: id => cancelYoutubeDownload(id),
-};
+});
 
 const noopProvider: YoutubeProvider = {
   isAvailable: false,
@@ -95,12 +98,12 @@ const noopProvider: YoutubeProvider = {
   playlist: () => unavailable<YtPlaylistDetail>(),
   album: () => unavailable<YtAlbumDetail>(),
   artist: () => unavailable<YtArtistDetail>(),
+  track: () => unavailable<YtMusicTrack>(),
   resolve: () => unavailable<string>(),
   prefetch: () => unavailable<void>(),
   download: () => unavailable<YtDownloadResult>(),
   cancelDownload: () => unavailable<void>(),
 };
 
-// yt-dlp is a spawned helper process — desktop only.
 export const youtubeProvider: YoutubeProvider
-  = platformCaps.canShellSpawn ? desktopProvider : noopProvider;
+  = platformCaps.hasYoutube ? createInnertubeProvider(ytEngine) : noopProvider;

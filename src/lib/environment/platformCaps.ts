@@ -21,8 +21,8 @@ export const platformCaps = {
   hasAutostart: IS_TAURI && !IS_MOBILE,
   /** Browser document Picture-in-Picture window (web desktop only). */
   hasDocumentPip: !IS_TAURI && !IS_MOBILE && typeof window !== "undefined" && "documentPictureInPicture" in window,
-  /** Spawning helper processes (yt-dlp). */
-  canShellSpawn: IS_TAURI && !IS_MOBILE,
+  /** YouTube through the in-webview Innertube engine plus the Rust `yt/` and `ytimg/` routes. */
+  hasYoutube: IS_TAURI,
   /** Proxying remote streams/covers through the Rust `stream://` layer. */
   canProxyStream: IS_TAURI,
   /** Discord Rich Presence over local IPC. */

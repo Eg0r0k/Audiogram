@@ -19,14 +19,14 @@ function upscaledThumbnail(url: string, size: number): string {
  * Routes a YouTube thumbnail URL through the media server's `ytimg` route so
  * the Rust side fetches it honoring the configured proxy. `<img>` loads in
  * the webview go straight to the network and bypass the app proxy otherwise.
- * No-op on web and mobile (the route lives in the desktop-only youtube module).
+ * No-op on the web build, which has no media server.
  *
  * `size` picks the CDN rendition — request only what the layout needs so long
  * lists don't decode hero-sized covers per row.
  */
 export function proxiedThumbnail(url: string, size: number = THUMB_SIZE_FULL): string {
   const sharp = upscaledThumbnail(url, size);
-  if (!platformCaps.canShellSpawn) return sharp;
+  if (!platformCaps.hasYoutube) return sharp;
   return ytImageUrl(sharp);
 }
 

@@ -2,7 +2,6 @@ import type { ResultAsync } from "neverthrow";
 import { errAsync, okAsync } from "neverthrow";
 import { ytStreamUrl } from "@/lib/stream-url";
 import { youtubeProvider } from "./provider";
-import { getYoutubeMusicDetails } from "./api/youtubeApi";
 import { ytMusicTrackToDto } from "./lib/playable";
 import { ytErrorToSource as mapError } from "./lib/errors";
 import { proxiedThumbnail } from "./lib/thumbnail";
@@ -313,7 +312,8 @@ export const ytSourceProvider: SourceProvider = {
   getTrack(id) {
     const videoId = ytIdOf(id);
     if (!videoId) return errAsync({ kind: "PARSE", message: `Not a YouTube track id: ${id}` });
-    return getYoutubeMusicDetails(videoId)
+    return youtubeProvider
+      .track(videoId)
       .mapErr(mapError)
       .map(track => ytMusicTrackToDto(track));
   },

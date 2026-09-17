@@ -4,16 +4,8 @@ import { IS_TAURI } from "@/lib/environment/userAgent";
 import type { DownloadEvent } from "@/modules/sources/types";
 import type { UpdateInfo, DownloadProgress } from "@/modules/update/types";
 import type {
-  YtAlbumDetail,
-  YtArtistDetail,
   YtDownloadEvent,
   YtDownloadResult,
-  YtMusicEntity,
-  YtMusicSearchKind,
-  YtMusicTrack,
-  YtPage,
-  YtPlaylistDetail,
-  YtSearchResult,
   YtTrackMeta,
 } from "@/modules/youtube/types";
 import type { DiscordActivityPayload } from "@/modules/player/utils/discordPresence";
@@ -53,18 +45,10 @@ export const COMMANDS = {
   ymPrefetch: "ym_prefetch",
   ymDownload: "ym_download",
   ymDownloadCancel: "ym_download_cancel",
-  ytSearch: "yt_search",
-  ytSearchContinue: "yt_search_continue",
   ytResolve: "yt_resolve",
   ytPrefetch: "yt_prefetch",
   ytDownload: "yt_download",
   ytDownloadCancel: "yt_download_cancel",
-  ytMusicDetails: "yt_music_details",
-  ytMusicSearch: "yt_music_search",
-  ytContinue: "yt_continue",
-  ytMusicPlaylist: "yt_music_playlist",
-  ytMusicAlbum: "yt_music_album",
-  ytMusicArtist: "yt_music_artist",
   discordSetActivity: "discord_set_activity",
   discordClearActivity: "discord_clear_activity",
   thumbbarSetState: "thumbbar_set_state",
@@ -108,8 +92,6 @@ export interface CommandMap {
     result: { path: string; ext: string };
   };
   ym_download_cancel: { args: { trackId: string }; result: void };
-  yt_search: { args: { query: string }; result: YtPage<YtSearchResult> };
-  yt_search_continue: { args: { continuation: string }; result: YtPage<YtSearchResult> };
   yt_resolve: { args: { id: string }; result: string };
   yt_prefetch: { args: { id: string }; result: void };
   yt_download: {
@@ -117,12 +99,6 @@ export interface CommandMap {
     result: YtDownloadResult;
   };
   yt_download_cancel: { args: { id: string }; result: void };
-  yt_music_details: { args: { id: string }; result: YtMusicTrack };
-  yt_music_search: { args: { query: string; kind: YtMusicSearchKind }; result: YtPage<YtMusicEntity> };
-  yt_continue: { args: { continuation: string; kind: YtMusicSearchKind }; result: YtPage<YtMusicEntity> };
-  yt_music_playlist: { args: { id: string }; result: YtPlaylistDetail };
-  yt_music_album: { args: { id: string }; result: YtAlbumDetail };
-  yt_music_artist: { args: { id: string }; result: YtArtistDetail };
   discord_set_activity: { args: { payload: DiscordActivityPayload }; result: void };
   discord_clear_activity: { args: undefined; result: void };
   thumbbar_set_state: { args: { state: ThumbbarState }; result: void };
