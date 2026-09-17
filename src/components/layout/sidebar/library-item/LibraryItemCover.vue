@@ -80,9 +80,6 @@ const hasStaticImage = computed(() => !!props.item.image);
 </template>
 
 <style scoped>
-/* The station has no cover of its own: soft colour blobs drifting over a
-   base tone stand in for one. Radial falloffs fade into the same hue at
-   zero alpha, so there is no hard seam for the rasteriser to band on. */
 .wave-tile {
   background-color: #6d4dff;
   background-image:

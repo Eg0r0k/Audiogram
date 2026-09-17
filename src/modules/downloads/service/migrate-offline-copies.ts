@@ -7,14 +7,6 @@ import { rebuildSearchIndex } from "@/modules/search/service/searchIndex";
 import { sourceKindOfId } from "@/types/track-ref";
 import { importDownloadedFile } from "./finalize";
 
-//
-// One-time move from "offline copy of a remote row" to "downloaded local
-// track" (spec §5). Runs after the DB is open and the storage service is
-// usable — an import cannot happen inside a Dexie upgrade transaction. The
-// flag makes the demotion a one-shot: after it, a remote pinned = 1 row is an
-// explicit "Add to library" and must stay.
-//
-
 export const MIGRATION_FLAG = "audiogram:download-is-import:v1";
 
 const isRemoteId = (id: string): boolean => sourceKindOfId(id) !== "local";

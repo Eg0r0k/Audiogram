@@ -68,7 +68,7 @@ export function useCatalogLibraryItems(
         type: "radio",
         title: i18n.global.t("queue.myWave"),
         subtitle: i18n.global.t("source.ym"),
-        isPinned: false,
+        isPinned: true,
         isSystem: true,
         isCatalog: true,
         addedAt: 0,
