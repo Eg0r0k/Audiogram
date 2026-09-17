@@ -9,10 +9,10 @@ import { TrackId } from "@/types/ids";
 import { ytTrackId } from "@/types/track-ref";
 import type { TrackMenuSubject } from "../../components/menu/type";
 
-const offlineCopyMock = vi.hoisted(() => ({ findById: vi.fn() }));
+const copyMock = vi.hoisted(() => ({ findBySourceRef: vi.fn() }));
 
 vi.mock("@/db/repositories", () => ({
-  offlineCopyRepository: offlineCopyMock,
+  trackRepository: copyMock,
 }));
 
 const registryMock = vi.hoisted(() => ({
@@ -81,17 +81,17 @@ describe("useTrackMenuCaps", () => {
       source: "local",
       isInLibrary: true,
       isPinned: true,
-      hasOfflineCopy: false,
+      hasLocalCopy: false,
       canExportFile: true,
-      canOffline: false,
+      canDownload: false,
       canAttachLyrics: true,
       canOpenExternal: false,
     });
-    expect(offlineCopyMock.findById).not.toHaveBeenCalled();
+    expect(copyMock.findBySourceRef).not.toHaveBeenCalled();
   });
 
   it("shadow-pinned remote library row is pinned but not in the library", () => {
-    offlineCopyMock.findById.mockResolvedValue(ok(undefined));
+    copyMock.findBySourceRef.mockResolvedValue(ok(undefined));
     registryMock.providers = { yt: { capabilities: { download: true } } };
     const subject = shallowRef<TrackMenuSubject | null>({
       kind: "library",
@@ -104,17 +104,15 @@ describe("useTrackMenuCaps", () => {
     expect(caps.value.isPinned).toBe(true);
     expect(caps.value.isInLibrary).toBe(false);
     expect(caps.value.canExportFile).toBe(false);
-    expect(caps.value.canOffline).toBe(true);
+    expect(caps.value.canDownload).toBe(true);
     expect(caps.value.canOpenExternal).toBe(true);
   });
 
-  it("an offline copy flips canOffline off and canExportFile on", async () => {
-    offlineCopyMock.findById.mockResolvedValue(ok({
-      trackId: ytTrackId("abc"),
-      storagePath: "offline/yt/abc.m4a",
-      sizeBytes: 1,
-      format: {},
-      downloadedAt: 0,
+  it("a downloaded local copy flips canDownload off and canExportFile on", async () => {
+    copyMock.findBySourceRef.mockResolvedValue(ok({
+      id: "local-1",
+      storagePath: "tracks/local-1.m4a",
+      sourceRef: ytTrackId("abc"),
     }));
     registryMock.providers = { yt: { capabilities: { download: true } } };
     const subject = shallowRef<TrackMenuSubject | null>({
@@ -125,13 +123,13 @@ describe("useTrackMenuCaps", () => {
     const caps = mountCaps(subject);
     await flushQueries();
 
-    expect(caps.value.hasOfflineCopy).toBe(true);
-    expect(caps.value.canOffline).toBe(false);
+    expect(caps.value.hasLocalCopy).toBe(true);
+    expect(caps.value.canDownload).toBe(false);
     expect(caps.value.canExportFile).toBe(true);
   });
 
-  it("remote DTO subject: not pinned, downloadable, openable externally", () => {
-    offlineCopyMock.findById.mockResolvedValue(ok(undefined));
+  it("a remote DTO subject without a copy can be downloaded", () => {
+    copyMock.findBySourceRef.mockResolvedValue(ok(undefined));
     registryMock.providers = { yt: { capabilities: { download: true } } };
     const subject = shallowRef<TrackMenuSubject | null>({
       kind: "remote",
@@ -145,14 +143,14 @@ describe("useTrackMenuCaps", () => {
       isInLibrary: false,
       isPinned: false,
       canExportFile: false,
-      canOffline: true,
+      canDownload: true,
       canAttachLyrics: false,
       canOpenExternal: true,
     });
   });
 
   it("tolerates sources without a registered provider (nd until M2)", () => {
-    offlineCopyMock.findById.mockResolvedValue(ok(undefined));
+    copyMock.findBySourceRef.mockResolvedValue(ok(undefined));
     registryMock.providers = {};
     const subject = shallowRef<TrackMenuSubject | null>({
       kind: "remote",
@@ -162,7 +160,7 @@ describe("useTrackMenuCaps", () => {
     const caps = mountCaps(subject);
 
     expect(caps.value.source).toBe("nd");
-    expect(caps.value.canOffline).toBe(false);
+    expect(caps.value.canDownload).toBe(false);
     expect(caps.value.canOpenExternal).toBe(true);
   });
 

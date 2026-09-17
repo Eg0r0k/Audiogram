@@ -32,7 +32,7 @@ import { useQuery } from "@tanstack/vue-query";
 import { Button } from "@/components/ui/button";
 import BlurSwapTransition from "@/components/transitions/BlurSwapTransition.vue";
 import type { SourceTrackDTO } from "@/modules/sources/types";
-import { offlineCopyQueries } from "@/queries/offlineCopy.queries";
+import { localCopyQueries } from "@/queries/localCopy.queries";
 import { downloadDtoWithFeedback } from "../downloadFeedback";
 import { useDownloadsStore } from "../store/downloads.store";
 import { Spinner } from "@/components/ui/spinner";
@@ -48,8 +48,8 @@ const downloadsStore = useDownloadsStore();
 
 const activeJob = computed(() => downloadsStore.byTrackId[props.dto.id]);
 
-const { data: offlineCopy } = useQuery(computed(() => offlineCopyQueries.detail(props.dto.id)));
-const hasCopy = computed(() => !!offlineCopy.value);
+const { data: localCopy } = useQuery(computed(() => localCopyQueries.byRemoteId(props.dto.id)));
+const hasCopy = computed(() => !!localCopy.value);
 
 const label = computed(() => {
   const job = activeJob.value;

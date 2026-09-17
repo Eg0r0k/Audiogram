@@ -245,7 +245,7 @@ import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import SourceDownloadButton from "@/modules/downloads/components/SourceDownloadButton.vue";
-import { offlineCopyQueries } from "@/queries/offlineCopy.queries";
+import { localCopyQueries } from "@/queries/localCopy.queries";
 import { useQuery } from "@tanstack/vue-query";
 import type { ArtistId, TrackId } from "@/types/ids";
 import { useI18n } from "vue-i18n";
@@ -376,10 +376,10 @@ const isLibraryRow = computed(() => !props.track.sourceDto);
 // The downloaded check by the title: catalog rows carry their DTO id, YT
 // display rows pass downloadId explicitly.
 const offlineTrackId = computed(() => props.downloadId ?? props.track.sourceDto?.id ?? null);
-// A local library row has no offline copy to look up: `detail(null)` is a
+// A local library row has no remote id to look up: `byRemoteId(null)` is a
 // skipToken query, so the observer idles without fetching.
-const offlineCopy = useQuery(computed(() => offlineCopyQueries.detail(offlineTrackId.value))).data;
-const isDownloaded = computed(() => !!offlineCopy.value);
+const localCopy = useQuery(computed(() => localCopyQueries.byRemoteId(offlineTrackId.value))).data;
+const isDownloaded = computed(() => !!localCopy.value);
 const relativeAddedAt = computed(() =>
   props.track.addedAt ? formatRelativeTime(props.track.addedAt, locale.value) : "",
 );

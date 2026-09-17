@@ -31,8 +31,8 @@ export const trackStateLabelKey = (state: TrackState): string | null => {
 
 /**
  * The row's own format, field by field over the downloaded copy's: remote
- * rows (YT/ND) store no format of their own, the real one sits next to the
- * file in offlineCopies.
+ * rows store no format of their own, the real one sits on the downloaded
+ * local row.
  */
 export const resolveTrackFormat = (own: AudioFormat | undefined, copy: AudioFormat | undefined): AudioFormat => ({
   codec: own?.codec ?? copy?.codec,

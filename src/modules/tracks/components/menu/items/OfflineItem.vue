@@ -12,7 +12,7 @@
 
     <component
       :is="Item"
-      v-else-if="caps.hasOfflineCopy"
+      v-else-if="caps.hasLocalCopy"
       @click="emit('removeOfflineCopy')"
     >
       <IconCloudOff class="size-5.5" />
@@ -21,7 +21,7 @@
 
     <component
       :is="Item"
-      v-else-if="caps.canOffline"
+      v-else-if="caps.canDownload"
       @click="emit('download')"
     >
       <IconDownload class="size-5.5" />

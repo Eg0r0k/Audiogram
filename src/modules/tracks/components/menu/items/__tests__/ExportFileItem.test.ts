@@ -17,9 +17,9 @@ function caps(canExportFile: boolean): TrackMenuCaps {
     source: "nd",
     isInLibrary: false,
     isPinned: false,
-    hasOfflineCopy: canExportFile,
+    hasLocalCopy: canExportFile,
     canExportFile,
-    canOffline: true,
+    canDownload: true,
     canAttachLyrics: false,
     canOpenExternal: true,
   };

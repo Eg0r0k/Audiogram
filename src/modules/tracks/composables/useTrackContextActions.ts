@@ -22,10 +22,10 @@ import { isRemoteTrack, trackHasLocalFile } from "@/modules/tracks/lib/trackPred
 import { promoteTrackToLibrary, removeTrackFromLibrary } from "@/modules/tracks/service/libraryMembership";
 import { downloadSubject } from "@/modules/downloads/service/enqueue";
 import { cancelTrackDownload } from "@/modules/downloads/service/manager";
-import { removeOfflineCopy as removeOfflineCopyFile } from "@/modules/downloads/service/removeCopy";
+import { removeLocalCopy } from "@/modules/downloads/service/removeCopy";
 import { useDownloadsStore } from "@/modules/downloads/store/downloads.store";
 import { invalidateLibraryData } from "@/queries/library.queries";
-import { getOfflineCopy } from "@/queries/offlineCopy.queries";
+import { getLocalCopy } from "@/queries/localCopy.queries";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { parseTrackRef } from "@/types/track-ref";
 import { trackIdFromStreamUrl } from "@/lib/stream-url";
@@ -189,13 +189,13 @@ export const useTrackContextActions = (
 
   /**
    * Picks the file the "Save as…" export reads from: the track's own local
-   * file, or its offline copy. Remote tracks without a copy have nothing to
-   * export — storagePath is never read blindly.
+   * file, or its downloaded local copy. Remote tracks without a copy have
+   * nothing to export — storagePath is never read blindly.
    */
   const resolveExportPath = async (current: Track): Promise<string | null> => {
     if (trackHasLocalFile(current)) return current.storagePath;
 
-    const copy = await getOfflineCopy(current.id);
+    const copy = await getLocalCopy(current.id);
     return copy?.storagePath ?? null;
   };
 
@@ -291,7 +291,7 @@ export const useTrackContextActions = (
     const trackId = subjectTrackId();
     if (!trackId) return;
     try {
-      await removeOfflineCopyFile(trackId);
+      await removeLocalCopy(trackId);
     }
     catch (error) {
       getLogger().error(`[Downloads] Removing the offline copy of ${trackId} failed: ${String(error)}`);
