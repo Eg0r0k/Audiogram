@@ -11,67 +11,56 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: main
+          ref: fix/ci-green
 
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
 
-      - name: Apply the frontend patch
+      - name: Apply the clippy patch
         run: |
-          cat > /tmp/fix.patch <<'PATCH'
-          diff --git a/src/modules/sources/yandex/components/YmQrCode.vue b/src/modules/sources/yandex/components/YmQrCode.vue
-          --- a/src/modules/sources/yandex/components/YmQrCode.vue
-          +++ b/src/modules/sources/yandex/components/YmQrCode.vue
-          @@ -1,10 +1,14 @@
-           <template>
-          -  <img
-          -    v-if="qrcode"
-          -    :src="qrcode"
-          -    :alt="value"
-          -    class="block size-full"
-          -  >
-          +  <!-- The box is the caller's: its size and padding classes land here and
-          +       the image fills it. On the img they fought size-full and lost. -->
-          +  <div class="overflow-hidden">
-          +    <img
-          +      v-if="qrcode"
-          +      :src="qrcode"
-          +      :alt="value"
-          +      class="block size-full"
-          +    >
-          +  </div>
-           </template>
+          cat > /tmp/clippy.patch <<'PATCH'
+          diff --git a/src-tauri/src/ym/auth.rs b/src-tauri/src/ym/auth.rs
+          --- a/src-tauri/src/ym/auth.rs
+          +++ b/src-tauri/src/ym/auth.rs
+          @@ -157,10 +157,7 @@ fn device_name() -> &'static str {
+           }
            
-           <script setup lang="ts">
-          diff --git a/src/modules/tracks/components/edit/__tests__/AlbumSelectPanel.test.ts b/src/modules/tracks/components/edit/__tests__/AlbumSelectPanel.test.ts
-          --- a/src/modules/tracks/components/edit/__tests__/AlbumSelectPanel.test.ts
-          +++ b/src/modules/tracks/components/edit/__tests__/AlbumSelectPanel.test.ts
-          @@ -22,6 +22,9 @@ const albums: AlbumEntity[] = [
-           // Virtual scrolling needs a measured viewport; happy-dom has none.
-           const VirtualScrollableStub = {
-             props: ["items"],
-          +  // The panel reveals the attached album on mount; the real component exposes
-          +  // scrollToIndex, so the stub has to carry it too.
-          +  methods: { scrollToIndex: vi.fn() },
-             template: `
-               <div>
-                 <div v-for="(item, index) in items" :key="index">
+           fn now_secs() -> u64 {
+          -    SystemTime::now()
+          -        .duration_since(UNIX_EPOCH)
+          -        .map(|d| d.as_secs())
+          -        .unwrap_or(0)
+          +    SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs())
+           }
+           
+           pub fn expires_at_from(expires_in: Option<u64>) -> Option<u64> {
+          diff --git a/src-tauri/src/youtube/stream.rs b/src-tauri/src/youtube/stream.rs
+          --- a/src-tauri/src/youtube/stream.rs
+          +++ b/src-tauri/src/youtube/stream.rs
+          @@ -44,8 +44,7 @@ pub struct YtStreamCache {
+           fn unix_now() -> u64 {
+               SystemTime::now()
+                   .duration_since(UNIX_EPOCH)
+          -        .map(|elapsed| elapsed.as_secs())
+          -        .unwrap_or(0)
+          +        .map_or(0, |elapsed| elapsed.as_secs())
+           }
+           
+           impl YtStreamCache {
           PATCH
-          sed -i 's/^          //' /tmp/fix.patch
-          git apply --recount --ignore-whitespace --verbose /tmp/fix.patch
+          sed -i 's/^          //' /tmp/clippy.patch
+          git apply --recount --ignore-whitespace --verbose /tmp/clippy.patch
 
       - name: rustfmt
         working-directory: src-tauri
         run: cargo fmt
 
-      - name: Push the branch
+      - name: Push it back to the PR branch
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b fix/ci-green
-          git add -A
-          git commit -m "fix(ci): rustfmt, album picker stub, QR box sizing"
-          git push -u origin fix/ci-green --force
+          git commit -am "fix(clippy): map_or instead of map().unwrap_or()"
+          git push origin fix/ci-green
           git show --stat --oneline HEAD
