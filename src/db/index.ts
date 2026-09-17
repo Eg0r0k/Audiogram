@@ -101,6 +101,13 @@ export class AppDatabase extends Dexie {
       recommenderModels: "&id",
     }).upgrade(upgradeToV15);
 
+    // Index-only change: + sourceRef on tracks (remote id → downloaded local
+    // row). offlineCopies stays declared so the post-open migration can drain
+    // it; the store is dropped by a later version once every install ran it.
+    this.version(16).stores({
+      tracks: "&id, title, artistName, albumTitle, *artistIds, albumId, *tagIds, likedAt, addedAt, duration, playCount, storagePath, fingerprint, pinned, sourceRef, [albumId+pinned], [title+likedAt], [addedAt+likedAt], [duration+likedAt], [artistName+likedAt], [albumTitle+likedAt], [playCount+likedAt]",
+    });
+
     this.tracks = this.table("tracks");
     this.artists = this.table("artists");
     this.albums = this.table("albums");

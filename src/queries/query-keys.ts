@@ -62,6 +62,8 @@ export const queryKeys = {
     },
     likedTotalDuration: () => ["tracks", "liked", "totalDuration"] as const,
     byIds: (ids: readonly TrackId[]) => ["tracks", "byIds", ...ids] as const,
+    /** The local track downloaded from a remote id (null result when none). */
+    localCopy: (remoteId: TrackId) => ["tracks", "localCopy", remoteId] as const,
     allPaginated: (search = "") => ["tracks", "all", "paginated", search] as const,
     indexInfinite: (sortKey: TrackSortKey | null, search = "") => ["tracks", "index", "infinite", sortKey, search] as const,
     indexTotalDuration: (search = "") => ["tracks", "index", "totalDuration", search] as const,

@@ -627,6 +627,17 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     }
   }
 
+  /** The local row downloaded from `remoteId`, if any (see TrackEntity.sourceRef). */
+  async findBySourceRef(remoteId: TrackId): Promise<Result<TrackEntity | undefined, Error>> {
+    try {
+      const track = await this.table.where("sourceRef").equals(remoteId).first();
+      return ok(track);
+    }
+    catch (error) {
+      return err(toDbError(error));
+    }
+  }
+
   async existsByFingerprint(fingerprint: string): Promise<Result<boolean, Error>> {
     try {
       const count = await this.table.where("fingerprint").equals(fingerprint).count();

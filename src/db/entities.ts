@@ -107,6 +107,12 @@ export interface TrackEntity {
   addedAt: number;
   fingerprint?: string;
   lyricsPath?: string;
+  /**
+   * Remote id this local file was downloaded from ("ym:123"). Only set on
+   * LOCAL_INTERNAL rows created by the download manager; the playback
+   * resolver uses it to play the file instead of the stream.
+   */
+  sourceRef?: TrackId;
 
   integratedLufs?: number;
   truePeakDbtp?: number;
