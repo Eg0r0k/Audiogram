@@ -6,6 +6,7 @@ import { computed } from "vue";
 import { cn } from "@/lib/utils";
 import { useSafeAreaInsets } from "@/composables/useSafeAreaInsets";
 import DrawerOverlay from "./DrawerOverlay.vue";
+import { useSheetDragGuard } from "./useSheetDragGuard";
 
 const props = defineProps<{
   class?: HTMLAttributes["class"];
@@ -15,6 +16,8 @@ const props = defineProps<{
 // keeps the last row tappable.
 const { bottom } = useSafeAreaInsets();
 const paddingBottom = computed(() => `${Math.max(bottom.value, 8)}px`);
+
+const guard = useSheetDragGuard();
 </script>
 
 <template>
@@ -24,6 +27,14 @@ const paddingBottom = computed(() => `${Math.max(bottom.value, 8)}px`);
       data-slot="drawer-content"
       :class="cn('bg-card text-card-foreground fixed inset-x-0 bottom-0 z-(--z-dialog) flex max-h-[85dvh] flex-col rounded-t-2xl outline-none', props.class)"
       :style="{ paddingBottom }"
+      @pointerdown.capture="guard.onPointerdown"
+      @pointerup.capture="guard.onPointerup"
+      @pointercancel.capture="guard.onPointercancel"
+      @click.capture="guard.onClick"
+      @touchstart.capture="guard.onTouchstart"
+      @touchmove.capture="guard.onTouchmove"
+      @touchend.capture="guard.onTouchend"
+      @touchcancel.capture="guard.onTouchend"
     >
       <div class="flex shrink-0 justify-center py-3">
         <DrawerHandle class="relative h-1.5 w-10 cursor-grab rounded-full bg-muted-foreground/30 active:cursor-grabbing" />

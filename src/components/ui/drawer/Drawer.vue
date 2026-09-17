@@ -6,10 +6,9 @@ import { registerOverlayBackHandler } from "@/composables/useOverlayBackButton";
 // Always controlled: vaul's root props are a union that withDefaults cannot
 // type, and an uncontrolled sheet has no consumer here anyway.
 //
-// Dragging is limited to the handle by default. A sheet that drags anywhere
-// turns every quick touch on a row into a dismissal (vaul closes on flick
-// velocity, not only distance) and the mouseup after a drag still clicks the
-// row underneath; rows in a menu must behave like plain buttons.
+// The sheet drags from anywhere; DrawerContent keeps the click after a drag
+// away from the row under the pointer, and a nested Scrollable stays usable
+// because vaul refuses the drag while it is scrolled.
 //
 // No overlay scroll lock on purpose: the modal overlay already swallows wheel
 // and touch over the page, and the shared lock would also freeze a Scrollable
@@ -23,7 +22,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   dismissible: true,
   modal: true,
-  handleOnly: true,
+  handleOnly: false,
   direction: "bottom",
 });
 
