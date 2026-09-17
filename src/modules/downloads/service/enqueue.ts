@@ -1,8 +1,5 @@
 import type { TrackMenuSubject } from "@/modules/tracks/components/menu/type";
 import { ensurePinned } from "@/modules/tracks/service/ensurePinned";
-import { promoteTrackToLibrary } from "@/modules/tracks/service/libraryMembership";
-import { invalidateLibraryData } from "@/queries/library.queries";
-import { queryClient } from "@/queries/client";
 import { unwrapResult } from "@/queries/shared";
 import { sources } from "@/modules/sources";
 import type { SourceTrackDTO } from "@/modules/sources/types";
@@ -44,9 +41,9 @@ export async function completeDtoForPin(dto: SourceTrackDTO): Promise<SourceTrac
 }
 
 /**
- * Download = library membership (§1): queuing a download pins the subject at
- * pinned = 1 (with the album/artist cascade) before the job is created.
- * Returns the job id, or null when an offline copy already exists.
+ * Download = import (see finalize.ts): queuing a download only guarantees the
+ * job a Dexie row to point at; the finished file becomes a local track of its
+ * own. Returns the job id, or null when a local copy already exists.
  */
 export async function downloadSubject(subject: TrackMenuSubject, batchId?: string): Promise<string | null> {
   if (subject.kind === "ephemeral") {
@@ -54,24 +51,21 @@ export async function downloadSubject(subject: TrackMenuSubject, batchId?: strin
   }
 
   if (subject.kind === "library") {
-    if ((subject.track.pinned ?? 1) === 0) {
-      await promoteTrackToLibrary(subject.track.id);
-      await invalidateLibraryData(queryClient);
-    }
     return enqueueTrackDownload(subject.track.id, batchId);
   }
 
   const dto = await completeDtoForPin(subject.dto);
-  await ensurePinned({ kind: "remote", dto });
-  await invalidateLibraryData(queryClient);
+  // The job needs a Dexie row for its FK, not a library member (§1): the
+  // finished file becomes a local track, this row stays a shadow.
+  await ensurePinned({ kind: "remote", dto }, { pinned: 0 });
   return enqueueTrackDownload(dto.id, batchId);
 }
 
 /**
- * Pins every DTO and queues its job under one batch. The batch total counts
- * only jobs actually created for this batch — tracks that already hold an
- * offline copy (or an active job from elsewhere) never enter the progress.
- * Callers: ND album/playlist below, YT collection pages (M5).
+ * Gives every DTO a shadow row and queues its job under one batch. The batch
+ * total counts only jobs actually created for this batch — tracks that already
+ * hold a local copy (or an active job from elsewhere) never enter the
+ * progress. Callers: ND album/playlist below, YT collection pages (M5).
  */
 export async function enqueueSourceTracksDownload(tracks: SourceTrackDTO[]): Promise<string | null> {
   if (tracks.length === 0) return null;
@@ -81,10 +75,9 @@ export async function enqueueSourceTracksDownload(tracks: SourceTrackDTO[]): Pro
 
   for (const dto of tracks) {
     const completed = await completeDtoForPin(dto);
-    await ensurePinned({ kind: "remote", dto: completed });
+    await ensurePinned({ kind: "remote", dto: completed }, { pinned: 0 });
     await enqueueTrackDownload(completed.id, batchId);
   }
-  await invalidateLibraryData(queryClient);
 
   // The manager grew the total per created job; nothing created — no batch.
   const batch = store.batches[batchId] as BatchProgress | undefined;
@@ -122,8 +115,8 @@ export async function enqueueCollectionDownload(
 
 /**
  * "Download playlist" on a local playlist: mixed content is filtered to the
- * tracks that can hold an offline copy — any remote row (ND and, since M5,
- * YT). Filtered-out local tracks never enter the batch.
+ * tracks that can be downloaded — any remote row (ND and, since M5, YT).
+ * Filtered-out local tracks never enter the batch.
  */
 export async function enqueueLocalPlaylistDownload(playlistId: PlaylistId): Promise<string | null> {
   const playlist = await unwrapResult(playlistRepository.findById(playlistId));
@@ -137,11 +130,8 @@ export async function enqueueLocalPlaylistDownload(playlistId: PlaylistId): Prom
   store.registerBatch(batchId);
 
   for (const track of downloadable) {
-    // Download = library membership: shadow rows get promoted on the way in.
-    if (track.pinned === 0) await promoteTrackToLibrary(track.id);
     await enqueueTrackDownload(track.id, batchId);
   }
-  await invalidateLibraryData(queryClient);
 
   const batch = store.batches[batchId] as BatchProgress | undefined;
   if ((batch?.total ?? 0) === 0) {

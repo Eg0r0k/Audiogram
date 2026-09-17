@@ -3,6 +3,8 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { ResultAsync, okAsync } from "neverthrow";
 import { ndTrackId } from "@/types/track-ref";
+import { AlbumId, TrackId } from "@/types/ids";
+import { TrackSource, TrackState } from "@/db/entities";
 import type { SourceError } from "@/modules/sources/types";
 
 const providerMock = vi.hoisted(() => ({
@@ -28,9 +30,9 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   remove: fsMock.remove,
 }));
 vi.mock("vue-sonner", () => ({ toast: toastMock }));
-// The real finalizer needs native storage — these tests cover the loop only.
+// The real finalizer runs the import pipeline — these tests cover the loop only.
 vi.mock("../service/finalize", () => ({
-  finalizeOfflineCopy: vi.fn(async () => {}),
+  finalizeDownloadImport: vi.fn(async () => {}),
 }));
 
 import { db } from "@/db";
@@ -90,13 +92,13 @@ describe("download manager", () => {
 
     downloads[1].resolve({ path: "C:/tmp/s2.flac" });
     downloads[2].resolve({ path: "C:/tmp/s3.flac" });
-    // Done = deleted: offlineCopies is the ledger of finished downloads.
+    // Done = deleted: the imported local row is the ledger of finished downloads.
     await vi.waitFor(async () => {
       expect(await db.downloadJobs.count()).toBe(0);
     });
   });
 
-  it("dedupes an active track and skips tracks with an offline copy", async () => {
+  it("dedupes an active track and skips tracks with a local copy", async () => {
     providerMock.downloadToFile.mockImplementation(() => deferredDownload().result);
     const manager = await freshManager();
 
@@ -105,12 +107,24 @@ describe("download manager", () => {
     expect(second).toBe(first);
     expect(await db.downloadJobs.count()).toBe(1);
 
-    await db.offlineCopies.put({
-      trackId: ndTrackId("copied"),
-      storagePath: "offline/nd/copied.flac",
-      sizeBytes: 1,
+    // The imported local row (sourceRef) is what marks a finished download.
+    await db.tracks.put({
+      id: TrackId("local-nd:copied"),
+      title: "Song copied",
+      artistName: "",
+      albumTitle: "",
+      artistIds: [],
+      albumId: AlbumId(""),
+      tagIds: [],
+      source: TrackSource.LOCAL_INTERNAL,
+      pinned: 1,
+      state: TrackState.READY,
+      storagePath: "tracks/local-nd:copied.flac",
+      duration: 0,
       format: {},
-      downloadedAt: 0,
+      playCount: 0,
+      addedAt: 1,
+      sourceRef: ndTrackId("copied"),
     });
     expect(await manager.enqueueTrackDownload(ndTrackId("copied"))).toBeNull();
   });

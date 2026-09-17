@@ -25,7 +25,7 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
 }));
 vi.mock("vue-sonner", () => ({ toast: toastMock }));
 vi.mock("../service/finalize", () => ({
-  finalizeOfflineCopy: vi.fn(async () => {}),
+  finalizeDownloadImport: vi.fn(async () => {}),
 }));
 
 import { db } from "@/db";

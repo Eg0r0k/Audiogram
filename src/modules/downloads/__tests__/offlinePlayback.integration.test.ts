@@ -3,12 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { okAsync } from "neverthrow";
 import { ndAlbumId, ndArtistId, ndTrackId } from "@/types/track-ref";
+import { TrackSource, TrackState } from "@/db/entities";
+import { AlbumId, TrackId } from "@/types/ids";
+import type { ImportItem } from "@/services/types";
 import type { SourceTrackDTO } from "@/modules/sources/types";
 
 //
-// End-to-end over real Dexie (fake-indexeddb): download → the player
-// resolves the offline copy; removeFromLibrary → the copy (row and file) is
-// gone and the same track resolves back to live streaming.
+// End-to-end over real Dexie (fake-indexeddb): download → the player plays
+// the imported local copy; removeLocalCopy → the copy is gone and the same
+// remote id resolves back to live streaming.
 //
 
 const storageMock = vi.hoisted(() => ({
@@ -16,11 +19,14 @@ const storageMock = vi.hoisted(() => ({
   getFileSize: vi.fn(),
   getAudioUrl: vi.fn(),
   deleteFile: vi.fn(),
+  warmup: vi.fn(async () => {}),
+  getAppDataDir: vi.fn(async () => "C:/appdata"),
 }));
 const providerMock = vi.hoisted(() => ({
   downloadToFile: vi.fn(),
   resolveStreamUrl: vi.fn(),
 }));
+const engineMock = vi.hoisted(() => ({ importFromItems: vi.fn() }));
 
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
@@ -34,10 +40,13 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   BaseDirectory: { AppData: 1 },
   readDir: vi.fn(async () => []),
   remove: vi.fn(async () => {}),
+  stat: vi.fn(),
 }));
 vi.mock("@/queries/library.queries", () => ({
   invalidateLibraryData: vi.fn(async () => {}),
 }));
+// The real engine would spin up the import worker pool.
+vi.mock("@/services/importer.service", () => ({ musicLibraryEngine: engineMock }));
 
 // Player harness: only the audio layer is faked — resolution runs for real.
 vi.mock("lyra-audio", () => {
@@ -88,7 +97,6 @@ vi.mock("@/services/stats.service", () => ({
 
 import { db } from "@/db";
 import { downloadSubject } from "../service/enqueue";
-import { removeTrackFromLibrary } from "@/modules/tracks/service/libraryMembership";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import type { Track } from "@/modules/player/types";
 
@@ -102,7 +110,7 @@ const dto: SourceTrackDTO = {
   duration: 240,
 };
 
-describe("download → offline copy plays → remove → streams (integration)", () => {
+describe("download → local copy plays → remove → streams (integration)", () => {
   beforeEach(async () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
@@ -111,47 +119,62 @@ describe("download → offline copy plays → remove → streams (integration)",
 
     storageMock.importFile.mockImplementation((_src: string, target: string) => okAsync(target));
     storageMock.getFileSize.mockReturnValue(okAsync(4096));
-    storageMock.getAudioUrl.mockReturnValue(okAsync("blob:offline-copy-url"));
+    storageMock.getAudioUrl.mockReturnValue(okAsync("blob:local-copy-url"));
     storageMock.deleteFile.mockReturnValue(okAsync(undefined));
     providerMock.downloadToFile.mockReturnValue(okAsync({ path: "C:/tmp/downloads-tmp/song1.flac", format: { codec: "flac" } }));
     providerMock.resolveStreamUrl.mockReturnValue(okAsync("http://127.0.0.1:60123/deadbeef/nd/song/song1"));
+    engineMock.importFromItems.mockImplementation(async (items: ImportItem[]) => {
+      const successful = [];
+      for (const item of items) {
+        const known = item.known!;
+        const id = TrackId(`local-${known.sourceRef}`);
+        await db.tracks.add({
+          id,
+          title: known.title,
+          artistName: known.artistName ?? "",
+          albumTitle: known.albumTitle ?? "",
+          artistIds: [],
+          albumId: AlbumId(""),
+          tagIds: [],
+          source: TrackSource.LOCAL_INTERNAL,
+          pinned: 1,
+          state: TrackState.READY,
+          storagePath: `tracks/${id}.${item.ext}`,
+          duration: 0,
+          format: {},
+          playCount: 0,
+          addedAt: Date.now(),
+          sourceRef: known.sourceRef,
+        });
+        successful.push({ trackId: id, fileName: item.name, title: known.title, artist: "", album: "" });
+      }
+      return { successful, failed: [], skipped: 0, total: items.length };
+    });
   });
 
-  it("plays the copy while it exists and falls back to streaming after removal", async () => {
-    // Download from browsing: the subject gets pinned (library membership)
-    // and the finished file becomes an offline copy in offline/nd/.
+  it("plays the imported copy while it exists and falls back to streaming after removal", async () => {
     await downloadSubject({ kind: "remote", dto });
     await vi.waitFor(async () => {
-      expect(await db.offlineCopies.get(dto.id)).toBeDefined();
+      expect(await db.tracks.where("sourceRef").equals(dto.id).count()).toBe(1);
     });
-
-    expect((await db.tracks.get(dto.id))?.pinned).toBe(1);
-    const copy = await db.offlineCopies.get(dto.id);
-    expect(copy).toMatchObject({
-      storagePath: "offline/nd/song1.flac",
-      sizeBytes: 4096,
-      format: { codec: "flac" },
-    });
+    // Download = import: the remote row stays a shadow.
+    expect((await db.tracks.get(dto.id))?.pinned).toBe(0);
 
     // Playback prefers the copy: the audio URL comes from storage, not the
     // stream proxy.
     const player = usePlayerStore();
     const track = (await db.tracks.get(dto.id)) as unknown as Track;
     await player.playPlayerTrack({ ...track, kind: "library" });
-    expect(storageMock.getAudioUrl).toHaveBeenCalledWith("offline/nd/song1.flac");
+    expect(storageMock.getAudioUrl).toHaveBeenCalledWith(`tracks/local-${dto.id}.flac`);
     expect(providerMock.resolveStreamUrl).not.toHaveBeenCalled();
 
-    // removeFromLibrary: the copy row and file go with the membership (M1
-    // cascade — no M4 patches on top).
-    await removeTrackFromLibrary(dto.id);
-    expect(await db.offlineCopies.get(dto.id)).toBeUndefined();
-    expect(storageMock.deleteFile).toHaveBeenCalledWith("offline/nd/song1.flac");
-    expect((await db.tracks.get(dto.id))?.pinned).toBe(0);
+    // Removing the copy = deleting the local track; the remote id streams again.
+    const { removeLocalCopy } = await import("../service/removeCopy");
+    await removeLocalCopy(dto.id);
+    expect(await db.tracks.where("sourceRef").equals(dto.id).count()).toBe(0);
 
-    // The shadow row still plays — now over the live stream.
     storageMock.getAudioUrl.mockClear();
-    const shadow = (await db.tracks.get(dto.id)) as unknown as Track;
-    await player.playPlayerTrack({ ...shadow, kind: "library" });
+    await player.playPlayerTrack({ ...track, kind: "library" });
     expect(providerMock.resolveStreamUrl).toHaveBeenCalledWith(dto.id);
     expect(storageMock.getAudioUrl).not.toHaveBeenCalled();
   });
