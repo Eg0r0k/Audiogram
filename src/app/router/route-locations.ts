@@ -1,6 +1,6 @@
 import type { RouteLocationRaw } from "vue-router";
 import { ROUTE_NAMES } from "@/app/router/route-names";
-import { ytAlbumId, ytArtistId, ytPlaylistId } from "@/types/track-ref";
+import { sourceKindOfId, ytAlbumId, ytArtistId, ytPlaylistId } from "@/types/track-ref";
 
 //
 // One id, two views. A downloaded remote album keeps the source's branded
@@ -60,3 +60,17 @@ export const routeLocation = {
   ytArtist: (id: string): RouteLocationRaw => routeLocation.artist(ytArtistId(id), { catalog: true }),
   devRecoStand: (): RouteLocationRaw => ({ name: ROUTE_NAMES.DEV_RECO_STAND }),
 } as const;
+
+/**
+ * The catalog view behind a library view of an explicitly added remote
+ * entity — the only case where one id has two pages. Null when the page is
+ * already the catalog view or the id is local.
+ */
+export const catalogViewRoute = (
+  type: "album" | "artist" | "playlist",
+  id: string,
+  isLibraryEntity: boolean,
+): RouteLocationRaw | null => {
+  if (!isLibraryEntity || sourceKindOfId(id) === "local") return null;
+  return routeLocation[type](id, { catalog: true });
+};

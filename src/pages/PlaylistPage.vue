@@ -41,6 +41,7 @@
               :has-tracks="tracks.length > 0"
               :is-library-entity="!!playlist"
               :filterable="!!playlist"
+              :catalog-route="catalogViewRoute('playlist', playlistId, !!playlist)"
               :like="playlistData.isOwner ? undefined : like.state.value"
               :can-delete-at-source="canDeleteAtSource"
               @play="handlePlayAll"
@@ -103,6 +104,7 @@ import { computed, ref, useTemplateRef } from "vue";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
+import { catalogViewRoute } from "@/app/router/route-locations";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import PageErrorState from "@/components/common/PageErrorState.vue";

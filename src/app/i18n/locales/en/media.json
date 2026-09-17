@@ -21,5 +21,6 @@
   "filterClear": "Clear filter",
   "like": "Like",
   "unlike": "Remove from liked",
-  "likeFailed": "Couldn't change the like"
+  "likeFailed": "Couldn't change the like",
+  "openInCatalog": "Open in catalog"
 }

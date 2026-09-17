@@ -43,6 +43,7 @@
                 :has-tracks="tracks.length > 0"
                 :is-library-entity="!!album"
                 :filterable="!!album"
+                :catalog-route="catalogViewRoute('album', albumId, !!album)"
                 :like="like.state.value"
                 @play="handlePlayAll"
                 @shuffle="handleShuffle"
@@ -101,6 +102,7 @@
 
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from "vue";
+import { catalogViewRoute } from "@/app/router/route-locations";
 import { sourceKindOf } from "@/modules/sources/lib/display";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";

@@ -50,6 +50,14 @@
               :data="data"
             />
 
+            <RouterLink
+              v-if="props.catalogRoute"
+              :to="props.catalogRoute"
+              class="mt-3 inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white/90 hover:bg-white/25 transition-colors"
+            >
+              {{ $t('media.openInCatalog') }}
+            </RouterLink>
+
             <p
               v-if="descriptionText"
               class="mt-3 max-w-2xl text-sm leading-6 text-white/80 line-clamp-3 @lg:max-w-none"
@@ -80,6 +88,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { RouterLink } from "vue-router";
+import type { RouteLocationRaw } from "vue-router";
 import { toast } from "vue-sonner";
 import { useImageColor } from "@/composables/useImageColor";
 import { platformCaps } from "@/lib/environment/platformCaps";
@@ -115,11 +125,14 @@ const props = withDefaults(defineProps<{
   like?: EntityLikeState;
   /** An own catalog playlist its source can delete — "Delete" without a Dexie row. */
   canDeleteAtSource?: boolean;
+  /** The catalog view behind this library view, when one exists. */
+  catalogRoute?: RouteLocationRaw | null;
 }>(), {
   isLibraryEntity: true,
   filterable: false,
   like: undefined,
   canDeleteAtSource: false,
+  catalogRoute: null,
 });
 
 const filter = defineModel<string>("filter", { default: "" });

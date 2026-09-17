@@ -36,6 +36,7 @@
               :has-tracks="tracks.length > 0"
               :is-library-entity="!!artist"
               :filterable="!!artist"
+              :catalog-route="catalogViewRoute('artist', artistId, !!artist)"
               :like="like.state.value"
               @play="handlePlayAll"
               @shuffle="handleShuffle"
@@ -182,7 +183,7 @@ import CreateAlbumCard from "@/modules/albums/components/CreateAlbumCard.vue";
 import { useCreateAlbum } from "@/modules/albums/composables/useCreateAlbum";
 import { usePlayAlbum } from "@/modules/albums/composables/usePlayAlbum";
 import { ScrollableSlider } from "@/components/ui/scrollable";
-import { routeLocation } from "@/app/router/route-locations";
+import { catalogViewRoute, routeLocation } from "@/app/router/route-locations";
 import type { LibraryItem } from "@/modules/library/types";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
 import LibraryContextMenu from "@/modules/library/components/LibraryContextMenu.vue";
