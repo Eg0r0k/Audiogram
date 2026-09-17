@@ -5,13 +5,13 @@ import { StorageError } from "@/db/errors/storage.errors";
 import type { Track } from "../types";
 
 const storageMock = vi.hoisted(() => ({ getAudioUrl: vi.fn() }));
-const offlineCopyMock = vi.hoisted(() => ({ findById: vi.fn() }));
+const trackRepositoryMock = vi.hoisted(() => ({ findBySourceRef: vi.fn() }));
 const sourcesMock = vi.hoisted(() => ({ forTrack: vi.fn() }));
 const platformMock = vi.hoisted(() => ({ hasFs: true }));
 const ensurePinnedMock = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
 vi.mock("@/db/storage", () => ({ storageService: storageMock }));
-vi.mock("@/db/repositories", () => ({ offlineCopyRepository: offlineCopyMock }));
+vi.mock("@/db/repositories", () => ({ trackRepository: trackRepositoryMock }));
 vi.mock("@/modules/sources", () => ({ sources: sourcesMock }));
 vi.mock("@/lib/environment/platformCaps", () => ({ platformCaps: platformMock }));
 vi.mock("@/modules/tracks/service/ensurePinned", () => ({ ensurePinned: ensurePinnedMock }));
@@ -47,7 +47,7 @@ describe("playback-resolver.service", () => {
     vi.clearAllMocks();
     platformMock.hasFs = true;
     storageMock.getAudioUrl.mockReturnValue(okAsync("blob:audio"));
-    offlineCopyMock.findById.mockResolvedValue(ok(undefined));
+    trackRepositoryMock.findBySourceRef.mockResolvedValue(ok(undefined));
   });
 
   describe("library tracks", () => {
@@ -98,18 +98,29 @@ describe("playback-resolver.service", () => {
   describe("remote tracks", () => {
     const remote = () => libraryTrack({ id: "yt:abc" as never, source: TrackSource.REMOTE_YT, storagePath: "" });
 
-    it("prefers the offline copy over the source stream", async () => {
-      offlineCopyMock.findById.mockResolvedValue(ok({ trackId: "yt:abc", storagePath: "offline/yt/abc.m4a" }));
+    it("prefers the downloaded local copy over the source stream", async () => {
+      trackRepositoryMock.findBySourceRef.mockResolvedValue(ok({ id: "local-1", storagePath: "tracks/local-1.m4a", sourceRef: "yt:abc" }));
 
       const result = await resolvePlaybackSource(remote());
 
+      expect(trackRepositoryMock.findBySourceRef).toHaveBeenCalledWith("yt:abc");
       expect(result._unsafeUnwrap()).toEqual({ kind: "url", url: "blob:audio" });
-      expect(storageMock.getAudioUrl).toHaveBeenCalledWith("offline/yt/abc.m4a");
+      expect(storageMock.getAudioUrl).toHaveBeenCalledWith("tracks/local-1.m4a");
       expect(sourcesMock.forTrack).not.toHaveBeenCalled();
     });
 
     it("falls back to the source stream, even when the copy lookup itself fails", async () => {
-      offlineCopyMock.findById.mockResolvedValue(errAsync(new Error("idb down")));
+      trackRepositoryMock.findBySourceRef.mockResolvedValue(errAsync(new Error("idb down")));
+      sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl: vi.fn(() => okAsync("http://127.0.0.1:60123/deadbeef/yt/abc")) });
+
+      const result = await resolvePlaybackSource(remote());
+
+      expect(result._unsafeUnwrap()).toEqual({ kind: "url", url: "http://127.0.0.1:60123/deadbeef/yt/abc" });
+      expect(storageMock.getAudioUrl).not.toHaveBeenCalled();
+    });
+
+    it("streams when there is no copy", async () => {
+      trackRepositoryMock.findBySourceRef.mockResolvedValue(ok(undefined));
       sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl: vi.fn(() => okAsync("http://127.0.0.1:60123/deadbeef/yt/abc")) });
 
       const result = await resolvePlaybackSource(remote());

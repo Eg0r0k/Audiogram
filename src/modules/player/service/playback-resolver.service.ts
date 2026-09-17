@@ -4,7 +4,7 @@ import type { StorageError } from "@/db/errors/storage.errors";
 import type { SourceError } from "@/types/source-dto";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { storageService } from "@/db/storage";
-import { offlineCopyRepository } from "@/db/repositories";
+import { trackRepository } from "@/db/repositories";
 import { sources } from "@/modules/sources";
 import { ensurePinned } from "@/modules/tracks/service/ensurePinned";
 import { getLogger } from "@/lib/logger";
@@ -163,10 +163,10 @@ const resolveRemote = (track: Track): ResultAsync<PlaybackSource, PlaybackError>
   }
 
   // A failed lookup is treated as "no copy": the stream is still playable.
-  return ResultAsync.fromSafePromise(offlineCopyRepository.findById(track.id))
+  return ResultAsync.fromSafePromise(trackRepository.findBySourceRef(track.id))
     .andThen((copyResult) => {
       const copy = copyResult.isOk() ? copyResult.value : undefined;
-      if (copy) return fromStorage(copy.storagePath);
+      if (copy?.storagePath) return fromStorage(copy.storagePath);
       return sources.forTrack(track.id).resolveStreamUrl(track.id)
         .map(url => classifyUrl(url))
         .mapErr((cause): PlaybackError => ({ kind: "source", cause }));
@@ -194,7 +194,7 @@ const resolveLibrary = (track: Track): ResultAsync<PlaybackSource, PlaybackError
  *
  * Library tracks:
  *   1. local file (LOCAL_INTERNAL/LOCAL_EXTERNAL) → storageService.getAudioUrl
- *   2. remote with an offline copy → storageService.getAudioUrl(copy path)
+ *   2. remote with a downloaded local copy (`sourceRef`) → storageService.getAudioUrl(copy path)
  *   3. remote otherwise → sources.forTrack(id).resolveStreamUrl(id)
  *
  * Ephemeral tracks:

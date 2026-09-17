@@ -3,7 +3,7 @@ import { getLogger } from "@/lib/logger";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { trackIdFromStreamUrl } from "@/lib/stream-url";
 import { isTranscodeCandidatePath } from "@/lib/files/transcodeCandidates";
-import { offlineCopyRepository, trackRepository } from "@/db/repositories";
+import { trackRepository } from "@/db/repositories";
 import { storageService } from "@/db/storage";
 import { sources } from "@/modules/sources/registry";
 import { parseTrackRef } from "@/types/track-ref";
@@ -92,7 +92,7 @@ export const warmLocalTranscode = async (id: TrackId): Promise<{ ok: boolean; er
 interface PrefetcherDeps {
   /** Resolved fresh on every run — never a value captured at schedule time. */
   nextTrackId: () => TrackId | null;
-  hasOfflineCopy: (id: TrackId) => Promise<boolean>;
+  hasLocalCopy: (id: TrackId) => Promise<boolean>;
   /** Returns null when the track's source cannot prefetch right now. */
   prefetch: (id: TrackId) => Promise<{ ok: boolean; error?: string }> | null;
 }
@@ -125,7 +125,7 @@ export const createNextTrackPrefetcher = (
     const last = prefetchedAt.get(id);
     if (last !== undefined && Date.now() - last < successTtlMs) return;
 
-    if (await deps.hasOfflineCopy(id)) return;
+    if (await deps.hasLocalCopy(id)) return;
 
     const request = deps.prefetch(id);
     if (!request) return;
@@ -187,8 +187,8 @@ export const initNextTrackPrefetch = (): (() => void) => {
 
   const prefetcher = createNextTrackPrefetcher({
     nextTrackId,
-    hasOfflineCopy: async (id) => {
-      const copy = await offlineCopyRepository.findById(id);
+    hasLocalCopy: async (id) => {
+      const copy = await trackRepository.findBySourceRef(id);
       return copy.isOk() && copy.value !== undefined;
     },
     prefetch: (id) => {

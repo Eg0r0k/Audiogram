@@ -6,8 +6,8 @@ import { ndTrackId, ytTrackId } from "@/types/track-ref";
 import type { PlayerTrack } from "../../types";
 
 const platformCapsMock = vi.hoisted(() => ({ canProxyStream: true }));
-const findByIdMock = vi.hoisted(() => vi.fn());
 const trackFindByIdMock = vi.hoisted(() => vi.fn());
+const trackFindBySourceRefMock = vi.hoisted(() => vi.fn());
 const getAudioUrlMock = vi.hoisted(() => vi.fn());
 const sourcesGetMock = vi.hoisted(() => vi.fn());
 
@@ -16,8 +16,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 vi.mock("@/lib/environment/platformCaps", () => ({ platformCaps: platformCapsMock }));
 vi.mock("@/db/repositories", () => ({
-  offlineCopyRepository: { findById: findByIdMock },
-  trackRepository: { findById: trackFindByIdMock },
+  trackRepository: { findById: trackFindByIdMock, findBySourceRef: trackFindBySourceRefMock },
 }));
 vi.mock("@/db/storage", () => ({
   storageService: { getAudioUrl: getAudioUrlMock },
@@ -154,7 +153,7 @@ describe("createNextTrackPrefetcher", () => {
 
   const makeDeps = () => ({
     nextTrackId: vi.fn<() => TrackId | null>(() => TrackId("yt:abc")),
-    hasOfflineCopy: vi.fn(async () => false),
+    hasLocalCopy: vi.fn(async () => false),
     prefetch: vi.fn<(id: TrackId) => Promise<{ ok: boolean; error?: string }> | null>(
       () => Promise.resolve({ ok: true }),
     ),
@@ -198,9 +197,9 @@ describe("createNextTrackPrefetcher", () => {
     expect(deps.prefetch).not.toHaveBeenCalled();
   });
 
-  it("skips tracks that already have an offline copy", async () => {
+  it("skips tracks that already have a local copy", async () => {
     const deps = makeDeps();
-    deps.hasOfflineCopy.mockResolvedValue(true);
+    deps.hasLocalCopy.mockResolvedValue(true);
     const prefetcher = createNextTrackPrefetcher(deps);
 
     prefetcher.schedule();
@@ -287,7 +286,7 @@ describe("initNextTrackPrefetch", () => {
     vi.useFakeTimers();
     vi.clearAllMocks();
     platformCapsMock.canProxyStream = true;
-    findByIdMock.mockResolvedValue(ok(undefined));
+    trackFindBySourceRefMock.mockResolvedValue(ok(undefined));
     sourcesGetMock.mockReturnValue(provider);
     provider.isAvailable = true;
     queueMock.queue = [];
