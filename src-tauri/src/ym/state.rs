@@ -330,7 +330,14 @@ mod tests {
 
     #[test]
     fn a_session_never_prints_its_tokens() {
-        let session = YmSession::new(42, true, "Tester", "access-secret", Some("refresh-secret"), None);
+        let session = YmSession::new(
+            42,
+            true,
+            "Tester",
+            "access-secret",
+            Some("refresh-secret"),
+            None,
+        );
 
         let debug = format!("{session:?}");
 
@@ -342,7 +349,14 @@ mod tests {
     #[test]
     fn stored_auth_round_trips_through_the_file() {
         let path = temp_path("auth.json");
-        let session = YmSession::new(42, true, "Tester", "access-1", Some("refresh-1"), Some(1_800_000_000));
+        let session = YmSession::new(
+            42,
+            true,
+            "Tester",
+            "access-1",
+            Some("refresh-1"),
+            Some(1_800_000_000),
+        );
 
         write_auth_file(&path, &StoredAuth::from_session(&session)).expect("write");
         let restored = read_auth_file(&path).expect("read").into_session();

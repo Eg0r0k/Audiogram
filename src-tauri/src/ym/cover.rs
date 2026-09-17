@@ -40,7 +40,10 @@ pub fn cover_url(cover_ref: &str, size: Option<u32>) -> Option<String> {
         return None;
     }
     let px = rendition(size)?;
-    Some(format!("https://{}", cover_ref.replace("%%", &format!("{px}x{px}"))))
+    Some(format!(
+        "https://{}",
+        cover_ref.replace("%%", &format!("{px}x{px}"))
+    ))
 }
 
 /// `ym/cover/<ref>`: 404 outside the allowlist or for an unknown size,
@@ -84,7 +87,11 @@ mod tests {
     #[test]
     fn builds_https_urls_for_allowed_hosts_at_a_served_rendition() {
         assert_eq!(
-            cover_url("avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%", Some(226)).as_deref(),
+            cover_url(
+                "avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/%%",
+                Some(226)
+            )
+            .as_deref(),
             Some("https://avatars.yandex.net/get-music-content/95061/4f3808a0.a.5307396-3/300x300")
         );
         assert_eq!(
@@ -100,9 +107,18 @@ mod tests {
 
     #[test]
     fn refuses_other_hosts_schemes_missing_placeholders_and_oversized_requests() {
-        assert_eq!(cover_url("evil.example/avatars.yandex.net/%%", Some(300)), None);
-        assert_eq!(cover_url("https://avatars.yandex.net/x/%%", Some(300)), None);
-        assert_eq!(cover_url("avatars.yandex.net.evil.example/x/%%", Some(300)), None);
+        assert_eq!(
+            cover_url("evil.example/avatars.yandex.net/%%", Some(300)),
+            None
+        );
+        assert_eq!(
+            cover_url("https://avatars.yandex.net/x/%%", Some(300)),
+            None
+        );
+        assert_eq!(
+            cover_url("avatars.yandex.net.evil.example/x/%%", Some(300)),
+            None
+        );
         assert_eq!(cover_url("avatars.yandex.net/x/300x300", Some(300)), None);
         assert_eq!(cover_url("avatars.yandex.net", Some(300)), None);
         assert_eq!(cover_url("avatars.yandex.net/x/%%", Some(4000)), None);
@@ -115,10 +131,12 @@ mod tests {
         let foreign = serve_cover(&client, "evil.example/x/%%", Some("size=300"), None).await;
         assert_eq!(foreign.status(), 404);
 
-        let bad_size = serve_cover(&client, "avatars.yandex.net/x/%%", Some("size=big"), None).await;
+        let bad_size =
+            serve_cover(&client, "avatars.yandex.net/x/%%", Some("size=big"), None).await;
         assert_eq!(bad_size.status(), 404);
 
-        let too_big = serve_cover(&client, "avatars.yandex.net/x/%%", Some("size=9999"), None).await;
+        let too_big =
+            serve_cover(&client, "avatars.yandex.net/x/%%", Some("size=9999"), None).await;
         assert_eq!(too_big.status(), 404);
     }
 }

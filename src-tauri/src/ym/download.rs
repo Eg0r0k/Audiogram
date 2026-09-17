@@ -127,7 +127,9 @@ mod tests {
 
     fn state_with(upstream: &str, has_plus: bool) -> YmState {
         let state = YmState::with_endpoints(upstream, upstream).with_link_scheme("http");
-        state.set_session(Some(YmSession::new(42, has_plus, "Tester", "tok-1", None, None)));
+        state.set_session(Some(YmSession::new(
+            42, has_plus, "Tester", "tok-1", None, None,
+        )));
         state
     }
 
@@ -151,14 +153,22 @@ mod tests {
         let seen = Arc::clone(&hits);
         let upstream = spawn_upstream(move |_req| {
             seen.fetch_add(1, Ordering::SeqCst);
-            http::Response::builder().status(200).body(Full::new(bytes::Bytes::new())).unwrap()
+            http::Response::builder()
+                .status(200)
+                .body(Full::new(bytes::Bytes::new()))
+                .unwrap()
         })
         .await;
         let state = YmState::with_endpoints(&upstream, &upstream);
 
         let error = download_track(
-            &state, &YmLinkCache::default(), &DownloadRegistry::default(),
-            &reqwest::Client::new(), &temp(), "40144", &silent_channel(),
+            &state,
+            &YmLinkCache::default(),
+            &DownloadRegistry::default(),
+            &reqwest::Client::new(),
+            &temp(),
+            "40144",
+            &silent_channel(),
         )
         .await
         .unwrap_err();
@@ -180,17 +190,25 @@ mod tests {
         .await;
         let state = state_with(&upstream, false);
         let links = YmLinkCache::default();
-        links.insert("40144", ResolvedTrack {
-            url: format!("{upstream}/full.mp3"),
-            preview: false,
-            codec: "mp3".into(),
-            bitrate: 192,
-        });
+        links.insert(
+            "40144",
+            ResolvedTrack {
+                url: format!("{upstream}/full.mp3"),
+                preview: false,
+                codec: "mp3".into(),
+                bitrate: 192,
+            },
+        );
         let tmp = temp();
 
         let done = download_track(
-            &state, &links, &DownloadRegistry::default(),
-            &reqwest::Client::new(), &tmp, "40144", &silent_channel(),
+            &state,
+            &links,
+            &DownloadRegistry::default(),
+            &reqwest::Client::new(),
+            &tmp,
+            "40144",
+            &silent_channel(),
         )
         .await
         .expect("download");
@@ -202,21 +220,32 @@ mod tests {
     #[tokio::test]
     async fn a_preview_link_is_refused_rather_than_saved() {
         let upstream = spawn_upstream(|_req| {
-            http::Response::builder().status(200).body(Full::new(bytes::Bytes::new())).unwrap()
+            http::Response::builder()
+                .status(200)
+                .body(Full::new(bytes::Bytes::new()))
+                .unwrap()
         })
         .await;
         let state = state_with(&upstream, true);
         let links = YmLinkCache::default();
-        links.insert("40144", ResolvedTrack {
-            url: format!("{upstream}/preview.mp3"),
-            preview: true,
-            codec: "mp3".into(),
-            bitrate: 128,
-        });
+        links.insert(
+            "40144",
+            ResolvedTrack {
+                url: format!("{upstream}/preview.mp3"),
+                preview: true,
+                codec: "mp3".into(),
+                bitrate: 128,
+            },
+        );
 
         let error = download_track(
-            &state, &links, &DownloadRegistry::default(),
-            &reqwest::Client::new(), &temp(), "40144", &silent_channel(),
+            &state,
+            &links,
+            &DownloadRegistry::default(),
+            &reqwest::Client::new(),
+            &temp(),
+            "40144",
+            &silent_channel(),
         )
         .await
         .unwrap_err();
@@ -237,17 +266,25 @@ mod tests {
         .await;
         let state = state_with(&upstream, true);
         let links = YmLinkCache::default();
-        links.insert("40144", ResolvedTrack {
-            url: format!("{upstream}/full.mp3"),
-            preview: false,
-            codec: "mp3".into(),
-            bitrate: 320,
-        });
+        links.insert(
+            "40144",
+            ResolvedTrack {
+                url: format!("{upstream}/full.mp3"),
+                preview: false,
+                codec: "mp3".into(),
+                bitrate: 320,
+            },
+        );
         let tmp = temp();
 
         let done = download_track(
-            &state, &links, &DownloadRegistry::default(),
-            &reqwest::Client::new(), &tmp, "40144", &silent_channel(),
+            &state,
+            &links,
+            &DownloadRegistry::default(),
+            &reqwest::Client::new(),
+            &tmp,
+            "40144",
+            &silent_channel(),
         )
         .await
         .expect("download");
@@ -265,8 +302,13 @@ mod tests {
         let _running = registry.register("ym:40144").expect("first");
 
         let error = download_track(
-            &state, &YmLinkCache::default(), &registry,
-            &reqwest::Client::new(), &temp(), "40144", &silent_channel(),
+            &state,
+            &YmLinkCache::default(),
+            &registry,
+            &reqwest::Client::new(),
+            &temp(),
+            "40144",
+            &silent_channel(),
         )
         .await
         .unwrap_err();

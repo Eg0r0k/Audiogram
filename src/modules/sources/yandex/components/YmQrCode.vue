@@ -1,10 +1,14 @@
 <template>
-  <img
-    v-if="qrcode"
-    :src="qrcode"
-    :alt="value"
-    class="block size-full"
-  >
+  <!-- The box is the caller's: its size and padding classes land here and
+       the image fills it. On the img they fought size-full and lost. -->
+  <div class="overflow-hidden">
+    <img
+      v-if="qrcode"
+      :src="qrcode"
+      :alt="value"
+      class="block size-full"
+    >
+  </div>
 </template>
 
 <script setup lang="ts">

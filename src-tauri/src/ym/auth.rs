@@ -309,7 +309,10 @@ pub async fn fetch_account(
 ) -> Result<AccountInfo, YmError> {
     let resp = client
         .get(format!("{api_base}/account/status"))
-        .header(reqwest::header::AUTHORIZATION, format!("OAuth {access_token}"))
+        .header(
+            reqwest::header::AUTHORIZATION,
+            format!("OAuth {access_token}"),
+        )
         .header(CLIENT_HEADER_NAME, CLIENT_HEADER_VALUE)
         .send()
         .await
@@ -373,7 +376,15 @@ pub async fn ym_auth_start<R: Runtime>(app: AppHandle<R>) -> Result<YmDeviceCode
     let expires_in = Duration::from_secs(code.expires_in);
     let poll_app = app.clone();
     tauri::async_runtime::spawn(async move {
-        let outcome = poll_token(&client, &oauth_base, &device_code, interval, expires_in, cancel).await;
+        let outcome = poll_token(
+            &client,
+            &oauth_base,
+            &device_code,
+            interval,
+            expires_in,
+            cancel,
+        )
+        .await;
         let event = match outcome {
             Ok(token) => complete_sign_in(&poll_app, &client, token).await,
             Err(PollEnd::Cancelled) => YmAuthEvent::Cancelled,
@@ -406,11 +417,17 @@ async fn complete_sign_in<R: Runtime>(
         token.refresh_token.as_deref(),
         expires_at_from(token.expires_in),
     );
-    if let Err(e) = auth_file(app).and_then(|path| write_auth_file(&path, &StoredAuth::from_session(&session))) {
+    if let Err(e) =
+        auth_file(app).and_then(|path| write_auth_file(&path, &StoredAuth::from_session(&session)))
+    {
         log::warn!("ym: storing the session failed: {e}");
     }
     state.set_session(Some(session));
-    log::info!("ym: signed in as uid {} (plus: {})", account.uid, account.has_plus);
+    log::info!(
+        "ym: signed in as uid {} (plus: {})",
+        account.uid,
+        account.has_plus
+    );
     YmAuthEvent::Ok {
         uid: account.uid,
         has_plus: account.has_plus,
@@ -438,7 +455,9 @@ pub fn ym_auth_logout<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
 
 /// Persists a refreshed session (the token endpoint rotated the tokens).
 pub fn persist_session<R: Runtime>(app: &AppHandle<R>, session: &YmSession) {
-    if let Err(e) = auth_file(app).and_then(|path| write_auth_file(&path, &StoredAuth::from_session(session))) {
+    if let Err(e) =
+        auth_file(app).and_then(|path| write_auth_file(&path, &StoredAuth::from_session(session)))
+    {
         log::warn!("ym: storing the refreshed session failed: {e}");
     }
 }
@@ -470,10 +489,8 @@ mod tests {
             .expect("response")
     }
 
-    const PENDING: &str =
-        r#"{"error":"authorization_pending","error_description":"User has not yet authorized your application"}"#;
-    const TOKEN: &str =
-        r#"{"access_token":"tok-1","refresh_token":"refresh-1","expires_in":31536000,"token_type":"bearer"}"#;
+    const PENDING: &str = r#"{"error":"authorization_pending","error_description":"User has not yet authorized your application"}"#;
+    const TOKEN: &str = r#"{"access_token":"tok-1","refresh_token":"refresh-1","expires_in":31536000,"token_type":"bearer"}"#;
 
     #[test]
     fn a_token_response_never_prints_its_tokens() {
@@ -557,8 +574,7 @@ mod tests {
 
     #[tokio::test]
     async fn polling_stops_when_yandex_says_the_code_expired() {
-        let upstream =
-            spawn_upstream(|_req| json(400, r#"{"error":"expired_token"}"#)).await;
+        let upstream = spawn_upstream(|_req| json(400, r#"{"error":"expired_token"}"#)).await;
 
         let outcome = poll_token(
             &reqwest::Client::new(),
@@ -626,7 +642,10 @@ mod tests {
     async fn refreshing_sends_the_refresh_grant_and_rejects_invalid_grants() {
         let upstream = spawn_upstream(|req| {
             assert_eq!(req.uri().path(), "/token");
-            json(400, r#"{"error":"invalid_grant","error_description":"expired"}"#)
+            json(
+                400,
+                r#"{"error":"invalid_grant","error_description":"expired"}"#,
+            )
         })
         .await;
 

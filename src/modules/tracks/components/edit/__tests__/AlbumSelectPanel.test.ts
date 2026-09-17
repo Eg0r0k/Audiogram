@@ -22,6 +22,9 @@ const albums: AlbumEntity[] = [
 // Virtual scrolling needs a measured viewport; happy-dom has none.
 const VirtualScrollableStub = {
   props: ["items"],
+  // The panel reveals the attached album on mount; the real component exposes
+  // scrollToIndex, so the stub has to carry it too.
+  methods: { scrollToIndex: vi.fn() },
   template: `
     <div>
       <div v-for="(item, index) in items" :key="index">

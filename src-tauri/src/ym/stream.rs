@@ -110,8 +110,14 @@ pub(crate) async fn prefetch_track(
         .await
         .map_err(|e| YmError::network(e.without_url().to_string()))?;
     log::debug!("ym_prefetch {track_id}: fetched {} bytes", bytes.len());
-    if !cache.insert(track_id.to_owned(), content_type_for(&link).to_owned(), bytes) {
-        return Err(YmError::unavailable("prefetch skipped: track exceeds the cache cap"));
+    if !cache.insert(
+        track_id.to_owned(),
+        content_type_for(&link).to_owned(),
+        bytes,
+    ) {
+        return Err(YmError::unavailable(
+            "prefetch skipped: track exceeds the cache cap",
+        ));
     }
     Ok(())
 }
@@ -153,7 +159,9 @@ async fn forward_link(
     let mut response = forward_stream(client, &link.url, &[], range, None, origin).await?;
     if response.status().is_success() {
         if let Ok(value) = http::HeaderValue::from_str(content_type_for(link)) {
-            response.headers_mut().insert(http::header::CONTENT_TYPE, value);
+            response
+                .headers_mut()
+                .insert(http::header::CONTENT_TYPE, value);
         }
     }
     Ok(response)
@@ -256,7 +264,9 @@ mod tests {
 
     fn signed_in(upstream: &str) -> YmState {
         let state = YmState::with_endpoints(upstream, upstream).with_link_scheme("http");
-        state.set_session(Some(YmSession::new(42, true, "Tester", "tok-1", None, None)));
+        state.set_session(Some(YmSession::new(
+            42, true, "Tester", "tok-1", None, None,
+        )));
         state
     }
 
@@ -335,9 +345,22 @@ mod tests {
         let state = YmState::with_endpoints("http://127.0.0.1:1", "http://127.0.0.1:1");
         let links = YmLinkCache::default();
         let cache = YmAudioCache::default();
-        assert!(cache.insert("40144".into(), "audio/mpeg".into(), Bytes::from_static(b"0123456789")));
+        assert!(cache.insert(
+            "40144".into(),
+            "audio/mpeg".into(),
+            Bytes::from_static(b"0123456789")
+        ));
 
-        let resp = serve_track(&state, &links, &cache, &direct(), "40144", Some("bytes=4-".into()), None).await;
+        let resp = serve_track(
+            &state,
+            &links,
+            &cache,
+            &direct(),
+            "40144",
+            Some("bytes=4-".into()),
+            None,
+        )
+        .await;
 
         assert_eq!(resp.status(), 206);
         assert_eq!(resp.headers()["Content-Type"], "audio/mpeg");
@@ -359,23 +382,45 @@ mod tests {
         assert_eq!(resp.headers()["Content-Type"], "audio/mpeg");
         let body = resp.into_body().collect().await.expect("body").to_bytes();
         assert_eq!(body.as_ref(), b"mp3body");
-        assert!(links.get("40144").is_some(), "the link is kept for the next range request");
+        assert!(
+            links.get("40144").is_some(),
+            "the link is kept for the next range request"
+        );
 
         // A seek reuses the link: one more audio hit, no new resolve.
-        let again = serve_track(&state, &links, &cache, &direct(), "40144", Some("bytes=0-".into()), None).await;
+        let again = serve_track(
+            &state,
+            &links,
+            &cache,
+            &direct(),
+            "40144",
+            Some("bytes=0-".into()),
+            None,
+        )
+        .await;
         assert_eq!(again.status(), 200);
         assert_eq!(audio_hits.load(Ordering::SeqCst), 2);
     }
 
     #[tokio::test]
     async fn a_410_from_the_link_host_resolves_once_more() {
-        let (upstream, audio_hits) = resolving_upstream(b"mp3body", |n| if n == 0 { 410 } else { 206 }).await;
+        let (upstream, audio_hits) =
+            resolving_upstream(b"mp3body", |n| if n == 0 { 410 } else { 206 }).await;
         let state = signed_in(&upstream);
         let links = YmLinkCache::default();
         links.insert("40144", link(&format!("{upstream}/audio")));
         let cache = YmAudioCache::default();
 
-        let resp = serve_track(&state, &links, &cache, &direct(), "40144", Some("bytes=0-".into()), None).await;
+        let resp = serve_track(
+            &state,
+            &links,
+            &cache,
+            &direct(),
+            "40144",
+            Some("bytes=0-".into()),
+            None,
+        )
+        .await;
 
         assert_eq!(resp.status(), 206);
         assert_eq!(audio_hits.load(Ordering::SeqCst), 2);
@@ -397,7 +442,10 @@ mod tests {
     #[tokio::test]
     async fn a_failed_resolve_is_502_with_nothing_in_the_body() {
         let upstream = spawn_upstream(|_req| {
-            http::Response::builder().status(403).body(Full::new(Bytes::new())).unwrap()
+            http::Response::builder()
+                .status(403)
+                .body(Full::new(Bytes::new()))
+                .unwrap()
         })
         .await;
         let state = signed_in(&upstream);
@@ -418,8 +466,12 @@ mod tests {
         let links = YmLinkCache::default();
         let cache = YmAudioCache::default();
 
-        prefetch_track(&state, &links, &cache, &direct(), "40144").await.expect("prefetch");
-        prefetch_track(&state, &links, &cache, &direct(), "40144").await.expect("second prefetch is a no-op");
+        prefetch_track(&state, &links, &cache, &direct(), "40144")
+            .await
+            .expect("prefetch");
+        prefetch_track(&state, &links, &cache, &direct(), "40144")
+            .await
+            .expect("second prefetch is a no-op");
 
         assert_eq!(audio_hits.load(Ordering::SeqCst), 1);
         let hit = cache.get("40144").expect("cached");
@@ -431,9 +483,15 @@ mod tests {
     async fn prefetch_without_a_session_is_an_auth_error() {
         let state = YmState::with_endpoints("http://127.0.0.1:1", "http://127.0.0.1:1");
 
-        let error = prefetch_track(&state, &YmLinkCache::default(), &YmAudioCache::default(), &direct(), "40144")
-            .await
-            .unwrap_err();
+        let error = prefetch_track(
+            &state,
+            &YmLinkCache::default(),
+            &YmAudioCache::default(),
+            &direct(),
+            "40144",
+        )
+        .await
+        .unwrap_err();
 
         assert_eq!(error.kind, YmErrorKind::Auth);
     }
