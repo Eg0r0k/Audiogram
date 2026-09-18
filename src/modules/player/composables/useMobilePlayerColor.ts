@@ -4,7 +4,7 @@ import { useTrackCover } from "@/modules/covers/composables/useTrackCover";
 import { getColorFromImage, type ColorResult } from "@/composables/useImageColor";
 
 // Longer than the cover slide (useTrackSwipe's SLIDE_TRANSITION).
-const COLOR_EXTRACTION_DELAY_MS = 400;
+const COLOR_EXTRACTION_DELAY_MS = 300;
 
 const defaultFallback: ColorResult = {
   hex: "#535353",

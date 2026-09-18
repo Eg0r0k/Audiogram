@@ -82,6 +82,62 @@ describe("EntitySelectPanel", () => {
     });
   });
 
+  // The empty list has two very different causes, and the search one is
+  // actionable: it offers the way back out of a query that matched nothing.
+  describe("empty state", () => {
+    const t = (key: string) => i18n.global.t(key);
+
+    it("offers to clear the search when a query matched nothing", async () => {
+      const { getByText, emitted } = renderPanel({ items: [], search: "zzz" });
+
+      await fireEvent.click(getByText(t("search.noResults.clear")));
+
+      expect(emitted("update:search")?.at(-1)).toEqual([""]);
+    });
+
+    it("shows the plain empty state when there is no query", () => {
+      const { getByText, queryByText } = renderPanel({ items: [], search: "   " });
+
+      expect(getByText(t("common.empty"))).toBeTruthy();
+      expect(queryByText(t("search.noResults.clear"))).toBeNull();
+    });
+
+    // Clearing a query that matched nothing used to flash "nothing here" for
+    // the host's debounce window, before the full list arrived.
+    it("does not flash the empty state while the list catches up", async () => {
+      vi.useFakeTimers();
+      try {
+        const { queryByText, rerender } = renderPanel({ items: [], search: "zzz" });
+        expect(queryByText(t("search.noResults.clear"))).not.toBeNull();
+
+        await rerender({ items: [], search: "" });
+        expect(queryByText(t("common.empty"))).toBeNull();
+
+        vi.advanceTimersByTime(400);
+        await nextTick();
+        expect(queryByText(t("common.empty"))).not.toBeNull();
+      }
+      finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("shows the empty state as soon as the list itself changes", async () => {
+      vi.useFakeTimers();
+      try {
+        const { queryByText, rerender } = renderPanel({ items: [], search: "zzz" });
+
+        await rerender({ items: [], search: "" });
+        await rerender({ items: [] as unknown[], search: "" });
+
+        expect(queryByText(t("common.empty"))).not.toBeNull();
+      }
+      finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   it("renders rows through the #row slot", () => {
     const { getAllByTestId } = renderPanel();
     expect(getAllByTestId("row")).toHaveLength(2);

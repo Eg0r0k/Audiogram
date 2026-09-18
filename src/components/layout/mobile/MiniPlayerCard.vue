@@ -3,7 +3,12 @@
     class="relative size-full rounded-lg overflow-hidden transition-colors duration-300"
     :style="{ background }"
   >
-    <div class="flex items-center gap-2.5 px-2 h-14">
+    <MiniPlayerProgress
+      v-if="showProgress"
+      :fill="progressBackground"
+    />
+
+    <div class="relative flex items-center gap-2.5 px-2 h-14">
       <div class="size-10 shrink-0 rounded-md overflow-hidden flex items-center justify-center bg-black/20">
         <NuxtImage
           :src="coverUrl"
@@ -67,8 +72,6 @@
         </slot>
       </div>
     </div>
-
-    <MiniPlayerProgress v-if="showProgress" />
   </div>
 </template>
 
@@ -87,6 +90,8 @@ withDefaults(defineProps<{
   artist: string;
   coverUrl?: string;
   background: string;
+  /** Colour of the played part; only the centre card paints it. */
+  progressBackground: string;
   gradientColor: string;
   showProgress?: boolean;
   marquee?: boolean;

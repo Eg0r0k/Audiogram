@@ -26,16 +26,12 @@
 
         <Empty
           v-if="folders.length === 0"
-          class="p-4 py-8 md:p-4 md:py-8"
         >
           <EmptyHeader>
-            <EmptyMedia
-              variant="icon"
-              class="rounded-full text-muted-foreground"
-            >
-              <IconFolderOff class="size-5" />
+            <EmptyMedia>
+              <IconFolderOff class="size-11 text-muted-foreground" />
             </EmptyMedia>
-            <EmptyDescription>{{ $t("library.folder.noFolders") }}</EmptyDescription>
+            <EmptyTitle>{{ $t("library.folder.noFolders") }}</EmptyTitle>
           </EmptyHeader>
         </Empty>
       </div>
@@ -46,15 +42,13 @@
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty";
+import { Empty, EmptyHeader, EmptyTitle, EmptyMedia } from "@/components/ui/empty";
 import { useSummonedDialog } from "@/components/dialogs/summon";
 import type { SidebarFolderEntity } from "@/db/entities";
 import type { LibraryItem } from "@/modules/library/types";
 import IconFolder from "~icons/tabler/folder";
 import IconFolderOff from "~icons/tabler/folder-off";
 
-// Summoned via summonDialog("moveToFolder", { item, folders }):
-// resolves with the picked folder id, or undefined when dismissed.
 defineProps<{
   open: boolean;
   item: LibraryItem;

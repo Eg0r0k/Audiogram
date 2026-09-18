@@ -4,7 +4,7 @@
       v-if="libraryTrack"
       size="icon"
       variant="ghost"
-      :class="[fullPlayerGhostHover, { 'text-primary': isChaptersOpen }]"
+      :class="[fullPlayerGhostHover, isChaptersOpen && fullPlayerGhostActive]"
       :aria-label="$t('player.chapters')"
       @click.stop="toggleChapters"
     >
@@ -14,7 +14,7 @@
       v-if="libraryTrack"
       size="icon"
       variant="ghost"
-      :class="[fullPlayerGhostHover, { 'text-primary': isLyricsOpen }]"
+      :class="[fullPlayerGhostHover, isLyricsOpen && fullPlayerGhostActive]"
       :aria-label="$t('player.lyrics')"
       @click.stop="toggleLyrics"
     >
@@ -23,7 +23,7 @@
     <Button
       size="icon"
       variant="ghost"
-      :class="[fullPlayerGhostHover, { 'text-primary': isQueueOpen }]"
+      :class="[fullPlayerGhostHover, isQueueOpen && fullPlayerGhostActive]"
       :aria-label="$t('player.queue')"
       @click.stop="toggleQueue"
     >
@@ -34,14 +34,11 @@
         <Button
           size="icon"
           variant="ghost"
-          :class="fullPlayerGhostHover"
+          :class="[fullPlayerGhostHover, isSleepTimerActive && fullPlayerGhostActive]"
           :aria-label="statusText"
           @click.stop
         >
-          <IconMoonStars
-            class="size-6"
-            :class="isSleepTimerActive ? 'text-primary' : ''"
-          />
+          <IconMoonStars class="size-6" />
         </Button>
       </ResponsiveMenuTrigger>
       <ResponsiveMenuContent
@@ -86,7 +83,7 @@ import {
 import { useCurrentPlayerTrack } from "@/modules/player/composables/useCurrentPlayerTrack";
 import { useSleepTimer } from "@/modules/player/composables/useSleepTimer";
 import { useCurrentTrackPanels } from "@/modules/right-panel/composables/useCurrentTrackPanels";
-import { fullPlayerGhostHover } from "./ghost-button";
+import { fullPlayerGhostActive, fullPlayerGhostHover } from "./ghost-button";
 
 import IconBookmarks from "~icons/tabler/bookmarks";
 import IconMicrophone2 from "~icons/tabler/microphone-2";

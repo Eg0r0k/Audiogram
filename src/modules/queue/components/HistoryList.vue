@@ -1,62 +1,67 @@
 <template>
   <div class="flex h-full min-h-0 flex-col bg-background">
-    <template v-if="isLoading">
-      <div class="flex flex-1 items-center justify-center bg-card mt-2">
+    <CrossfadeTransition class="flex-1">
+      <div
+        v-if="isLoading"
+        class="flex items-center justify-center bg-card mt-2"
+      >
         <Spinner class="size-10 text-muted-foreground" />
       </div>
-    </template>
 
-    <template v-else-if="isEmpty">
-      <HistoryEmpty />
-    </template>
+      <HistoryEmpty v-else-if="isEmpty" />
 
-    <template v-else>
-      <div class="flex items-center justify-between gap-2 px-4 pt-2 mt-2 bg-card font-medium">
-        <span class="min-w-0 truncate">{{ t("queue.tabHistory") }}</span>
-        <Button
-          variant="ghost-primary"
-          size="sm"
-          class="shrink-0"
-          @click="clearHistory"
-        >
-          <IconTrash />
-          {{ t("queue.clearHistory") }}
-        </Button>
+      <div
+        v-else
+        class="flex min-h-0 flex-col"
+      >
+        <div class="flex items-center justify-between gap-2 px-4 pt-2 mt-2 bg-card font-medium">
+          <span class="min-w-0 truncate">{{ t("queue.tabHistory") }}</span>
+          <Button
+            variant="ghost-primary"
+            size="sm"
+            class="shrink-0"
+            @click="clearHistory"
+          >
+            <IconTrash />
+            {{ t("queue.clearHistory") }}
+          </Button>
+        </div>
+
+        <TrackContextMenu context="history">
+          <VirtualScrollable
+            :items="entries"
+            :estimate-size="ITEM_HEIGHT"
+            :item-height="ITEM_HEIGHT"
+            :overscan="6"
+            :padding-top="8"
+            :padding-bottom="8"
+            :get-item-key="getItemKey"
+            animate-reorder
+            class="flex-1 bg-card"
+          >
+            <template #default="{ item, index }">
+              <div class="px-4">
+                <TrackRow
+                  hide-index
+                  menu-target="history"
+                  :track="(item as RecentHistoryEntry).track"
+                  @play="handlePlayTrack(index)"
+                />
+              </div>
+            </template>
+          </VirtualScrollable>
+        </TrackContextMenu>
+
+        <TrackDropdown context="history" />
       </div>
-
-      <TrackContextMenu context="history">
-        <VirtualScrollable
-          :items="entries"
-          :estimate-size="ITEM_HEIGHT"
-          :item-height="ITEM_HEIGHT"
-          :overscan="6"
-          :padding-top="8"
-          :padding-bottom="8"
-          :get-item-key="getItemKey"
-          animate-reorder
-          class="flex-1 bg-card"
-        >
-          <template #default="{ item, index }">
-            <div class="px-4">
-              <TrackRow
-                hide-index
-                menu-target="history"
-                :track="(item as RecentHistoryEntry).track"
-                @play="handlePlayTrack(index)"
-              />
-            </div>
-          </template>
-        </VirtualScrollable>
-      </TrackContextMenu>
-
-      <TrackDropdown context="history" />
-    </template>
+    </CrossfadeTransition>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
+import CrossfadeTransition from "@/components/transitions/CrossfadeTransition.vue";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";

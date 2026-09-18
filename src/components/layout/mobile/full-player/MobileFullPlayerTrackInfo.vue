@@ -9,7 +9,7 @@
         gradient-color="transparent"
         gradient-length="20px"
       >
-        <span class="text-xl text-white font-semibold leading-tight">{{ currentTrack?.title }}</span>
+        <span class="text-xl text-foreground font-semibold leading-tight">{{ currentTrack?.title }}</span>
       </MarqueeBlock>
       <MarqueeBlock
         :duration="6"
@@ -19,7 +19,7 @@
         gradient-color="transparent"
         gradient-length="20px"
       >
-        <span class="text-base text-white/80 capitalize mt-0.5 block">
+        <span class="text-base text-(--player-text-muted) capitalize mt-0.5 block">
           <template
             v-for="(artistName, artistIndex) in artistsList"
             :key="`${artistName}-${artistIndex}`"

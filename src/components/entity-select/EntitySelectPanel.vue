@@ -66,11 +66,23 @@
         </template>
 
         <template #empty>
-          <slot name="empty">
-            <Empty class="p-4 py-8 md:p-4 md:py-8">
-              <EmptyDescription>{{ t("common.empty") }}</EmptyDescription>
-            </Empty>
-          </slot>
+          <template v-if="showEmpty">
+            <slot name="empty">
+              <SearchNoResults
+                v-if="trimmedSearch"
+                :query="trimmedSearch"
+                @clear="emit('update:search', '')"
+              />
+              <Empty v-else>
+                <EmptyHeader>
+                  <EmptyMedia>
+                    <IconInbox class="size-11 text-muted-foreground" />
+                  </EmptyMedia>
+                  <EmptyTitle>{{ t("common.empty") }}</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            </slot>
+          </template>
         </template>
 
         <template #loader>
@@ -88,15 +100,17 @@
 </template>
 
 <script setup lang="ts" generic="T">
-import { computed, nextTick, useTemplateRef, watch } from "vue";
+import { computed, nextTick, onScopeDispose, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useKeyboardInset } from "@/composables/useKeyboardInset";
 import { Button } from "@/components/ui/button";
-import { Empty, EmptyDescription } from "@/components/ui/empty";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import RightPanelHeader from "@/modules/right-panel/components/RightPanelHeader.vue";
+import SearchNoResults from "@/modules/search/components/SearchNoResults.vue";
 import AddFloatingButton from "@/modules/tracks/components/tracks-sheet/AddFloatingButton.vue";
+import IconInbox from "~icons/tabler/inbox";
 import IconX from "~icons/tabler/x";
 
 const props = withDefaults(defineProps<{
@@ -164,6 +178,29 @@ watch(() => props.items, async (items) => {
   await nextTick();
   virtualList.value?.scrollToIndex(index, { align: "center" });
 }, { immediate: true });
+
+const trimmedSearch = computed(() => props.search.trim());
+
+const EMPTY_SETTLE_MS = 400;
+const showEmpty = ref(true);
+let settleTimer: ReturnType<typeof setTimeout> | undefined;
+
+watch(() => props.search, () => {
+  showEmpty.value = false;
+  clearTimeout(settleTimer);
+  settleTimer = setTimeout(() => {
+    showEmpty.value = true;
+  }, EMPTY_SETTLE_MS);
+});
+
+watch(() => props.items, () => {
+  clearTimeout(settleTimer);
+  showEmpty.value = true;
+});
+
+onScopeDispose(() => {
+  clearTimeout(settleTimer);
+});
 
 const keyAt = (index: number) => {
   const item = props.items[index];
