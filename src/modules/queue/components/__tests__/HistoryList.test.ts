@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import { mount } from "@vue/test-utils";
+import { createI18n } from "vue-i18n";
 import HistoryList from "../HistoryList.vue";
 
 vi.mock("../../composables/useHistoryList", () => ({
@@ -15,12 +16,17 @@ vi.mock("../../store/queue.store", () => ({
   useQueueStore: () => ({ setQueue: vi.fn() }),
 }));
 
+vi.mock("@/composables/useClearHistory", () => ({
+  useClearHistory: () => ({ clearHistory: vi.fn() }),
+}));
+
 describe("HistoryList", () => {
   // Same reorder slide as the library sidebar: a new play shifts the older
   // entries down instead of teleporting them.
   it("asks VirtualScrollable to animate reorders", () => {
     const wrapper = mount(HistoryList, {
       global: {
+        plugins: [createI18n({ legacy: false, locale: "en", messages: { en: {} } })],
         stubs: {
           VirtualScrollable: true,
           TrackContextMenu: { template: "<div><slot /></div>" },

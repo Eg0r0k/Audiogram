@@ -1,12 +1,12 @@
 <template>
   <section
     v-if="track"
-    ref="sectionRef"
     :class="sectionClass"
+    :data-lyrics-mode="mode"
   >
     <div
       v-if="lyricsStore.status === 'loading'"
-      class="space-y-5 pt-2 text-center"
+      :class="[linesClass, 'pt-2']"
     >
       <Skeleton
         v-for="(width, i) in SKELETON_WIDTHS"
@@ -19,33 +19,46 @@
     <div
       v-else-if="lyricsStore.lines.length > 0"
       :class="linesClass"
+      :style="{ paddingBottom: `${tailSpace}px` }"
     >
       <button
         v-for="(line, index) in lyricsStore.lines"
         :ref="element => setLineRef(element, index)"
         :key="`${line.time}-${index}`"
         type="button"
-        :class="getLineClass(index, line.text)"
+        :class="lineClass(index, line.text)"
         @click="handleLineClick(line.time)"
       >
         {{ line.text || "\u00A0" }}
       </button>
     </div>
 
-    <Empty
+    <div
       v-else
-      class="p-6 py-12 md:p-6 md:py-12"
+      class="flex flex-col h-full"
     >
-      <EmptyHeader>
-        <EmptyMedia
-          variant="icon"
-          class="rounded-full text-muted-foreground"
-        >
-          <IconMicrophoneOff class="size-5" />
-        </EmptyMedia>
-        <EmptyDescription>{{ placeholderText }}</EmptyDescription>
-      </EmptyHeader>
-    </Empty>
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia>
+            <IconMicrophoneOff class="size-11 text-muted-foreground" />
+          </EmptyMedia>
+          <EmptyTitle>{{ placeholderText }}</EmptyTitle>
+        </EmptyHeader>
+        <EmptyContent v-if="attachableTrack">
+          <Button
+            variant="outline"
+            :disabled="isAttachingLyrics"
+            @click="attachLyrics"
+          >
+            <IconFileMusic
+              class="size-4"
+              :class="{ 'animate-pulse': isAttachingLyrics }"
+            />
+            {{ attachLabel }}
+          </Button>
+        </EmptyContent>
+      </Empty>
+    </div>
 
     <Transition name="lyrics-resume">
       <div
@@ -70,25 +83,68 @@
 </template>
 
 <script setup lang="ts">
-import { type ComponentPublicInstance, computed, nextTick, onUnmounted, ref, useTemplateRef, watch } from "vue";
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { useEventListener } from "@vueuse/core";
+import { cva, type VariantProps } from "class-variance-authority";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty";
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import IconMicrophoneOff from "~icons/tabler/microphone-off";
+import IconFileMusic from "~icons/tabler/file-music";
+import IconArrowDown from "~icons/tabler/arrow-down";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useLyricsStore } from "@/modules/player/store/lyrics.store";
 import type { PlayerTrack } from "@/modules/player/types";
-import {
-  type FollowEvent,
-  type FollowState,
-  INITIAL_FOLLOW_STATE,
-  reduceFollow,
-} from "@/modules/player/lib/lyrics-follow";
-import IconArrowDown from "~icons/tabler/arrow-down";
+import { useAttachCurrentTrackLyrics } from "../composables/useAttachCurrentTrackLyrics";
+import { useLyricsFollow } from "../composables/useLyricsFollow";
 
 const SKELETON_WIDTHS = ["55%", "72%", "48%", "66%", "38%", "60%", "44%"];
+
+const sectionVariants = cva("mx-auto w-full", {
+  variants: {
+    variant: {
+      fullscreen: "max-w-3xl px-4 pb-12 sm:px-6",
+      panel: "h-full px-2 pb-8",
+    },
+  },
+  defaultVariants: { variant: "fullscreen" },
+});
+
+const linesVariants = cva("text-center", {
+  variants: {
+    variant: {
+      fullscreen: "space-y-5",
+      panel: "space-y-4",
+    },
+  },
+  defaultVariants: { variant: "fullscreen" },
+});
+
+const lineVariants = cva("lyrics-line block w-full bg-transparent text-center", {
+  variants: {
+    variant: {
+      fullscreen: "",
+      panel: "",
+    },
+    state: {
+      active: "lyrics-line-active cursor-pointer font-semibold leading-tight tracking-tight text-foreground",
+      upcoming: "lyrics-line-upcoming cursor-pointer leading-relaxed text-foreground",
+      past: "lyrics-line-past cursor-pointer leading-relaxed text-foreground",
+      blank: "lyrics-line-upcoming h-6 sm:h-8",
+    },
+  },
+  compoundVariants: [
+    { variant: "fullscreen", state: "active", class: "text-3xl sm:text-5xl" },
+    { variant: "panel", state: "active", class: "text-2xl" },
+    { variant: "fullscreen", state: "upcoming", class: "text-xl sm:text-2xl" },
+    { variant: "panel", state: "upcoming", class: "text-lg" },
+    { variant: "fullscreen", state: "past", class: "text-xl sm:text-2xl" },
+    { variant: "panel", state: "past", class: "text-lg" },
+  ],
+  defaultVariants: { variant: "fullscreen", state: "upcoming" },
+});
+
+type LineState = NonNullable<VariantProps<typeof lineVariants>["state"]>;
 
 const props = withDefaults(defineProps<{
   variant?: "fullscreen" | "panel";
@@ -99,201 +155,82 @@ const props = withDefaults(defineProps<{
 const playerStore = usePlayerStore();
 const lyricsStore = useLyricsStore();
 const { t } = useI18n();
-const lineRefs: Array<HTMLElement | null> = [];
-let lastActiveIndex = -1;
-
-// ── Chat-like follow behavior ──────────────────────────────────────────────
-// Auto-centering the active line "magnets" the view; once the user scrolls
-// away on their own we release the magnet and offer a button to jump back,
-// exactly like a chat that stops sticking to the bottom while you read
-// history. Bringing the active line back near the center re-engages follow.
-
-const sectionRef = useTemplateRef<HTMLElement>("sectionRef");
-const scrollParent = ref<HTMLElement | null>(null);
-const follow = ref<FollowState>(INITIAL_FOLLOW_STATE);
-const dispatch = (event: FollowEvent) => {
-  follow.value = reduceFollow(follow.value, event);
-};
-const isFollowing = computed(() => follow.value.following);
-const resumeDirection = computed(() => follow.value.direction);
-
-const showResumeButton = computed(() =>
-  !isFollowing.value && lyricsStore.activeLineIndex >= 0 && lyricsStore.lines.length > 0,
-);
-
-watch(sectionRef, (el) => {
-  scrollParent.value = findScrollParent(el);
-});
-
-function findScrollParent(el: HTMLElement | null): HTMLElement | null {
-  let node = el?.parentElement ?? null;
-  while (node) {
-    const { overflowY } = getComputedStyle(node);
-    if (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") return node;
-    node = node.parentElement;
-  }
-  return null;
-}
-
-/** Active line center relative to the container center, in px (null = unmeasurable). */
-function activeLineOffset(): number | null {
-  const container = scrollParent.value;
-  const line = lineRefs[lyricsStore.activeLineIndex];
-  if (!container || !line) return null;
-  const c = container.getBoundingClientRect();
-  const r = line.getBoundingClientRect();
-  return (r.top + r.bottom) / 2 - (c.top + c.height / 2);
-}
-
-// Only scrolls the user started can release the follow; a programmatic smooth
-// scroll fires identical `scroll` events and must not. "User scrolling" lasts
-// from the input until `scrollend` — fling inertia after touchend included.
-let scrollEndTimer: ReturnType<typeof setTimeout> | null = null;
-const onUserScrollStart = () => dispatch({ type: "userScrollStart" });
-const onScrollEnd = () => {
-  if (scrollEndTimer) {
-    clearTimeout(scrollEndTimer);
-    scrollEndTimer = null;
-  }
-  dispatch({ type: "scrollEnd" });
-};
-
-useEventListener(scrollParent, ["touchstart", "wheel"], onUserScrollStart, { passive: true });
-useEventListener(scrollParent, "pointerdown", (e: PointerEvent) => {
-  if (e.pointerType === "mouse") onUserScrollStart();
-}, { passive: true });
-useEventListener(scrollParent, "scroll", () => {
-  const container = scrollParent.value;
-  const offset = activeLineOffset();
-  if (!container || offset === null) return;
-  dispatch({ type: "scroll", offset, clientHeight: container.clientHeight });
-  // Fallback for engines without `scrollend`: 200 ms of silence ends the scroll.
-  if (scrollEndTimer) clearTimeout(scrollEndTimer);
-  scrollEndTimer = setTimeout(onScrollEnd, 200);
-}, { passive: true });
-useEventListener(scrollParent, "scrollend", onScrollEnd, { passive: true });
-
-const scrollToActiveLine = () => {
-  lineRefs[lyricsStore.activeLineIndex]?.scrollIntoView({ behavior: "smooth", block: "center" });
-};
-
-const resumeFollow = () => {
-  dispatch({ type: "resume" });
-  scrollToActiveLine();
-};
-
-// A new track (or reloaded lyrics) starts followed again.
-watch(() => lyricsStore.lines, () => {
-  dispatch({ type: "linesChanged" });
-  lastActiveIndex = -1;
-});
 
 // Any current track — ephemeral (YT/radio) tracks resolve lyrics via lrclib.
 const track = computed<PlayerTrack | null>(() => playerStore.currentTrack);
 
-const placeholderText = computed(() => {
-  if (lyricsStore.status === "error") {
-    return t("player.lyricsLoadFailed");
-  }
-  return t("player.lyricsEmpty");
-});
-
-const sectionClass = computed(() => {
-  if (props.variant === "panel") {
-    return "mx-auto w-full px-2 pb-8";
-  }
-
-  return "mx-auto w-full max-w-3xl px-4 pb-12 sm:px-6";
-});
-
-const linesClass = computed(() => {
-  return props.variant === "panel" ? "space-y-4 text-center" : "space-y-5 text-center";
-});
-
-const stopWatch = watch(
-  () => lyricsStore.activeLineIndex,
-  async (index) => {
-    if (index < 0 || index === lastActiveIndex) return;
-    lastActiveIndex = index;
-    await nextTick();
-
-    if (!isFollowing.value) {
-      // Not following: only keep the resume button's arrow pointing at the
-      // line as it moves through the track.
-      const container = scrollParent.value;
-      const offset = activeLineOffset();
-      if (container && offset !== null) {
-        dispatch({ type: "scroll", offset, clientHeight: container.clientHeight });
-      }
-      return;
-    }
-
-    scrollToActiveLine();
-  },
+const placeholderText = computed(() =>
+  lyricsStore.status === "error"
+    ? t("player.lyricsLoadFailed")
+    : t("player.lyricsEmpty"),
 );
 
-onUnmounted(() => {
-  stopWatch();
-  if (scrollEndTimer) clearTimeout(scrollEndTimer);
-  lineRefs.length = 0;
+const { attachableTrack, attachLabel, isAttachingLyrics, attachLyrics } = useAttachCurrentTrackLyrics();
+
+const { setLineRef, showResumeButton, resumeDirection, resumeFollow, mode, tailSpace } = useLyricsFollow({
+  lines: () => lyricsStore.lines,
+  activeLineIndex: () => lyricsStore.activeLineIndex,
 });
 
-function setLineRef(element: Element | ComponentPublicInstance | null, index: number) {
-  lineRefs[index] = element instanceof HTMLElement ? element : null;
-}
+const sectionClass = computed(() => sectionVariants({ variant: props.variant }));
+const linesClass = computed(() => linesVariants({ variant: props.variant }));
 
-function handleLineClick(time: number) {
+// A line with no text is a spacer between verses: it keeps its height and
+// loses the pointer, so the active check still wins over it. Everything still
+// to be sung stays readable; what is already sung falls away behind the anchor.
+const lineState = (index: number, text: string): LineState => {
+  if (index === lyricsStore.activeLineIndex) return "active";
+  if (!text.trim()) return "blank";
+  return index < lyricsStore.activeLineIndex ? "past" : "upcoming";
+};
+
+const lineClass = (index: number, text: string) =>
+  lineVariants({ variant: props.variant, state: lineState(index, text) });
+
+const handleLineClick = (time: number) => {
   if (!playerStore.canSeek) return;
   playerStore.seekTo(time);
-}
-
-function getLineClass(index: number, text: string): string {
-  const isActive = index === lyricsStore.activeLineIndex;
-
-  if (isActive) {
-    if (props.variant === "panel") {
-      return "lyrics-line-active block w-full cursor-pointer bg-transparent text-center text-2xl font-semibold leading-tight tracking-tight text-foreground";
-    }
-
-    return "lyrics-line-active block w-full cursor-pointer bg-transparent text-center text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-5xl";
-  }
-
-  if (!text.trim()) {
-    return "lyrics-line-inactive block h-6 w-full bg-transparent sm:h-8";
-  }
-
-  if (props.variant === "panel") {
-    return "lyrics-line-inactive block w-full cursor-pointer bg-transparent text-center text-lg leading-relaxed text-muted-foreground/55";
-  }
-
-  return "lyrics-line-inactive block w-full cursor-pointer bg-transparent text-center text-xl leading-relaxed text-muted-foreground/55 sm:text-2xl";
-}
+};
 </script>
 
 <style scoped>
-.lyrics-line-active,
-.lyrics-line-inactive {
-  transition:
-    color 220ms ease,
-    opacity 220ms ease,
-    transform 260ms ease;
+/* Light carries the state, and it settles slower than the scroll that moves
+   the list (300ms) — the line finishes arriving before it finishes lighting. */
+.lyrics-line {
+  transition: opacity 450ms ease;
 }
 
 .lyrics-line-active {
   opacity: 1;
-  transform: scale(1);
 }
 
-.lyrics-line-inactive {
-  opacity: 0.58;
-  transform: scale(0.985);
+/* What is still to be sung stays readable — it is the part worth following. */
+.lyrics-line-upcoming {
+  opacity: 0.3;
+}
+
+/* Sung lines fall away above the anchor, and come back when the user reaches
+   for the text. */
+.lyrics-line-past {
+  opacity: 0;
+}
+
+[data-lyrics-mode="reading"] .lyrics-line-past,
+[data-lyrics-mode="reading"] .lyrics-line-upcoming {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-lyrics-mode="hover"] .lyrics-line-past {
+    opacity: 0.1;
+  }
 }
 
 .lyrics-resume-enter-active,
 .lyrics-resume-leave-active {
   transition:
-    opacity 180ms ease-out,
-    transform 180ms ease-out;
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
 }
 
 .lyrics-resume-enter-from,

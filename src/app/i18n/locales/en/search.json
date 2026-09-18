@@ -3,7 +3,8 @@
   "mainPlaceholder": "Search tracks, artists, albums",
   "noResults": {
     "title": "No results for \"{query}\"",
-    "hint": "Try searching for something else"
+    "hint": "Try searching for something else",
+    "clear": "Clear search"
   },
   "bestResult": "Best result",
   "recentTitle": "Recent searches",

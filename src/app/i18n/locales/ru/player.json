@@ -50,5 +50,7 @@
   "nothingPlaying": "Сейчас ничего не играет.",
   "upNextLabel": "Далее",
   "moreOptions": "Ещё",
-  "nothingPlayingTitle": "Ничего не играет"
+  "nothingPlayingTitle": "Ничего не играет",
+  "nothingPlayingSub": "Выберите трек, чтобы начать слушать.",
+  "browseMusic": "Перейти в медиатеку"
 }

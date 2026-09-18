@@ -3,8 +3,7 @@
     <Button
       size="icon-lg"
       variant="ghost"
-      class="rounded-full"
-      :class="queueStore.isShuffled ? 'text-primary' : 'text-white'"
+      :class="[fullPlayerGhostHover, 'rounded-full', queueStore.isShuffled ? 'text-primary' : 'text-foreground']"
       :aria-label="$t('player.shuffle')"
       @click.stop="queueStore.toggleShuffle()"
     >
@@ -13,7 +12,7 @@
     <Button
       size="icon-lg"
       variant="ghost"
-      class="rounded-full text-white"
+      :class="[fullPlayerGhostHover, 'rounded-full text-foreground']"
       :disabled="!queueStore.hasPrevious"
       :aria-label="$t('player.previousTrack')"
       @click.stop="queueStore.previous()"
@@ -27,7 +26,7 @@
     <Button
       size="icon-lg"
       variant="ghost"
-      class="rounded-full text-white"
+      :class="[fullPlayerGhostHover, 'rounded-full text-foreground']"
       :disabled="!queueStore.hasNext"
       :aria-label="$t('player.nextTrack')"
       @click.stop="queueStore.next()"
@@ -37,8 +36,7 @@
     <Button
       size="icon-lg"
       variant="ghost"
-      class="rounded-full"
-      :class="queueStore.repeatMode !== 'off' ? 'text-primary' : 'text-white'"
+      :class="[fullPlayerGhostHover, 'rounded-full', queueStore.repeatMode !== 'off' ? 'text-primary' : 'text-foreground']"
       :aria-label="$t('player.repeat')"
       @click.stop="queueStore.toggleRepeat"
     >
@@ -57,6 +55,7 @@
 import { Button } from "@/components/ui/button";
 import PlayButton from "@/modules/player/components/PlayButton.vue";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
+import { fullPlayerGhostHover } from "./ghost-button";
 
 import IconShuffle from "~icons/tabler/arrows-shuffle";
 import IconBack from "~icons/tabler/player-skip-back-filled";

@@ -38,6 +38,8 @@
           '--player-bg': playerColor.hsl,
           '--player-accent': playerColor.palette?.accent ?? 'var(--primary)',
           '--player-on-accent': playerColor.palette?.onAccent ?? 'var(--primary-foreground)',
+          '--player-text': playerColor.palette?.text ?? 'var(--foreground)',
+          '--player-text-muted': playerColor.palette?.textMuted ?? 'var(--muted-foreground)',
         }"
       >
         <MobileFullPlayer
@@ -143,6 +145,18 @@ const { isDragging } = useFileDrop({
   initial-value: transparent;
 }
 
+@property --player-text {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
+@property --player-text-muted {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
 .full-player-bg {
   background: linear-gradient(
     to bottom,
@@ -152,23 +166,28 @@ const { isDragging } = useFileDrop({
   transition:
     --player-bg 900ms cubic-bezier(0.16, 1, 0.3, 1),
     --player-accent 900ms cubic-bezier(0.16, 1, 0.3, 1),
-    --player-on-accent 900ms cubic-bezier(0.16, 1, 0.3, 1);
+    --player-on-accent 900ms cubic-bezier(0.16, 1, 0.3, 1),
+    --player-text 900ms cubic-bezier(0.16, 1, 0.3, 1),
+    --player-text-muted 900ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .full-player-accent {
   --primary: var(--player-accent);
   --primary-foreground: var(--player-on-accent);
+  --foreground: var(--player-text);
+  --muted-foreground: var(--player-text-muted);
+  --accent-foreground: var(--player-text);
 }
 
 .full-player-enter-active {
-  transition-property: transform, opacity, --player-bg, --player-accent, --player-on-accent;
+  transition-property: transform, opacity, --player-bg, --player-accent, --player-on-accent, --player-text, --player-text-muted;
   transition-timing-function: var(--ease-drawer);
   transition-duration: 350ms;
   will-change: transform, opacity;
 }
 
 .full-player-leave-active {
-  transition-property: transform, opacity, --player-bg, --player-accent, --player-on-accent;
+  transition-property: transform, opacity, --player-bg, --player-accent, --player-on-accent, --player-text, --player-text-muted;
   transition-timing-function: var(--ease-drawer);
   transition-duration: 350ms;
   will-change: transform, opacity;

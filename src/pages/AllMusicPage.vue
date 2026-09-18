@@ -68,7 +68,7 @@
               {{ t('errors.tracksLoadFailed') }}
             </h2>
             <p class="text-muted-foreground">
-              {{ errorMessage }}
+              {{ loadErrorText }}
             </p>
           </div>
 
@@ -160,19 +160,39 @@
             </template>
 
             <template #empty>
-              <Empty class="p-4 py-12 sm:px-6 md:py-12">
+              <Empty>
                 <EmptyHeader>
-                  <EmptyMedia
-                    variant="icon"
-                    class="rounded-full text-muted-foreground"
-                  >
-                    <component
-                      :is="emptyIcon"
-                      class="size-5"
+                  <EmptyMedia>
+                    <IconSearchOff
+                      v-if="normalizedSearchQuery"
+                      class="size-11 text-muted-foreground"
+                    />
+                    <EmptyLibraryArt
+                      v-else
+                      class="w-56 -mb-5"
                     />
                   </EmptyMedia>
-                  <EmptyDescription>{{ emptyLabel }}</EmptyDescription>
+                  <EmptyTitle>{{ emptyLabel }}</EmptyTitle>
+                  <EmptyDescription>{{ emptySubLabel }}</EmptyDescription>
                 </EmptyHeader>
+                <EmptyContent>
+                  <Button
+                    v-if="normalizedSearchQuery"
+                    variant="outline"
+                    @click="searchQuery = ''"
+                  >
+                    <IconX class="size-4" />
+                    {{ t("library.allMusic.emptyClearSearch") }}
+                  </Button>
+                  <Button
+                    v-else
+                    variant="outline"
+                    @click="handleAddMusic"
+                  >
+                    <IconPlus class="size-4" />
+                    {{ t("library.allMusic.emptyAction") }}
+                  </Button>
+                </EmptyContent>
               </Empty>
             </template>
           </VirtualScrollable>
@@ -185,10 +205,12 @@
 </template>
 
 <script setup lang="ts">
+import { errorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty";
-import IconMusicOff from "~icons/tabler/music-off";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import EmptyLibraryArt from "@/modules/library/components/EmptyLibraryArt.vue";
 import IconSearchOff from "~icons/tabler/search-off";
+import IconPlus from "~icons/tabler/plus";
 import {
   InputGroup,
   InputGroupAddon,
@@ -218,6 +240,7 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback";
 import type { QueueSource } from "@/modules/queue/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
+import { useImport } from "@/modules/library/composables/useImport";
 import type { Track } from "@/modules/player/types";
 import { useGoBack } from "@/composables/useGoBack";
 import { getLogger } from "@/lib/logger";
@@ -226,6 +249,7 @@ import { useTrackSelectionMode } from "@/modules/tracks/composables/useTrackSele
 import { useBulkTrackActions } from "@/modules/tracks/composables/useBulkTrackActions";
 import { provideTrackSelectionEntry } from "@/modules/tracks/components/menu/useTrackSelectionEntry";
 const { t } = useI18n();
+const { pickAndImport } = useImport();
 const sortKey = ref<TrackSortKey | null>(null);
 const searchQuery = ref("");
 const {
@@ -311,13 +335,17 @@ const emptyLabel = computed(() =>
     : t("library.allMusic.empty"),
 );
 
-const emptyIcon = computed(() =>
-  normalizedSearchQuery.value ? IconSearchOff : IconMusicOff,
+const emptySubLabel = computed(() =>
+  normalizedSearchQuery.value
+    ? t("library.allMusic.emptySearchSub")
+    : t("library.allMusic.emptySub"),
 );
 
-const errorMessage = computed(() =>
-  error.value instanceof Error ? error.value.message : "Unknown error",
-);
+const handleAddMusic = async () => {
+  await pickAndImport({ title: t("common.import.button") });
+};
+
+const loadErrorText = computed(() => errorMessage(error.value));
 
 function handleLoadMore() {
   if (!hasNextPage.value || isFetchingNextPage.value) return;

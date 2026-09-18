@@ -11,6 +11,19 @@
     </template>
 
     <template v-else>
+      <div class="flex items-center justify-between gap-2 px-4 pt-2 mt-2 bg-card font-medium">
+        <span class="min-w-0 truncate">{{ t("queue.tabHistory") }}</span>
+        <Button
+          variant="ghost-primary"
+          size="sm"
+          class="shrink-0"
+          @click="clearHistory"
+        >
+          <IconTrash />
+          {{ t("queue.clearHistory") }}
+        </Button>
+      </div>
+
       <TrackContextMenu context="history">
         <VirtualScrollable
           :items="entries"
@@ -21,7 +34,7 @@
           :padding-bottom="8"
           :get-item-key="getItemKey"
           animate-reorder
-          class="flex-1 bg-card mt-2"
+          class="flex-1 bg-card"
         >
           <template #default="{ item, index }">
             <div class="px-4">
@@ -42,20 +55,25 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from "vue-i18n";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useClearHistory } from "@/composables/useClearHistory";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import HistoryEmpty from "./HistoryEmpty.vue";
 import { useHistoryList } from "../composables/useHistoryList";
 import { useQueueStore } from "../store/queue.store";
 import type { RecentHistoryEntry } from "@/queries/stats.queries";
-
+import IconTrash from "~icons/tabler/trash";
 const ITEM_HEIGHT = 64;
 
+const { t } = useI18n();
 const queueStore = useQueueStore();
 const { entries, isEmpty, isLoading } = useHistoryList();
+const { clearHistory } = useClearHistory();
 
 function getItemKey(index: number): string | number {
   return entries.value[index]?.eventId ?? index;

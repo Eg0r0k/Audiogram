@@ -6,30 +6,32 @@ import { albumRepository, artistRepository, coverRepository, trackRepository } f
 import { unitOfWork } from "@/db/unit-of-work";
 import type { ArtistId } from "@/types/ids";
 import { AlbumId } from "@/types/ids";
+import { fitWithin } from "@/lib/media/fit-within";
 import { unwrapResult } from "@/lib/result";
 import type { EntityResolver } from "../entity-resolver";
 import type { ImportSuccess, TrackToSave } from "../types";
 
-const COVER_MAX_DIMENSION = 500;
-const COVER_QUALITY = 0.8;
+/** Covers the full-screen player 1:1 on a phone at DPR 2.5–3. */
+const COVER_MAX_DIMENSION = 800;
+const COVER_QUALITY = 0.88;
 /** Concurrent cover decodes; each one holds a full-resolution bitmap. */
 const coverLimit = pLimit(4);
 
-// Compressing large covers to optimize memory in the local databaseы
+// Compressing large covers to optimize memory in the local database
 const resizeCoverBlob = async (blob: Blob): Promise<Blob> => {
   if (blob.size < 50_000) return blob;
 
   const img = await createImageBitmap(blob);
+  const target = fitWithin(img.width, img.height, COVER_MAX_DIMENSION);
 
-  if (img.width <= COVER_MAX_DIMENSION && img.height <= COVER_MAX_DIMENSION) {
+  if (!target) {
     img.close();
     return blob;
   }
 
-  const ratio = Math.min(COVER_MAX_DIMENSION / img.width, COVER_MAX_DIMENSION / img.height);
   const canvas = document.createElement("canvas");
-  canvas.width = Math.round(img.width * ratio);
-  canvas.height = Math.round(img.height * ratio);
+  canvas.width = target.width;
+  canvas.height = target.height;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) {
@@ -37,8 +39,20 @@ const resizeCoverBlob = async (blob: Blob): Promise<Blob> => {
     return blob;
   }
 
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const scaled = await createImageBitmap(img, {
+    resizeWidth: target.width,
+    resizeHeight: target.height,
+    resizeQuality: "high",
+  });
   img.close();
+
+  if (scaled.width === target.width && scaled.height === target.height) {
+    ctx.drawImage(scaled, 0, 0);
+  }
+  else {
+    ctx.drawImage(scaled, 0, 0, target.width, target.height);
+  }
+  scaled.close();
 
   return new Promise<Blob>((resolve) => {
     canvas.toBlob(

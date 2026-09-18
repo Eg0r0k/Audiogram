@@ -46,6 +46,7 @@
         <SearchNoResults
           v-else
           :query="query"
+          @clear="resetSearch"
         />
       </template>
     </VirtualScrollable>
@@ -68,7 +69,7 @@ import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { getLogger } from "@/lib/logger";
 import type { Track } from "@/modules/player/types";
-import type { YtChip } from "@/modules/search/composables/useSearch";
+import { useSearch, type YtChip } from "@/modules/search/composables/useSearch";
 import { hitResultItem, searchResultRoute, trackArtistRoutes } from "@/modules/search/lib/resultItems";
 import type { SearchResultItem } from "@/modules/search/types";
 import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
@@ -94,6 +95,12 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const queueStore = useQueueStore();
+const { clear: clearSearch, requestSearchFocus } = useSearch();
+
+const resetSearch = (): void => {
+  clearSearch();
+  requestSearchFocus();
+};
 
 const {
   hits,

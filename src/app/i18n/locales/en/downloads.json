@@ -11,5 +11,7 @@
   "queueTitle": "Downloads",
   "queued": "Queued",
   "cancelling": "Cancelling…",
-  "empty": "No active downloads"
+  "empty": "No active downloads",
+  "emptySub": "Tracks you download will show their progress here.",
+  "emptyAction": "Find music"
 }

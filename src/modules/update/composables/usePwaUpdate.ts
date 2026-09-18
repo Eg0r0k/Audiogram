@@ -15,6 +15,7 @@
 // staging under a guessed version was silently lossy. Resolving it after
 // reload from __APP_VERSION__ is always correct.
 
+import { errorMessage } from "@/lib/errors";
 import { watch, onUnmounted, toValue, type MaybeRefOrGetter } from "vue";
 import { useRegisterSW } from "virtual:pwa-register/vue";
 import { useQueryClient } from "@tanstack/vue-query";
@@ -125,7 +126,7 @@ export const usePwaUpdate = (
         status: "error",
         error: {
           kind: "NETWORK",
-          message: e instanceof Error ? e.message : String(e),
+          message: errorMessage(e),
         },
       });
     }
@@ -146,7 +147,7 @@ export const usePwaUpdate = (
         status: "error",
         error: {
           kind: "INSTALL_FAILED",
-          message: e instanceof Error ? e.message : String(e),
+          message: errorMessage(e),
         },
       });
     }

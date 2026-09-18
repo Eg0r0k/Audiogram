@@ -63,7 +63,11 @@
   },
   "allMusic": {
     "title": "All Music",
-    "empty": "Your library is empty.",
+    "empty": "Nothing here yet...",
+    "emptySub": "Add music to start your collection",
+    "emptyAction": "Add music",
+    "emptySearchSub": "Try a different spelling or a shorter query",
+    "emptyClearSearch": "Clear search",
     "noTracksFound": "No tracks found for \"{query}\"."
   },
   "selection": {

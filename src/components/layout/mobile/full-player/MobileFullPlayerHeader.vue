@@ -3,7 +3,7 @@
     <Button
       variant="ghost"
       size="icon-lg"
-      class="text-white rounded-full"
+      :class="[fullPlayerGhostHover, 'text-foreground rounded-full']"
       :aria-label="$t('common.close')"
       @click="closePlayer"
     >
@@ -29,7 +29,7 @@
       <Button
         v-if="currentChapter"
         variant="ghost"
-        class="mt-0.5 flex h-6 max-w-55 items-center gap-1 rounded-full px-2 text-white/80 hover:bg-white/10 hover:text-white"
+        :class="[fullPlayerGhostHover, 'mt-0.5 flex h-6 max-w-55 items-center gap-1 rounded-full px-2 text-muted-foreground']"
         :aria-label="$t('player.chapters')"
         @click.stop="openChapters"
       >
@@ -43,7 +43,7 @@
     <Button
       variant="ghost"
       size="icon-lg"
-      class="rounded-full text-white"
+      :class="[fullPlayerGhostHover, 'rounded-full text-foreground']"
       @click.stop="onDotsClick"
     >
       <IconDots class="size-6" />
@@ -64,6 +64,7 @@ import { useCurrentTrackChapters } from "@/modules/tracks/composables/useCurrent
 import { useCurrentPlayerTrack } from "@/modules/player/composables/useCurrentPlayerTrack";
 import { useCurrentTrackPanels } from "@/modules/right-panel/composables/useCurrentTrackPanels";
 import { useQueueSourceLink } from "@/modules/queue/composables/useQueueSourceLink";
+import { fullPlayerGhostHover } from "./ghost-button";
 
 import IconChevronDown from "~icons/tabler/chevron-down";
 import IconBookmarks from "~icons/tabler/bookmarks";

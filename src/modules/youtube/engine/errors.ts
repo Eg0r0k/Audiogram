@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import type { YoutubeError, YoutubeErrorKind } from "../types";
 
 /** A watch page whose playability status is not OK; the message is YouTube's own reason. */
@@ -42,7 +43,7 @@ export const toYoutubeError = (error: unknown, fallback: YoutubeErrorKind): Yout
   if (error instanceof YtContinuationExpiredError) {
     return { kind: "NOT_FOUND", message: error.message };
   }
-  const message = error instanceof Error ? error.message : String(error);
+  const message = errorMessage(error);
   const status = httpStatusOf(message);
   // youtubei.js answers an unknown id with a parse-level complaint ("No
   // contents found…") or YouTube's own "This video is unavailable".

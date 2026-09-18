@@ -31,6 +31,7 @@
       <SearchNoResults
         v-else-if="!hasResults"
         :query="results.query.value"
+        @clear="resetSearch"
       />
 
       <SearchResults
@@ -91,7 +92,14 @@ const {
   removeHistoryItem,
   clearHistory,
   applyHistoryItem,
+  clear: clearSearch,
+  requestSearchFocus,
 } = useSearch();
+
+const resetSearch = (): void => {
+  clearSearch();
+  requestSearchFocus();
+};
 
 const results = useSearchPaneResults(computed(() => props.kind));
 

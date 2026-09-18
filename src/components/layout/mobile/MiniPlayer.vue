@@ -96,7 +96,7 @@ const emit = defineEmits<{
 
 const { color: playerColor } = useMobilePlayerColor();
 
-const cardBackground = computed(() => `color-mix(in oklch, ${playerColor.value.hsl} 25%, black)`);
+const cardBackground = computed(() => `color-mix(in oklch, ${playerColor.value.hsl} 80%, black)`);
 const gradientColor = computed(() => playerColor.value.hsl);
 
 const { displayProgress } = usePlayerProgress();

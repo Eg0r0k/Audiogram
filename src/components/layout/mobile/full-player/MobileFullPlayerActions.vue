@@ -4,7 +4,7 @@
       v-if="libraryTrack"
       size="icon"
       variant="ghost"
-      :class="{ 'text-primary': isChaptersOpen }"
+      :class="[fullPlayerGhostHover, { 'text-primary': isChaptersOpen }]"
       :aria-label="$t('player.chapters')"
       @click.stop="toggleChapters"
     >
@@ -14,7 +14,7 @@
       v-if="libraryTrack"
       size="icon"
       variant="ghost"
-      :class="{ 'text-primary': isLyricsOpen }"
+      :class="[fullPlayerGhostHover, { 'text-primary': isLyricsOpen }]"
       :aria-label="$t('player.lyrics')"
       @click.stop="toggleLyrics"
     >
@@ -23,7 +23,7 @@
     <Button
       size="icon"
       variant="ghost"
-      :class="{ 'text-primary': isQueueOpen }"
+      :class="[fullPlayerGhostHover, { 'text-primary': isQueueOpen }]"
       :aria-label="$t('player.queue')"
       @click.stop="toggleQueue"
     >
@@ -34,6 +34,7 @@
         <Button
           size="icon"
           variant="ghost"
+          :class="fullPlayerGhostHover"
           :aria-label="statusText"
           @click.stop
         >
@@ -85,6 +86,7 @@ import {
 import { useCurrentPlayerTrack } from "@/modules/player/composables/useCurrentPlayerTrack";
 import { useSleepTimer } from "@/modules/player/composables/useSleepTimer";
 import { useCurrentTrackPanels } from "@/modules/right-panel/composables/useCurrentTrackPanels";
+import { fullPlayerGhostHover } from "./ghost-button";
 
 import IconBookmarks from "~icons/tabler/bookmarks";
 import IconMicrophone2 from "~icons/tabler/microphone-2";

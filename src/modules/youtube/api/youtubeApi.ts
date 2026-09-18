@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { Channel } from "@tauri-apps/api/core";
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { ResultAsync } from "neverthrow";
@@ -24,7 +25,7 @@ const toYoutubeError = (raw: unknown, fallbackKind: YoutubeErrorKind): YoutubeEr
     return { kind: BACKEND_KIND_MAP[raw.kind] ?? fallbackKind, message: raw.message };
   }
   if (typeof raw === "string") return { kind: fallbackKind, message: raw };
-  const message = raw instanceof Error ? raw.message : String(raw);
+  const message = errorMessage(raw);
   return { kind: fallbackKind, message };
 };
 

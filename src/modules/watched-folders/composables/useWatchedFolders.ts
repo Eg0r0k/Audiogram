@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { onUnmounted } from "vue";
 import { storeToRefs } from "pinia";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -141,7 +142,7 @@ export function useWatchedFolders() {
       }
     }
     catch (e) {
-      const message = e instanceof Error ? e.message : "Scan failed";
+      const message = errorMessage(e, "Scan failed");
       store.updateFolderStatus(folder.id, "error", { errorMessage: message });
     }
   }
@@ -210,7 +211,7 @@ export function useWatchedFolders() {
       store.updateFolderStatus(folder.id, "watching");
     }
     catch (e) {
-      const message = e instanceof Error ? e.message : "Watch failed";
+      const message = errorMessage(e, "Watch failed");
       store.updateFolderStatus(folder.id, "error", { errorMessage: message });
     }
   }
@@ -309,7 +310,7 @@ export function useWatchedFolders() {
       invalidateLibrary();
     }
     catch (e) {
-      const message = e instanceof Error ? e.message : "Relink failed";
+      const message = errorMessage(e, "Relink failed");
       store.updateFolderStatus(folderId, "error", { errorMessage: message });
       toast.error(message);
     }

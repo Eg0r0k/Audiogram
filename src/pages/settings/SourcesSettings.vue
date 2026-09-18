@@ -6,7 +6,7 @@
       class="mb-6"
     >
       <SettingsGroup>
-        <Item>
+        <Item class="gap-8">
           <ItemMedia>
             <component
               :is="source.ui.icon"
@@ -24,10 +24,12 @@
         :is="source.settings"
         v-if="source.settings"
       />
-
-      <template v-if="source.canCheck">
+      <SettingsGroup
+        v-if="source.canCheck"
+        class="pt-0!"
+      >
         <Button
-          class="w-full h-14 justify-start mt-2"
+          class="w-full h-14 justify-start"
           size="xl"
           variant="ghost-primary"
           :disabled="!source.isAvailable || isChecking(source.kind)"
@@ -46,17 +48,17 @@
 
         <p
           v-if="failureOf(source.kind)"
-          class="text-sm text-destructive wrap-break-word px-4 mt-2"
+          class="text-sm text-destructive wrap-break-word px-2 font-medium mt-2"
         >
           {{ failureOf(source.kind)?.message }}
         </p>
         <p
           v-else-if="health(source.kind).state === 'ok'"
-          class="text-sm text-primary px-4 mt-2"
+          class="text-sm text-primary px-2 font-medium mt-2"
         >
           {{ $t("source.status.ok") }}
         </p>
-      </template>
+      </SettingsGroup>
     </section>
   </SettingsScreen>
 </template>

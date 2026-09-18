@@ -44,7 +44,7 @@
         v-if="libraryTrack"
         variant="ghost"
         size="icon-lg"
-        class="rounded-full text-white"
+        :class="[fullPlayerGhostHover, 'rounded-full text-foreground']"
         :aria-label="libraryTrack.isLiked ? $t('player.unlike') : $t('player.like')"
         @click.stop="toggleLike"
       >
@@ -67,6 +67,7 @@ import { Button } from "@/components/ui/button";
 import { useCurrentPlayerTrack } from "@/modules/player/composables/useCurrentPlayerTrack";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import { useTrackContextActions } from "@/modules/tracks/composables/useTrackContextActions";
+import { fullPlayerGhostHover } from "./ghost-button";
 
 import IconLike from "~icons/tabler/heart";
 import IconLikedFilled from "~icons/tabler/heart-filled";

@@ -10,7 +10,7 @@
 
     <template v-else-if="isError">
       <PageErrorState
-        :message="errorMessage"
+        :message="loadErrorText"
         @retry="refetch"
       />
     </template>
@@ -151,6 +151,7 @@
 </template>
 
 <script setup lang="ts">
+import { errorMessage } from "@/lib/errors";
 import { computed, ref, useTemplateRef } from "vue";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
@@ -239,7 +240,7 @@ const handleCreateAlbum = () => {
   if (!artist.value) return;
   createAlbum(artist.value.id).catch((error: unknown) => {
     getLogger().error(`[ArtistPage] Creating an album failed: ${String(error)}`);
-    toast.error(error instanceof Error ? error.message : t("errors.loadFailed"));
+    toast.error(errorMessage(error, t("errors.loadFailed")));
   });
 };
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
@@ -278,7 +279,7 @@ function handleContextMenu(track: Track, index: number) {
   openMenu(track, index, { target: "artist" });
 }
 
-const errorMessage = computed(() => {
+const loadErrorText = computed(() => {
   if (!error.value) return t("errors.unknown");
   const message = error.value.message;
   if (message === "Artist not found") return t("errors.notFound");
@@ -341,7 +342,7 @@ const openEditDialog = () => {
       await updateArtist(changes);
     }
     catch (e) {
-      toast.error(e instanceof Error ? e.message : t("errors.loadFailed"));
+      toast.error(errorMessage(e, t("errors.loadFailed")));
       throw e;
     }
   }).catch(() => undefined);

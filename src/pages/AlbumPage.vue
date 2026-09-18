@@ -10,7 +10,7 @@
 
     <template v-else-if="isError">
       <PageErrorState
-        :message="errorMessage"
+        :message="loadErrorText"
         @retry="refetch"
       />
     </template>
@@ -101,6 +101,7 @@
 </template>
 
 <script setup lang="ts">
+import { errorMessage } from "@/lib/errors";
 import { computed, ref, useTemplateRef } from "vue";
 import { catalogViewRoute } from "@/app/router/route-locations";
 import { sourceKindOf } from "@/modules/sources/lib/display";
@@ -168,7 +169,7 @@ const like = useEntityLike(remoteKind, "album", albumId);
 const editAlbum = useEditAlbumDialog();
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
 
-const errorMessage = computed(() => {
+const loadErrorText = computed(() => {
   if (!error.value) return t("errors.unknown");
   if (error.value.message === "Album not found") return t("errors.notFound");
   return t("errors.loadFailed");
@@ -257,7 +258,7 @@ const openEditDialog = () => {
       await updateAlbum(changes);
     }
     catch (e) {
-      toast.error(e instanceof Error ? e.message : t("album.updateFailed"));
+      toast.error(errorMessage(e, t("album.updateFailed")));
       throw e;
     }
   }).catch(() => undefined);

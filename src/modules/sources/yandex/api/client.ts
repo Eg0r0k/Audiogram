@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { ResultAsync } from "neverthrow";
 import { COMMANDS, PlatformUnavailableError, invokeCommand } from "@/app/tauri-commands";
 import type { SourceError, SourceErrorKind } from "@/types/source-dto";
@@ -42,7 +43,7 @@ export const mapYmError = (raw: unknown): SourceError => {
       ...(typeof error.retryAfterMs === "number" ? { retryAfterMs: error.retryAfterMs } : {}),
     };
   }
-  const message = raw instanceof Error ? raw.message : String(raw);
+  const message = errorMessage(raw);
   return { kind: "UNKNOWN", message };
 };
 

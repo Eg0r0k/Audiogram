@@ -167,7 +167,7 @@
             </div>
 
             <div
-              class="flex flex-col min-w-0 gap-1 p-2 rounded-sm bg-[color-mix(in_oklch,var(--cover-color)_25%,black)] transition-[background-color] duration-900 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+              class="flex flex-col min-w-0 gap-1 p-2 rounded-sm bg-[color-mix(in_oklch,var(--cover-color)_30%,black)] transition-[background-color] duration-900 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
               :style="{ '--cover-color': playerColor.hsl }"
             >
               <div class="flex items-center justify-between gap-3 pl-2">
@@ -188,16 +188,19 @@
               </div>
 
               <TrackContextMenu context="queue">
-                <TrackRow
-                  v-if="nextQueueItem"
-                  hide-index
-                  class="text-white! hover:bg-muted/80!"
-                  menu-target="queue"
-                  :track="nextQueueItem.track as Track"
-                  :menu-index="nextQueueIndex"
-                  :queue-item-id="nextQueueItem.id"
-                  @play="queueStore.jumpTo(nextQueueIndex)"
-                />
+                <div class="flex flex-col gap-1">
+                  <TrackRow
+                    v-for="entry in nextQueueItems"
+                    :key="entry.item.id"
+                    hide-index
+                    class="text-white! hover:bg-muted/80!"
+                    menu-target="queue"
+                    :track="entry.item.track as Track"
+                    :menu-index="entry.index"
+                    :queue-item-id="entry.item.id"
+                    @play="queueStore.jumpTo(entry.index)"
+                  />
+                </div>
               </TrackContextMenu>
               <TrackDropdown context="queue" />
               <TrackDropdown context="current-track" />
@@ -207,17 +210,19 @@
 
         <Empty
           v-else
-          class="p-6 py-12 md:p-6 md:py-12"
         >
           <EmptyHeader>
-            <EmptyMedia
-              variant="icon"
-              class="rounded-full text-muted-foreground"
-            >
-              <IconMusicOff class="size-5" />
-            </EmptyMedia>
-            <EmptyDescription>{{ $t('player.nothingPlaying') }}</EmptyDescription>
+            <EmptyTitle>{{ $t('player.nothingPlayingTitle') }}</EmptyTitle>
+            <EmptyDescription>{{ $t('player.nothingPlayingSub') }}</EmptyDescription>
           </EmptyHeader>
+          <EmptyContent>
+            <Button
+              variant="outline"
+              @click="goToAllMusic"
+            >
+              {{ $t('player.browseMusic') }}
+            </Button>
+          </EmptyContent>
         </Empty>
       </div>
     </Scrollable>
@@ -230,8 +235,7 @@ import { useRouter } from "vue-router";
 import { Scrollable } from "@/components/ui/scrollable";
 import { Button } from "@/components/ui/button";
 import { getLogger } from "@/lib/logger";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty";
-import IconMusicOff from "~icons/tabler/music-off";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import { useCurrentTrackCover } from "@/modules/player/composables/useCurrentTrackCover";
 import type { Track } from "@/modules/player/types";
@@ -289,14 +293,15 @@ const artistsList = computed(() => {
   return artistValue.split(/,\s*/).map(part => part.trim()).filter(Boolean);
 });
 
-const nextQueueIndex = computed(() => {
-  if (!queueStore.hasNext) return -1;
-  return queueStore.currentIndex + 1;
-});
+const UP_NEXT_LIMIT = 3;
 
-const nextQueueItem = computed(() => {
-  if (nextQueueIndex.value < 0) return null;
-  return queueStore.queue[nextQueueIndex.value] ?? null;
+const nextQueueItems = computed(() => {
+  if (!queueStore.hasNext) return [];
+
+  const start = queueStore.currentIndex + 1;
+  return queueStore.queue
+    .slice(start, start + UP_NEXT_LIMIT)
+    .map((item, offset) => ({ item, index: start + offset }));
 });
 
 async function toggleLike(): Promise<void> {
@@ -304,9 +309,12 @@ async function toggleLike(): Promise<void> {
   await toggleTrackLike(libraryTrack.value);
 }
 
-// "Open with" ephemeral track (M3): CTA into the import pipeline; success
-// swaps the queue entry onto the library track without restarting playback.
 const { importPath, isRunning: isImportRunning, importCurrent } = useEphemeralImport(currentTrack);
+
+const goToAllMusic = (): void => {
+  router.push(routeLocation.allMusic())
+    .catch(error => getLogger().error(`[RightPanel] Navigation to all music failed: ${String(error)}`));
+};
 
 function goToArtist(index: number): void {
   const artistId = libraryTrack.value?.artistIds[index];

@@ -9,9 +9,26 @@
     <Scrollable class="min-h-0 flex-1">
       <Empty
         v-if="jobs.length === 0"
-        class="p-6 py-12 md:p-6 md:py-12"
+        class=" h-full"
       >
-        <EmptyDescription>{{ t("downloads.empty") }}</EmptyDescription>
+        <EmptyHeader>
+          <EmptyMedia>
+            <IconCloudDownload
+              class="size-11 text-muted-foreground"
+            />
+          </EmptyMedia>
+          <EmptyTitle>{{ t("downloads.empty") }}</EmptyTitle>
+          <EmptyDescription>{{ t("downloads.emptySub") }}</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button
+            variant="outline"
+            @click="findMusic"
+          >
+            <IconSearch />
+            {{ t("downloads.emptyAction") }}
+          </Button>
+        </EmptyContent>
       </Empty>
 
       <ItemGroup
@@ -72,7 +89,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { Empty, EmptyDescription } from "@/components/ui/empty";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty";
 import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia, ItemSubtitle, ItemTitle } from "@/components/ui/item";
 import { useQuery } from "@tanstack/vue-query";
 import { Button } from "@/components/ui/button";
@@ -86,16 +103,23 @@ import { trackQueries } from "@/queries/track.queries";
 import type { TrackId } from "@/types/ids";
 import { Spinner } from "@/components/ui/spinner";
 import IconClock from "~icons/tabler/clock";
-import IconX from "~icons/tabler/x";
+import IconCloudDownload from "~icons/tabler/cloud-download";
+import IconSearch from "~icons/tabler/search";
 
-//
-// Live download queue: runtime jobs from the downloads store, titles from
-// the pinned track rows (downloads always pin first, so the rows exist).
-//
+import IconX from "~icons/tabler/x";
+import EmptyTitle from "@/components/ui/empty/EmptyTitle.vue";
+import { useSearch } from "@/modules/search/composables/useSearch";
 
 const { t } = useI18n();
 const rightPanel = useRightPanelStore();
 const downloads = useDownloadsStore();
+const { openSearch, requestSearchFocus } = useSearch();
+
+const findMusic = (): void => {
+  rightPanel.close();
+  openSearch();
+  requestSearchFocus();
+};
 
 const jobs = computed(() => Object.values(downloads.jobs));
 

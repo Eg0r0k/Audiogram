@@ -8,7 +8,7 @@
     </div>
 
     <template v-if="loggedIn">
-      <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center justify-between gap-3 px-4 py-2">
         <div class="min-w-0">
           <p class="text-sm font-medium truncate">
             {{ $t("settings.sources.ym.signedInAs", { name: displayName || uidLabel }) }}
@@ -29,13 +29,14 @@
     </template>
 
     <template v-else-if="step.kind === 'pending'">
-      <div class="flex items-start gap-4">
+      <div class="flex items-start gap-4 px-4">
         <div class="min-w-0 flex-1 space-y-2">
           <p class="text-xs text-muted-foreground">
             {{ $t("settings.sources.ym.codeHint", { url: step.verificationUrl }) }}
           </p>
           <p
-            class="font-mono text-3xl font-semibold tracking-[0.3em] select-all"
+            v-copy="{ text: step.userCode, onCopy: handleCodeCopied }"
+            class="font-mono text-3xl font-semibold tracking-[0.3em]"
             data-testid="ym-user-code"
           >
             {{ step.userCode }}
@@ -45,15 +46,14 @@
           </p>
           <div class="flex flex-wrap items-center gap-2 pt-1">
             <Button
-              size="sm"
+              variant="ghost-primary"
               @click="openYandex"
             >
               <IconExternalLink class="size-4" />
               {{ $t("settings.sources.ym.openYandex") }}
             </Button>
             <Button
-              size="sm"
-              variant="ghost"
+              variant="destructive-link"
               @click="cancelSignIn"
             >
               {{ $t("settings.sources.ym.cancel") }}
@@ -63,7 +63,7 @@
         <YmQrCode
           v-if="showQr"
           :value="step.verificationUrl"
-          class="size-32 shrink-0 rounded-lg bg-white p-1.5 text-black"
+          class="size-32 shrink-0 rounded-lg bg-white p-1.5"
         />
       </div>
     </template>
@@ -82,11 +82,13 @@
         {{ $t("settings.sources.ym.failed", { message: step.message }) }}
       </p>
       <Button
-        class="w-full"
+        class="w-full h-14 justify-start"
+        size="xl"
+        variant="ghost-primary"
         :disabled="busy"
         @click="signIn"
       >
-        <IconLogin class="size-4" />
+        <IconLogin class="size-6" />
         {{ step.kind === "codeExpired" ? $t("settings.sources.ym.newCode") : $t("settings.sources.ym.signIn") }}
       </Button>
     </template>
@@ -98,6 +100,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useNow } from "@vueuse/core";
 import { Button } from "@/components/ui/button";
+import { toast } from "vue-sonner";
 import IconExternalLink from "~icons/tabler/external-link";
 import IconLogin from "~icons/tabler/login-2";
 import { openExternal } from "@/composables/useExternalLinkInterceptor";
@@ -138,6 +141,10 @@ const guarded = async (action: () => Promise<void>) => {
 const signIn = () => guarded(start);
 const signOut = () => guarded(logout);
 const cancelSignIn = () => guarded(cancel);
+
+const handleCodeCopied = () => {
+  toast.success(t("common.copied"));
+};
 
 const openYandex = () => {
   if (step.value.kind !== "pending") return;

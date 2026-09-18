@@ -1,5 +1,5 @@
 <template>
-  <SettingsGroup class="mt-2">
+  <SettingsGroup class="mt-2 ">
     <Item @click="setEnabled(!enabled)">
       <ItemContent>
         <ItemTitle>{{ $t("settings.sources.nd.enable") }}</ItemTitle>
@@ -19,7 +19,7 @@
     class="mt-2"
     :class="{ 'opacity-40 pointer-events-none': !enabled }"
   >
-    <div class="px-4 py-3 space-y-4">
+    <div class="px-2 pt-3 space-y-4">
       <Input
         id="nd-base-url"
         :model-value="baseUrl"

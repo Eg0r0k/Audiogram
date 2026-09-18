@@ -1,10 +1,10 @@
 <template>
   <SettingsGroup class="mt-2">
-    <div class="px-4 py-3 space-y-3">
-      <p class="text-xs text-muted-foreground">
+    <div class=" space-y-3">
+      <YmLoginCard />
+      <p class="text-xs text-muted-foreground px-4">
         {{ $t("settings.sources.ym.disclaimer") }}
       </p>
-      <YmLoginCard />
     </div>
   </SettingsGroup>
 

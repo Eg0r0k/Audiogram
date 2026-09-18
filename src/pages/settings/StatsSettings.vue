@@ -27,7 +27,7 @@
         <Button
           class="w-full h-14 justify-start"
           size="xl"
-          variant="ghost-primary"
+          variant="destructive-link"
           @click="handleClearHistory"
         >
           <IconTrash class="size-6" />
@@ -59,10 +59,18 @@
       </SettingsGroup>
     </template>
 
-    <SettingsGroup v-else>
-      <p class="px-4 py-8 text-center text-sm text-muted-foreground">
-        {{ $t("settings.stats.empty") }}
-      </p>
+    <SettingsGroup
+      v-else
+    >
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia>
+            <IconChartHistogram class="size-11 text-muted-foreground" />
+          </EmptyMedia>
+          <EmptyTitle>{{ $t("settings.stats.empty") }}</EmptyTitle>
+          <EmptyDescription>{{ $t("settings.stats.emptySub") }}</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     </SettingsGroup>
   </SettingsScreen>
 </template>
@@ -73,6 +81,8 @@ import { useQuery } from "@tanstack/vue-query";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import IconChartHistogram from "~icons/tabler/chart-histogram";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
 import IconTrash from "~icons/tabler/trash";
@@ -86,14 +96,12 @@ import StatsCompletionRow from "./components/stats/StatsCompletionRow.vue";
 import StatsHourlyRow from "./components/stats/StatsHourlyRow.vue";
 import StatsRecords from "./components/stats/StatsRecords.vue";
 import StatsTopGenres from "./components/stats/StatsTopGenres.vue";
-import { summonDialog } from "@/components/dialogs/summonDialog";
 import type { StatsPeriod } from "./components/stats/period";
 import { periodSince } from "./components/stats/period";
 import { statsQueries } from "@/queries/stats.queries";
-import { statsService } from "@/services/stats.service";
 import { getLogger } from "@/lib/logger";
 import { runRecommenderEval } from "@/modules/recommendations/service/recommender-eval.service";
-import { clearModel } from "@/modules/recommendations/service/recommender-model.service";
+import { useClearHistory } from "@/composables/useClearHistory";
 
 const { t } = useI18n();
 
@@ -110,23 +118,7 @@ const hasHistory = computed(() =>
   || allTime.value.playsCount > 0,
 );
 
-async function handleClearHistory() {
-  const cleared = await summonDialog("clearHistory", {
-    clear: async () => {
-      try {
-        await statsService.clearHistory();
-        // Weights fitted on the history just erased must not keep steering autoplay.
-        await clearModel();
-      }
-      catch (error) {
-        getLogger().error(`[Stats] Clearing listening history failed: ${String(error)}`);
-        toast.error(t("errors.unknown"));
-        throw error;
-      }
-    },
-  }, { key: "clear-history" });
-  if (cleared) toast.success(t("settings.stats.cleared"));
-}
+const { clearHistory: handleClearHistory } = useClearHistory();
 
 const handleRecommenderEval = async () => {
   try {

@@ -13,6 +13,7 @@
       <SearchNoResults
         v-else-if="isEmpty"
         :query="query"
+        @clear="resetSearch"
       />
 
       <div v-else>
@@ -81,7 +82,7 @@ import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { getLogger } from "@/lib/logger";
 import type { Track } from "@/modules/player/types";
-import type { YtChip } from "@/modules/search/composables/useSearch";
+import { useSearch, type YtChip } from "@/modules/search/composables/useSearch";
 import { hitResultItem, trackArtistRoutes } from "@/modules/search/lib/resultItems";
 import { useSourceSearchPages } from "@/modules/sources/composables/useSourceCatalog";
 import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
@@ -109,6 +110,12 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const queueStore = useQueueStore();
+const { clear: clearSearch, requestSearchFocus } = useSearch();
+
+const resetSearch = (): void => {
+  clearSearch();
+  requestSearchFocus();
+};
 
 const { data, isLoading, error } = useSourceSearchPages("yt", toRef(props, "query"), "all");
 

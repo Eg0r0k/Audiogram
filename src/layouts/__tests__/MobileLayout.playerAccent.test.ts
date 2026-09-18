@@ -36,7 +36,7 @@ const ORANGE: ColorResult = {
   hsl: "hsl(27, 100%, 32%)",
   isDark: true,
   seeds: ["#f7750e"],
-  palette: { accent: "#ffb68d", onAccent: "#532200", text: "#fbeee9", textMuted: "#d7c2b8" },
+  palette: { accent: "#ffb68d", onAccent: "#532200", text: "#fbeee9", textMuted: "#d7c2b8", vivid: "#a24900" },
 };
 
 describe("MobileLayout full-player accent variables", () => {
@@ -79,10 +79,18 @@ describe("MobileLayout full-player accent variables", () => {
     expect(style).toContain("--player-on-accent: #532200");
   });
 
+  it("passes the cover palette text roles to the wrapper", async () => {
+    const style = await mountLayout(ORANGE);
+    expect(style).toContain("--player-text: #fbeee9");
+    expect(style).toContain("--player-text-muted: #d7c2b8");
+  });
+
   it("falls back to the global primary variables when the palette is absent", async () => {
     const style = await mountLayout(NEUTRAL);
     expect(style).toContain("--player-accent: var(--primary)");
     expect(style).toContain("--player-on-accent: var(--primary-foreground)");
+    expect(style).toContain("--player-text: var(--foreground)");
+    expect(style).toContain("--player-text-muted: var(--muted-foreground)");
   });
 
   // `--primary: var(--player-accent)` must live on a descendant of the wrapper

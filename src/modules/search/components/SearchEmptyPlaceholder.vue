@@ -13,12 +13,10 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <Empty class="p-6 py-8 md:p-6 md:py-8">
+  <Empty>
     <EmptyHeader>
       <EmptyMedia>
-        <slot name="icon">
-          <IconSearch class="size-20 text-muted-foreground" />
-        </slot>
+        <IconSearch class="size-11 text-muted-foreground" />
       </EmptyMedia>
       <EmptyTitle>{{ text ?? t("search.placeholder") }}</EmptyTitle>
     </EmptyHeader>

@@ -18,5 +18,7 @@
   "historyEmpty": "Your listening history is empty",
   "remove": "Remove from queue",
   "trackSkipped": "Skipped “{title}”: it could not be played",
-  "playbackStalled": "Playback stopped: {count} tracks in a row failed to load. Check the connection."
+  "playbackStalled": "Playback stopped: {count} tracks in a row failed to load. Check the connection.",
+  "clearHistory": "Clear",
+  "historyEmptySub": "Tracks you listen to will show up here."
 }

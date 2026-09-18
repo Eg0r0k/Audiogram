@@ -47,17 +47,33 @@
               {{ scrubTimeDisplay }}
             </span>
           </CoverStateOverlay>
+          <CoverStateOverlay :visible="slot.role === 'center' && likeFlash !== null">
+            <IconLikedFilled
+              v-if="likeFlash === 'liked'"
+              class="size-20 text-primary"
+            />
+            <IconLike
+              v-else
+              class="size-20 text-white"
+            />
+          </CoverStateOverlay>
         </motion.div>
       </div>
     </motion.div>
   </div>
 </template>
 <script setup lang="ts">
-import { useTemplateRef } from "vue";
+import { onScopeDispose, ref, useTemplateRef } from "vue";
 import { useElementSize } from "@vueuse/core";
 import { motion, useTransform } from "motion-v";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import CoverStateOverlay from "@/components/layout/mobile/CoverStateOverlay.vue";
+import { useDoubleTap } from "@/composables/useDoubleTap";
+import { useCurrentPlayerTrack } from "@/modules/player/composables/useCurrentPlayerTrack";
+import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
+
+import IconLike from "~icons/tabler/heart";
+import IconLikedFilled from "~icons/tabler/heart-filled";
 import {
   SWIPE_DRAG_CONSTRAINTS,
   SWIPE_DRAG_TRANSITION,
@@ -82,6 +98,36 @@ const {
   handleDragStart,
   handleDragEnd,
 } = useTrackSwipe({ width: slotWidth, offsetThreshold: 70 });
+
+const { libraryTrack } = useCurrentPlayerTrack();
+const { toggleTrackLike } = useToggleTrackLike();
+
+// Ephemeral tracks (a stream with no Dexie row) cannot be liked, so the
+// gesture stays inert for them — same rule as the like button in the header.
+const LIKE_FLASH_MS = 700;
+const likeFlash = ref<"liked" | "unliked" | null>(null);
+let likeFlashTimer: ReturnType<typeof setTimeout> | undefined;
+
+useDoubleTap(coverRef, () => {
+  const track = libraryTrack.value;
+  if (!track) return;
+
+  likeFlash.value = track.isLiked ? "unliked" : "liked";
+  clearTimeout(likeFlashTimer);
+  likeFlashTimer = setTimeout(() => {
+    likeFlash.value = null;
+  }, LIKE_FLASH_MS);
+
+  // A refusal is reported by the mutation's own toast; the flash is dropped
+  // here so it cannot claim a like that never landed.
+  toggleTrackLike(track).catch(() => {
+    likeFlash.value = null;
+  });
+});
+
+onScopeDispose(() => {
+  clearTimeout(likeFlashTimer);
+});
 
 // Slot images decode asynchronously: the only image that is new after a
 // swipe is the neighbour sliding in, and it fades in anyway. A synchronous

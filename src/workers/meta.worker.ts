@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { parseBuffer, type IAudioMetadata, type IOptions } from "music-metadata";
 import { dedupeArtistNames, splitArtistNames } from "@/lib/artist-names";
 import type { BaseMetadata, ParseRequest, ParseResponse } from "./types";
@@ -89,7 +90,7 @@ export async function parseMetadata(request: ParseRequest): Promise<ParseRespons
     return { success: true, fileId, meta };
   }
   catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     return { success: false, fileId, error: message };
   }
 }

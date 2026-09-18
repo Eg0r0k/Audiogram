@@ -10,7 +10,7 @@
 
     <template v-else-if="isError">
       <PageErrorState
-        :message="errorMessage"
+        :message="loadErrorText"
         @retry="refetch"
       />
     </template>
@@ -100,6 +100,7 @@
 </template>
 
 <script setup lang="ts">
+import { errorMessage } from "@/lib/errors";
 import { computed, ref, useTemplateRef } from "vue";
 import { toast } from "vue-sonner";
 import { useI18n } from "vue-i18n";
@@ -197,7 +198,7 @@ function handleContextMenu(track: Track, index: number) {
   openMenu(track, index, { target: "playlist" });
 }
 
-const errorMessage = computed(() => {
+const loadErrorText = computed(() => {
   if (!error.value) return t("errors.unknown");
   if (error.value.message === "Playlist not found") return t("errors.notFound");
   return t("errors.loadFailed");
@@ -269,7 +270,7 @@ const openEditDialog = () => {
       await updatePlaylist(changes);
     }
     catch (e) {
-      toast.error(e instanceof Error ? e.message : t("playlist.updateFailed"));
+      toast.error(errorMessage(e, t("playlist.updateFailed")));
       throw e;
     }
   }).catch(() => undefined);

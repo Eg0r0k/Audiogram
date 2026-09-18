@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useQueryClient } from "@tanstack/vue-query";
 import { ref } from "vue";
 import { releaseNotesQueryOptions } from "../api/changelogApi";
@@ -45,7 +46,7 @@ export const useReleaseNotesDialog = () => {
       return true;
     }
     catch (cause) {
-      error.value = cause instanceof Error ? cause.message : String(cause);
+      error.value = errorMessage(cause);
       return false;
     }
     finally {

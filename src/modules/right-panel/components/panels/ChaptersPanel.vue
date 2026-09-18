@@ -14,17 +14,6 @@
             variant="ghost"
             size="icon"
             class="shrink-0 rounded-full"
-            :aria-label="t('chapters.cancelEdit')"
-            :disabled="isSaving"
-            @click="cancelEditing()"
-          >
-            <IconX class="size-6" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            class="shrink-0 rounded-full"
             :aria-label="t('chapters.save')"
             :disabled="!isFormValid || isSaving"
             @click="handleSave()"
@@ -78,21 +67,30 @@
 
       <div
         v-else
-        class="flex flex-col"
+        class="flex flex-col h-full"
       >
         <Empty
           v-if="chapters.length === 0"
-          class="p-4 py-8 md:p-4 md:py-8"
         >
           <EmptyHeader>
-            <EmptyMedia
-              variant="icon"
-              class="rounded-full text-muted-foreground"
-            >
-              <IconBookmarkOff class="size-5" />
+            <EmptyMedia>
+              <IconBookmarkOff class="size-11 text-muted-foreground" />
             </EmptyMedia>
-            <EmptyDescription>{{ t("chapters.empty") }}</EmptyDescription>
+            <EmptyTitle>{{ t("chapters.empty") }}</EmptyTitle>
           </EmptyHeader>
+          <EmptyContent>
+            <Button
+              variant="outline"
+              :disabled="isImporting"
+              @click="openCueDialog()"
+            >
+              <IconUpload
+                class="size-4"
+                :class="{ 'animate-pulse': isImporting }"
+              />
+              {{ t("chapters.importCue") }}
+            </Button>
+          </EmptyContent>
         </Empty>
 
         <Item
@@ -145,7 +143,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty";
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { useFileDialog } from "@vueuse/core";
 import { Button } from "@/components/ui/button";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
@@ -160,7 +158,6 @@ import IconBookmarkOff from "~icons/tabler/bookmark-off";
 import IconCheck from "~icons/tabler/check";
 import IconPencil from "~icons/tabler/pencil";
 import IconUpload from "~icons/tabler/upload";
-import IconX from "~icons/tabler/x";
 import IconPlay from "~icons/audiogram/play-rounded";
 import IconTrash from "~icons/tabler/trash";
 import { parseCueSheet } from "@/lib/cue/parseCueSheet";

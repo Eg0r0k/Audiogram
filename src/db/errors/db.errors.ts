@@ -4,6 +4,8 @@
 // (quota, version mismatch, upgrade failure) instead of pattern-matching on
 // message strings.
 //
+import { errorMessage } from "@/lib/errors";
+
 export type DbErrorCode
   /** Installed database version is newer than the schema this build declares (app downgrade). */
   = | "VERSION"
@@ -53,7 +55,7 @@ export const toDbError = (error: unknown): DbError => {
   if (error instanceof DbError) return error;
 
   const code = NAME_TO_CODE[errorName(error)] ?? NAME_TO_CODE[errorName(innerOf(error))] ?? "UNKNOWN";
-  const message = error instanceof Error ? error.message : String(error);
+  const message = errorMessage(error);
 
   return new DbError(code, message, error);
 };

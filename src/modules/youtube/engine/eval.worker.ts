@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { runPlayerScript } from "./eval-script";
 
 export interface EvalRequest {
@@ -15,7 +16,7 @@ self.onmessage = (event: MessageEvent<EvalRequest>) => {
     self.postMessage({ id, result: runPlayerScript(output) } satisfies EvalReply);
   }
   catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     self.postMessage({ id, error: message } satisfies EvalReply);
   }
 };

@@ -1,7 +1,7 @@
 <template>
   <div
     ref="rootRef"
-    class="relative flex-1 pt-4 h-full flex flex-col min-h-0 overflow-hidden"
+    class="relative flex-1 pt-4 h-full flex flex-col min-h-0 overflow-hidden z-1"
   >
     <SidebarHeader :compact="isCompact" />
 

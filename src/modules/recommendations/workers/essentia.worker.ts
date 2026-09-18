@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { EssentiaWASM } from "essentia.js/dist/essentia-wasm.es.js";
 import EssentiaClass from "essentia.js/dist/essentia.js-core.es.js";
 import type { AnalysisRequest, AnalysisResponse } from "./types";
@@ -171,7 +172,7 @@ self.onmessage = async (e: MessageEvent<AnalysisRequest>) => {
       success: false,
       requestId,
       trackId,
-      error: error instanceof Error ? error.message : "Unknown analysis error",
+      error: errorMessage(error, "Unknown analysis error"),
     };
     self.postMessage(response);
   }

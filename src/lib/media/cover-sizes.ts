@@ -8,8 +8,7 @@
 // display bridges and the YouTube thumbnail helpers are peers here.
 //
 
-/** Hero/full-cover rendition (YT Music's standard album cover size). */
-export const THUMB_SIZE_FULL = 544;
+export const THUMB_SIZE_FULL = 1000;
 /** Card rendition (~144px cards on hidpi screens). */
 export const THUMB_SIZE_CARD = 320;
 /** List-row rendition — plenty for 40–56px covers on hidpi screens. */

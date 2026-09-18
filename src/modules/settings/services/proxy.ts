@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { ResultAsync, okAsync } from "neverthrow";
 import { platformCaps } from "@/lib/environment/platformCaps";
@@ -9,17 +10,8 @@ export class ProxyError extends Error {
   }
 }
 
-/**
- * The most specific text available: what the cause says about itself, the
- * bare string a Tauri command rejected with, or the caller's fallback.
- */
-const messageOf = (cause: unknown, fallback: string): string => {
-  if (cause instanceof Error) return cause.message;
-  return typeof cause === "string" ? cause : fallback;
-};
-
 const toError = (message: string) => (cause: unknown) =>
-  new ProxyError(messageOf(cause, message), cause);
+  new ProxyError(errorMessage(cause, message), cause);
 
 let currentUrl: string | null = null;
 

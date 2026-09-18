@@ -50,5 +50,7 @@
   "nothingPlaying": "Nothing is playing right now.",
   "upNextLabel": "Up Next",
   "moreOptions": "More options",
-  "nothingPlayingTitle": "Nothing playing"
+  "nothingPlayingTitle": "Nothing playing",
+  "nothingPlayingSub": "Choose a track to start listening.",
+  "browseMusic": "Browse music"
 }

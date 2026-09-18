@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { errAsync, okAsync, ResultAsync } from "neverthrow";
 import { Channel } from "@tauri-apps/api/core";
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
@@ -42,7 +43,7 @@ const MAX_ALBUM_PAGE = 500;
  * here, at the only boundary that still sees the raw string.
  */
 function mapNdDownloadError(raw: unknown): SourceError {
-  const message = raw instanceof Error ? raw.message : String(raw);
+  const message = errorMessage(raw);
   if (message === "cancelled") return { kind: "CANCELLED", message };
   if (/status 40[13]\b/.test(message)) return { kind: "AUTH", message };
   if (message.includes("not configured")) return { kind: "UNAVAILABLE", message };
