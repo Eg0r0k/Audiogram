@@ -8,7 +8,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 vi.mock("@/db/repositories", () => ({ trackRepository: { findAll: vi.fn() } }));
 vi.mock("@/db/repositories/stats.repository", () => ({
-  statsRepository: { findAllEvents: vi.fn() },
+  statsRepository: {},
   SESSION_GAP_MS: 30 * 60 * 1000,
 }));
 vi.mock("@/db/repositories/audioFeatures.repository", () => ({

@@ -103,7 +103,7 @@ describe("v9 → v10 upgrade (integration)", () => {
     const { db } = await import("@/db");
     await db.open();
 
-    expect(db.verno).toBe(16);
+    expect(db.verno).toBe(17);
 
     const track = await db.tracks.get("t1" as never);
     expect(track).toMatchObject({ id: "t1", pinned: 1, likedAt: 42, playCount: 3 });
@@ -119,6 +119,13 @@ describe("v9 → v10 upgrade (integration)", () => {
 
     // New indexes are queryable.
     expect(await db.tracks.where("pinned").equals(1).count()).toBe(3);
+
+    // v17 lists the library through [pinned+<sortField>]. A row that reached
+    // this point without a `pinned` value would have no key in that index and
+    // would silently vanish from every listing, so this doubles as the check
+    // that v10 stamped every migrated row.
+    expect(await db.tracks.where("[pinned+addedAt]").between([1, -Infinity], [1, Infinity], true, true).primaryKeys())
+      .toEqual(["t1", "t2", "t3"]);
 
     // v12: names backfilled to "" so the row is in the artistName/albumTitle
     // indexes and in the liked compound index.

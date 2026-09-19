@@ -150,9 +150,71 @@ export function buildRemoteShadowEntities(
  * The result has one id per name and the display string re-joined with
  * ", ", so the cascade and the row's caption agree on who the artists are.
  */
+/**
+ * Name → artist id, in the two buckets alignArtists resolves through. Built
+ * once and grown as rows appear, because a batch aligns every track against
+ * the whole artists table: rebuilt per track it scales with the library
+ * rather than with the batch.
+ *
+ * Shadow buckets are per source prefix and filled on first use — a batch
+ * normally comes from one source, so that is one extra walk, not one per
+ * track. First name wins in both buckets, matching insertion order.
+ */
+class ArtistNameIndex {
+  private readonly locals = new Map<string, ArtistId>();
+  private readonly remote: ArtistEntity[] = [];
+  private readonly shadowsByPrefix = new Map<string, Map<string, ArtistId>>();
+
+  constructor(artists: readonly ArtistEntity[]) {
+    for (const artist of artists) this.add(artist);
+  }
+
+  add(artist: ArtistEntity): void {
+    if (sourceKindOfId(artist.id) === "local") {
+      const key = identityKey(artist.name);
+      if (!this.locals.has(key)) this.locals.set(key, artist.id);
+      return;
+    }
+    this.remote.push(artist);
+    for (const [prefix, bucket] of this.shadowsByPrefix) {
+      if (artist.id.startsWith(prefix)) this.fill(bucket, artist);
+    }
+  }
+
+  local(key: string): ArtistId | undefined {
+    return this.locals.get(key);
+  }
+
+  ownShadow(key: string, ownPrefix: string): ArtistId | undefined {
+    return this.shadowsFor(ownPrefix).get(key);
+  }
+
+  private fill(bucket: Map<string, ArtistId>, artist: ArtistEntity): void {
+    const key = identityKey(artist.name);
+    if (!bucket.has(key)) bucket.set(key, artist.id);
+  }
+
+  private shadowsFor(prefix: string): Map<string, ArtistId> {
+    const cached = this.shadowsByPrefix.get(prefix);
+    if (cached) return cached;
+
+    const bucket = new Map<string, ArtistId>();
+    for (const artist of this.remote) {
+      if (artist.id.startsWith(prefix)) this.fill(bucket, artist);
+    }
+    this.shadowsByPrefix.set(prefix, bucket);
+    return bucket;
+  }
+}
+
+export type { ArtistNameIndex };
+
+export const artistNameIndex = (artists: readonly ArtistEntity[]): ArtistNameIndex =>
+  new ArtistNameIndex(artists);
+
 export function alignArtists(
   dto: SourceTrackDTO,
-  allArtists: readonly ArtistEntity[],
+  index: ArtistNameIndex,
 ): SourceTrackDTO {
   const names = splitArtistNames(dto.artistName);
   if (names.length === 0) return dto;
@@ -161,23 +223,11 @@ export function alignArtists(
   const paired = remoteIds.length === names.length;
   const ownPrefix = `${parseTrackRef(dto.id).kind}:`;
 
-  const locals = new Map<string, ArtistId>();
-  const ownShadows = new Map<string, ArtistId>();
-  for (const artist of allArtists) {
-    let bucket: Map<string, ArtistId> | null = locals;
-    if (sourceKindOfId(artist.id) !== "local") {
-      bucket = artist.id.startsWith(ownPrefix) ? ownShadows : null;
-    }
-    if (!bucket) continue;
-    const key = identityKey(artist.name);
-    if (!bucket.has(key)) bucket.set(key, artist.id);
-  }
-
-  const artistIds = names.map((name, index) => {
+  const artistIds = names.map((name, position) => {
     const key = identityKey(name);
-    return locals.get(key)
-      ?? (paired ? remoteIds[index] : undefined)
-      ?? ownShadows.get(key)
+    return index.local(key)
+      ?? (paired ? remoteIds[position] : undefined)
+      ?? index.ownShadow(key, ownPrefix)
       ?? ArtistId(crypto.randomUUID());
   });
 

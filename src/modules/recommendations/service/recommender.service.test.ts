@@ -30,7 +30,7 @@ vi.mock("@/db/repositories", () => ({
   trackRepository: { findAll: vi.fn() },
 }));
 vi.mock("@/db/repositories/stats.repository", () => ({
-  statsRepository: { findAllEvents: vi.fn() },
+  statsRepository: { eventsSince: vi.fn() },
   SESSION_GAP_MS: 30 * 60 * 1000,
 }));
 vi.mock("@/db/repositories/audioFeatures.repository", () => ({
@@ -51,7 +51,7 @@ const { getRecommendations } = await import("@/modules/recommendations/service/r
 const { markRecommenderContextDirty } = await import("@/modules/recommendations/service/recommender-context.service");
 
 const mockFindAll = trackRepository.findAll as ReturnType<typeof vi.fn>;
-const mockFindAllEvents = statsRepository.findAllEvents as ReturnType<typeof vi.fn>;
+const mockEventsSince = statsRepository.eventsSince as ReturnType<typeof vi.fn>;
 const mockFeaturesFindAll = audioFeaturesRepository.findAll as ReturnType<typeof vi.fn>;
 const mockGetActiveWeights = getActiveWeights as ReturnType<typeof vi.fn>;
 const mockEnsureModelFresh = ensureModelFresh as ReturnType<typeof vi.fn>;
@@ -59,7 +59,7 @@ const mockEnsureModelFresh = ensureModelFresh as ReturnType<typeof vi.fn>;
 beforeEach(() => {
   vi.clearAllMocks();
   markRecommenderContextDirty();
-  mockFindAllEvents.mockResolvedValue(ok([]));
+  mockEventsSince.mockResolvedValue(ok([]));
   mockFeaturesFindAll.mockResolvedValue(ok([]));
   mockGetActiveWeights.mockResolvedValue(DEFAULT_WEIGHTS);
   mockEnsureModelFresh.mockResolvedValue(undefined);
@@ -85,7 +85,7 @@ describe("getRecommendations", () => {
   it("excludes the seed, explicit ids and the recently played tracks", async () => {
     const now = Date.now();
     mockFindAll.mockResolvedValue(ok(["S", "A", "B", "C", "D", "E"].map(id => makeTrack(id))));
-    mockFindAllEvents.mockResolvedValue(ok([
+    mockEventsSince.mockResolvedValue(ok([
       makeEvent("B", now - MINUTE),
       makeEvent("D", now - 2 * MINUTE),
       makeEvent("E", now - 3 * MINUTE),
@@ -105,7 +105,7 @@ describe("getRecommendations", () => {
   it("ranks a track with completed listens above one with early skips", async () => {
     const now = Date.now();
     mockFindAll.mockResolvedValue(ok(["S", "A", "B"].map(id => makeTrack(id))));
-    mockFindAllEvents.mockResolvedValue(ok([
+    mockEventsSince.mockResolvedValue(ok([
       makeEvent("A", now - 10 * DAY, { completed: true, skipped: false, secondsListened: 200 }),
       makeEvent("A", now - 8 * DAY, { completed: true, skipped: false, secondsListened: 200 }),
       makeEvent("B", now - 10 * DAY, { completed: false, skipped: true, secondsListened: 5 }),
@@ -138,7 +138,7 @@ describe("getRecommendations", () => {
       makeTrack("R2"),
       makeTrack("N", { artistIds: ["ar-known" as any] }),
     ]));
-    mockFindAllEvents.mockResolvedValue(ok([
+    mockEventsSince.mockResolvedValue(ok([
       makeEvent("K", now - 10 * DAY, { artistId: "ar-known" as any }),
       makeEvent("K", now - 9 * DAY, { artistId: "ar-known" as any }),
       makeEvent("R1", now - 8 * DAY),
@@ -162,7 +162,7 @@ describe("getRecommendations", () => {
       makeTrack("R2"),
       makeTrack("N", { artistIds: ["ar-known" as any] }),
     ]));
-    mockFindAllEvents.mockResolvedValue(ok([
+    mockEventsSince.mockResolvedValue(ok([
       makeEvent("K", now - 10 * DAY, { artistId: "ar-known" as any }),
       makeEvent("R1", now - 8 * DAY),
       makeEvent("R2", now - 7 * DAY),

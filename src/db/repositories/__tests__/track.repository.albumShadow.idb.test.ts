@@ -50,11 +50,9 @@ describe("album listings skip shadow rows (idb)", () => {
     ]);
   });
 
-  it("findByAlbumIdPaginated lists library members only", async () => {
-    const page = await trackRepository.findByAlbumIdPaginated(ALBUM, 0, 10);
-    expect(page._unsafeUnwrap().map(track => track.id)).toEqual([TrackId("local-b")]);
-  });
-
+  // The paged listing moved to the query layer (an album's order is cached
+  // per sort there); queries/__tests__/album-tracks-paging.integration.test.ts
+  // covers this same album against it.
   it("countByAlbumId and sumDurationByAlbumId count library members only", async () => {
     expect((await trackRepository.countByAlbumId(ALBUM))._unsafeUnwrap()).toBe(1);
     expect((await trackRepository.sumDurationByAlbumId(ALBUM))._unsafeUnwrap()).toBe(100);

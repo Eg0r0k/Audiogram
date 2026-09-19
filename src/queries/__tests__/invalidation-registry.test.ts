@@ -132,6 +132,22 @@ describe("invalidateForAlbumMutation: titleChange", () => {
 
     expectStale(queryClient, [shelf]);
   });
+
+  // A co-credited artist's listing is cut from a cached id order, and sorted
+  // by album title the rename reorders it. That artist carries no id here, so
+  // no `detail(id)` prefix reaches them — only the order matcher does.
+  it("reaches the cached track order of a co-credited artist", async () => {
+    const coCredited = ArtistId("ar-co-credited");
+    const orders = [
+      queryKeys.artists.trackOrder(coCredited, "album_asc"),
+      queryKeys.artists.trackOrder(coCredited, null),
+    ];
+    const queryClient = seed(orders);
+
+    await invalidateForAlbumMutation(queryClient, { kind: "titleChange", albumId, artistId });
+
+    expectStale(queryClient, orders);
+  });
 });
 
 // A cascade delete drops rows from playlists; their cached duration sums are
@@ -184,6 +200,38 @@ describe("invalidateForArtistMutation: removal", () => {
     await invalidateForArtistMutation(queryClient, { kind: "removal", playlistIds: [] });
 
     expectStale(queryClient, [otherAlbumPage]);
+  });
+
+  // The pages are cut from a cached id order. Leaving that order fresh while
+  // the pages re-read hands them a list still counting the purged tracks: the
+  // album reports a stale total and serves short pages with holes.
+  it("reaches the cached track order of albums that stay", async () => {
+    const otherAlbum = AlbumId("al-of-other-artist");
+    const orders = [
+      queryKeys.albums.trackOrder(otherAlbum, null),
+      queryKeys.albums.trackOrder(otherAlbum, "title_asc"),
+    ];
+    const queryClient = seed(orders);
+
+    await invalidateForArtistMutation(queryClient, { kind: "removal", playlistIds: [] });
+
+    expectStale(queryClient, orders);
+  });
+});
+
+describe("invalidateForArtistMutation: change", () => {
+  // A rename reorders any album sorted by artist name, so the cached order
+  // has to be rebuilt alongside the pages cut from it.
+  it("reaches the album track order as well as the pages", async () => {
+    const keys = [
+      queryKeys.albums.tracksPage(albumId, "artist_asc"),
+      queryKeys.albums.trackOrder(albumId, "artist_asc"),
+    ];
+    const queryClient = seed(keys);
+
+    await invalidateForArtistMutation(queryClient, { kind: "change", artistId });
+
+    expectStale(queryClient, keys);
   });
 });
 

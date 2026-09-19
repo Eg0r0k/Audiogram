@@ -2,11 +2,18 @@ import { db } from "@/db";
 import type { TrackEntity } from "@/db/entities";
 import { isDescendingSort, trackSortField, type TrackSortKey } from "@/types/track-sort";
 import type { AlbumId, ArtistId, TagId, TrackId } from "@/types/ids";
-import type { Collection } from "dexie";
+import Dexie, { type Collection } from "dexie";
 import type { Result } from "neverthrow";
 import { ok, err } from "neverthrow";
 import { BaseRepository } from "./base.repository";
 import { toDbError } from "@/db/errors/db.errors";
+
+// Dexie's own floor and ceiling of the IndexedDB key space. They span numbers
+// and strings alike, so a sort field needs no per-type bounds and no table
+// saying which type it holds: a field left out of such a table would silently
+// page through an empty range instead of failing.
+const FIELD_FLOOR: unknown = Dexie.minKey;
+const FIELD_CEILING: unknown = Dexie.maxKey;
 
 class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   constructor() {
@@ -16,30 +23,37 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   /**
    * Listings and counts skip shadow rows (pinned = 0); point lookups and
    * deletion cascades stay unscoped on purpose.
+   *
+   * Membership rides an index wherever one can express it
+   * (`[pinned+<sortField>]`, `[albumId+pinned]`). The multi-entry `artistIds`
+   * index cannot carry `pinned` alongside it, so those reads subtract this
+   * set instead. The two are not the same predicate: the ranges select
+   * `pinned === 1`, this selects "not 0". They agree only because
+   * `pinned` is required on TrackEntity; migrations.integration.test.ts is
+   * what holds that, since nothing downstream could detect the loss.
    */
-  private isLibraryMember(track: TrackEntity): boolean {
-    return track.pinned !== 0;
+  private shadowTrackIds(): Promise<TrackId[]> {
+    return this.table.where("pinned").equals(0).primaryKeys();
   }
 
-  private getSortedCollection(sortKey: TrackSortKey): Collection<TrackEntity, TrackId, TrackEntity> {
-    return this.getSortedAllCollection(sortKey).filter(track => this.isLibraryMember(track));
-  }
-
-  private getSortedAllCollection(sortKey: TrackSortKey): Collection<TrackEntity, TrackId, TrackEntity> {
-    const collection = this.table.orderBy(trackSortField(sortKey));
+  private getSortedCollection(sortKey: TrackSortKey): Collection<TrackEntity, TrackId> {
+    const field = trackSortField(sortKey);
+    const collection = this.table
+      .where(`[pinned+${field}]`)
+      .between([1, FIELD_FLOOR], [1, FIELD_CEILING], true, true);
     return isDescendingSort(sortKey) ? collection.reverse() : collection;
   }
 
   private getSortedLikedCollection(sortKey: TrackSortKey): Collection<TrackEntity, TrackId> {
     const field = trackSortField(sortKey);
-    const compoundKey = `[${field}+likedAt]`;
-    const isNumeric = ["addedAt", "duration", "playCount"].includes(field);
-    const isDesc = isDescendingSort(sortKey);
-    const collection = this.table.where(compoundKey).between(
-      isNumeric ? [0, 1] : ["", 1],
-      isNumeric ? [Infinity, Infinity] : ["\uffff", Infinity],
+    // The sort field spans the whole key space; `likedAt` is what narrows the
+    // range, and an unliked row carries none at all, so it is not in this
+    // index to begin with.
+    const collection = this.table.where(`[${field}+likedAt]`).between(
+      [FIELD_FLOOR, 1],
+      [FIELD_CEILING, Infinity],
     );
-    return isDesc ? collection.reverse() : collection;
+    return isDescendingSort(sortKey) ? collection.reverse() : collection;
   }
 
   async findLikedSorted(sortKey: TrackSortKey): Promise<Result<TrackEntity[], Error>> {
@@ -160,14 +174,16 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     try {
       const counts = new Map<AlbumId, number>();
       for (const albumId of albumIds) counts.set(albumId, 0);
-      if (albumIds.length > 0) {
-        await this.table
-          .where("[albumId+pinned]")
-          .anyOf(albumIds.map(id => [id, 1]))
-          .each((track) => {
-            counts.set(track.albumId, (counts.get(track.albumId) ?? 0) + 1);
-          });
-      }
+      if (albumIds.length === 0) return ok(counts);
+
+      // One transaction, so the counts share a snapshot instead of each
+      // opening its own.
+      await db.transaction("r", this.table, async () => {
+        const counted = await Promise.all(
+          albumIds.map(id => this.table.where("[albumId+pinned]").equals([id, 1]).count()),
+        );
+        albumIds.forEach((id, index) => counts.set(id, counted[index]));
+      });
       return ok(counts);
     }
     catch (error) {
@@ -175,15 +191,32 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     }
   }
 
-  async countByArtistId(artistId: ArtistId): Promise<Result<number, Error>> {
+  /**
+   * Each artist's own index entries minus the shadow set, intersected as
+   * keys: neither side deserializes a row.
+   */
+  async countByArtistIds(artistIds: ArtistId[]): Promise<Result<Map<ArtistId, number>, Error>> {
     try {
-      const count = await this.table
-        .where("artistIds")
-        .equals(artistId)
-        .and(track => this.isLibraryMember(track))
-        .count();
+      const counts = new Map<ArtistId, number>();
+      for (const id of artistIds) counts.set(id, 0);
+      if (artistIds.length === 0) return ok(counts);
 
-      return ok(count);
+      await db.transaction("r", this.table, async () => {
+        const [shadowIds, perArtist] = await Promise.all([
+          this.shadowTrackIds(),
+          Promise.all(artistIds.map(id => this.table.where("artistIds").equals(id).primaryKeys())),
+        ]);
+        const shadows = new Set<TrackId>(shadowIds);
+
+        artistIds.forEach((id, index) => {
+          let members = 0;
+          for (const trackId of new Set(perArtist[index])) {
+            if (!shadows.has(trackId)) members++;
+          }
+          counts.set(id, members);
+        });
+      });
+      return ok(counts);
     }
     catch (error) {
       return err(toDbError(error));
@@ -201,45 +234,30 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     }
   }
 
-  /** Keys only, library members like `countByArtistId`. */
+  /** Keys only; library members. The artist listing is cut from these. */
   async findIdsByArtistId(artistId: ArtistId): Promise<Result<TrackId[], Error>> {
     try {
-      const ids = await this.table
-        .where("artistIds")
-        .equals(artistId)
-        .and(track => this.isLibraryMember(track))
-        .primaryKeys();
-      return ok(ids);
+      return ok(await this.memberIdsByArtistId(artistId));
     }
     catch (error) {
       return err(toDbError(error));
     }
   }
 
-  async countByArtistIds(artistIds: ArtistId[]): Promise<Result<Map<ArtistId, number>, Error>> {
-    try {
-      const counts = new Map<ArtistId, number>();
-      for (const id of artistIds) counts.set(id, 0);
-      if (artistIds.length > 0) {
-        const wanted = new Set<string>(artistIds);
-        // distinct(): the multi-entry index emits a row once per matching id.
-        await this.table
-          .where("artistIds")
-          .anyOf(artistIds)
-          .distinct()
-          .each((track) => {
-            if (!this.isLibraryMember(track)) return;
-            for (const id of track.artistIds) {
-              if (!wanted.has(id)) continue;
-              counts.set(id, (counts.get(id) ?? 0) + 1);
-            }
-          });
-      }
-      return ok(counts);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+  /**
+   * The artist's member track ids, in index order. Both reads are key-only,
+   * so nothing is deserialized to answer "which of these are members".
+   */
+  private async memberIdsByArtistId(artistId: ArtistId): Promise<TrackId[]> {
+    return db.transaction("r", this.table, async () => {
+      const [ids, shadowIds] = await Promise.all([
+        this.table.where("artistIds").equals(artistId).primaryKeys(),
+        this.shadowTrackIds(),
+      ]);
+      if (shadowIds.length === 0) return ids;
+      const shadows = new Set<TrackId>(shadowIds);
+      return ids.filter(id => !shadows.has(id));
+    });
   }
 
   async sumDurationByAlbumId(albumId: AlbumId): Promise<Result<number, Error>> {
@@ -288,19 +306,7 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   }
 
   async findPaginated(offset: number, limit: number): Promise<Result<TrackEntity[], Error>> {
-    try {
-      const tracks = await this.table
-        .orderBy("addedAt")
-        .reverse()
-        .filter(track => this.isLibraryMember(track))
-        .offset(offset)
-        .limit(limit)
-        .toArray();
-      return ok(tracks);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return this.findAllSortedPaginated("date_added_desc", offset, limit);
   }
 
   async findAllSorted(sortKey: TrackSortKey): Promise<Result<TrackEntity[], Error>> {
@@ -570,46 +576,6 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
       const tracks = await this.table
         .where("tagIds")
         .equals(tagId)
-        .toArray();
-      return ok(tracks);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
-  }
-
-  async findByAlbumIdPaginated(
-    albumId: AlbumId,
-    offset: number,
-    limit: number,
-  ): Promise<Result<TrackEntity[], Error>> {
-    try {
-      const all = (await this.table
-        .where("albumId")
-        .equals(albumId)
-        .toArray()).filter(track => this.isLibraryMember(track));
-      all.sort((a, b) =>
-        (a.diskNo ?? 1) - (b.diskNo ?? 1) || (a.trackNo ?? 0) - (b.trackNo ?? 0),
-      );
-      return ok(all.slice(offset, offset + limit));
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
-  }
-
-  async findByArtistIdPaginated(
-    artistId: ArtistId,
-    offset: number,
-    limit: number,
-  ): Promise<Result<TrackEntity[], Error>> {
-    try {
-      const tracks = await this.table
-        .where("artistIds")
-        .equals(artistId)
-        .and(track => this.isLibraryMember(track))
-        .offset(offset)
-        .limit(limit)
         .toArray();
       return ok(tracks);
     }

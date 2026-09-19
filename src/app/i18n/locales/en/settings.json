@@ -140,6 +140,14 @@
       "system": "System",
       "off": "Off",
       "on": "On"
+    },
+    "font": "Font",
+    "fontSample": "The quick brown fox jumps",
+    "fonts": {
+      "system": "System",
+      "inter": "Inter",
+      "manrope": "Manrope",
+      "onest": "Onest"
     }
   },
   "audio": {

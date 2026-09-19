@@ -12,6 +12,8 @@ import { ndTrackId, ymTrackId, ytTrackId } from "@/types/track-ref";
 //   http://127.0.0.1:{port}/{token}/nd/song/<songId>
 //   http://127.0.0.1:{port}/{token}/ym/track/<trackId>
 //   http://127.0.0.1:{port}/{token}/local/<encoded absolute path>
+//   http://127.0.0.1:{port}/{token}/local/<encoded absolute path>?raw=1
+//       — the same file WITHOUT the playback rendition (see localFileRawUrl)
 //   http://127.0.0.1:{imagePort}/{token}/nd/cover/<coverId>?size=<px>
 //   http://127.0.0.1:{imagePort}/{token}/ym/cover/<encoded %% cover uri>?size=<px>
 //   http://127.0.0.1:{imagePort}/{token}/ytimg/<encoded https thumbnail url>
@@ -79,6 +81,17 @@ export const ndSongStreamUrl = (songId: string): string => {
  */
 export const localFileStreamUrl = (absolutePath: string): string => {
   return `${requireBase()}/local/${encodeURIComponent(absolutePath)}`;
+};
+
+/**
+ * Same route, but asking for the file as it is on disk instead of a playable
+ * rendition of it: the server transcodes ALAC-in-mp4 to WAV and remuxes
+ * video-bearing mp4 for the media element, and neither carries the original's
+ * tags or length. Readers of bytes-as-content — tag parsing, fingerprinting —
+ * must use this; playback must not.
+ */
+export const localFileRawUrl = (absolutePath: string): string => {
+  return `${localFileStreamUrl(absolutePath)}?raw=1`;
 };
 
 /** Builds the proxied Navidrome cover URL. */
@@ -213,7 +226,14 @@ export const migrateProxyUrl = (url: string): string => {
   }
 
   const local = route.startsWith("local/") ? route.slice("local/".length) : null;
-  if (local) return localFileStreamUrl(local);
+  if (local) return rebuildLocalUrl(local, query);
 
   return url;
+};
+
+/** Keeps a `local/` URL on whichever side of the raw/playback split it was. */
+const rebuildLocalUrl = (absolutePath: string, query: string): string => {
+  return query.split("&").includes("raw=1")
+    ? localFileRawUrl(absolutePath)
+    : localFileStreamUrl(absolutePath);
 };

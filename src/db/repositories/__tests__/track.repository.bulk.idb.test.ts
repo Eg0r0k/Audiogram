@@ -28,6 +28,9 @@ const track = (id: string, title: string, addedAt: number, likedAt?: number): Tr
   likedAt,
   albumTitle: "Album",
   artistName: "Artist",
+  // Required: library listings page through [pinned+<sortField>], and a row
+  // without it has no key there.
+  pinned: 1,
 } as unknown as TrackEntity);
 
 describe("trackRepository bulk helpers (idb)", () => {

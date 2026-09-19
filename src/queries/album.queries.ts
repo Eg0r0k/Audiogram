@@ -88,34 +88,52 @@ export async function getAlbumPageData(albumId: AlbumId, sortKey: TrackSortKey |
   };
 }
 
+/**
+ * The album's member ids in list order. An album is ordered by (diskNo,
+ * trackNo) or by a chosen sort, neither of which an index expresses, so the
+ * list is built in memory from every row of the album — once per (album,
+ * sort) rather than once per page. Ids only: the page reads its own rows, so
+ * a row edited under it is never served from here.
+ *
+ * `staleTime: Infinity` because the invalidation registry is what expires it,
+ * never the clock. Per-album mutations reach it through the `albums/<id>`
+ * prefix; artist-wide ones carry no album id and reach it through
+ * `keyMatchers.trackOrdersOf`, which `affectedKeys.albums.tracksPages` pairs
+ * with the pages. A path that invalidates the pages without the order would
+ * leave them cut from a list that still counts removed rows.
+ */
+const albumTrackOrder = (albumId: AlbumId, sortKey: TrackSortKey | null) =>
+  queryOptions({
+    queryKey: queryKeys.albums.trackOrder(albumId, sortKey),
+    queryFn: async () => (await getAlbumTrackEntities(albumId, sortKey)).map(track => track.id),
+    staleTime: Infinity,
+  });
+
 export async function getAlbumTracksPaginated(
   albumId: AlbumId,
   offset: number,
   limit = PAGE_SIZE,
   sortKey: TrackSortKey | null = null,
+  client: QueryClient,
 ): Promise<PaginatedTracksResult> {
-  const [countResult, album] = await Promise.all([
-    unwrapResult(trackRepository.countByAlbumId(albumId)),
+  const [order, album, total] = await Promise.all([
+    client.fetchQuery(albumTrackOrder(albumId, sortKey)),
     getAlbumByIdOrThrow(albumId),
+    // Counted live off [albumId+pinned] rather than read off the order: the
+    // order is cached until the registry expires it, so between a delete and
+    // that invalidation it still names rows that are gone, and the list would
+    // advertise a number it cannot fill. The count reads no row.
+    unwrapResult(trackRepository.countByAlbumId(albumId)),
   ]);
 
-  const total = countResult;
+  const pageIds = order.slice(offset, offset + limit);
 
-  if (total === 0) {
+  if (pageIds.length === 0) {
     return { tracks: [], nextOffset: null, total };
   }
 
-  let rawTracks: TrackEntity[];
-
-  if (sortKey) {
-    const sorted = await getAlbumTrackEntities(albumId, sortKey);
-    rawTracks = sorted.slice(offset, offset + limit);
-  }
-  else {
-    rawTracks = await unwrapResult(
-      trackRepository.findByAlbumIdPaginated(albumId, offset, limit),
-    );
-  }
+  // bulkGet answers in the order asked, so the page keeps the list's order.
+  const rawTracks = await unwrapResult(trackRepository.findByIds(pageIds));
 
   const allArtistIds = unique(rawTracks.flatMap(t => t.artistIds));
   const allArtists = allArtistIds.length > 0

@@ -12,6 +12,19 @@ import { buildTransitions } from "../lib/transitions";
 
 export const MAX_HISTORY_DAYS = 90;
 
+/**
+ * How far back listen events are read at all.
+ *
+ * Affinity decays events itself with a 60-day e-fold, so at six horizons an
+ * event carries e^-6 — under 0.25 % of a fresh one's weight, well inside the
+ * noise the priors already add. Listen history is the only input with no
+ * ceiling (it grows for as long as the app is used), and the rebuild happens
+ * in the gap between two tracks, so the read is bounded here rather than left
+ * to grow into a decade of rows. Sessions and transitions narrow further to
+ * MAX_HISTORY_DAYS inside buildRecommenderContext.
+ */
+export const EVENT_HORIZON_MS = 6 * DEFAULT_AFFINITY_OPTIONS.decayMs;
+
 /** How many of the most-recently-played unique tracks the context keeps for exclusion. */
 const RECENT_LIMIT = 100;
 
@@ -33,17 +46,20 @@ export interface BuildRecommenderContextInput {
   now: number;
 }
 
+// Ranked over the distinct tracks rather than over the events: one pass to
+// find each track's latest listen, then a sort bounded by the library rather
+// than by however many times it has been played. Independent of the order the
+// events arrive in, so a training cutoff can feed any slice.
 const recentlyPlayedOf = (events: readonly ListenEventEntity[], limit: number): TrackId[] => {
-  const sorted = [...events].sort((a, b) => b.startedAt - a.startedAt);
-  const seen = new Set<TrackId>();
-  const out: TrackId[] = [];
-  for (const e of sorted) {
-    if (seen.has(e.trackId)) continue;
-    seen.add(e.trackId);
-    out.push(e.trackId);
-    if (out.length >= limit) break;
+  const latest = new Map<TrackId, number>();
+  for (const e of events) {
+    const seen = latest.get(e.trackId);
+    if (seen === undefined || e.startedAt > seen) latest.set(e.trackId, e.startedAt);
   }
-  return out;
+  return [...latest]
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, limit)
+    .map(([trackId]) => trackId);
 };
 
 /**
@@ -109,7 +125,7 @@ const loadRecommenderContext = async (): Promise<LoadResult> => {
   const now = Date.now();
   const [tracksResult, eventsResult, featuresResult] = await Promise.all([
     trackRepository.findAll(),
-    statsRepository.findAllEvents(),
+    statsRepository.eventsSince(now - EVENT_HORIZON_MS),
     audioFeaturesRepository.findAll(),
   ]);
 

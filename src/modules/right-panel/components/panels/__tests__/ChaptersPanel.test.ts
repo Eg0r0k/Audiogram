@@ -67,17 +67,17 @@ describe("ChaptersPanel", () => {
     vi.useRealTimers();
   });
 
-  it("lets the user leave edit mode without saving", async () => {
+  // Editing has no cancel any more: changes autosave as they are made, and the
+  // only way out of edit mode is committing them.
+  it("offers save as the only action while editing", async () => {
     renderPanel();
     await enterEdit();
     expect(screen.getByRole("textbox")).toBeInTheDocument();
 
-    await fireEvent.click(screen.getByRole("button", { name: "Cancel editing" }));
-    await nextTick();
-
-    expect(screen.queryByRole("textbox")).toBeNull();
-    expect(mocks.mutate).not.toHaveBeenCalled();
-    expect(mocks.mutateAsync).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Save chapters" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel editing" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit chapters" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Import CUE file" })).toBeNull();
   });
 
   it("keeps save enabled for an empty draft and exits without a write when nothing changed", async () => {
@@ -94,7 +94,23 @@ describe("ChaptersPanel", () => {
     expect(mocks.mutateAsync).not.toHaveBeenCalled();
   });
 
-  it("restores the pre-edit chapters on cancel after the autosave already wrote the draft", async () => {
+  it("autosaves the draft 1500 ms after the last edit", async () => {
+    vi.useFakeTimers();
+    mocks.data.value = [{ time: 10, title: "Intro" }];
+    renderPanel();
+    await enterEdit();
+
+    await fireEvent.update(screen.getByRole("textbox"), "00:05 - Changed");
+    await nextTick();
+
+    vi.advanceTimersByTime(1499);
+    expect(mocks.mutate).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    expect(mocks.mutate).toHaveBeenCalledWith({ trackId: "t1", chapters: [{ time: 5, title: "Changed" }] });
+  });
+
+  it("does not write again on save when the autosave already persisted the draft", async () => {
     vi.useFakeTimers();
     mocks.data.value = [{ time: 10, title: "Intro" }];
     renderPanel();
@@ -103,16 +119,16 @@ describe("ChaptersPanel", () => {
     await fireEvent.update(screen.getByRole("textbox"), "00:05 - Changed");
     await nextTick();
     vi.advanceTimersByTime(1500);
+    expect(mocks.mutate).toHaveBeenCalledTimes(1);
 
-    expect(mocks.mutate).toHaveBeenCalledWith({ trackId: "t1", chapters: [{ time: 5, title: "Changed" }] });
-    // The query cache now reflects the autosaved draft.
+    // The query cache now reflects what the autosave wrote.
     mocks.data.value = [{ time: 5, title: "Changed" }];
     await nextTick();
 
-    await fireEvent.click(screen.getByRole("button", { name: "Cancel editing" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Save chapters" }));
     await nextTick();
 
-    expect(mocks.mutateAsync).toHaveBeenCalledWith({ trackId: "t1", chapters: [{ time: 10, title: "Intro" }] });
+    expect(mocks.mutateAsync).not.toHaveBeenCalled();
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 });

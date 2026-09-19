@@ -16,6 +16,7 @@ vi.mock(import("@/lib/environment/userAgent"), async (importOriginal) => {
 
 import {
   initMediaServerBase,
+  localFileRawUrl,
   localFileStreamUrl,
   migrateProxyUrl,
   ndCoverUrl,
@@ -75,6 +76,13 @@ describe("builders", () => {
       .toBe(`${BASE}/local/C%3A%2Fmusic%2Fa%20b.mp3`);
     expect(localFileStreamUrl("/data/user/0/app/tracks/a.flac"))
       .toBe(`${BASE}/local/%2Fdata%2Fuser%2F0%2Fapp%2Ftracks%2Fa.flac`);
+  });
+
+  it("marks a raw local URL so the server skips the playback rendition", () => {
+    expect(localFileRawUrl("C:/music/a.m4a"))
+      .toBe(`${BASE}/local/C%3A%2Fmusic%2Fa.m4a?raw=1`);
+    // The playback builder must stay untouched: there the rendition is wanted.
+    expect(localFileStreamUrl("C:/music/a.m4a")).not.toContain("raw");
   });
 
   it("encodes a thumbnail URL, query included, as one ytimg segment", () => {
@@ -155,6 +163,13 @@ describe("migrateProxyUrl", () => {
   it("re-encodes local paths for the current base", () => {
     expect(migrateProxyUrl("http://127.0.0.1:60123/deadbeef/local/C%3A%2Fmusic%2Fa%20b.mp3"))
       .toBe(`${BASE}/local/C%3A%2Fmusic%2Fa%20b.mp3`);
+  });
+
+  // Losing the marker turns a content read back into a playback read, which is
+  // exactly how tags end up being parsed out of a transcoded rendition.
+  it("keeps the raw marker on a local URL", () => {
+    expect(migrateProxyUrl("http://127.0.0.1:60123/deadbeef/local/C%3A%2Fmusic%2Fa.m4a?raw=1"))
+      .toBe(`${BASE}/local/C%3A%2Fmusic%2Fa.m4a?raw=1`);
   });
 
   it("moves thumbnails onto the current base without losing their query", () => {

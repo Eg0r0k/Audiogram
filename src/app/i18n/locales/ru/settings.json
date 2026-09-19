@@ -140,6 +140,14 @@
       "system": "Системная",
       "off": "Выкл",
       "on": "Вкл"
+    },
+    "font": "Шрифт",
+    "fontSample": "Съешь ещё этих мягких булок",
+    "fonts": {
+      "system": "Системный",
+      "inter": "Inter",
+      "manrope": "Manrope",
+      "onest": "Onest"
     }
   },
   "audio": {

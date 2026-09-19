@@ -31,6 +31,8 @@
       </button>
     </div>
 
+    <WindowToolbarSource v-if="isDesktopLayout" />
+
     <div class="titlebar-controls">
       <button
         class="ctl"
@@ -102,11 +104,17 @@ import type { Window } from "@tauri-apps/api/window";
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { platformCaps } from "@/lib/environment/platformCaps";
+import { useDeviceLayout } from "@/composables/useDeviceLayout";
+import WindowToolbarSource from "@/components/WindowToolbarSource.vue";
 import IconChevronLeft from "~icons/tabler/chevron-left";
 import IconChevronRight from "~icons/tabler/chevron-right";
 
 import useTauriEvent from "@/composables/tauri/useTauriEvent";
 import { EVENTS } from "@/app/tauri-commands";
+
+// A narrow window switches to the mobile layout, where the mini player
+// already names the origin right above the nav.
+const { isDesktopLayout } = useDeviceLayout();
 
 const router = useRouter();
 const canGoBack = true;

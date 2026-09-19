@@ -22,18 +22,24 @@ fn file_stream_body(file: tokio::fs::File, len: u64) -> Body {
 /// streams the span. ALAC-in-mp4 sources (undecodable by any Chromium
 /// webview) are transparently swapped for their cached WAV rendition —
 /// the response then carries `audio/wav` and ranges resolve against it.
+///
+/// `raw` opts out of that swap. Readers that want the user's container rather
+/// than something playable — tag parsing, fingerprinting — must set it: a
+/// rendition carries no tags, and its length has nothing to do with the
+/// original's, so a duration derived from it is wrong.
 pub(super) async fn serve_local(
     path: &str,
     range: Option<&str>,
     origin: Option<&str>,
     transcode_cache: Option<&std::path::Path>,
+    raw: bool,
 ) -> http::Response<Body> {
     if !is_safe_abs_path(path) {
         return status_response(403, origin);
     }
 
     let mut path = std::borrow::Cow::Borrowed(path);
-    if crate::transcode::is_transcode_candidate(&path) {
+    if !raw && crate::transcode::is_transcode_candidate(&path) {
         if let Some(cache) = transcode_cache {
             let src = std::path::PathBuf::from(path.as_ref());
             let cache = cache.to_path_buf();

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { ok } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { ndAlbumId, ndArtistId, ndTrackId } from "@/types/track-ref";
 import type { SourceTrackDTO } from "@/modules/sources";
 
@@ -166,7 +166,7 @@ describe("ensurePinned", () => {
   });
 
   it("propagates a failed transaction", async () => {
-    uow.runScoped.mockResolvedValue({ isErr: () => true, error: new Error("tx failed") });
+    uow.runScoped.mockResolvedValue(err(new Error("tx failed")));
 
     await expect(ensurePinned({ kind: "remote", dto })).rejects.toThrow("tx failed");
   });

@@ -17,7 +17,7 @@ import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 
 import type { IFileStorageWithNativeSupport } from "./IFileStorage";
 import { getLogger } from "@/lib/logger";
-import { localFileStreamUrl } from "@/lib/stream-url";
+import { localFileRawUrl, localFileStreamUrl } from "@/lib/stream-url";
 import { StorageError } from "../errors/storage.errors";
 import { normalizePath } from "./pathUtils";
 
@@ -151,6 +151,10 @@ export class TauriStorage implements IFileStorageWithNativeSupport {
    * of a plugin-fs IPC round-trip, which serializes and moves bytes an order
    * of magnitude slower. Returns null when the server is unavailable or
    * refuses the path — the caller then falls back to plugin-fs.
+   *
+   * Asks for the raw file: every caller of readBytes reads bytes as content
+   * (tags, fingerprint), and the server's playback rendition of an ALAC or
+   * video-bearing mp4 carries neither the original's tags nor its length.
    */
   private async readBytesViaMediaServer(absolutePath: string, length: number): Promise<Uint8Array<ArrayBuffer> | null> {
     if (length <= 0) return null;
@@ -159,7 +163,7 @@ export class TauriStorage implements IFileStorageWithNativeSupport {
     try {
       // Throws when no server base exists (web build, tests) — there the
       // plugin-fs path is the primary one and no fallback happened.
-      url = localFileStreamUrl(absolutePath);
+      url = localFileRawUrl(absolutePath);
     }
     catch {
       return null;

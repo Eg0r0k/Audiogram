@@ -1,4 +1,4 @@
-import type { ArtistEntity, TrackEntity } from "@/db/entities";
+import type { ArtistEntity } from "@/db/entities";
 import {
   albumRepository,
   artistRepository,
@@ -17,7 +17,7 @@ import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/s
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { ArtistId as createArtistId } from "@/types/ids";
-import type { ArtistId } from "@/types/ids";
+import type { ArtistId, TrackId } from "@/types/ids";
 import { queryOptions, skipToken, type QueryClient } from "@tanstack/vue-query";
 import {
   invalidateForArtistMutation,
@@ -112,33 +112,53 @@ export async function getArtistPageData(artistId: ArtistId, sortKey: TrackSortKe
   };
 }
 
+/**
+ * The artist's member ids in list order. `artistIds` is multi-entry, and
+ * IndexedDB forbids multiEntry inside a compound key, so membership cannot
+ * ride along with it: the list is built by subtracting the shadow set, once
+ * per (artist, sort) rather than once per page. That set holds every remote
+ * track ever queued from browsing, so it belongs to no artist in particular
+ * and only grows — paging against it directly costs the whole set per page.
+ *
+ * `staleTime: Infinity` because the invalidation registry is what expires it,
+ * never the clock — `affectedKeys.artists.tracksPages` pairs it with the
+ * pages, which would otherwise be cut from a list that still counts removed
+ * rows. Ids only: the page reads its own rows, so a row edited under it is
+ * never served from here.
+ */
+const artistTrackOrder = (artistId: ArtistId, sortKey: TrackSortKey | null) =>
+  queryOptions({
+    queryKey: queryKeys.artists.trackOrder(artistId, sortKey),
+    // Unsorted needs no row at all — the ids come straight off the index.
+    queryFn: async (): Promise<TrackId[]> =>
+      sortKey
+        ? (await getArtistTrackEntities(artistId, sortKey)).map(track => track.id)
+        : unwrapResult(trackRepository.findIdsByArtistId(artistId)),
+    staleTime: Infinity,
+  });
+
 export async function getArtistTracksPaginated(
   artistId: ArtistId,
   offset: number,
   limit = PAGE_SIZE,
   sortKey: TrackSortKey | null = null,
+  client: QueryClient,
 ): Promise<PaginatedTracksResult> {
-  const [countResult] = await Promise.all([
-    unwrapResult(trackRepository.countByArtistId(artistId)),
-  ]);
+  const order = await client.fetchQuery(artistTrackOrder(artistId, sortKey));
 
-  const total = countResult;
+  // Read off the order, unlike an album's total, which is counted live: no
+  // index can count an artist's members — that is what the order itself is
+  // for — so between a delete and the invalidation that expires the order,
+  // this still counts the row. The registry heals it; nothing cheaper can.
+  const total = order.length;
+  const pageIds = order.slice(offset, offset + limit);
 
-  if (total === 0) {
+  if (pageIds.length === 0) {
     return { tracks: [], nextOffset: null, total };
   }
 
-  let rawTracks: TrackEntity[];
-
-  if (sortKey) {
-    const sorted = await getArtistTrackEntities(artistId, sortKey);
-    rawTracks = sorted.slice(offset, offset + limit);
-  }
-  else {
-    rawTracks = await unwrapResult(
-      trackRepository.findByArtistIdPaginated(artistId, offset, limit),
-    );
-  }
+  // bulkGet answers in the order asked, so the page keeps the list's order.
+  const rawTracks = await unwrapResult(trackRepository.findByIds(pageIds));
 
   await getArtistByIdOrThrow(artistId);
   const albumIds = unique(rawTracks.map(track => track.albumId));

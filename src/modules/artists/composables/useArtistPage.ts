@@ -77,9 +77,9 @@ export function useArtistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Re
     isFetchingNextPage: isFetchingNextTrackPage,
   } = useInfiniteQuery({
     queryKey: computed(() => queryKeys.artists.tracksPage(artistId.value, sortKey.value, normalizedSearchQuery.value)),
-    queryFn: ({ pageParam = 0 }) => normalizedSearchQuery.value
+    queryFn: ({ pageParam = 0, client }) => normalizedSearchQuery.value
       ? searchArtistTracks(artistId.value, normalizedSearchQuery.value, pageParam, undefined, sortKey.value)
-      : getArtistTracksPaginated(artistId.value, pageParam, undefined, sortKey.value),
+      : getArtistTracksPaginated(artistId.value, pageParam, undefined, sortKey.value, client),
     initialPageParam: 0,
     getNextPageParam: lastPage => lastPage.nextOffset,
     placeholderData: previousData => previousData,

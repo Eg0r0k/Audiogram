@@ -109,6 +109,16 @@ export class AppDatabase extends Dexie {
       tracks: "&id, title, artistName, albumTitle, *artistIds, albumId, *tagIds, likedAt, addedAt, duration, playCount, storagePath, fingerprint, pinned, sourceRef, [albumId+pinned], [title+likedAt], [addedAt+likedAt], [duration+likedAt], [artistName+likedAt], [albumTitle+likedAt], [playCount+likedAt]",
     }).upgrade(upgradeToV16);
 
+    // Index-only: one [pinned+<sortField>] per TrackSortField, so a library
+    // listing pages through the index instead of ordering by the field and
+    // dropping shadow rows with a JS filter — a filter makes Dexie's offset()
+    // fall back to counting rows one by one, reading (and deserializing)
+    // every row it skips. Mirrors the [<sortField>+likedAt] set the liked
+    // list already pages through. No data change; Dexie rebuilds the indexes.
+    this.version(17).stores({
+      tracks: "&id, title, artistName, albumTitle, *artistIds, albumId, *tagIds, likedAt, addedAt, duration, playCount, storagePath, fingerprint, pinned, sourceRef, [albumId+pinned], [title+likedAt], [addedAt+likedAt], [duration+likedAt], [artistName+likedAt], [albumTitle+likedAt], [playCount+likedAt], [pinned+title], [pinned+artistName], [pinned+albumTitle], [pinned+addedAt], [pinned+duration], [pinned+playCount]",
+    });
+
     this.tracks = this.table("tracks");
     this.artists = this.table("artists");
     this.albums = this.table("albums");

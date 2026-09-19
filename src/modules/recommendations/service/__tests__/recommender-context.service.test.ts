@@ -12,7 +12,7 @@ vi.mock("@/db/repositories", () => ({
   trackRepository: { findAll: vi.fn() },
 }));
 vi.mock("@/db/repositories/stats.repository", () => ({
-  statsRepository: { findAllEvents: vi.fn() },
+  statsRepository: { eventsSince: vi.fn() },
   SESSION_GAP_MS: 30 * 60 * 1000,
 }));
 vi.mock("@/db/repositories/audioFeatures.repository", () => ({
@@ -28,14 +28,14 @@ const { getRecommenderContext, markRecommenderContextDirty, buildRecommenderCont
 );
 
 const mockFindAll = trackRepository.findAll as ReturnType<typeof vi.fn>;
-const mockFindAllEvents = statsRepository.findAllEvents as ReturnType<typeof vi.fn>;
+const mockEventsSince = statsRepository.eventsSince as ReturnType<typeof vi.fn>;
 const mockFeaturesFindAll = audioFeaturesRepository.findAll as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
   markRecommenderContextDirty();
   mockFindAll.mockResolvedValue(ok([]));
-  mockFindAllEvents.mockResolvedValue(ok([]));
+  mockEventsSince.mockResolvedValue(ok([]));
   mockFeaturesFindAll.mockResolvedValue(ok([]));
 });
 
@@ -56,7 +56,7 @@ describe("getRecommenderContext", () => {
     const [a, b] = await Promise.all([getRecommenderContext(), getRecommenderContext()]);
     expect(a).toBe(b);
     expect(mockFindAll).toHaveBeenCalledTimes(1);
-    expect(mockFindAllEvents).toHaveBeenCalledTimes(1);
+    expect(mockEventsSince).toHaveBeenCalledTimes(1);
     expect(mockFeaturesFindAll).toHaveBeenCalledTimes(1);
   });
 

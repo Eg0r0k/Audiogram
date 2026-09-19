@@ -205,9 +205,6 @@ const draft = ref<DraftChapter[]>([]);
 const isSaving = saveMutation.isPending;
 const isImporting = ref(false);
 const importError = ref<string | null>(null);
-// The list as it was when editing started — what "cancel" puts back, since
-// the autosave below may already have written the draft.
-let editSnapshot: TrackChapterMark[] = [];
 
 const chapterSchema = computed(() => object({
   time: pipe(number(), minValue(0), maxValue(props.track.duration)),
@@ -235,7 +232,6 @@ const clearAutoSave = (): void => {
 
 watch(isEditing, (editing) => {
   if (!editing) return;
-  editSnapshot = chapters.value.map(c => ({ time: c.time, title: c.title }));
   draft.value = chapters.value.map(c => ({ id: crypto.randomUUID(), time: c.time, title: c.title ?? "" }));
 });
 
@@ -308,13 +304,5 @@ async function handleSave(): Promise<void> {
     await saveMutation.mutateAsync({ trackId: props.track.id, chapters: payload });
   }
   isEditing.value = false;
-}
-
-async function cancelEditing(): Promise<void> {
-  clearAutoSave();
-  isEditing.value = false;
-  if (!sameChapters(chapters.value, editSnapshot)) {
-    await saveMutation.mutateAsync({ trackId: props.track.id, chapters: editSnapshot });
-  }
 }
 </script>

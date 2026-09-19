@@ -95,22 +95,42 @@ const recountOffsets = <P extends { nextOffset: number | null }>(
 const trackRowsOf = (page: PaginatedTracksResult) => page.tracks;
 const albumRowsOf = (page: PaginatedAlbumsResult) => page.albums;
 
+/**
+ * Rebuilds only the pages `mapTracks` actually changed — it signals "no
+ * change" by handing its input back. A list scrolled deep into a large
+ * library holds thousands of rows across hundreds of pages, and patching one
+ * row must not allocate a new array for each of them (nor leave structural
+ * sharing to walk every row afterwards undoing the churn).
+ */
 const mapInfiniteTrackPages = (
   data: TrackPages,
   mapTracks: (tracks: Track[]) => Track[],
 ): TrackPages => {
   if (!isPagedData(data)) return data;
-  return {
-    ...data,
-    pages: data.pages.map(page => ({
-      ...page,
-      tracks: mapTracks(page.tracks),
-    })),
-  };
+  // A plain loop, not map(): type-aware lint (no-unnecessary-condition) does
+  // not follow an assignment made inside a callback, so it narrows `changed`
+  // to `false` and rejects the check below as dead.
+  const pages: PaginatedTracksResult[] = [];
+  let changed = false;
+  for (const page of data.pages) {
+    const tracks = mapTracks(page.tracks);
+    if (tracks === page.tracks) {
+      pages.push(page);
+      continue;
+    }
+    changed = true;
+    pages.push({ ...page, tracks });
+  }
+  return changed ? { ...data, pages } : data;
 };
 
-const replaceTrackRow = (nextTrack: Track) => (tracks: Track[]) =>
-  tracks.map(track => (track.id === nextTrack.id ? nextTrack : track));
+// Scanning first keeps the common case — the row is on some other page —
+// allocation-free. Every occurrence is replaced, not just the first: a list
+// may legitimately hold the same track twice.
+const replaceTrackRow = (nextTrack: Track) => (tracks: Track[]) => {
+  if (!tracks.some(track => track.id === nextTrack.id)) return tracks;
+  return tracks.map(track => (track.id === nextTrack.id ? nextTrack : track));
+};
 
 // A flat id lookup holds the same rows as a page; a row change reaches it too.
 const patchTrackRowLists = (queryClient: QueryClient, nextTrack: Track) => {
@@ -530,7 +550,15 @@ const affectedKeys = {
     all: (): InvalidationFilter[] => [byKey(queryKeys.albums.all())],
     /** Everything cached under these albums. */
     of: (ids: readonly AlbumId[]): InvalidationFilter[] => ids.map(id => byKey(queryKeys.albums.detail(id))),
-    tracksPages: (): InvalidationFilter[] => [byMatch(keyMatchers.tracksPagesOf("albums"))],
+    /**
+     * An album's listings: the pages and the id order they are cut from. The
+     * order has to go with them — pages re-read against a stale order report
+     * a total that still counts removed rows and serve short pages.
+     */
+    tracksPages: (): InvalidationFilter[] => [
+      byMatch(keyMatchers.tracksPagesOf("albums")),
+      byMatch(keyMatchers.trackOrdersOf("albums")),
+    ],
   },
   artists: {
     all: (): InvalidationFilter[] => [byKey(queryKeys.artists.all())],
@@ -538,7 +566,11 @@ const affectedKeys = {
     of: (ids: readonly ArtistId[]): InvalidationFilter[] => ids.map(id => byKey(queryKeys.artists.detail(id))),
     /** The album rows the artist page renders; nothing patches a title into them. */
     albumShelves: (ids: readonly ArtistId[]): InvalidationFilter[] => ids.map(id => byKey(queryKeys.artists.albums(id))),
-    tracksPages: (): InvalidationFilter[] => [byMatch(keyMatchers.tracksPagesOf("artists"))],
+    /** The pages and the id order they are cut from — see albums.tracksPages. */
+    tracksPages: (): InvalidationFilter[] => [
+      byMatch(keyMatchers.tracksPagesOf("artists")),
+      byMatch(keyMatchers.trackOrdersOf("artists")),
+    ],
   },
   playlists: {
     all: (): InvalidationFilter[] => [byKey(queryKeys.playlists.all())],

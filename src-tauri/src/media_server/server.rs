@@ -54,17 +54,26 @@ pub(crate) async fn handle<T: RemoteRoutes>(
         .and_then(|v| v.to_str().ok())
         .map(str::to_owned);
 
+    let query = req.uri().query().map(str::to_owned);
+
     if let Some(local_path) = rest.strip_prefix("local/") {
+        // `raw` asks for the file itself rather than something playable — the
+        // import's tag parser and fingerprint read through this route. Matched
+        // on the key alone: a spelling that fell through to the rendition would
+        // be a silently wrong answer rather than an error.
+        let raw = query
+            .as_deref()
+            .is_some_and(|q| q.split('&').any(|pair| pair.split('=').next() == Some("raw")));
         return serve_local(
             local_path,
             range.as_deref(),
             origin.as_deref(),
             transcode_cache,
+            raw,
         )
         .await;
     }
 
-    let query = req.uri().query().map(str::to_owned);
     match remote.dispatch(rest, query, range, origin.clone()).await {
         Some(response) => response,
         None => status_response(404, origin.as_deref()),

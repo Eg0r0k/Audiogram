@@ -11,6 +11,11 @@
 //! `/{token}/local/<enc path>`, `/{token}/nd/song/<id>`,
 //! `/{token}/nd/cover/<id>?size=<px>`, `/{token}/yt/<videoId>`,
 //! `/{token}/ytimg/<enc https url>`.
+//!
+//! The local route answers with two different bodies: by default the playable
+//! form of the file (ALAC and APE swapped for their WAV rendition), and with
+//! `?raw=1` the file exactly as it is on disk — what tag parsing and
+//! fingerprinting need.
 
 mod local;
 mod primitives;
@@ -135,6 +140,13 @@ mod integration_tests {
     /// Real server on `:0` + the current-runtime accept loop; returns the
     /// base URL and the token.
     async fn spawn_test_server() -> (String, String) {
+        let (base, token, _cache) = spawn_test_server_with_cache().await;
+        (base, token)
+    }
+
+    /// Same, but hands back the transcode cache directory so a test can tell
+    /// whether a request produced a rendition at all.
+    async fn spawn_test_server_with_cache() -> (String, String, std::path::PathBuf) {
         let (listener, _image_listener, state) = bind_on_loopback().expect("bind loopback");
         listener.set_nonblocking(true).expect("nonblocking");
         let tokio_listener = tokio::net::TcpListener::from_std(listener).expect("tokio listener");
@@ -144,10 +156,16 @@ mod integration_tests {
         tokio::spawn(run_accept_loop(
             NoRemote,
             state.token,
-            Some(cache),
+            Some(cache.clone()),
             tokio_listener,
         ));
-        (base, token)
+        (base, token, cache)
+    }
+
+    fn cached_renditions(cache: &std::path::Path) -> usize {
+        std::fs::read_dir(cache)
+            .map(|dir| dir.filter_map(Result::ok).count())
+            .unwrap_or(0)
     }
 
     fn temp_audio_file(bytes: &[u8]) -> std::path::PathBuf {
@@ -330,6 +348,118 @@ mod integration_tests {
             tail.bytes().await.expect("body").as_ref(),
             &body[body.len() - 4..]
         );
+    }
+
+    /// Tag parsing and fingerprinting read local files through this route and
+    /// need the user's container, not the playable rendition of it.
+    #[tokio::test]
+    async fn raw_flag_serves_alac_m4a_untranscoded() {
+        let (base, token) = spawn_test_server().await;
+        let path = fixture("tiny-alac.m4a");
+        let size = std::fs::metadata(&path).expect("fixture size").len();
+
+        let resp = reqwest::get(format!("{base}/{token}/local/{}?raw=1", encode_path(&path)))
+            .await
+            .expect("request");
+
+        assert_eq!(resp.status(), 200);
+        assert_eq!(resp.headers()["Content-Type"], "audio/mp4");
+        let body = resp.bytes().await.expect("body");
+        assert_eq!(&body[4..8], b"ftyp");
+        assert_eq!(body.len() as u64, size);
+    }
+
+    #[tokio::test]
+    async fn raw_ranges_resolve_against_the_original_file() {
+        let (base, token) = spawn_test_server().await;
+        let path = fixture("tiny-alac.m4a");
+        let size = std::fs::metadata(&path).expect("fixture size").len();
+        let original = std::fs::read(&path).expect("fixture bytes");
+
+        let resp = reqwest::Client::new()
+            .get(format!("{base}/{token}/local/{}?raw=1", encode_path(&path)))
+            .header("Range", "bytes=0-63")
+            .send()
+            .await
+            .expect("request");
+
+        assert_eq!(resp.status(), 206);
+        assert_eq!(
+            resp.headers()["Content-Range"].to_str().unwrap(),
+            format!("bytes 0-63/{size}"),
+        );
+        assert_eq!(
+            resp.bytes().await.expect("body").as_ref(),
+            &original[..64],
+            "raw head read must hand back the file's own first bytes",
+        );
+    }
+
+    /// The flag exists for two reasons — the right bytes AND not paying a full
+    /// decode to read a few KiB of tags. Asserting only on the response would
+    /// let a regression that transcodes first and then serves the original pass.
+    #[tokio::test]
+    async fn raw_reads_do_not_produce_a_rendition() {
+        let (base, token, cache) = spawn_test_server_with_cache().await;
+        let path = encode_path(&fixture("tiny-alac.m4a"));
+
+        let raw = reqwest::get(format!("{base}/{token}/local/{path}?raw=1"))
+            .await
+            .expect("raw request");
+        assert_eq!(raw.status(), 200);
+        let _ = raw.bytes().await.expect("raw body");
+        assert_eq!(
+            cached_renditions(&cache),
+            0,
+            "a raw read must not transcode",
+        );
+
+        // Control: without the flag the very same request does cache one.
+        let playback = reqwest::get(format!("{base}/{token}/local/{path}"))
+            .await
+            .expect("playback request");
+        assert_eq!(playback.status(), 200);
+        let _ = playback.bytes().await.expect("playback body");
+        assert_eq!(cached_renditions(&cache), 1);
+
+        let _ = std::fs::remove_dir_all(&cache);
+    }
+
+    #[tokio::test]
+    async fn raw_is_recognized_by_key_not_by_exact_spelling() {
+        let (base, token) = spawn_test_server().await;
+        let path = encode_path(&fixture("tiny-alac.m4a"));
+
+        for query in ["raw", "raw=1", "raw=1&other=x", "other=x&raw"] {
+            let resp = reqwest::get(format!("{base}/{token}/local/{path}?{query}"))
+                .await
+                .expect("request");
+            assert_eq!(
+                resp.headers()["Content-Type"], "audio/mp4",
+                "?{query} should have been treated as raw",
+            );
+        }
+
+        // A key that merely starts with the same letters is not the flag.
+        let resp = reqwest::get(format!("{base}/{token}/local/{path}?rawr=1"))
+            .await
+            .expect("request");
+        assert_eq!(resp.headers()["Content-Type"], "audio/wav");
+    }
+
+    #[tokio::test]
+    async fn raw_flag_serves_ape_untranscoded() {
+        let (base, token) = spawn_test_server().await;
+        let path = fixture("tiny-impulse.ape");
+        let size = std::fs::metadata(&path).expect("fixture size").len();
+
+        let resp = reqwest::get(format!("{base}/{token}/local/{}?raw=1", encode_path(&path)))
+            .await
+            .expect("request");
+
+        assert_eq!(resp.status(), 200);
+        assert_eq!(resp.headers()["Content-Type"], "audio/x-ape");
+        assert_eq!(resp.bytes().await.expect("body").len() as u64, size);
     }
 
     #[tokio::test]

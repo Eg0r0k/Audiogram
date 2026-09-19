@@ -31,6 +31,13 @@ export const queryKeys = {
     albums: (id: ArtistId) => ["artists", id, "albums"] as const,
     tracksPage: (id: ArtistId, sortKey?: TrackSortKey | null, search?: string) =>
       tracksPageKey("artists", id, sortKey, search),
+    /**
+     * The artist's member ids in list order — ids only, so a row that changed
+     * under a page is still read fresh. Shares the `detail(id)` prefix, so
+     * every invalidation that reaches the artist's pages reaches the order too.
+     */
+    trackOrder: (id: ArtistId, sortKey: TrackSortKey | null) =>
+      ["artists", id, "trackOrder", sortKey] as const,
   },
   albums: {
     all: () => ["albums"] as const,
@@ -40,6 +47,13 @@ export const queryKeys = {
     search: (query: string) => ["albums", "search", query] as const,
     tracksPage: (id: AlbumId, sortKey?: TrackSortKey | null, search?: string) =>
       tracksPageKey("albums", id, sortKey, search),
+    /**
+     * The album's member ids in list order — ids only, so a row that changed
+     * under a page is still read fresh. Shares the `detail(id)` prefix, so
+     * every invalidation that reaches the album's pages reaches the order too.
+     */
+    trackOrder: (id: AlbumId, sortKey: TrackSortKey | null) =>
+      ["albums", id, "trackOrder", sortKey] as const,
     totalDuration: (id: AlbumId) => ["albums", id, "totalDuration"] as const,
   },
   playlists: {
@@ -114,6 +128,7 @@ export const queryKeys = {
     all: () => ["stats"] as const,
     /** Raw listen events of a period — the shared read behind the aggregates below. */
     events: (since?: number) => ["stats", "events", since] as const,
+    hasHistory: () => ["stats", "hasHistory"] as const,
     topTracks: (limit: number, since?: number) =>
       ["stats", "topTracks", limit, since] as const,
     topTracksMeta: (ids: readonly string[]) =>
@@ -142,6 +157,13 @@ const ENTITY_ROOTS: ReadonlySet<unknown> = new Set<EntityRoot>(["albums", "artis
 const isEntityTracksPage = (key: QueryKey) =>
   ENTITY_ROOTS.has(key[0]) && key[2] === "tracks" && key[3] === "page";
 
+// The cached id order a collection's pages are cut from. It is not a page and
+// holds no rows, so page patches must skip it — but anything that invalidates
+// the pages has to reach it too, or they re-read against a list that still
+// counts rows the mutation removed.
+const isEntityTrackOrder = (key: QueryKey) =>
+  ENTITY_ROOTS.has(key[0]) && key[2] === "trackOrder";
+
 const isLikedPage = (key: QueryKey) =>
   key[0] === "tracks" && key[1] === "liked" && key[2] === "page" && key[3] === "infinite";
 
@@ -159,6 +181,8 @@ const isSearchScopedPage = (key: QueryKey) =>
 export const keyMatchers = {
   /** The paged track lists of every entity under `root`, any sort. */
   tracksPagesOf: (root: EntityRoot) => (key: QueryKey) => key[0] === root && isEntityTracksPage(key),
+  /** The cached listing order of every entity under `root`, any sort. */
+  trackOrdersOf: (root: EntityRoot) => (key: QueryKey) => key[0] === root && isEntityTrackOrder(key),
   /** The paged track lists of one entity, any sort. */
   tracksPagesOfEntity: (root: EntityRoot, id: string) => (key: QueryKey) =>
     key[0] === root && key[1] === id && isEntityTracksPage(key),

@@ -6,7 +6,7 @@ import { ArtistId } from "@/types/ids";
 import { ndArtistId, ytAlbumId, ytArtistId, ytTrackId } from "@/types/track-ref";
 import type { SourceTrackDTO } from "@/modules/sources";
 import type { BaseMetadata } from "@/workers/types";
-import { EntityResolver, alignArtists, splitArtistNames } from "../entity-resolver";
+import { EntityResolver, alignArtists, artistNameIndex, splitArtistNames } from "../entity-resolver";
 
 const localId = ArtistId("41180b61-7c4a-44aa-bcd7-166e6b0e4b50");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -38,15 +38,45 @@ describe("splitArtistNames", () => {
   });
 });
 
+describe("artistNameIndex", () => {
+  // Pinning a queued album aligns every one of its tracks against the whole
+  // artists table. Rebuilding the name lookup per track is what makes "play
+  // this album" scale with the library rather than with the album.
+  it("walks the artists once for a whole batch, not once per track", () => {
+    let walks = 0;
+    const rows = [artist(localId, "СЕРЕГА ПИРАТ")];
+    const counted = new Proxy(rows, {
+      get(target, prop, receiver) {
+        if (prop === Symbol.iterator) walks++;
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+
+    const index = artistNameIndex(counted);
+    for (let i = 0; i < 20; i++) {
+      alignArtists({ ...dto, id: ytTrackId(`v${i}`) }, index);
+    }
+
+    expect(walks).toBe(1);
+  });
+
+  it("matches an artist added after it was built", () => {
+    const index = artistNameIndex([]);
+    index.add(artist(localId, "СЕРЕГА ПИРАТ"));
+
+    expect(alignArtists(dto, index).artistIds).toEqual([localId]);
+  });
+});
+
 describe("alignArtists", () => {
   it("swaps a remote artist id for a same-named local artist (case-insensitive)", () => {
-    const result = alignArtists(dto, [artist(localId, "СЕРЕГА ПИРАТ")]);
+    const result = alignArtists(dto, artistNameIndex([artist(localId, "СЕРЕГА ПИРАТ")]));
 
     expect(result.artistIds).toEqual([localId]);
   });
 
   it("keeps the remote id when no local artist matches", () => {
-    const result = alignArtists(dto, [artist(localId, "Кто-то другой")]);
+    const result = alignArtists(dto, artistNameIndex([artist(localId, "Кто-то другой")]));
 
     expect(result.artistIds).toEqual([ytArtistId("UC1")]);
   });
@@ -54,7 +84,7 @@ describe("alignArtists", () => {
   it("never swaps an aligned id onto another source's shadow", () => {
     const ndArtist = artist(ndArtistId("x9"), "Серега Пират");
 
-    const result = alignArtists(dto, [ndArtist]);
+    const result = alignArtists(dto, artistNameIndex([ndArtist]));
 
     expect(result.artistIds).toEqual([ytArtistId("UC1")]);
   });
@@ -62,7 +92,7 @@ describe("alignArtists", () => {
   it("passes through DTOs without artist names", () => {
     const bare: SourceTrackDTO = { id: ytTrackId("v2"), title: "T2", artistIds: [ytArtistId("UC1")] };
 
-    expect(alignArtists(bare, [artist(localId, "X")])).toBe(bare);
+    expect(alignArtists(bare, artistNameIndex([artist(localId, "X")]))).toBe(bare);
   });
 
   it("gives every name of an '&' collab its own row when the source has one entity for both", () => {
@@ -70,7 +100,7 @@ describe("alignArtists", () => {
     // single id; the library wants two artists.
     const collab = { ...dto, artistName: "СЕРЕГА ПИРАТ & Barikader", artistIds: [ytArtistId("UCcollab")] };
 
-    const result = alignArtists(collab, []);
+    const result = alignArtists(collab, artistNameIndex([]));
 
     expect(result.artistName).toBe("СЕРЕГА ПИРАТ, Barikader");
     expect(result.artistIds).toHaveLength(2);
@@ -80,7 +110,7 @@ describe("alignArtists", () => {
   it("creates local rows for names the source has no ids for", () => {
     const noIds = { ...dto, artistName: "Markul, NIKER", artistIds: undefined };
 
-    const result = alignArtists(noIds, []);
+    const result = alignArtists(noIds, artistNameIndex([]));
 
     expect(result.artistIds).toHaveLength(2);
     expect(result.artistIds?.every(id => UUID.test(id))).toBe(true);
@@ -90,7 +120,7 @@ describe("alignArtists", () => {
     const pirate = artist(ytArtistId("UCpirate"), "СЕРЕГА ПИРАТ");
     const collab = { ...dto, artistName: "СЕРЕГА ПИРАТ & Barikader", artistIds: [ytArtistId("UCcollab")] };
 
-    const result = alignArtists(collab, [pirate]);
+    const result = alignArtists(collab, artistNameIndex([pirate]));
 
     expect(result.artistIds?.[0]).toBe(ytArtistId("UCpirate"));
     expect(UUID.test(result.artistIds?.[1] ?? "")).toBe(true);
@@ -99,7 +129,7 @@ describe("alignArtists", () => {
   it("prefers a local artist over the source's own aligned id", () => {
     const paired = { ...dto, artistName: "Markul, NIKER", artistIds: [ytArtistId("UCm"), ytArtistId("UCn")] };
 
-    const result = alignArtists(paired, [artist(localId, "niker")]);
+    const result = alignArtists(paired, artistNameIndex([artist(localId, "niker")]));
 
     expect(result.artistIds).toEqual([ytArtistId("UCm"), localId]);
   });

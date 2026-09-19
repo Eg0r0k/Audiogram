@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { TauriStorage } from "../tauri.storage";
 import { setMediaServerBaseForTests } from "@/lib/stream-url";
 import { StorageError, StorageErrorCode } from "@/db/errors/storage.errors";
@@ -249,6 +249,40 @@ describe("TauriStorage", () => {
 
       expect(result.isOk()).toBe(true);
       expect(result._unsafeUnwrap().length).toBe(0);
+    });
+  });
+
+  describe("readBytes via the media server", () => {
+    const BASE = "http://127.0.0.1:4321/tok";
+    const PATH = "C:/music/lossless.m4a";
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      setMediaServerBaseForTests(BASE);
+      fetchMock = vi.fn(async () => ({
+        status: 206,
+        arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      }));
+      vi.stubGlobal("fetch", fetchMock);
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      setMediaServerBaseForTests(null);
+    });
+
+    // The server transcodes ALAC to WAV and remuxes video-bearing mp4 for
+    // playback. Tag parsing and fingerprinting read through here, so without
+    // the raw marker they see the rendition instead of the user's file.
+    it("asks for the untranscoded file, not the playable rendition", async () => {
+      const result = await storage.readBytes(PATH, 3);
+
+      expect(result.isOk()).toBe(true);
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/local/${encodeURIComponent(PATH)}?raw=1`,
+        { headers: { Range: "bytes=0-2" } },
+      );
+      expect(mocks.open).not.toHaveBeenCalled();
     });
   });
 

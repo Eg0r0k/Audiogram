@@ -45,6 +45,11 @@ const eventsQuery = (since?: number) =>
     queryKey: queryKeys.stats.events(since),
     queryFn: (): Promise<ListenEventEntity[]> => unwrapResult(statsRepository.eventsSince(since)),
     staleTime: STATS_STALE_TIME,
+    // Structural sharing exists to keep references stable for consumers that
+    // compare by identity; the aggregates reduce this array to numbers and
+    // nobody holds it. On a history with no ceiling the deep walk it costs on
+    // every refetch buys nothing.
+    structuralSharing: false,
   });
 
 // fetchQuery, not ensureQueryData: the events entry has no observer, so an
@@ -53,6 +58,12 @@ const eventsOf = (client: QueryClient, since?: number) => client.fetchQuery(even
 
 export const statsQueries = {
   events: eventsQuery,
+  hasHistory: () =>
+    queryOptions({
+      queryKey: queryKeys.stats.hasHistory(),
+      queryFn: () => unwrapResult(statsRepository.hasEvents()),
+      staleTime: STATS_STALE_TIME,
+    }),
   // Ряды топов собираются одним запросом (события + метаданные), чтобы при
   // смене периода не было второй волны загрузки на meta-ключе.
   topTracks: (limit: number, since?: number) =>

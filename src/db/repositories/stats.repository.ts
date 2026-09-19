@@ -46,6 +46,14 @@ async function runSafe<T>(fn: () => Promise<T>): Promise<Result<T, Error>> {
 
 class StatsRepository {
   /**
+   * A native count over the store: "is there any history" must not load a
+   * history that has no ceiling — only a chosen period is worth rows.
+   */
+  async hasEvents(): Promise<Result<boolean, Error>> {
+    return runSafe(async () => (await db.listenEvents.count()) > 0);
+  }
+
+  /**
    * Events of a period — the single read the stats page aggregates share
    * (see stats.queries). `since` undefined = all time.
    */
@@ -178,10 +186,6 @@ class StatsRepository {
       }
       return points;
     });
-  }
-
-  async findAllEvents(): Promise<Result<ListenEventEntity[], Error>> {
-    return runSafe(() => db.listenEvents.toArray());
   }
 
   async deleteEvent(eventId: string): Promise<Result<void, Error>> {

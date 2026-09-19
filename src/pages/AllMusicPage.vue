@@ -242,12 +242,12 @@ import type { QueueSource } from "@/modules/queue/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useImport } from "@/modules/library/composables/useImport";
 import type { Track } from "@/modules/player/types";
-import { useGoBack } from "@/composables/useGoBack";
 import { getLogger } from "@/lib/logger";
 import TrackSelectionBar from "@/modules/tracks/components/TrackSelectionBar.vue";
 import { useTrackSelectionMode } from "@/modules/tracks/composables/useTrackSelectionMode";
 import { useBulkTrackActions } from "@/modules/tracks/composables/useBulkTrackActions";
 import { provideTrackSelectionEntry } from "@/modules/tracks/components/menu/useTrackSelectionEntry";
+import { useGoBack } from "@/composables/useGoBack";
 const { t } = useI18n();
 const { pickAndImport } = useImport();
 const sortKey = ref<TrackSortKey | null>(null);
@@ -290,6 +290,8 @@ const {
   total,
   resetKey: computed(() => `${resolvedSortKey.value}|${normalizedSearchQuery.value}`),
 });
+
+const goBack = useGoBack();
 
 provideTrackSelectionEntry(enterSelection);
 
@@ -376,8 +378,6 @@ const { playTrack: handlePlayTrack } = useEntityPlayback({
   isComplete: computed(() => !hasNextPage.value),
   loadAll: () => getAllTracksForQueue(resolvedSortKey.value, normalizedSearchQuery.value),
 });
-
-const goBack = useGoBack();
 
 const scrollableRef = useTemplateRef("scrollableRef");
 

@@ -19,6 +19,7 @@ import { migrateOfflineCopies } from "@/modules/downloads/service/migrate-offlin
 import { sweepOrphanedEntities } from "@/services/library-gc";
 import { hideAndroidSplash } from "@/lib/android-splash";
 import { initZoom } from "@/modules/settings/composables/useZoom";
+import { initFont } from "@/modules/settings/composables/useFont";
 import { statsService } from "@/services/stats.service";
 import { invalidateStatsQueries } from "@/queries/stats.queries";
 import { onAllDataCleared } from "@/services/storage-info.service";
@@ -34,6 +35,10 @@ import { markRecommenderContextDirty } from "@/modules/recommendations/service/r
 import { invalidateWeightsCache } from "@/modules/recommendations/service/recommender-model.service";
 
 await initLogging();
+
+// Before the awaits below: the webfont fetch then overlaps them instead of
+// queueing behind the database open, so the first paint is already correct.
+initFont();
 
 // Media URL builders are synchronous over this cached base — it must exist
 // before any store resolves playback or covers (incl. queue restore).

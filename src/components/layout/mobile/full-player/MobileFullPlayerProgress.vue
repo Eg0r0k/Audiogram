@@ -19,7 +19,7 @@
       @scrub="value => emit('scrub', value)"
       @mouseup="emit('scrubEnd')"
     />
-    <div class="flex justify-between text-sm text-white/60 font-medium tabular-nums">
+    <div class="flex justify-between text-sm text-(--player-text-muted) font-medium tabular-nums">
       <span>{{ timeDisplay.current }}</span>
       <span>{{ timeDisplay.duration }}</span>
     </div>

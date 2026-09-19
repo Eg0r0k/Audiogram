@@ -110,13 +110,8 @@ const isDev = import.meta.env.DEV;
 const period = ref<StatsPeriod>("month");
 const since = computed(() => periodSince(period.value));
 
-// Есть ли история вообще (за всё время) — иначе показываем пустое состояние.
-const { data: allTime } = useQuery(statsQueries.summary(undefined));
-const hasHistory = computed(() =>
-  allTime.value === undefined
-  || allTime.value.totalSeconds > 0
-  || allTime.value.playsCount > 0,
-);
+const { data: historyExists } = useQuery(statsQueries.hasHistory());
+const hasHistory = computed(() => historyExists.value !== false);
 
 const { clearHistory: handleClearHistory } = useClearHistory();
 
