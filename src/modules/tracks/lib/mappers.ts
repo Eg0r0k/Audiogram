@@ -6,7 +6,9 @@ export function mapTrack(
   artists: ArtistEntity[],
   album: AlbumEntity | null | undefined,
 ): Track {
-  const artist = artists.length > 0
+  // A shadow row's ids are mostly links without a row; a caption built from
+  // the rows that do exist would drop the other names.
+  const artist = artists.length > 0 && artists.length === entity.artistIds.length
     ? artists.map(a => a.name).join(", ")
     : entity.artistName;
 
