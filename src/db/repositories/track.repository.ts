@@ -615,10 +615,18 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     }
   }
 
-  async getAllFingerprints(): Promise<Result<Set<string>, Error>> {
+  /**
+   * The candidates the library already holds. One index count per candidate
+   * rather than a key cursor over the whole index, so the cost follows the
+   * batch being imported, not the library size.
+   */
+  async findExistingFingerprints(candidates: readonly string[]): Promise<Result<Set<string>, Error>> {
     try {
-      const keys = await this.table.where("fingerprint").above("").uniqueKeys();
-      return ok(new Set(keys as string[]));
+      const unique = [...new Set(candidates)];
+      if (unique.length === 0) return ok(new Set());
+      const counts = await db.transaction("r", this.table, () =>
+        Promise.all(unique.map(fingerprint => this.table.where("fingerprint").equals(fingerprint).count())));
+      return ok(new Set(unique.filter((_, index) => counts[index] > 0)));
     }
     catch (error) {
       return err(toDbError(error));

@@ -1,3 +1,4 @@
+import type { IndexableType, Table } from "dexie";
 import { db } from "@/db";
 import { unitOfWork } from "@/db/unit-of-work";
 import { getLogger } from "@/lib/logger";
@@ -41,6 +42,10 @@ const artistsReferenced = async (candidates: readonly ArtistId[]): Promise<Set<A
   ]);
   return new Set([...byTracks, ...byAlbums] as ArtistId[]);
 };
+
+/** Distinct keys of an index; an empty table answers without opening a cursor. */
+const uniqueKeysOf = async (table: Table, index: string): Promise<IndexableType[]> =>
+  (await table.count()) === 0 ? [] : table.orderBy(index).uniqueKeys();
 
 const deleteAlbumsWithCovers = async (ids: readonly AlbumId[]): Promise<void> => {
   if (ids.length === 0) return;
@@ -93,13 +98,13 @@ export async function sweepOrphanedEntities(): Promise<{ albums: number; artists
   // One transaction: the sweep runs at startup concurrently with the
   // download-manager init and queue restore.
   const result = await unitOfWork.run(async () => {
-    const referencedAlbums = new Set(await db.tracks.orderBy("albumId").uniqueKeys() as AlbumId[]);
+    const referencedAlbums = new Set(await uniqueKeysOf(db.tracks, "albumId") as AlbumId[]);
     const orphanAlbums = (await db.albums.toCollection().primaryKeys()).filter(id => !referencedAlbums.has(id));
     await deleteAlbumsWithCovers(orphanAlbums);
 
     const [artistsByTracks, artistsByAlbums] = await Promise.all([
-      db.tracks.orderBy("artistIds").uniqueKeys(),
-      db.albums.orderBy("artistId").uniqueKeys(),
+      uniqueKeysOf(db.tracks, "artistIds"),
+      uniqueKeysOf(db.albums, "artistId"),
     ]);
     const referencedArtists = new Set([...artistsByTracks, ...artistsByAlbums] as ArtistId[]);
     const orphanArtists = (await db.artists.toCollection().primaryKeys()).filter(id => !referencedArtists.has(id));

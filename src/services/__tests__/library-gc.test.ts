@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 
 vi.mock("@/lib/logger", () => ({
@@ -180,5 +180,41 @@ describe("library-gc", () => {
     expect((await db.albums.toArray()).map(album => album.id).sort()).toEqual(["al-foreign", "al-full"]);
     expect((await db.artists.toArray()).map(artist => artist.id).sort()).toEqual(["ar-album-only", "ar-feat", "ar-tracks"]);
     expect((await db.covers.toArray()).map(cover => cover.id)).toEqual(["c-full"]);
+  });
+});
+
+describe("library-gc sweep over empty tables", () => {
+  beforeEach(async () => {
+    await db.open();
+    await Promise.all(db.tables.map(table => table.clear()));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const spyUniqueKeys = () => {
+    const collectionProto = Object.getPrototypeOf(db.tracks.toCollection()) as { uniqueKeys: () => unknown };
+    return vi.spyOn(collectionProto, "uniqueKeys");
+  };
+
+  it("opens no unique-key cursor on an empty library", async () => {
+    const uniqueKeys = spyUniqueKeys();
+
+    await expect(sweepOrphanedEntities()).resolves.toEqual({ albums: 0, artists: 0 });
+
+    expect(uniqueKeys).not.toHaveBeenCalled();
+  });
+
+  it("still drops albums and artists when no track is left at all", async () => {
+    await db.artists.add(artistRow("ar1"));
+    await db.albums.add(albumRow("al1", "ar1"));
+    const uniqueKeys = spyUniqueKeys();
+
+    await expect(sweepOrphanedEntities()).resolves.toEqual({ albums: 1, artists: 1 });
+
+    expect(await db.albums.count()).toBe(0);
+    expect(await db.artists.count()).toBe(0);
+    expect(uniqueKeys).not.toHaveBeenCalled();
   });
 });
