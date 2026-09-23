@@ -110,6 +110,17 @@ describe("MarqueeBlock", () => {
     expect(animations[0]?.options.delay).toBe(2000 - MARQUEE_PAUSE_MS);
   });
 
+  it("moves in whole device pixels, so frames without a change can be skipped", async () => {
+    vi.stubGlobal("devicePixelRatio", 2);
+    const wrapper = mountMarquee();
+    await wrapper.vm.$nextTick();
+
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    expect(animations[0]?.keyframes[1]?.easing).toBe("steps(896)");
+  });
+
   it("animates the pair of copies as one element", async () => {
     const wrapper = mountMarquee();
     await wrapper.vm.$nextTick();
