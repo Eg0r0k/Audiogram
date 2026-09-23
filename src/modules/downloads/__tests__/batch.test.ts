@@ -91,11 +91,12 @@ describe("batch downloads", () => {
 
     expect(batchId).not.toBeNull();
 
-    // Download = import: the cascade stays a shadow, the copy is a row of its own.
+    // Download = import: the remote rows stay shadows with no album/artist
+    // rows of their own; the copy is a row of its own.
     expect((await db.tracks.get(ndTrackId("s1")))?.pinned).toBe(0);
     expect((await db.tracks.get(ndTrackId("copied")))?.pinned).toBe(0);
-    expect((await db.albums.get(ndAlbumId("album1")))?.pinned).toBe(0);
-    expect((await db.artists.get(ndArtistId("artist1")))?.pinned).toBe(0);
+    expect(await db.albums.get(ndAlbumId("album1"))).toBeUndefined();
+    expect(await db.artists.get(ndArtistId("artist1"))).toBeUndefined();
 
     const store = useDownloadsStore();
     expect(store.batches[batchId!]?.total).toBe(2);

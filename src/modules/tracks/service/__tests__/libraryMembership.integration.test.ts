@@ -60,9 +60,9 @@ describe("browse → like → removeFromLibrary (integration)", () => {
     expect(row?.likedAt).toBeUndefined();
     // History survives: the row still exists as a shadow.
     expect(row).toBeDefined();
-    // No ghosts: the shadow album/artist left the library with it.
-    expect((await db.albums.get(ndAlbumId("album1")))?.pinned).toBe(0);
-    expect((await db.artists.get(ndArtistId("artist1")))?.pinned).toBe(0);
+    // No ghosts: the album/artist rows left the library with it.
+    expect(await db.albums.get(ndAlbumId("album1"))).toBeUndefined();
+    expect(await db.artists.get(ndArtistId("artist1"))).toBeUndefined();
   });
 
   it("keeps the album pinned while a second library track remains", async () => {
