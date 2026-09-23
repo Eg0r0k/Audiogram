@@ -14,7 +14,7 @@ const {
   mockWarmup,
   mockOpen,
   mockHasNativeSupport,
-  mockGetAllFingerprints,
+  mockFindExistingFingerprints,
   mockUnitOfWorkRunScoped,
   MockWorkerPool,
 } = vi.hoisted(() => ({
@@ -25,7 +25,7 @@ const {
   mockWarmup: vi.fn(),
   mockOpen: vi.fn(),
   mockHasNativeSupport: vi.fn(() => true),
-  mockGetAllFingerprints: vi.fn(),
+  mockFindExistingFingerprints: vi.fn(),
   mockUnitOfWorkRunScoped: vi.fn(),
   MockWorkerPool: vi.fn().mockImplementation(function() {
     return { parse: mockWorkerPoolParse, dispose: vi.fn() };
@@ -36,6 +36,11 @@ const {
 function okResult<T>(val: T) {
   return { isOk: () => true, isErr: () => false, value: val, match: (ok: (v: T) => any, _: any) => ok(val) };
 }
+
+/** The library's fingerprints, as the repository reports them for a batch. */
+const holdsFingerprints = (...held: string[]) =>
+  mockFindExistingFingerprints.mockImplementation(async (candidates: readonly string[]) =>
+    okResult(new Set(candidates.filter(fingerprint => held.includes(fingerprint)))));
 
 // в”Ђв”Ђ Module mocks в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
@@ -70,7 +75,7 @@ vi.mock("@/db/storage/IFileStorage", () => ({
 
 vi.mock("@/db/repositories", () => ({
   trackRepository: {
-    getAllFingerprints: mockGetAllFingerprints,
+    findExistingFingerprints: mockFindExistingFingerprints,
     findByStoragePath: vi.fn().mockResolvedValue(okResult(undefined)),
     findByStoragePathPrefix: vi.fn().mockResolvedValue(okResult([])),
     existsByFingerprint: vi.fn().mockResolvedValue(okResult(false)),
@@ -170,7 +175,7 @@ describe("MusicLibraryEngine", () => {
     mockSaveFile.mockResolvedValue(okResult("tracks/new-id.mp3"));
     mockWarmup.mockResolvedValue(undefined);
     mockOpen.mockResolvedValue(null);
-    mockGetAllFingerprints.mockResolvedValue(okResult(new Set<string>()));
+    holdsFingerprints();
     mockUnitOfWorkRunScoped.mockImplementation((_tables: unknown, cb: () => Promise<void>) => {
       return Promise.resolve({ isOk: () => true, isErr: () => false, value: cb() });
     });
@@ -396,7 +401,7 @@ describe("MusicLibraryEngine", () => {
 
   describe("fingerprint deduplication", () => {
     it("skips files with already-known fingerprint", async () => {
-      mockGetAllFingerprints.mockResolvedValue(okResult(new Set(["1234:abcdef"])));
+      holdsFingerprints("1234:abcdef");
 
       const computeFp = await import("@/services/import/file-fingerprint");
       vi.mocked(computeFp.computeFileFingerprint).mockResolvedValue("1234:abcdef");

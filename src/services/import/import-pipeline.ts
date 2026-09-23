@@ -87,8 +87,9 @@ export class ImportPipeline {
       return { successful, failed, skipped, total, cancelled: true };
     }
 
-    // Shared across batches so a duplicate in batch N is caught by batch 1's import.
-    const knownFingerprints = await unwrapResult(trackRepository.getAllFingerprints());
+    // Fingerprints this run has taken, shared across batches so a duplicate in
+    // batch N is caught by batch 1's import; the library is asked per batch.
+    const knownFingerprints = new Set<string>();
 
     const batches = chunk(items, PIPELINE_BATCH_SIZE);
     for (const [index, batch] of batches.entries()) {
@@ -296,6 +297,9 @@ export class ImportPipeline {
         this.fpLimit(() => this.deps.itemIO.computeFingerprint(item).then(fp => ({ item, fp }))),
       ),
     );
+    const inLibrary = await unwrapResult(trackRepository.findExistingFingerprints(
+      fpResults.flatMap(({ fp }) => (fp === null ? [] : [fp])),
+    ));
 
     const toProcess: ImportItem[] = [];
     const seenInBatch = new Set<string>();
@@ -316,7 +320,7 @@ export class ImportPipeline {
       }
 
       if (fp !== null) {
-        if (knownFingerprints.has(fp) || seenInBatch.has(fp)) {
+        if (inLibrary.has(fp) || knownFingerprints.has(fp) || seenInBatch.has(fp)) {
           skip();
           continue;
         }

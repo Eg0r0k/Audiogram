@@ -187,9 +187,6 @@ export class FolderSyncService {
     result: SyncResult,
     advance: (by: number) => void,
   ): Promise<Array<{ file: ScannedFile; fingerprint: string }>> {
-    // Own fingerprint registry — not shared with any concurrent import.
-    const knownFingerprints = await unwrapResult(trackRepository.getAllFingerprints());
-
     // Fingerprints compute concurrently; dedupe below walks the results in the
     // original file order, so which of two duplicates wins stays deterministic.
     const fpResults = await Promise.all(
@@ -208,6 +205,10 @@ export class FolderSyncService {
         }),
       ),
     );
+    // Grows as the sync claims files, so a duplicate within it is dropped too.
+    const knownFingerprints = await unwrapResult(trackRepository.findExistingFingerprints(
+      fpResults.flatMap(({ fp }) => (fp === null ? [] : [fp])),
+    ));
 
     const filesToImport: Array<{ file: ScannedFile; fingerprint: string }> = [];
     for (const { file, fp } of fpResults) {

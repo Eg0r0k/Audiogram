@@ -17,14 +17,14 @@ import type { BaseMetadata } from "@/workers/types";
 import { DbError } from "@/db/errors/db.errors";
 
 const {
-  mockGetAllFingerprints,
+  mockFindExistingFingerprints,
   mockUnitOfWorkRunScoped,
   mockTrackCreateMany,
   mockArtistCreateMany,
   mockAlbumCreateMany,
   mockCoverCreateMany,
 } = vi.hoisted(() => ({
-  mockGetAllFingerprints: vi.fn(),
+  mockFindExistingFingerprints: vi.fn(),
   mockUnitOfWorkRunScoped: vi.fn(),
   mockTrackCreateMany: vi.fn(),
   mockArtistCreateMany: vi.fn(),
@@ -36,12 +36,17 @@ function okResult<T>(value: T) {
   return { isOk: () => true, isErr: () => false, value };
 }
 
+/** The library's fingerprints, as the repository reports them for a batch. */
+const holdsFingerprints = (...held: string[]) =>
+  mockFindExistingFingerprints.mockImplementation(async (candidates: readonly string[]) =>
+    okResult(new Set(candidates.filter(fingerprint => held.includes(fingerprint)))));
+
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 vi.mock("@/db/repositories", () => ({
   trackRepository: {
-    getAllFingerprints: mockGetAllFingerprints,
+    findExistingFingerprints: mockFindExistingFingerprints,
     createMany: mockTrackCreateMany,
     findByIds: vi.fn().mockResolvedValue(okResult([])),
   },
@@ -143,7 +148,7 @@ describe("ImportPipeline", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetAllFingerprints.mockResolvedValue(okResult(new Set<string>()));
+    holdsFingerprints();
     mockTrackCreateMany.mockResolvedValue(okResult([]));
     mockArtistCreateMany.mockResolvedValue(okResult([]));
     mockAlbumCreateMany.mockResolvedValue(okResult([]));
@@ -270,7 +275,7 @@ describe("ImportPipeline", () => {
 
   describe("deduplication", () => {
     it("skips a file whose fingerprint is already in the library", async () => {
-      mockGetAllFingerprints.mockResolvedValue(okResult(new Set(["fp:dup.mp3"])));
+      holdsFingerprints("fp:dup.mp3");
 
       const result = await makePipeline(fakes).run(nativeItems("dup.mp3"));
 
@@ -386,7 +391,7 @@ describe("ImportPipeline", () => {
         ...nativeItems(...Array.from({ length: 30 }, (_, i) => `ok${i}.mp3`)),
         ...nativeItems("bad.txt", "bad2.doc"),
       ];
-      mockGetAllFingerprints.mockResolvedValue(okResult(new Set(["fp:ok0.mp3"])));
+      holdsFingerprints("fp:ok0.mp3");
 
       const result = await makePipeline(fakes).run(items);
 
@@ -424,7 +429,7 @@ describe("ImportPipeline", () => {
     });
 
     it("counts skipped and failed items as progress", async () => {
-      mockGetAllFingerprints.mockResolvedValue(okResult(new Set(["fp:dup.mp3"])));
+      holdsFingerprints("fp:dup.mp3");
       const onProgress = vi.fn();
 
       await makePipeline(fakes).run(nativeItems("dup.mp3", "bad.txt"), onProgress);
