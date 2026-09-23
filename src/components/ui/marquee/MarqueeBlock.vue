@@ -33,6 +33,19 @@
         </div>
       </div>
     </div>
+
+    <template v-if="fadeWithOverlays">
+      <div
+        class="marquee-fade start"
+        :style="fadeStyle('start')"
+        aria-hidden="true"
+      />
+      <div
+        class="marquee-fade end"
+        :style="fadeStyle('end')"
+        aria-hidden="true"
+      />
+    </template>
   </div>
 </template>
 
@@ -51,6 +64,12 @@ interface Props {
   /** Loop count; 0 loops forever. */
   loop?: number;
   gradient?: boolean;
+  /**
+   * Solid colour behind the line: the edges then fade under static overlays
+   * of it. Without it they fade through a mask, which makes the compositor
+   * redraw the whole masked line on every frame of the scroll.
+   */
+  gradientColor?: string;
   gradientLength?: string;
   pauseOnHover?: boolean;
   pause?: boolean;
@@ -63,6 +82,7 @@ const props = withDefaults(defineProps<Props>(), {
   delay: 0,
   loop: 0,
   gradient: false,
+  gradientColor: undefined,
   gradientLength: "200px",
   pauseOnHover: false,
   pause: false,
@@ -79,8 +99,23 @@ const isHovering = ref(false);
 let animation: Animation | null = null;
 let travel = 0;
 
+const fadeWithOverlays = computed(() => props.gradient && isOverflowing.value && !!props.gradientColor);
+
+const FADE_DIRECTION = {
+  horizontal: { start: "to right", end: "to left" },
+  vertical: { start: "to bottom", end: "to top" },
+} as const;
+
+const fadeStyle = (edge: "start" | "end") => {
+  const towards = FADE_DIRECTION[props.vertical ? "vertical" : "horizontal"][edge];
+  return {
+    [props.vertical ? "height" : "width"]: props.gradientLength,
+    background: `linear-gradient(${towards}, ${props.gradientColor}, transparent)`,
+  };
+};
+
 const maskStyle = computed(() => {
-  if (!props.gradient || !isOverflowing.value) return { maskImage: "none" };
+  if (!props.gradient || !isOverflowing.value || props.gradientColor) return {};
   const len = props.gradientLength;
   const side = props.vertical ? "to bottom" : "to right";
   const mask = `linear-gradient(${side}, transparent 0%, black ${len}, black calc(100% - ${len}), transparent 100%)`;
@@ -195,6 +230,38 @@ onUnmounted(stopAnimation);
 
 .marquee-wrapper.vertical .marquee-content {
   flex-direction: column;
+}
+
+.marquee-fade {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.marquee-wrapper.horizontal .marquee-fade {
+  top: 0;
+  bottom: 0;
+}
+
+.marquee-wrapper.vertical .marquee-fade {
+  left: 0;
+  right: 0;
+}
+
+.marquee-wrapper.horizontal .marquee-fade.start {
+  left: 0;
+}
+
+.marquee-wrapper.horizontal .marquee-fade.end {
+  right: 0;
+}
+
+.marquee-wrapper.vertical .marquee-fade.start {
+  top: 0;
+}
+
+.marquee-wrapper.vertical .marquee-fade.end {
+  bottom: 0;
 }
 
 .marquee-track {

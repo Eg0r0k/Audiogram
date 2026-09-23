@@ -147,3 +147,47 @@ describe("MarqueeBlock", () => {
     setInterval.mockRestore();
   });
 });
+
+// happy-dom drops CSS it cannot parse (var() in background, mask-image), so
+// the style Vue binds is read off the vnode instead of the element.
+const boundStyle = (el: Element) =>
+  ((el as unknown as { __vnode?: { props?: { style?: Record<string, string> } } }).__vnode?.props?.style ?? {});
+
+describe("MarqueeBlock edge fades", () => {
+  it("fades with static overlays of the given colour instead of a mask", async () => {
+    const wrapper = mountMarquee({ gradient: true, gradientColor: "var(--card)", gradientLength: "20px" });
+    await wrapper.vm.$nextTick();
+
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    expect(boundStyle(wrapper.find(".marquee-wrapper").element)).not.toHaveProperty("maskImage");
+    const fades = wrapper.findAll(".marquee-fade");
+    expect(fades).toHaveLength(2);
+    for (const fade of fades) {
+      expect(boundStyle(fade.element).background).toContain("var(--card)");
+      expect(boundStyle(fade.element).width).toBe("20px");
+    }
+  });
+
+  it("falls back to a mask when the background is not a single colour", async () => {
+    const wrapper = mountMarquee({ gradient: true, gradientLength: "20px" });
+    await wrapper.vm.$nextTick();
+
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    expect(boundStyle(wrapper.find(".marquee-wrapper").element).maskImage).toContain("linear-gradient");
+    expect(wrapper.findAll(".marquee-fade")).toHaveLength(0);
+  });
+
+  it("draws no fades while the text fits", async () => {
+    const wrapper = mountMarquee({ gradient: true, gradientColor: "var(--card)" });
+    await wrapper.vm.$nextTick();
+
+    layout(wrapper, { container: 200, text: 100 });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.findAll(".marquee-fade")).toHaveLength(0);
+  });
+});

@@ -96,6 +96,7 @@
                   class="group"
                   pause-on-hover
                   gradient
+                  gradient-color="var(--card)"
                   gradient-length="20px"
                 >
                   <span
@@ -108,6 +109,7 @@
                   class="group"
                   pause-on-hover
                   gradient
+                  gradient-color="var(--card)"
                   gradient-length="20px"
                 >
                   <span class="text-muted-foreground group-hover:text-foreground text-xs transition-colors duration-200">
