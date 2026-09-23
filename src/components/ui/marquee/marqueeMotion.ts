@@ -1,6 +1,14 @@
 /** Scroll speed of an overflowing line, in CSS px per second. */
 export const MARQUEE_SPEED = 30;
 
+/**
+ * Position updates per second. Sliding by fractions of a pixel redraws the
+ * line on every frame of the display (120-144/s); between updates nothing
+ * changes and the compositor skips the frame. 30/s (a whole pixel per step
+ * at the default speed) looked torn.
+ */
+export const MARQUEE_UPDATE_RATE = 60;
+
 /** Rest at the start of every loop, so the beginning of the text can be read. */
 export const MARQUEE_PAUSE_MS = 1500;
 

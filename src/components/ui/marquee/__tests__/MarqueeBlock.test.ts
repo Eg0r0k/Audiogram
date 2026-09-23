@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import MarqueeBlock from "../MarqueeBlock.vue";
-import { MARQUEE_PAUSE_MS, MARQUEE_SPEED, marqueeMotion } from "../marqueeMotion";
+import { MARQUEE_PAUSE_MS, MARQUEE_SPEED, MARQUEE_UPDATE_RATE, marqueeMotion } from "../marqueeMotion";
 
 // happy-dom does no layout: sizes are set by hand, resize notifications are
 // fired by hand, and the animation is a spy.
@@ -110,15 +110,14 @@ describe("MarqueeBlock", () => {
     expect(animations[0]?.options.delay).toBe(2000 - MARQUEE_PAUSE_MS);
   });
 
-  it("moves in whole device pixels, so frames without a change can be skipped", async () => {
-    vi.stubGlobal("devicePixelRatio", 2);
-    const wrapper = mountMarquee();
+  it("updates the position a fixed number of times per second, whatever the display rate", async () => {
+    const wrapper = mountMarquee({ speed: 40 });
     await wrapper.vm.$nextTick();
 
     layout(wrapper, { container: 200, text: 400 });
     await wrapper.vm.$nextTick();
 
-    expect(animations[0]?.keyframes[1]?.easing).toBe("steps(896)");
+    expect(animations[0]?.keyframes[1]?.easing).toBe(`steps(${Math.round((448 / 40) * MARQUEE_UPDATE_RATE)})`);
   });
 
   it("animates the pair of copies as one element", async () => {

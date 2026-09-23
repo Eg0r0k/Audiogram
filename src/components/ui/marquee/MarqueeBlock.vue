@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, useTemplateRef, watch } from "vue";
 import { useOwnerResizeObserver } from "@/composables/useOwnerResizeObserver";
-import { MARQUEE_PAUSE_MS, MARQUEE_SPEED, marqueeMotion } from "./marqueeMotion";
+import { MARQUEE_PAUSE_MS, MARQUEE_SPEED, MARQUEE_UPDATE_RATE, marqueeMotion } from "./marqueeMotion";
 
 interface Props {
   vertical?: boolean;
@@ -178,10 +178,7 @@ const runLoop = (distance: number, index: number, run: number) => {
   // The first loop skips its rest, so the line starts moving at once.
   const skipRest = index === 1 && props.direction === "normal" ? MARQUEE_PAUSE_MS : 0;
   const delay = (index === 1 ? props.delay * 1000 : 0) - skipRest;
-  // Whole device pixels per step: a frame where the text has not moved by a
-  // pixel changes nothing, and the compositor skips redrawing it. Sliding by
-  // fractions redrew the line on every frame of the display's refresh rate.
-  const steps = Math.max(1, Math.round(distance * (el.ownerDocument.defaultView?.devicePixelRatio ?? 1)));
+  const steps = Math.max(1, Math.round((distance / props.speed) * MARQUEE_UPDATE_RATE));
   const moving = el.animate([
     { transform: `${axis}(0)`, offset: 0 },
     { transform: `${axis}(0)`, offset: holdOffset, easing: `steps(${steps})` },
