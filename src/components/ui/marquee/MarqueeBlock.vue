@@ -148,7 +148,9 @@ const startAnimation = (distance: number) => {
     { transform: `${axis}(-${distance}px)`, offset: 1 },
   ], {
     duration: durationMs,
-    delay: props.delay * 1000,
+    // The rest sits at the start of each loop; a negative delay skips it on
+    // the first one, so the line starts moving at once.
+    delay: props.delay * 1000 - (props.direction === "normal" ? MARQUEE_PAUSE_MS : 0),
     iterations: props.loop === 0 ? Infinity : props.loop,
     direction: props.direction,
     easing: "linear",

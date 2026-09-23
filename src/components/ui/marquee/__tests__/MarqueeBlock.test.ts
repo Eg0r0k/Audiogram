@@ -75,6 +75,26 @@ describe("MarqueeBlock", () => {
     expect(wrapper.findAll(".marquee-track")).toHaveLength(2);
   });
 
+  it("starts moving at once and rests only between loops", async () => {
+    const wrapper = mountMarquee();
+    await wrapper.vm.$nextTick();
+
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    expect(animations[0]?.options.delay).toBe(-MARQUEE_PAUSE_MS);
+  });
+
+  it("keeps a requested delay before the first loop", async () => {
+    const wrapper = mountMarquee({ delay: 2 });
+    await wrapper.vm.$nextTick();
+
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    expect(animations[0]?.options.delay).toBe(2000 - MARQUEE_PAUSE_MS);
+  });
+
   it("animates the pair of copies as one element", async () => {
     const wrapper = mountMarquee();
     await wrapper.vm.$nextTick();
