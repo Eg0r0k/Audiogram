@@ -1,0 +1,149 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { mount } from "@vue/test-utils";
+import MarqueeBlock from "../MarqueeBlock.vue";
+import { MARQUEE_PAUSE_MS, MARQUEE_SPEED, marqueeMotion } from "../marqueeMotion";
+
+// happy-dom does no layout: sizes are set by hand, resize notifications are
+// fired by hand, and the animation is a spy.
+const observers: Array<{ callback: ResizeObserverCallback }> = [];
+class FakeResizeObserver {
+  constructor(public callback: ResizeObserverCallback) { observers.push(this); }
+  observe = () => {};
+  unobserve = () => {};
+  disconnect = () => {};
+}
+const notifyResize = () => observers.forEach(o => o.callback([], o as unknown as ResizeObserver));
+
+const animations: Array<{ keyframes: Keyframe[]; options: KeyframeAnimationOptions; pause: ReturnType<typeof vi.fn>; play: ReturnType<typeof vi.fn>; cancel: ReturnType<typeof vi.fn> }> = [];
+const animate = vi.fn(function (this: HTMLElement, keyframes: Keyframe[], options: KeyframeAnimationOptions) {
+  const animation = { keyframes, options, target: this, pause: vi.fn(), play: vi.fn(), cancel: vi.fn() };
+  animations.push(animation);
+  return animation as unknown as Animation;
+});
+
+const setSize = (el: Element, prop: "clientWidth" | "offsetWidth", value: number) =>
+  Object.defineProperty(el, prop, { configurable: true, get: () => value });
+
+const layout = (wrapper: ReturnType<typeof mount>, sizes: { container: number; text: number; gap?: number }) => {
+  const gap = sizes.gap ?? 48;
+  setSize(wrapper.find(".marquee-wrapper").element, "clientWidth", sizes.container);
+  setSize(wrapper.find(".marquee-item").element, "offsetWidth", sizes.text);
+  setSize(wrapper.find(".marquee-track").element, "offsetWidth", Math.max(sizes.container, sizes.text + gap));
+  notifyResize();
+};
+
+const mountMarquee = (props: Record<string, unknown> = {}) =>
+  mount(MarqueeBlock, { props, slots: { default: "<span>Some title</span>" }, attachTo: document.body });
+
+beforeEach(() => {
+  observers.length = 0;
+  animations.length = 0;
+  animate.mockClear();
+  vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+  HTMLElement.prototype.animate = animate as unknown as HTMLElement["animate"];
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("MarqueeBlock", () => {
+  it("leaves text that fits in place, even with less than the loop gap to spare", async () => {
+    const wrapper = mountMarquee();
+    await wrapper.vm.$nextTick();
+
+    layout(wrapper, { container: 200, text: 162 });
+    await wrapper.vm.$nextTick();
+
+    expect(animate).not.toHaveBeenCalled();
+    expect(wrapper.findAll(".marquee-track")).toHaveLength(1);
+  });
+
+  it("scrolls overflowing text one loop further at the default speed in px/s", async () => {
+    const wrapper = mountMarquee();
+    await wrapper.vm.$nextTick();
+
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    const [animation] = animations;
+    const expected = marqueeMotion(448, MARQUEE_SPEED, MARQUEE_PAUSE_MS);
+    expect(animation?.options.duration).toBeCloseTo(expected.durationMs);
+    expect(animation?.options.iterations).toBe(Infinity);
+    expect(animation?.keyframes.at(-1)?.transform).toBe("translateX(-448px)");
+    expect(animation?.keyframes[1]).toMatchObject({ transform: "translateX(0)", offset: expected.holdOffset });
+    expect(wrapper.findAll(".marquee-track")).toHaveLength(2);
+  });
+
+  it("animates the pair of copies as one element", async () => {
+    const wrapper = mountMarquee();
+    await wrapper.vm.$nextTick();
+
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    expect(animate).toHaveBeenCalledTimes(1);
+    expect(animate.mock.contexts[0]).toBe(wrapper.find(".marquee-content").element);
+  });
+
+  it("takes a speed override in px/s", async () => {
+    const wrapper = mountMarquee({ speed: 60 });
+    await wrapper.vm.$nextTick();
+
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    expect(animations[0]?.options.duration).toBeCloseTo(marqueeMotion(448, 60, MARQUEE_PAUSE_MS).durationMs);
+  });
+
+  it("restarts with the new distance when the text changes", async () => {
+    const wrapper = mountMarquee();
+    await wrapper.vm.$nextTick();
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    layout(wrapper, { container: 200, text: 600 });
+    await wrapper.vm.$nextTick();
+
+    expect(animations[0]?.cancel).toHaveBeenCalled();
+    expect(animations[1]?.keyframes.at(-1)?.transform).toBe("translateX(-648px)");
+  });
+
+  it("stops once the text fits again", async () => {
+    const wrapper = mountMarquee();
+    await wrapper.vm.$nextTick();
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    layout(wrapper, { container: 200, text: 100 });
+    await wrapper.vm.$nextTick();
+
+    expect(animations[0]?.cancel).toHaveBeenCalled();
+    expect(wrapper.findAll(".marquee-track")).toHaveLength(1);
+  });
+
+  it("pauses while hovered and resumes after", async () => {
+    const wrapper = mountMarquee({ pauseOnHover: true });
+    await wrapper.vm.$nextTick();
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find(".marquee-wrapper").trigger("pointerenter");
+    expect(animations[0]?.pause).toHaveBeenCalled();
+
+    await wrapper.find(".marquee-wrapper").trigger("pointerleave");
+    expect(animations[0]?.play).toHaveBeenCalled();
+  });
+
+  it("measures on resize notifications only, without polling", async () => {
+    const setInterval = vi.spyOn(globalThis, "setInterval");
+    const wrapper = mountMarquee();
+    await wrapper.vm.$nextTick();
+
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    expect(setInterval).not.toHaveBeenCalled();
+    setInterval.mockRestore();
+  });
+});

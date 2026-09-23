@@ -97,11 +97,8 @@
 
       <div class="context-info">
         <MarqueeBlock
-          :duration="6"
-          animate-on-overflow-only
           pause-on-hover
           gradient
-          gradient-color="var(--background)"
           gradient-length="20px"
         >
           <span class="context-info__title">
@@ -110,11 +107,8 @@
         </MarqueeBlock>
 
         <MarqueeBlock
-          :duration="6"
-          animate-on-overflow-only
           pause-on-hover
           gradient
-          gradient-color="var(--background)"
           gradient-length="20px"
         >
           <span class="context-info__sub">

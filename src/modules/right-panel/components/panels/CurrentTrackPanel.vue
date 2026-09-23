@@ -94,11 +94,8 @@
               <div class="grid gap-1 flex-1 min-w-0 max-w-fit overflow-hidden mx-2">
                 <MarqueeBlock
                   class="group"
-                  :duration="20"
-                  animate-on-overflow-only
                   pause-on-hover
                   gradient
-                  gradient-color="var(--card)"
                   gradient-length="20px"
                 >
                   <span
@@ -109,11 +106,8 @@
 
                 <MarqueeBlock
                   class="group"
-                  :duration="6"
-                  animate-on-overflow-only
                   pause-on-hover
                   gradient
-                  gradient-color="var(--card)"
                   gradient-length="20px"
                 >
                   <span class="text-muted-foreground group-hover:text-foreground text-xs transition-colors duration-200">

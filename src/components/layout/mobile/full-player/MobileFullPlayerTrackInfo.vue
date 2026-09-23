@@ -2,21 +2,15 @@
   <div class="flex items-center justify-between gap-3 mt-6 h-14 landscape-short:mt-0">
     <div class="min-w-0 flex-1">
       <MarqueeBlock
-        :duration="10"
-        animate-on-overflow-only
         pause-on-hover
         gradient
-        gradient-color="transparent"
         gradient-length="20px"
       >
         <span class="text-xl text-foreground font-semibold leading-tight">{{ currentTrack?.title }}</span>
       </MarqueeBlock>
       <MarqueeBlock
-        :duration="6"
-        animate-on-overflow-only
         pause-on-hover
         gradient
-        gradient-color="transparent"
         gradient-length="20px"
       >
         <span class="text-base text-(--player-text-muted) capitalize mt-0.5 block">
