@@ -34,13 +34,16 @@
       </div>
     </div>
 
-    <template v-if="fadeWithOverlays">
+    <template v-if="gradient && gradientColor">
       <div
+        v-show="isOverflowing"
+        ref="startFadeRef"
         class="marquee-fade start"
         :style="fadeStyle('start')"
         aria-hidden="true"
       />
       <div
+        v-show="isOverflowing"
         class="marquee-fade end"
         :style="fadeStyle('end')"
         aria-hidden="true"
@@ -92,14 +95,16 @@ const containerRef = useTemplateRef<HTMLElement>("containerRef");
 const motionRef = useTemplateRef<HTMLElement>("motionRef");
 const trackRef = useTemplateRef<HTMLElement>("trackRef");
 const itemRef = useTemplateRef<HTMLElement>("itemRef");
+const startFadeRef = useTemplateRef<HTMLElement>("startFadeRef");
 
 const isOverflowing = ref(false);
 const isHovering = ref(false);
 
-let animation: Animation | null = null;
+let animations: Animation[] = [];
 let travel = 0;
-
-const fadeWithOverlays = computed(() => props.gradient && isOverflowing.value && !!props.gradientColor);
+// Bumped whenever the scroll is stopped or restarted, so a loop that ends
+// afterwards does not chain another one.
+let generation = 0;
 
 const FADE_DIRECTION = {
   horizontal: { start: "to right", end: "to left" },
@@ -118,45 +123,79 @@ const maskStyle = computed(() => {
   if (!props.gradient || !isOverflowing.value || props.gradientColor) return {};
   const len = props.gradientLength;
   const side = props.vertical ? "to bottom" : "to right";
-  const mask = `linear-gradient(${side}, transparent 0%, black ${len}, black calc(100% - ${len}), transparent 100%)`;
+  const mask = `linear-gradient(${side}, transparent 0%, black var(--marquee-fade-start), black calc(100% - ${len}), transparent 100%)`;
   return { maskImage: mask, WebkitMaskImage: mask };
 });
 
 const syncPlayState = () => {
-  if (!animation) return;
-  if (props.pause || (props.pauseOnHover && isHovering.value)) animation.pause();
-  else animation.play();
+  const paused = props.pause || (props.pauseOnHover && isHovering.value);
+  for (const animation of animations) {
+    if (paused) animation.pause();
+    else animation.play();
+  }
+};
+
+const cancelAnimations = () => {
+  for (const animation of animations) animation.cancel();
+  animations = [];
 };
 
 const stopAnimation = () => {
-  animation?.cancel();
-  animation = null;
+  generation++;
+  cancelAnimations();
   travel = 0;
 };
 
+// While the line rests its first letters sit on the start edge, so that fade
+// shows only while the text moves: it comes in over the time the text needs
+// to cross it and leaves the same way as the next copy arrives. Two short
+// animations rather than one per loop: an animation that is waiting or has
+// ended costs nothing, while the mask variant animates a custom property on
+// the main thread for as long as it is active.
+const animateStartFade = (moveStartMs: number, travelMs: number): Animation[] => {
+  if (!props.gradient || props.direction !== "normal") return [];
+  const target = props.gradientColor ? startFadeRef.value : containerRef.value;
+  if (!target) return [];
+  const rampMs = Math.min((Number.parseFloat(props.gradientLength) / props.speed) * 1000, travelMs / 2);
+  const [hidden, shown] = props.gradientColor
+    ? [{ opacity: 0 }, { opacity: 1 }]
+    : [{ "--marquee-fade-start": "0px" }, { "--marquee-fade-start": props.gradientLength }];
+  return [
+    target.animate([hidden, shown], { delay: moveStartMs, duration: rampMs, fill: "both" }),
+    target.animate([shown, hidden], { delay: moveStartMs + travelMs - rampMs, duration: rampMs, fill: "forwards" }),
+  ];
+};
+
 // One animation moves both copies: after a loop the copy stands where the
-// original started, so the jump back is invisible.
-const startAnimation = (distance: number) => {
+// original started, so the jump back is invisible. Each loop is its own
+// animation, chained on the previous one's end, which falls in the rest.
+const runLoop = (distance: number, index: number, run: number) => {
   const el = motionRef.value;
   if (!el) return;
-  animation?.cancel();
+  cancelAnimations();
   const { durationMs, holdOffset } = marqueeMotion(distance, props.speed, MARQUEE_PAUSE_MS);
   const axis = props.vertical ? "translateY" : "translateX";
-  animation = el.animate([
+  // The first loop skips its rest, so the line starts moving at once.
+  const skipRest = index === 1 && props.direction === "normal" ? MARQUEE_PAUSE_MS : 0;
+  const delay = (index === 1 ? props.delay * 1000 : 0) - skipRest;
+  const moving = el.animate([
     { transform: `${axis}(0)`, offset: 0 },
     { transform: `${axis}(0)`, offset: holdOffset },
     { transform: `${axis}(-${distance}px)`, offset: 1 },
-  ], {
-    duration: durationMs,
-    // The rest sits at the start of each loop; a negative delay skips it on
-    // the first one, so the line starts moving at once.
-    delay: props.delay * 1000 - (props.direction === "normal" ? MARQUEE_PAUSE_MS : 0),
-    iterations: props.loop === 0 ? Infinity : props.loop,
-    direction: props.direction,
-    easing: "linear",
-  });
-  travel = distance;
+  ], { duration: durationMs, delay, direction: props.direction, easing: "linear" });
+  animations = [moving, ...animateStartFade(delay + MARQUEE_PAUSE_MS, durationMs - MARQUEE_PAUSE_MS)];
   syncPlayState();
+
+  moving.finished.then(() => {
+    if (run !== generation || (props.loop !== 0 && index >= props.loop)) return;
+    runLoop(distance, index + 1, run);
+  }, () => {});
+};
+
+const startAnimation = (distance: number) => {
+  generation++;
+  travel = distance;
+  runLoop(distance, 1, generation);
 };
 
 // The item is the slot content alone; the track adds the gap between copies,
@@ -205,6 +244,12 @@ onUnmounted(stopAnimation);
 </script>
 
 <style scoped>
+@property --marquee-fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 .marquee-wrapper {
   display: flex;
   position: relative;

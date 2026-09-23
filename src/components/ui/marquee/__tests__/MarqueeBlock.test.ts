@@ -14,12 +14,28 @@ class FakeResizeObserver {
 }
 const notifyResize = () => observers.forEach(o => o.callback([], o as unknown as ResizeObserver));
 
-const animations: Array<{ keyframes: Keyframe[]; options: KeyframeAnimationOptions; pause: ReturnType<typeof vi.fn>; play: ReturnType<typeof vi.fn>; cancel: ReturnType<typeof vi.fn> }> = [];
+interface FakeAnimation {
+  keyframes: Keyframe[];
+  options: KeyframeAnimationOptions;
+  target: HTMLElement;
+  pause: ReturnType<typeof vi.fn>;
+  play: ReturnType<typeof vi.fn>;
+  cancel: ReturnType<typeof vi.fn>;
+  finished: Promise<unknown>;
+  finish: () => Promise<void>;
+}
+const animations: FakeAnimation[] = [];
 const animate = vi.fn(function (this: HTMLElement, keyframes: Keyframe[], options: KeyframeAnimationOptions) {
-  const animation = { keyframes, options, target: this, pause: vi.fn(), play: vi.fn(), cancel: vi.fn() };
+  let resolve: (value: unknown) => void = () => {};
+  const finished = new Promise((r) => { resolve = r; });
+  const animation: FakeAnimation = {
+    keyframes, options, target: this, pause: vi.fn(), play: vi.fn(), cancel: vi.fn(), finished,
+    finish: async () => { resolve(animation); await finished; await Promise.resolve(); },
+  };
   animations.push(animation);
   return animation as unknown as Animation;
 });
+const movingLoops = () => animations.filter(a => a.target.classList.contains("marquee-content"));
 
 const setSize = (el: Element, prop: "clientWidth" | "offsetWidth", value: number) =>
   Object.defineProperty(el, prop, { configurable: true, get: () => value });
@@ -69,7 +85,6 @@ describe("MarqueeBlock", () => {
     const [animation] = animations;
     const expected = marqueeMotion(448, MARQUEE_SPEED, MARQUEE_PAUSE_MS);
     expect(animation?.options.duration).toBeCloseTo(expected.durationMs);
-    expect(animation?.options.iterations).toBe(Infinity);
     expect(animation?.keyframes.at(-1)?.transform).toBe("translateX(-448px)");
     expect(animation?.keyframes[1]).toMatchObject({ transform: "translateX(0)", offset: expected.holdOffset });
     expect(wrapper.findAll(".marquee-track")).toHaveLength(2);
@@ -208,6 +223,103 @@ describe("MarqueeBlock edge fades", () => {
     layout(wrapper, { container: 200, text: 100 });
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.findAll(".marquee-fade")).toHaveLength(0);
+    for (const fade of wrapper.findAll(".marquee-fade")) expect(fade.isVisible()).toBe(false);
+  });
+});
+
+describe("MarqueeBlock loops", () => {
+  const overflowing = async (props: Record<string, unknown> = {}) => {
+    const wrapper = mountMarquee(props);
+    await wrapper.vm.$nextTick();
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+    return wrapper;
+  };
+
+  it("runs the next loop, rest first, once the previous one ends", async () => {
+    await overflowing();
+
+    await movingLoops()[0]!.finish();
+
+    const [, second] = movingLoops();
+    expect(second?.options.delay).toBe(0);
+    expect(second?.keyframes[1]?.offset).toBeGreaterThan(0);
+  });
+
+  it("stops after the requested number of loops", async () => {
+    await overflowing({ loop: 2 });
+
+    await movingLoops()[0]!.finish();
+    await movingLoops()[1]!.finish();
+
+    expect(movingLoops()).toHaveLength(2);
+  });
+
+  it("does not come back after it was stopped", async () => {
+    const wrapper = await overflowing();
+    const first = movingLoops()[0]!;
+
+    layout(wrapper, { container: 200, text: 100 });
+    await wrapper.vm.$nextTick();
+    await first.finish();
+
+    expect(movingLoops()).toHaveLength(1);
+  });
+});
+
+describe("MarqueeBlock start fade", () => {
+  // The start fade appears over the time the text needs to cross it (20 px
+  // at the default speed) once the line moves, and leaves the same way.
+  const loop = marqueeMotion(448, MARQUEE_SPEED, MARQUEE_PAUSE_MS);
+  const rampMs = (20 / MARQUEE_SPEED) * 1000;
+  const travelMs = loop.durationMs - MARQUEE_PAUSE_MS;
+
+  const overflowing = async (props: Record<string, unknown>) => {
+    const wrapper = mountMarquee({ gradient: true, gradientLength: "20px", ...props });
+    await wrapper.vm.$nextTick();
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+    return wrapper;
+  };
+
+  const fadesOn = (el: Element) => animations.filter(a => a.target === el);
+
+  it("hides the start overlay while the line rests, so its first letters stay readable", async () => {
+    const wrapper = await overflowing({ gradientColor: "var(--card)" });
+
+    const [fadeIn, fadeOut] = fadesOn(wrapper.find(".marquee-fade.start").element);
+    expect(fadeIn?.keyframes.map(k => k.opacity)).toEqual([0, 1]);
+    expect(fadeIn?.options).toMatchObject({ delay: 0, fill: "both" });
+    expect(fadeIn?.options.duration).toBeCloseTo(rampMs);
+    expect(fadeOut?.keyframes.map(k => k.opacity)).toEqual([1, 0]);
+    expect(fadeOut?.options.delay).toBeCloseTo(travelMs - rampMs);
+  });
+
+  it("opens the mask's start edge only while the line moves", async () => {
+    const wrapper = await overflowing({});
+
+    const [fadeIn, fadeOut] = fadesOn(wrapper.find(".marquee-wrapper").element);
+    expect(fadeIn?.keyframes.map(k => k["--marquee-fade-start"])).toEqual(["0px", "20px"]);
+    expect(fadeOut?.keyframes.map(k => k["--marquee-fade-start"])).toEqual(["20px", "0px"]);
+    expect(boundStyle(wrapper.find(".marquee-wrapper").element).maskImage).toContain("var(--marquee-fade-start)");
+  });
+
+  it("waits out the rest before showing the fade on later loops", async () => {
+    const wrapper = await overflowing({ gradientColor: "var(--card)" });
+
+    await movingLoops()[0]!.finish();
+
+    const fades = fadesOn(wrapper.find(".marquee-fade.start").element);
+    expect(fades[2]?.options.delay).toBe(MARQUEE_PAUSE_MS);
+    for (const earlier of fades.slice(0, 2)) expect(earlier.cancel).toHaveBeenCalled();
+  });
+
+  it("pauses the fade together with the scroll", async () => {
+    const wrapper = await overflowing({ gradientColor: "var(--card)", pauseOnHover: true });
+
+    await wrapper.find(".marquee-wrapper").trigger("pointerenter");
+
+    expect(animations).toHaveLength(3);
+    for (const animation of animations) expect(animation.pause).toHaveBeenCalled();
   });
 });
