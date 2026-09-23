@@ -25,11 +25,8 @@
         class="flex-1 min-w-0 flex flex-col gap-px"
       >
         <MarqueeBlock
-          :duration="10"
-          animate-on-overflow-only
           pause-on-hover
           gradient
-          :gradient-color="gradientColor"
           gradient-length="20px"
         >
           <span class="text-sm font-medium leading-snug text-white">
@@ -37,11 +34,8 @@
           </span>
         </MarqueeBlock>
         <MarqueeBlock
-          :duration="10"
-          animate-on-overflow-only
           pause-on-hover
           gradient
-          :gradient-color="gradientColor"
           gradient-length="20px"
         >
           <span class="text-[11px] text-white/80">
@@ -92,7 +86,6 @@ withDefaults(defineProps<{
   background: string;
   /** Colour of the played part; only the centre card paints it. */
   progressBackground: string;
-  gradientColor: string;
   showProgress?: boolean;
   marquee?: boolean;
 }>(), { marquee: true });

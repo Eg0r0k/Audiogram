@@ -3,59 +3,76 @@
     ref="containerRef"
     class="marquee-wrapper"
     :class="{ vertical, horizontal: !vertical }"
-    :style="cssVariables"
+    :style="maskStyle"
     @pointerenter="onPointerEnter"
     @pointerleave="onPointerLeave"
   >
-    <div class="marquee-content">
+    <div
+      ref="motionRef"
+      class="marquee-content"
+    >
       <div
-        ref="contentRef"
+        ref="trackRef"
         class="marquee-track"
-        :class="trackClasses"
-        :style="trackStyle"
       >
-        <slot />
+        <div
+          ref="itemRef"
+          class="marquee-item"
+        >
+          <slot />
+        </div>
       </div>
 
-      <template v-if="isOverflowing">
-        <div
-          class="marquee-track"
-          :class="trackClasses"
-          :style="trackStyle"
-          aria-hidden="true"
-        >
+      <div
+        v-if="isOverflowing"
+        class="marquee-track"
+        aria-hidden="true"
+      >
+        <div class="marquee-item">
           <slot />
         </div>
-        <div
-          v-for="i in extraClones"
-          :key="i"
-          class="marquee-track"
-          :class="trackClasses"
-          :style="trackStyle"
-          aria-hidden="true"
-        >
-          <slot />
-        </div>
-      </template>
+      </div>
     </div>
+
+    <template v-if="gradient && gradientColor">
+      <div
+        v-show="isOverflowing"
+        ref="startFadeRef"
+        class="marquee-fade start"
+        :style="fadeStyle('start')"
+        aria-hidden="true"
+      />
+      <div
+        v-show="isOverflowing"
+        class="marquee-fade end"
+        :style="fadeStyle('end')"
+        aria-hidden="true"
+      />
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, useTemplateRef, watch } from "vue";
-import { useResizeObserver, useDebounceFn } from "@vueuse/core";
-
-type Direction = "normal" | "reverse";
+import { computed, onUnmounted, ref, useTemplateRef, watch } from "vue";
+import { useOwnerResizeObserver } from "@/composables/useOwnerResizeObserver";
+import { MARQUEE_PAUSE_MS, MARQUEE_SPEED, MARQUEE_UPDATE_RATE, marqueeMotion } from "./marqueeMotion";
 
 interface Props {
   vertical?: boolean;
-  direction?: Direction;
-  duration?: number;
+  direction?: PlaybackDirection;
+  /** CSS px per second; the default suits every call site but rare ones. */
+  speed?: number;
+  /** Seconds before the first loop. */
   delay?: number;
+  /** Loop count; 0 loops forever. */
   loop?: number;
-  animateOnOverflowOnly?: boolean;
   gradient?: boolean;
-  gradientColor?: [number, number, number] | string;
+  /**
+   * Solid colour behind the line: the edges then fade under static overlays
+   * of it. Without it they fade through a mask, which makes the compositor
+   * redraw the whole masked line on every frame of the scroll.
+   */
+  gradientColor?: string;
   gradientLength?: string;
   pauseOnHover?: boolean;
   pause?: boolean;
@@ -64,274 +81,176 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   vertical: false,
   direction: "normal",
-  duration: 20,
+  speed: MARQUEE_SPEED,
   delay: 0,
   loop: 0,
-  animateOnOverflowOnly: false,
   gradient: false,
-  gradientColor: () => [255, 255, 255],
+  gradientColor: undefined,
   gradientLength: "200px",
   pauseOnHover: false,
   pause: false,
 });
 
-const emit = defineEmits<{
-  overflowDetected: [];
-  overflowCleared: [];
-}>();
-
 const containerRef = useTemplateRef<HTMLElement>("containerRef");
-const contentRef = useTemplateRef<HTMLElement>("contentRef");
+const motionRef = useTemplateRef<HTMLElement>("motionRef");
+const trackRef = useTemplateRef<HTMLElement>("trackRef");
+const itemRef = useTemplateRef<HTMLElement>("itemRef");
+const startFadeRef = useTemplateRef<HTMLElement>("startFadeRef");
 
-const extraClones = ref(0);
 const isOverflowing = ref(false);
 const isHovering = ref(false);
-const forceReset = ref(false);
 
-const lastContainerSize = ref(0);
-const lastContentSize = ref(0);
+let animations: Animation[] = [];
+let travel = 0;
+// Bumped whenever the scroll is stopped or restarted, so a loop that ends
+// afterwards does not chain another one.
+let generation = 0;
 
-const trackClasses = computed(() => ({
-  animating: isOverflowing.value && !forceReset.value,
-  paused: props.pause || (props.pauseOnHover && isHovering.value),
-}));
+const FADE_DIRECTION = {
+  horizontal: { start: "to right", end: "to left" },
+  vertical: { start: "to bottom", end: "to top" },
+} as const;
 
-const trackStyle = computed(() => {
-  if (forceReset.value) {
-    return { transform: "translateX(0)" };
-  }
-  return {};
-});
-
-const cssVariables = computed(() => {
-  const vars: Record<string, string> = {
-    "--marquee-duration": `${props.duration}s`,
-    "--marquee-delay": `${props.delay}s`,
-    "--marquee-direction": props.direction,
-    "--marquee-loops": props.loop === 0 ? "infinite" : String(props.loop),
-    "--marquee-gradient-length": props.gradientLength,
+const fadeStyle = (edge: "start" | "end") => {
+  const towards = FADE_DIRECTION[props.vertical ? "vertical" : "horizontal"][edge];
+  return {
+    [props.vertical ? "height" : "width"]: props.gradientLength,
+    background: `linear-gradient(${towards}, ${props.gradientColor}, transparent)`,
   };
+};
 
-  if (props.gradient && isOverflowing.value) {
-    const len = props.gradientLength;
-    const horizontal = !props.vertical;
-    const mask = horizontal
-      ? `linear-gradient(to right, transparent 0%, black ${len}, black calc(100% - ${len}), transparent 100%)`
-      : `linear-gradient(to bottom, transparent 0%, black ${len}, black calc(100% - ${len}), transparent 100%)`;
-
-    vars["-webkit-mask-image"] = mask;
-    vars["mask-image"] = mask;
-  }
-  else {
-    vars["-webkit-mask-image"] = "none";
-    vars["mask-image"] = "none";
-  }
-
-  return vars;
+const maskStyle = computed(() => {
+  if (!props.gradient || !isOverflowing.value || props.gradientColor) return {};
+  const len = props.gradientLength;
+  const side = props.vertical ? "to bottom" : "to right";
+  const mask = `linear-gradient(${side}, transparent 0%, black var(--marquee-fade-start), black calc(100% - ${len}), transparent 100%)`;
+  return { maskImage: mask, WebkitMaskImage: mask };
 });
 
-const getOwnerWindow = (): Window => {
-  return containerRef.value?.ownerDocument.defaultView ?? window;
+const syncPlayState = () => {
+  const paused = props.pause || (props.pauseOnHover && isHovering.value);
+  for (const animation of animations) {
+    if (paused) animation.pause();
+    else animation.play();
+  }
 };
 
-const getOwnerDocument = (): Document => {
-  return containerRef.value?.ownerDocument ?? document;
+const cancelAnimations = () => {
+  for (const animation of animations) animation.cancel();
+  animations = [];
 };
 
-const calculateOverflow = () => {
-  if (!containerRef.value || !contentRef.value) return;
+const stopAnimation = () => {
+  generation++;
+  cancelAnimations();
+  travel = 0;
+};
 
-  const container = props.vertical
-    ? containerRef.value.clientHeight
-    : containerRef.value.clientWidth;
+// While the line rests its first letters sit on the start edge, so that fade
+// shows only while the text moves: it comes in over the time the text needs
+// to cross it and leaves the same way as the next copy arrives. Two short
+// animations rather than one per loop: an animation that is waiting or has
+// ended costs nothing, while the mask variant animates a custom property on
+// the main thread for as long as it is active.
+const animateStartFade = (moveStartMs: number, travelMs: number): Animation[] => {
+  if (!props.gradient || props.direction !== "normal") return [];
+  const target = props.gradientColor ? startFadeRef.value : containerRef.value;
+  if (!target) return [];
+  const rampMs = Math.min((Number.parseFloat(props.gradientLength) / props.speed) * 1000, travelMs / 2);
+  const [hidden, shown] = props.gradientColor
+    ? [{ opacity: 0 }, { opacity: 1 }]
+    : [{ "--marquee-fade-start": "0px" }, { "--marquee-fade-start": props.gradientLength }];
+  return [
+    target.animate([hidden, shown], { delay: moveStartMs, duration: rampMs, fill: "both" }),
+    target.animate([shown, hidden], { delay: moveStartMs + travelMs - rampMs, duration: rampMs, fill: "forwards" }),
+  ];
+};
 
-  const content = props.vertical
-    ? contentRef.value.scrollHeight
-    : contentRef.value.scrollWidth;
+// One animation moves both copies: after a loop the copy stands where the
+// original started, so the jump back is invisible. Each loop is its own
+// animation, chained on the previous one's end, which falls in the rest.
+const runLoop = (distance: number, index: number, run: number) => {
+  const el = motionRef.value;
+  if (!el) return;
+  cancelAnimations();
+  const { durationMs, holdOffset } = marqueeMotion(distance, props.speed, MARQUEE_PAUSE_MS);
+  const axis = props.vertical ? "translateY" : "translateX";
+  // The first loop skips its rest, so the line starts moving at once.
+  const skipRest = index === 1 && props.direction === "normal" ? MARQUEE_PAUSE_MS : 0;
+  const delay = (index === 1 ? props.delay * 1000 : 0) - skipRest;
+  const steps = Math.max(1, Math.round((distance / props.speed) * MARQUEE_UPDATE_RATE));
+  const moving = el.animate([
+    { transform: `${axis}(0)`, offset: 0 },
+    { transform: `${axis}(0)`, offset: holdOffset, easing: `steps(${steps})` },
+    { transform: `${axis}(-${distance}px)`, offset: 1 },
+  ], { duration: durationMs, delay, direction: props.direction, easing: "linear" });
+  animations = [moving, ...animateStartFade(delay + MARQUEE_PAUSE_MS, durationMs - MARQUEE_PAUSE_MS)];
+  syncPlayState();
 
-  if (container === 0 || content === 0) return;
+  moving.finished.then(() => {
+    if (run !== generation || (props.loop !== 0 && index >= props.loop)) return;
+    runLoop(distance, index + 1, run);
+  }, () => {});
+};
 
-  const containerChanged = Math.abs(container - lastContainerSize.value) > 1;
-  const contentChanged = Math.abs(content - lastContentSize.value) > 1;
+const startAnimation = (distance: number) => {
+  generation++;
+  travel = distance;
+  runLoop(distance, 1, generation);
+};
 
-  if (!containerChanged && !contentChanged) return;
+// The item is the slot content alone; the track adds the gap between copies,
+// which must not count as overflow.
+const measure = () => {
+  const container = containerRef.value;
+  const item = itemRef.value;
+  const track = trackRef.value;
+  if (!container || !item || !track) return;
 
-  lastContainerSize.value = container;
-  lastContentSize.value = content;
+  const available = props.vertical ? container.clientHeight : container.clientWidth;
+  if (available === 0) return;
+  const needed = props.vertical ? item.offsetHeight : item.offsetWidth;
 
-  const wasOverflowing = isOverflowing.value;
-  const nowOverflowing = content > container + 1;
-
-  if (wasOverflowing && !nowOverflowing) {
-    forceReset.value = true;
-    queueMicrotask(() => {
-      forceReset.value = false;
-    });
+  isOverflowing.value = needed > available + 1;
+  if (!isOverflowing.value) {
+    stopAnimation();
+    return;
   }
 
-  isOverflowing.value = nowOverflowing;
-
-  if (nowOverflowing && !wasOverflowing) {
-    emit("overflowDetected");
-  }
-  else if (!nowOverflowing && wasOverflowing) {
-    emit("overflowCleared");
-  }
-
-  extraClones.value = Math.max(0, Math.ceil(container / content) - 1);
+  const distance = props.vertical ? track.offsetHeight : track.offsetWidth;
+  if (Math.abs(distance - travel) > 1) startAnimation(distance);
 };
 
-const resetAnimation = async () => {
-  forceReset.value = true;
-  await nextTick();
-
-  setTimeout(() => {
-    forceReset.value = false;
-  }, 50);
-};
-
-const debouncedCalculate = useDebounceFn(() => {
-  calculateOverflow();
-}, 50);
+useOwnerResizeObserver(containerRef, measure);
+useOwnerResizeObserver(itemRef, measure);
 
 const onPointerEnter = () => {
-  if (props.pauseOnHover) {
-    isHovering.value = true;
-  }
+  if (props.pauseOnHover) isHovering.value = true;
 };
 
 const onPointerLeave = () => {
-  if (props.pauseOnHover) {
-    isHovering.value = false;
-  }
+  if (props.pauseOnHover) isHovering.value = false;
 };
 
-let intervalId: ReturnType<typeof setInterval> | null = null;
-let cleanupFns: Array<() => void> = [];
+watch([() => props.pause, isHovering], syncPlayState);
 
-const startIntervalCheck = () => {
-  if (intervalId) return;
-
-  intervalId = setInterval(() => {
-    calculateOverflow();
-  }, 400);
-};
-
-const stopIntervalCheck = () => {
-  if (intervalId) {
-    clearInterval(intervalId);
-    intervalId = null;
-  }
-};
-
-const handleVisibilityChange = () => {
-  const doc = getOwnerDocument();
-  if (doc.visibilityState === "visible") {
-    lastContainerSize.value = 0;
-    lastContentSize.value = 0;
-    // Overflow measurement is cosmetic: a failed tick just leaves the previous
-    // geometry until the next resize or interval check re-measures.
-    nextTick(() => {
-      calculateOverflow();
-    }).catch(() => {});
-  }
-};
-
-const handleWindowFocus = () => {
-  lastContainerSize.value = 0;
-  lastContentSize.value = 0;
-  // Same as above: the next resize or interval tick re-measures anyway.
-  nextTick(() => {
-    calculateOverflow();
-  }).catch(() => {});
-};
-
-useResizeObserver(containerRef, () => {
-  calculateOverflow();
-});
-
-useResizeObserver(contentRef, (entries) => {
-  const entry = entries[0] as ResizeObserverEntry | undefined;
-  if (!entry) return;
-
-  const newSize = props.vertical
-    ? entry.contentRect.height
-    : entry.contentRect.width;
-
-  if (Math.abs(newSize - lastContentSize.value) > 3) {
-    const wasLarger = lastContentSize.value > newSize;
-
-    if (wasLarger) {
-      forceReset.value = true;
-      // Cosmetic re-measure; the interval check picks the size up regardless.
-      nextTick(() => {
-        calculateOverflow();
-        setTimeout(() => {
-          forceReset.value = false;
-        }, 50);
-      }).catch(() => {});
-    }
-    else {
-      // Both only restart the scroll animation and re-measure — nothing to
-      // report if a tick throws.
-      resetAnimation().catch(() => {});
-      debouncedCalculate().catch(() => {});
-    }
-  }
-});
-
-watch(isOverflowing, (overflowing) => {
-  if (overflowing) {
-    startIntervalCheck();
-  }
-  else {
-    stopIntervalCheck();
-  }
-});
-
-onMounted(() => {
-  // The component can be unmounted before this tick runs (marquee rows are
-  // virtualized); a rejected tick means there is no marquee left to set up.
-  nextTick(() => {
-    const doc = getOwnerDocument();
-    const win = getOwnerWindow();
-
-    if (contentRef.value) {
-      lastContentSize.value = props.vertical
-        ? contentRef.value.scrollHeight
-        : contentRef.value.scrollWidth;
-    }
-
-    calculateOverflow();
-
-    doc.addEventListener("visibilitychange", handleVisibilityChange);
-    win.addEventListener("focus", handleWindowFocus);
-
-    cleanupFns.push(
-      () => doc.removeEventListener("visibilitychange", handleVisibilityChange),
-      () => win.removeEventListener("focus", handleWindowFocus),
-    );
-  }).catch(() => {});
-});
-
-onUnmounted(() => {
-  stopIntervalCheck();
-  cleanupFns.forEach(fn => fn());
-  cleanupFns = [];
-});
-
-defineExpose({
-  recalculate: () => {
-    lastContainerSize.value = 0;
-    lastContentSize.value = 0;
-    calculateOverflow();
+watch(
+  () => [props.speed, props.vertical, props.direction, props.loop, props.delay],
+  () => {
+    if (travel > 0) startAnimation(travel);
   },
-  resetAnimation,
-  isOverflowing,
-});
+);
+
+onUnmounted(stopAnimation);
 </script>
 
 <style scoped>
+@property --marquee-fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 .marquee-wrapper {
   display: flex;
   position: relative;
@@ -361,10 +280,56 @@ defineExpose({
   flex-direction: column;
 }
 
+.marquee-fade {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.marquee-wrapper.horizontal .marquee-fade {
+  top: 0;
+  bottom: 0;
+}
+
+.marquee-wrapper.vertical .marquee-fade {
+  left: 0;
+  right: 0;
+}
+
+.marquee-wrapper.horizontal .marquee-fade.start {
+  left: 0;
+}
+
+.marquee-wrapper.horizontal .marquee-fade.end {
+  right: 0;
+}
+
+.marquee-wrapper.vertical .marquee-fade.start {
+  top: 0;
+}
+
+.marquee-wrapper.vertical .marquee-fade.end {
+  bottom: 0;
+}
+
 .marquee-track {
   flex-shrink: 0;
   display: flex;
   align-items: center;
+}
+
+.marquee-item {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.marquee-wrapper.horizontal .marquee-item {
+  flex-direction: row;
+}
+
+.marquee-wrapper.vertical .marquee-item {
+  flex-direction: column;
 }
 
 .marquee-wrapper.horizontal .marquee-track {
@@ -378,37 +343,4 @@ defineExpose({
   min-height: 100%;
   padding-bottom: 3rem;
 }
-
-.marquee-track.animating {
-  animation: marquee-scroll var(--marquee-duration) linear var(--marquee-delay)
-    var(--marquee-loops);
-  animation-direction: var(--marquee-direction);
-}
-
-.marquee-track.paused {
-  animation-play-state: paused;
-}
-
-.marquee-wrapper.vertical .marquee-track.animating {
-  animation-name: marquee-scroll-vertical;
-}
-
-@keyframes marquee-scroll {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-100%);
-  }
-}
-
-@keyframes marquee-scroll-vertical {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-100%);
-  }
-}
-
 </style>

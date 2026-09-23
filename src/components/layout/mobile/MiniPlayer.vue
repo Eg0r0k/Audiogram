@@ -37,7 +37,6 @@
           :cover-url="slot.coverUrl"
           :background="cardBackground"
           :progress-background="progressBackground"
-          :gradient-color="gradientColor"
           :show-progress="slot.role === 'center'"
           :marquee="slot.role === 'center'"
         >
@@ -98,7 +97,6 @@ const emit = defineEmits<{
 const { color: playerColor } = useMobilePlayerColor();
 
 const cardBackground = computed(() => `color-mix(in oklch, ${playerColor.value.hsl} 80%, black)`);
-const gradientColor = computed(() => playerColor.value.hsl);
 
 const progressBackground = computed(() => {
   const accent = playerColor.value.palette?.vivid ?? playerColor.value.hex;
