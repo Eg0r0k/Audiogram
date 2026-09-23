@@ -25,7 +25,7 @@ class ArtistRepository extends BaseRepository<ArtistEntity, ArtistId> {
     }
   }
 
-  /** Library members only; shadow rows (pinned = 0) come from remote browsing. */
+  /** Library members only (pinned = 1). */
   async findPinned(): Promise<Result<ArtistEntity[], Error>> {
     try {
       const artists = await this.table.where("pinned").equals(1).toArray();

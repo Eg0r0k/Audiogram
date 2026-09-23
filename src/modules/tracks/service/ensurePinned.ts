@@ -37,7 +37,7 @@ interface PinnedEntry {
 }
 
 /**
- * The artists table as the batch sees it, plus the shadow rows it adds. The
+ * The artists table as the batch sees it, plus the rows it adds. The
  * rows are kept alongside the index only to rebuild it when a transaction
  * aborts — the happy path never walks them again.
  */
@@ -125,7 +125,7 @@ const runPinBatch = async (
   );
 
   // An aborted transaction rolled its rows back, so the in-memory snapshot has
-  // to follow it: a retried subject must not align onto a shadow artist whose
+  // to follow it: a retried subject must not align onto an artist whose
   // row no longer exists. The index cannot drop entries, so it is rebuilt —
   // only here, on a path a batch does not normally take.
   if (result.isErr() && ctx.snapshot.rows.length > artistsBefore) {

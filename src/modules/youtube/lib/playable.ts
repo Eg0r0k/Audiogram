@@ -40,7 +40,8 @@ export function ytPlayableFromEphemeral(track: PlayerTrack | null): YtPlayable |
 
 /**
  * Full DTO from a music-track entity (collection/artist pages): carries the
- * album and artist ids so the pin cascade creates shadow album/artist rows.
+ * album and artist ids, so the row links to them and adding it to the library
+ * creates their rows.
  * `fallback` fills what an album listing omits per track — the page's own
  * album id/title and cover.
  */
@@ -91,7 +92,7 @@ export function ytVideoToDto(video: YtSearchResult): SourceTrackDTO {
 /**
  * Bridges a YT playable into the generic source DTO — the shape the pin
  * cascade and the download manager consume (M5: shared offline mechanism).
- * Playables carry no album/artist ids, so no shadow album is created; use
+ * Playables carry no album/artist ids, so the row links to no album; use
  * {@link ytMusicTrackToDto} where the full entity is available.
  */
 export function ytPlayableToDto(item: YtPlayable): SourceTrackDTO {

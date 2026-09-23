@@ -34,7 +34,7 @@ export const ndAlbumId = (albumId: string) => AlbumId(`${ND_PREFIX}${albumId}`);
 export const ndArtistId = (artistId: string) => ArtistId(`${ND_PREFIX}${artistId}`);
 export const ndPlaylistId = (playlistId: string) => PlaylistId(`${ND_PREFIX}${playlistId}`);
 // M5: yt album/artist id spaces ("yt:MPREb_…" / "yt:UC…") — the pin cascade
-// can hang shadow album/artist rows off downloaded YT tracks.
+// can hang album/artist rows off YT tracks added to the library.
 export const ytAlbumId = (browseId: string) => AlbumId(`${YT_PREFIX}${browseId}`);
 export const ytArtistId = (channelId: string) => ArtistId(`${YT_PREFIX}${channelId}`);
 export const ytPlaylistId = (listId: string) => PlaylistId(`${YT_PREFIX}${listId}`);

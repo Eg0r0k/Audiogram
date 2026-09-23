@@ -110,9 +110,8 @@ const mapYtPlaylist = (playlist: YtPlaylistLike): SourcePlaylistDTO => ({
   coverRef: playlist.thumbnail ?? undefined,
 });
 
-// The full DTO builder (album/artist IDS included): a search-row download
-// pins shadow album/artist rows, and the album row is where the cover blob
-// lives — a DTO with only albumTitle pins a coverless track.
+// The full DTO builder (album/artist IDS included): the cover blob is stored
+// under the album id - a DTO with only albumTitle pins a coverless track.
 const mapMusicTrack = (entity: YtMusicEntity & { kind: "track" }): SourceTrackDTO =>
   ytMusicTrackToDto(entity);
 
