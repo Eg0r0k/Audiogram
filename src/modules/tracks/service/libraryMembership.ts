@@ -1,37 +1,38 @@
 import { db } from "@/db";
+import type { TrackEntity } from "@/db/entities";
 import { playlistRepository, trackRepository } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
 import { unwrapResult } from "@/queries/shared";
 import { getLogger } from "@/lib/logger";
-import { indexImportedTracks, removeSearchDocuments } from "@/modules/search/service/searchIndex";
-import type { TrackId } from "@/types/ids";
-import { parseTrackRef } from "@/types/track-ref";
+import { removeSearchDocuments } from "@/modules/search/service/searchIndex";
+import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
+import type { SourceTrackDTO } from "@/types/source-dto";
+import { sourceKindOfId } from "@/types/track-ref";
+import { ensurePinned } from "./ensurePinned";
+
+/** A shadow row carries everything the pin cascade needs to rebuild its family. */
+const dtoFromRow = (track: TrackEntity): SourceTrackDTO => ({
+  id: track.id,
+  title: track.title,
+  artistName: track.artistName || undefined,
+  artistIds: track.artistIds.length > 0 ? track.artistIds : undefined,
+  albumId: track.albumId || undefined,
+  albumTitle: track.albumTitle || undefined,
+  duration: track.duration,
+  trackNo: track.trackNo,
+  discNo: track.diskNo,
+  format: track.format,
+});
 
 /**
- * Upgrades a shadow remote row to a full library member, cascading
- * pinned = 1 onto its album/artist rows in one unitOfWork.
+ * Upgrades a shadow remote row to a full library member. A shadow row has no
+ * album/artist rows, so this runs the same cascade as adding from a DTO.
  */
 export async function promoteTrackToLibrary(trackId: TrackId): Promise<void> {
-  const result = await unitOfWork.runScoped(
-    [db.tracks, db.albums, db.artists],
-    async () => {
-      const track = await unwrapResult(trackRepository.findById(trackId));
-      if (!track) throw new Error(`Track not found: ${trackId}`);
+  const track = await unwrapResult(trackRepository.findById(trackId));
+  if (!track) throw new Error(`Track not found: ${trackId}`);
 
-      await unwrapResult(trackRepository.update(trackId, { pinned: 1 }));
-      if (track.albumId) {
-        await db.albums.update(track.albumId, { pinned: 1 });
-      }
-      for (const artistId of track.artistIds) {
-        await db.artists.update(artistId, { pinned: 1 });
-      }
-    },
-  );
-  if (result.isErr()) throw result.error;
-
-  indexImportedTracks([trackId]).catch((error) => {
-    getLogger().warn(`[Search] Indexing promoted ${trackId} failed: ${String(error)}`);
-  });
+  await ensurePinned({ kind: "remote", dto: dtoFromRow(track) });
 }
 
 /**
@@ -54,30 +55,16 @@ export async function removeTrackFromLibrary(trackId: TrackId): Promise<void> {
 
       await unwrapResult(trackRepository.update(trackId, { pinned: 0, likedAt: undefined }));
 
-      // Recalculate the album/artist pinned flags — no ghost albums after
-      // the last library track leaves. Local rows are never touched.
-      const demotedDocIds: string[] = [];
-      if (track?.albumId && parseTrackRef(track.albumId as unknown as TrackId).kind !== "local") {
-        const stillPinned = await db.tracks
-          .where("[albumId+pinned]").equals([track.albumId, 1])
-          .count();
-        if (stillPinned === 0) {
-          await db.albums.update(track.albumId, { pinned: 0 });
-          demotedDocIds.push(`album:${track.albumId}`);
-        }
+      // Album and artist rows exist only for library members, so the ones
+      // this track was the last library reference of go with it.
+      const removedDocIds: string[] = [];
+      if (track?.albumId && await deleteAlbumIfUnreferenced(track.albumId)) {
+        removedDocIds.push(`album:${track.albumId}`);
       }
-      for (const artistId of track?.artistIds ?? []) {
-        if (parseTrackRef(artistId as unknown as TrackId).kind === "local") continue;
-        const stillPinned = await db.tracks
-          .where("artistIds").equals(artistId)
-          .and(candidate => candidate.pinned === 1)
-          .count();
-        if (stillPinned === 0) {
-          await db.artists.update(artistId, { pinned: 0 });
-          demotedDocIds.push(`artist:${artistId}`);
-        }
+      for (const artistId of new Set(track?.artistIds ?? [])) {
+        if (await deleteArtistIfUnreferenced(artistId)) removedDocIds.push(`artist:${artistId}`);
       }
-      return demotedDocIds;
+      return removedDocIds;
     },
   );
   if (result.isErr()) throw result.error;
@@ -86,3 +73,35 @@ export async function removeTrackFromLibrary(trackId: TrackId): Promise<void> {
     getLogger().warn(`[Search] De-indexing removed ${trackId} failed: ${String(error)}`);
   });
 }
+
+/** Runs inside the caller's transaction. True when a row was deleted. */
+const deleteAlbumIfUnreferenced = async (albumId: AlbumId): Promise<boolean> => {
+  const stillPinned = await db.tracks.where("[albumId+pinned]").equals([albumId, 1]).count();
+  if (stillPinned > 0 || !(await db.albums.get(albumId))) return false;
+  await db.albums.delete(albumId);
+  return true;
+};
+
+/**
+ * Runs inside the caller's transaction, after the album check, so an album
+ * that just left no longer holds its artist. True when a row was deleted.
+ */
+const deleteArtistIfUnreferenced = async (artistId: ArtistId): Promise<boolean> => {
+  const [pinnedTracks, albums] = await Promise.all([
+    db.tracks.where("artistIds").equals(artistId).and(candidate => candidate.pinned === 1).count(),
+    db.albums.where("artistId").equals(artistId).count(),
+  ]);
+  if (pinnedTracks > 0 || albums > 0) return false;
+
+  // A source id stays on the shadow rows as a link to the source's catalog;
+  // an unprefixed one would point at a library page that no longer exists.
+  if (sourceKindOfId(artistId) === "local") {
+    await db.tracks.where("artistIds").equals(artistId).modify((track) => {
+      track.artistIds = track.artistIds.filter(id => id !== artistId);
+    });
+  }
+
+  if (!(await db.artists.get(artistId))) return false;
+  await db.artists.delete(artistId);
+  return true;
+};

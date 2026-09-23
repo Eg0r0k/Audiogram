@@ -123,7 +123,7 @@ describe("buildRemoteShadowEntities", () => {
     expect(rows.track.lyricsPath).toBe("lyrics/song1.lrc");
   });
 
-  it("a shadow request never downgrades an existing pinned = 1 row", () => {
+  it("a shadow request on a library row keeps the whole family a library member", () => {
     const pinnedArtist: ArtistEntity = {
       id: ndArtistId("artist1"),
       name: "Existing Artist",
@@ -143,7 +143,21 @@ describe("buildRemoteShadowEntities", () => {
     expect(rows.album?.pinned).toBe(1);
     expect(rows.artists[0]?.pinned).toBe(1);
     expect(rows.artists[0]?.name).toBe("Existing Artist");
-    expect(rows.artists[1]?.pinned).toBe(0);
+    expect(rows.artists[1]?.pinned).toBe(1);
+  });
+
+  it("a shadow row gets no album/artist rows and keeps the ids as links", () => {
+    const rows = buildRemoteShadowEntities(dto, 0, noExisting, NOW);
+
+    expect(rows.album).toBeNull();
+    expect(rows.artists).toEqual([]);
+    expect(rows.track).toMatchObject({
+      pinned: 0,
+      albumId: "nd:album1",
+      albumTitle: "Remote Album",
+      artistIds: ["nd:artist1", "nd:artist2"],
+      artistName: "Artist A, Artist B",
+    });
   });
 
   it("never writes an artist row it cannot name — the id is dropped instead", () => {

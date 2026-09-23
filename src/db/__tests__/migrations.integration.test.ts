@@ -103,7 +103,7 @@ describe("v9 → v10 upgrade (integration)", () => {
     const { db } = await import("@/db");
     await db.open();
 
-    expect(db.verno).toBe(17);
+    expect(db.verno).toBe(18);
 
     const track = await db.tracks.get("t1" as never);
     expect(track).toMatchObject({ id: "t1", pinned: 1, likedAt: 42, playCount: 3 });

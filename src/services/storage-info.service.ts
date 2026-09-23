@@ -102,7 +102,11 @@ export async function collectStorageInfo(): Promise<StorageInfo> {
     getDbSize(),
     getQuotaInfo(),
     getStoragePath(),
-    Promise.all([db.tracks.count(), db.albums.count(), db.artists.count()]),
+    Promise.all([
+      db.tracks.where("pinned").equals(1).count(),
+      db.albums.where("pinned").equals(1).count(),
+      db.artists.where("pinned").equals(1).count(),
+    ]),
   ]);
 
   return {

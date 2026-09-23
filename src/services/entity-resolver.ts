@@ -16,10 +16,12 @@ import type { BaseMetadata } from "@/workers/types";
 //
 // ── Remote pin cascade ────────────────────────────────────────────────────────
 //
-// TrackEntity.albumId/artistIds are mandatory FKs, so pinning a remote track
-// upserts shadow album/artist rows with the same deterministic prefixed ids
-// ("nd:<albumId>" / "nd:<artistId>"). Pure derivation lives here; the write
-// itself goes through unitOfWork in ensurePinned.
+// Adding a remote track to the library upserts its album/artist rows under
+// the same deterministic prefixed ids ("nd:<albumId>" / "nd:<artistId>").
+// A shadow pin (playback, likes, playlists) writes the track row alone: its
+// albumId/artistIds are links to the source's catalog, not to Dexie rows.
+// Pure derivation lives here; the write goes through unitOfWork in
+// ensurePinned.
 //
 
 // The naming rules moved to `@/lib/artist-names`; re-exported so existing
@@ -62,9 +64,10 @@ function artistNamesFor(dto: SourceTrackDTO, ids: ArtistId[]): (string | undefin
 }
 
 /**
- * Builds the merged track + shadow album/artist rows for pinning a remote
- * DTO. Snapshot fields come from the DTO (revalidate-on-view semantics);
- * user state on existing rows (likes, counts, tags, addedAt) is preserved.
+ * Builds the merged track, plus album/artist rows for a library member, for
+ * pinning a remote DTO. Snapshot fields come from the DTO
+ * (revalidate-on-view semantics); user state on existing rows (likes,
+ * counts, tags, addedAt) is preserved.
  */
 export function buildRemoteShadowEntities(
   dto: SourceTrackDTO,
@@ -73,6 +76,7 @@ export function buildRemoteShadowEntities(
   now: number,
 ): RemotePinRows {
   const source = trackSourceOf(dto);
+  const pinned = mergePinned(existing.track?.pinned, requestedPinned);
   // Same rule as for artists below: an album row we cannot title would show
   // up as a blank entry in the album picker, so the track stays album-less.
   const requestedAlbumId = dto.albumId ?? existing.track?.albumId ?? AlbumId("");
@@ -82,7 +86,9 @@ export function buildRemoteShadowEntities(
   const candidateIds = dto.artistIds ?? existing.track?.artistIds ?? [];
   const names = artistNamesFor(dto, candidateIds);
   const artists: ArtistEntity[] = [];
-  for (const [index, id] of candidateIds.entries()) {
+  // A shadow row gets no album/artist rows: its ids are links, and the rows
+  // appear once the track joins the library.
+  for (const [index, id] of (pinned === 1 ? candidateIds : []).entries()) {
     const current = existing.artists.get(id);
     const name = current?.name || names[index];
     // No name from any source: an empty artist row renders as a blank entry
@@ -92,12 +98,12 @@ export function buildRemoteShadowEntities(
       ...current,
       id,
       name,
-      pinned: mergePinned(current?.pinned, requestedPinned),
+      pinned: 1,
       addedAt: current?.addedAt ?? now,
       updatedAt: now,
     });
   }
-  const artistIds = artists.map(artist => artist.id);
+  const artistIds = pinned === 1 ? artists.map(artist => artist.id) : [...candidateIds];
 
   const track: TrackEntity = {
     ...existing.track,
@@ -109,7 +115,7 @@ export function buildRemoteShadowEntities(
     albumId,
     tagIds: existing.track?.tagIds ?? [],
     source,
-    pinned: mergePinned(existing.track?.pinned, requestedPinned),
+    pinned,
     state: existing.track?.state ?? TrackState.READY,
     duration: dto.duration ?? existing.track?.duration ?? 0,
     format: dto.format ?? existing.track?.format ?? {},
@@ -119,13 +125,13 @@ export function buildRemoteShadowEntities(
     addedAt: existing.track?.addedAt ?? now,
   };
 
-  const album: AlbumEntity | null = dto.albumId && albumId
+  const album: AlbumEntity | null = pinned === 1 && dto.albumId && albumId
     ? {
         ...existing.album,
         id: dto.albumId,
         title: albumTitle,
         artistId: existing.album?.artistId ?? (artistIds.length > 0 ? artistIds[0] : ArtistId("")),
-        pinned: mergePinned(existing.album?.pinned, requestedPinned),
+        pinned: 1,
         addedAt: existing.album?.addedAt ?? now,
         updatedAt: now,
       }
@@ -144,8 +150,10 @@ export function buildRemoteShadowEntities(
  * 1. a same-named LOCAL artist — a YT/ND download never duplicates one the
  *    library already has (matching is the import pipeline's identity);
  * 2. the source's own id, when the ids line up one-to-one with the names;
- * 3. a same-named shadow row of the same source (never another source's);
- * 4. a fresh local row.
+ * 3. a same-named row of the same source (never another source's);
+ * 4. a fresh local row - only when `createMissing`, i.e. for a library
+ *    member. A shadow pin writes no artist rows, so an unresolved name
+ *    leaves the DTO as the source gave it.
  *
  * The result has one id per name and the display string re-joined with
  * ", ", so the cascade and the row's caption agree on who the artists are.
@@ -215,6 +223,7 @@ export const artistNameIndex = (artists: readonly ArtistEntity[]): ArtistNameInd
 export function alignArtists(
   dto: SourceTrackDTO,
   index: ArtistNameIndex,
+  { createMissing = true }: { createMissing?: boolean } = {},
 ): SourceTrackDTO {
   const names = splitArtistNames(dto.artistName);
   if (names.length === 0) return dto;
@@ -223,14 +232,18 @@ export function alignArtists(
   const paired = remoteIds.length === names.length;
   const ownPrefix = `${parseTrackRef(dto.id).kind}:`;
 
-  const artistIds = names.map((name, position) => {
+  const resolved = names.map((name, position) => {
     const key = identityKey(name);
     return index.local(key)
       ?? (paired ? remoteIds[position] : undefined)
-      ?? index.ownShadow(key, ownPrefix)
-      ?? ArtistId(crypto.randomUUID());
+      ?? index.ownShadow(key, ownPrefix);
   });
 
+  // Without rule 4 a name may stay unresolved, and a partial list would put
+  // ids under the wrong names; the source's own ids are what its row showed.
+  if (!createMissing && resolved.some(id => id === undefined)) return dto;
+
+  const artistIds = resolved.map(id => id ?? ArtistId(crypto.randomUUID()));
   return { ...dto, artistIds, artistName: names.join(", ") };
 }
 
@@ -280,8 +293,8 @@ export class EntityResolver {
 
     const existing = await db.artists.toArray();
     const wanted = new Set(uniqueKeys);
-    // A local row always wins over a same-named remote shadow row: downloads
-    // must join the library's own artist, never a catalog placeholder.
+    // A local row always wins over a same-named remote row: downloads must
+    // join the library's own artist, never one added from a source.
     for (const artist of existing) {
       const key = identityKey(artist.name);
       if (!wanted.has(key)) continue;

@@ -37,7 +37,7 @@ interface PinnedEntry {
 }
 
 /**
- * The artists table as the batch sees it, plus the shadow rows it adds. The
+ * The artists table as the batch sees it, plus the rows it adds. The
  * rows are kept alongside the index only to rebuild it when a transaction
  * aborts — the happy path never walks them again.
  */
@@ -55,9 +55,9 @@ interface PinContext {
 
 /**
  * Guarantees a Dexie row for the subject and returns it as a Track: library
- * subjects pass through, remote DTOs run the pin cascade (track + shadow
- * album/artist rows) in one unitOfWork. Idempotent; a shadow request never
- * downgrades an existing pinned = 1 row.
+ * subjects pass through, remote DTOs run the pin cascade in one unitOfWork:
+ * the track row, plus album/artist rows when it is a library member.
+ * Idempotent; a shadow request never downgrades an existing pinned = 1 row.
  */
 export async function ensurePinned(
   subject: TrackMenuSubject,
@@ -74,9 +74,10 @@ export async function ensurePinned(
 
 /** One subject's cascade. Runs inside the caller's transaction. */
 const pinOneRemote = async (entry: RemoteEntry, ctx: PinContext): Promise<PinnedEntry> => {
-  const dto = alignArtists(entry.dto, ctx.snapshot.index);
-
-  const track = await unwrapResult(trackRepository.findById(dto.id));
+  const track = await unwrapResult(trackRepository.findById(entry.dto.id));
+  const dto = alignArtists(entry.dto, ctx.snapshot.index, {
+    createMissing: ctx.requestedPinned === 1 || track?.pinned === 1,
+  });
   // The cascade falls back to the row's own artists when the DTO carries none;
   // their current rows must be loaded too, or the upsert would rebuild them
   // from a DTO that knows no names.
@@ -124,7 +125,7 @@ const runPinBatch = async (
   );
 
   // An aborted transaction rolled its rows back, so the in-memory snapshot has
-  // to follow it: a retried subject must not align onto a shadow artist whose
+  // to follow it: a retried subject must not align onto an artist whose
   // row no longer exists. The index cannot drop entries, so it is rebuilt —
   // only here, on a path a batch does not normally take.
   if (result.isErr() && ctx.snapshot.rows.length > artistsBefore) {
@@ -196,7 +197,7 @@ const requestShadowCovers = (pinned: readonly PinnedEntry[]): void => {
  * of its tracks. The artists table is what makes that expensive: matching a
  * credited name against the local library needs all of it, and read per track
  * it turns "play this album" into O(tracks × artists). Here it is read once
- * and grown in memory as the batch creates shadow rows, so a later subject
+ * and grown in memory as the batch creates artist rows, so a later subject
  * still matches an artist an earlier one introduced.
  *
  * Best-effort over the batch: a subject that cannot be written costs only
@@ -229,8 +230,8 @@ export async function ensurePinnedMany(
 
   if (remote.length === 0) return resolved();
 
-  // Every credited name gets exactly one artist row: a same-named local artist
-  // absorbs the remote one, names the source has no id for get a row of their
+  // A same-named local artist absorbs the remote one, shadow pins included;
+  // for a library member, names the source has no id for get a row of their
   // own. Read once, outside the writes.
   const needsArtists = remote.some(({ dto }) => (dto.artistIds ?? []).length > 0 || !!dto.artistName);
   const artistRows = needsArtists ? [...await unwrapResult(artistRepository.findAll())] : [];

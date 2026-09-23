@@ -16,6 +16,7 @@ import { queryKeys } from "@/queries/query-keys";
 import type { TrackId, ArtistId } from "@/types/ids";
 import { keepPreviousData, queryOptions } from "@tanstack/vue-query";
 import type { QueryClient } from "@tanstack/vue-query";
+import { splitArtistNames } from "@/lib/artist-names";
 import { unwrapResult } from "./shared";
 import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
 
@@ -36,6 +37,37 @@ export interface TopTrackEntry {
 }
 
 const STATS_STALE_TIME = 5 * 60 * 1000;
+
+/**
+ * Remote artists have no row unless they are in the library; the track a
+ * listen was recorded against still carries their name.
+ */
+const namesFromListenedTracks = async (
+  events: readonly ListenEventEntity[],
+  entries: readonly { id: string }[],
+  known: ReadonlyMap<string, string>,
+): Promise<Map<string, string>> => {
+  const trackIdByArtist = new Map<string, TrackId>();
+  for (const entry of entries) {
+    if (!entry.id || known.has(entry.id)) continue;
+    const listen = events.find(event => event.artistId === entry.id);
+    if (listen) trackIdByArtist.set(entry.id, listen.trackId);
+  }
+  if (trackIdByArtist.size === 0) return new Map();
+
+  const tracks = await unwrapResult(trackRepository.findByIds([...new Set(trackIdByArtist.values())]));
+  const tracksById = new Map(tracks.map(track => [track.id as string, track]));
+  const names = new Map<string, string>();
+  for (const [artistId, trackId] of trackIdByArtist) {
+    const track = tracksById.get(trackId);
+    if (!track?.artistName) continue;
+    const credits = splitArtistNames(track.artistName);
+    const position = track.artistIds.indexOf(artistId as ArtistId);
+    const lineUp = position >= 0 && credits.length === track.artistIds.length;
+    names.set(artistId, lineUp ? credits[position] : track.artistName);
+  }
+  return names;
+};
 
 // The stats page mounts ~8 aggregates for one period. Each aggregate query
 // resolves the period's events through the shared `events` query (one
@@ -97,15 +129,19 @@ export const statsQueries = {
     queryOptions({
       queryKey: queryKeys.stats.topArtists(limit, since),
       queryFn: async ({ client }) => {
-        const entries = aggregateTopArtists(await eventsOf(client, since), limit);
+        const events = await eventsOf(client, since);
+        const entries = aggregateTopArtists(events, limit);
         const artists = await unwrapResult(
           artistRepository.findByIds(entries.map(entry => entry.id as ArtistId)),
         );
-        const artistsById = new Map(artists.map(artist => [artist.id as string, artist]));
+        const namesById = new Map(artists.map(artist => [artist.id as string, artist.name]));
+        for (const [id, name] of await namesFromListenedTracks(events, entries, namesById)) {
+          namesById.set(id, name);
+        }
 
         return entries.flatMap((entry) => {
-          const artist = artistsById.get(entry.id);
-          return artist ? [{ ...entry, artist }] : [];
+          const name = namesById.get(entry.id);
+          return name ? [{ ...entry, artist: { id: entry.id, name } }] : [];
         });
       },
       staleTime: STATS_STALE_TIME,

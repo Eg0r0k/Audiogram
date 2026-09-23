@@ -12,8 +12,9 @@ export enum TrackSource {
 
 //
 // 1 — the row is a full library member, visible on library pages.
-// 0 — shadow row: exists only so history/stats/queue persistence have valid
-// FKs for a remote track that was merely played from browsing.
+// 0 - shadow track: exists only so history/stats/queue persistence have a
+// row for a remote track that was merely played from browsing. Albums and
+// artists have no shadow rows since v18; their flag is always 1.
 // Numeric (not boolean) because Dexie cannot index booleans.
 //
 export type PinnedFlag = 0 | 1;
