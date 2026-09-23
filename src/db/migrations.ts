@@ -190,3 +190,46 @@ export const upgradeToV16 = async (tx: UpgradeTransaction): Promise<void> => {
     .filter(artist => isRemote(artist.id) && !keptArtistIds.has(artist.id))
     .modify({ pinned: 0 });
 };
+
+/**
+ * v18: album and artist rows exist only for library members. Shadow pins
+ * used to write them too (and "Remove from library" demoted instead of
+ * deleting), so every row no pinned track references - for an artist, no
+ * surviving album either - goes. A deleted artist's unprefixed id is
+ * stripped from the shadow tracks: it would point at a library page that no
+ * longer exists, while a source id still links to the source's catalog.
+ * Rows a pinned track does reference become members if they were shadows.
+ */
+export const upgradeToV18 = async (tx: UpgradeTransaction): Promise<void> => {
+  const tracks = tx.table("tracks");
+  const albums = tx.table("albums");
+  const artists = tx.table("artists");
+
+  const pinned = (await tracks.where("pinned").equals(1).toArray()) as {
+    albumId: string;
+    artistIds: string[];
+  }[];
+  const keptAlbumIds = new Set(pinned.map(track => track.albumId));
+  const keptArtistIds = new Set(pinned.flatMap(track => track.artistIds));
+
+  const albumRows = (await albums.toArray()) as { id: string; artistId: string }[];
+  const deletedAlbumIds: string[] = [];
+  for (const album of albumRows) {
+    if (keptAlbumIds.has(album.id)) keptArtistIds.add(album.artistId);
+    else deletedAlbumIds.push(album.id);
+  }
+  await albums.bulkDelete(deletedAlbumIds);
+  await albums.where("pinned").equals(0).modify({ pinned: 1 });
+
+  const artistIds = (await artists.toCollection().primaryKeys()) as string[];
+  const deletedArtistIds = artistIds.filter(id => !keptArtistIds.has(id));
+  await artists.bulkDelete(deletedArtistIds);
+  await artists.where("pinned").equals(0).modify({ pinned: 1 });
+
+  const stripped = new Set(deletedArtistIds.filter(id => sourceKindOfId(id) === "local"));
+  if (stripped.size > 0) {
+    await tracks.where("artistIds").anyOf([...stripped]).modify((track: { artistIds: string[] }) => {
+      track.artistIds = track.artistIds.filter(id => !stripped.has(id));
+    });
+  }
+};

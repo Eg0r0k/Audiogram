@@ -15,7 +15,7 @@ import type {
   TrackChapterEntity,
   TrackEntity,
 } from "./entities";
-import { upgradeToV10, upgradeToV12, upgradeToV14, upgradeToV15, upgradeToV16 } from "./migrations";
+import { upgradeToV10, upgradeToV12, upgradeToV14, upgradeToV15, upgradeToV16, upgradeToV18 } from "./migrations";
 import type { DbError } from "./errors/db.errors";
 import { toDbError } from "./errors/db.errors";
 import { getLogger } from "@/lib/logger";
@@ -118,6 +118,9 @@ export class AppDatabase extends Dexie {
     this.version(17).stores({
       tracks: "&id, title, artistName, albumTitle, *artistIds, albumId, *tagIds, likedAt, addedAt, duration, playCount, storagePath, fingerprint, pinned, sourceRef, [albumId+pinned], [title+likedAt], [addedAt+likedAt], [duration+likedAt], [artistName+likedAt], [albumTitle+likedAt], [playCount+likedAt], [pinned+title], [pinned+artistName], [pinned+albumTitle], [pinned+addedAt], [pinned+duration], [pinned+playCount]",
     });
+
+    // Data only: album/artist rows exist for library members alone (upgradeToV18).
+    this.version(18).stores({}).upgrade(upgradeToV18);
 
     this.tracks = this.table("tracks");
     this.artists = this.table("artists");
