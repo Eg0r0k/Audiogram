@@ -53,7 +53,7 @@
           :max="100"
           :step="1"
           orientation="vertical"
-          class="h-16! min-h-0! cursor-pointer"
+          class="h-25! min-h-0! cursor-pointer"
           @update:model-value="onVolumeChange"
           @pointerdown="onSliderInteractionStart"
           @pointerup="onSliderInteractionEnd"
