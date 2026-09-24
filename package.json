@@ -10,6 +10,7 @@
     "build:analyze": "vite build --mode analyze",
     "preview": "vite preview",
     "tauri": "tauri",
+    "bump": "node scripts/bump-version.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "type-check": "vue-tsc --noEmit",
