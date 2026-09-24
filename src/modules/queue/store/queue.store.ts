@@ -19,8 +19,11 @@ import { playbackStalledEvent, trackSkippedEvent } from "../lib/queue-events";
 import {
   QUEUE_STORAGE_KEY,
   buildPersistedQueueSnapshot,
+  createQueueSnapshotWriter,
+  loadPersistedQueue,
   readLegacyRepeatMode,
   rehydratePersistedQueue,
+  type PersistedQueueCursor,
   type PersistedQueueSnapshot,
 } from "../service/queue-persistence";
 import { createAutoplayRecommender } from "../lib/queue-autoplay";
@@ -67,6 +70,8 @@ const assertQueueInvariants = (state: QueueState) => {
   }
 };
 
+const snapshotWriter = createQueueSnapshotWriter(300);
+
 export const useQueueStore = defineStore("queue", () => {
   // The player store is resolved inside the functions that drive it, never
   // at setup: this store is created during app bootstrap, before the player
@@ -84,6 +89,10 @@ export const useQueueStore = defineStore("queue", () => {
   // again in JSON.stringify — 60 ms+ per skip on a 2000-entry queue. Only
   // the ref itself is a dependency; the object is replaced whole on commit.
   const persistedSnapshot = shallowRef<PersistedQueueSnapshot | null>(null);
+  // The snapshot goes to the database (a library-sized queue outgrew the
+  // localStorage quota); what a skip changes goes to localStorage, so a
+  // skip no longer rewrites the whole queue.
+  const persistedCursor = shallowRef<PersistedQueueCursor | null>(null);
   const trackSkippedBus = useEventBus(trackSkippedEvent);
   const playbackStalledBus = useEventBus(playbackStalledEvent);
   let _transientFailures = 0;
@@ -205,20 +214,31 @@ export const useQueueStore = defineStore("queue", () => {
    * 1000-item queue (vitest/happy-dom, add/move/insert/remove, shuffled and
    * not), far under the 5 ms budget, so there is nothing to batch.
    */
-  const commit = (patch: Partial<QueueState>, options: { persist?: boolean } = {}) => {
-    const next = { ...state.value, ...patch };
+  const commit = (
+    patch: Partial<QueueState>,
+    options: { persist?: boolean; storeSnapshot?: boolean } = {},
+  ) => {
+    const previous = state.value;
+    const next = { ...previous, ...patch };
     assertQueueInvariants(next);
     state.value = next;
     _mutationEpoch++;
-    if (options.persist !== false) {
-      const snapshot = buildPersistedQueueSnapshot({
-        queue: queue.value,
-        items: items.value,
-        currentItemId: currentItemId.value,
-        isShuffled: isShuffled.value,
-      });
-      persistedSnapshot.value = snapshot ? markRaw(snapshot) : null;
+    if (options.persist === false) return;
+
+    const snapshot = buildPersistedQueueSnapshot({
+      queue: queue.value,
+      items: items.value,
+      currentItemId: currentItemId.value,
+      isShuffled: isShuffled.value,
+    });
+    persistedSnapshot.value = snapshot ? markRaw(snapshot) : null;
+
+    const cursorItemId = snapshot?.currentItemId ?? null;
+    if (persistedCursor.value?.currentItemId !== cursorItemId) {
+      persistedCursor.value = { currentItemId: cursorItemId };
     }
+    const orderChanged = next.items !== previous.items || next.playbackOrder !== previous.playbackOrder;
+    if (orderChanged && options.storeSnapshot !== false) snapshotWriter.schedule(snapshot);
   };
 
   /**
@@ -466,17 +486,16 @@ export const useQueueStore = defineStore("queue", () => {
   }
 
   async function restorePersistedQueue(): Promise<void> {
-    const snapshot = persistedSnapshot.value;
-
-    if (!snapshot) return;
-    // Unknown snapshot shape (e.g. downgrade from a newer build): leave both
-    // memory and the stored data untouched rather than mis-parse and wipe.
-    const { version } = snapshot as { version: number };
-    if (version !== 1) return;
-
     const epochAtStart = _mutationEpoch;
 
     try {
+      const snapshot = await loadPersistedQueue(persistedCursor.value);
+      if (!snapshot) return;
+      // Unknown snapshot shape (e.g. downgrade from a newer build): leave both
+      // memory and the stored data untouched rather than mis-parse and wipe.
+      const { version } = snapshot as { version: number };
+      if (version !== 1) return;
+
       const restored = await rehydratePersistedQueue(snapshot);
       if (_mutationEpoch !== epochAtStart) return;
 
@@ -485,7 +504,9 @@ export const useQueueStore = defineStore("queue", () => {
         return;
       }
 
-      commit(restored);
+      // Just read from the database: writing it back would clone the whole
+      // queue at startup for nothing.
+      commit(restored, { storeSnapshot: false });
 
       // Nothing is loaded yet: the player shows the restored entry and loads
       // it on the first play(). A player that is already showing something
@@ -858,6 +879,7 @@ export const useQueueStore = defineStore("queue", () => {
     isShuffled,
     isRadio,
     persistedSnapshot,
+    persistedCursor,
     repeatMode,
 
     currentItem,
@@ -900,10 +922,9 @@ export const useQueueStore = defineStore("queue", () => {
 }, {
   persist: {
     key: QUEUE_STORAGE_KEY,
-    // A drag-reorder is a burst of commits, each rebuilding the snapshot;
-    // coalesce the writes.
+    // Holding "next" is a burst of cursor changes; coalesce the writes.
     storage: createDebouncedLocalStorage(300),
-    pick: ["persistedSnapshot", "repeatMode"],
+    pick: ["persistedCursor", "repeatMode"],
     afterHydrate: ({ store }) => {
       const queueStore = store as typeof store & {
         repeatMode: RepeatMode;

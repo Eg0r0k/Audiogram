@@ -158,6 +158,7 @@ const ACKNOWLEDGED_TABLES: ReadonlySet<string> = new Set([
   "offlineCopies",
   "downloadJobs",
   "recommenderModels",
+  "queueSnapshot",
 ]);
 
 function warnOnUnacknowledgedTables(): void {

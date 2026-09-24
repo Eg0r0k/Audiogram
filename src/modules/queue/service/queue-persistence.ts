@@ -1,6 +1,7 @@
 import { PlaylistId, type QueueItemId } from "@/types/ids";
 import { REPEAT_MODES, type EphemeralTrack, type PlayerTrack, type RepeatMode, type Track } from "@/modules/player/types";
-import { playlistRepository, trackRepository } from "@/db/repositories";
+import { playlistRepository, queueSnapshotRepository, trackRepository } from "@/db/repositories";
+import { LEGACY_QUEUE_STORAGE_KEY, QUEUE_CURSOR_STORAGE_KEY } from "@/db/entities";
 import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
 import { unique, unwrapResult } from "@/queries/shared";
 import { getLogger } from "@/lib/logger";
@@ -9,7 +10,7 @@ import { ndPlaylistId, parseTrackRef } from "@/types/track-ref";
 import type { QueueItem, QueueSource, QueueState } from "../types";
 import { getItemsByOrder } from "../lib/queue-order";
 
-export const QUEUE_STORAGE_KEY = "audiogram-queue-v1";
+export const QUEUE_STORAGE_KEY = QUEUE_CURSOR_STORAGE_KEY;
 const LEGACY_PLAYER_STORAGE_KEY = "lyra-player";
 
 interface PersistedLibraryTrack {
@@ -46,23 +47,92 @@ export interface PersistedQueueSnapshot {
   isShuffled: boolean;
 }
 
+/** What a skip changes; the snapshot itself is written only when the items or their order do. */
+export interface PersistedQueueCursor {
+  currentItemId: QueueItemId | null;
+}
+
 const isRepeatMode = (value: unknown): value is RepeatMode =>
   typeof value === "string" && (REPEAT_MODES as readonly string[]).includes(value);
 
 // One-time migration: repeatMode used to persist under the player's key. A
 // queue entry that has never stored one adopts the player's value, so the
-// upgrade does not reset the user's repeat setting.
+// upgrade does not reset the user's repeat setting. The pre-v19 queue key is
+// read too: it is still there when the database upgrade could not run.
 export const readLegacyRepeatMode = (): RepeatMode | null => {
   try {
     const own = localStorage.getItem(QUEUE_STORAGE_KEY);
     if (own && "repeatMode" in JSON.parse(own)) return null;
-    const legacy = localStorage.getItem(LEGACY_PLAYER_STORAGE_KEY);
-    const mode: unknown = legacy ? JSON.parse(legacy).repeatMode : undefined;
-    return isRepeatMode(mode) ? mode : null;
+    for (const key of [LEGACY_QUEUE_STORAGE_KEY, LEGACY_PLAYER_STORAGE_KEY]) {
+      const legacy = localStorage.getItem(key);
+      const mode: unknown = legacy ? JSON.parse(legacy).repeatMode : undefined;
+      if (isRepeatMode(mode)) return mode;
+    }
+    return null;
   }
   catch {
     return null;
   }
+};
+
+/**
+ * Coalesces snapshot writes to the database: a drag-reorder is a burst of
+ * commits, and each write clones the whole queue. Pending writes go out at
+ * once when the page is hidden or unloading. `null` clears the stored queue.
+ */
+export const createQueueSnapshotWriter = (delayMs: number) => {
+  let pending: { snapshot: PersistedQueueSnapshot | null } | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const flush = () => {
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+    if (!pending) return;
+    const { snapshot } = pending;
+    pending = null;
+    const write = snapshot ? queueSnapshotRepository.put(snapshot) : queueSnapshotRepository.clear();
+    write.then((result) => {
+      if (result.isErr()) getLogger().error(`[Queue] Failed to store the queue: ${result.error.message}`);
+    }).catch(() => {});
+  };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("pagehide", flush);
+    window.addEventListener("beforeunload", flush);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flush();
+    });
+  }
+
+  const schedule = (snapshot: PersistedQueueSnapshot | null) => {
+    pending = { snapshot };
+    if (timer !== null) clearTimeout(timer);
+    timer = setTimeout(flush, delayMs);
+  };
+
+  return { schedule, flush };
+};
+
+/**
+ * The stored snapshot with the cursor applied. The cursor is written on
+ * every skip and the snapshot only on edits, so the cursor is the newer of
+ * the two; one naming an entry the snapshot lacks (a write lost on exit)
+ * falls back to the snapshot's own. Throws when the database read fails.
+ */
+export const loadPersistedQueue = async (
+  cursor: PersistedQueueCursor | null,
+): Promise<PersistedQueueSnapshot | null> => {
+  const stored = (await unwrapResult(queueSnapshotRepository.get())) as { version: number } | null;
+  // An unknown version is left for the caller to reject, not read here.
+  if (!stored || !cursor || stored.version !== 1) return stored as PersistedQueueSnapshot | null;
+  const snapshot = stored as PersistedQueueSnapshot;
+  if (cursor.currentItemId === null) {
+    return { ...snapshot, currentIndex: -1, currentItemId: undefined };
+  }
+  const currentIndex = snapshot.queue.findIndex(item => item.id === cursor.currentItemId);
+  return currentIndex >= 0
+    ? { ...snapshot, currentIndex, currentItemId: cursor.currentItemId }
+    : snapshot;
 };
 
 // The media server's port and token change every launch, so any stored

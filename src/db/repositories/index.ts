@@ -6,3 +6,4 @@ export { coverRepository } from "./cover.repository";
 export { tagRepository } from "./tag.repository";
 export { folderRepository } from "./folder.repository";
 export { downloadJobRepository } from "./downloadJob.repository";
+export { queueSnapshotRepository } from "./queueSnapshot.repository";
