@@ -435,7 +435,8 @@ mod integration_tests {
                 .await
                 .expect("request");
             assert_eq!(
-                resp.headers()["Content-Type"], "audio/mp4",
+                resp.headers()["Content-Type"],
+                "audio/mp4",
                 "?{query} should have been treated as raw",
             );
         }

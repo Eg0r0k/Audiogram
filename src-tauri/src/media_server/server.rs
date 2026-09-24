@@ -61,9 +61,10 @@ pub(crate) async fn handle<T: RemoteRoutes>(
         // import's tag parser and fingerprint read through this route. Matched
         // on the key alone: a spelling that fell through to the rendition would
         // be a silently wrong answer rather than an error.
-        let raw = query
-            .as_deref()
-            .is_some_and(|q| q.split('&').any(|pair| pair.split('=').next() == Some("raw")));
+        let raw = query.as_deref().is_some_and(|q| {
+            q.split('&')
+                .any(|pair| pair.split('=').next() == Some("raw"))
+        });
         return serve_local(
             local_path,
             range.as_deref(),
