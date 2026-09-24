@@ -189,11 +189,6 @@ export const trackQueries = {
       queryKey: queryKeys.tracks.byIds(ids),
       queryFn: ids.length > 0 ? () => getTracksByIds(ids) : skipToken,
     }),
-  indexTotalDuration: (searchQuery = "") =>
-    queryOptions({
-      queryKey: queryKeys.tracks.indexTotalDuration(searchQuery),
-      queryFn: () => getIndexTotalDuration(searchQuery),
-    }),
   likedTotalDuration: () =>
     queryOptions({
       queryKey: queryKeys.tracks.likedTotalDuration(),
@@ -201,25 +196,29 @@ export const trackQueries = {
     }),
 } as const;
 
+// Only the first page counts the library: the list reads its size from
+// pages[0], and a count walks the whole index (150 ms at 30k tracks) on
+// every page. One extra row tells whether another page follows; a later
+// page's total is just the rows seen so far.
 export async function getAllTracksPaginated(
   offset: number,
   limit = PAGE_SIZE,
   sortKey?: TrackSortKey | null,
 ): Promise<PaginatedTracksResult> {
-  const [rawTracks, total] = await Promise.all([
+  const [rawTracks, counted] = await Promise.all([
     sortKey
-      ? unwrapResult(trackRepository.findAllSortedPaginated(sortKey, offset, limit))
-      : unwrapResult(trackRepository.findPaginated(offset, limit)),
-    unwrapResult(trackRepository.countAll()),
+      ? unwrapResult(trackRepository.findAllSortedPaginated(sortKey, offset, limit + 1))
+      : unwrapResult(trackRepository.findPaginated(offset, limit + 1)),
+    offset === 0 ? unwrapResult(trackRepository.countAll()) : null,
   ]);
 
-  const mappedTracks = await loadTrackRelations(rawTracks);
-  const nextOffset = offset + limit < total ? offset + limit : null;
+  const hasMore = rawTracks.length > limit;
+  const mappedTracks = await loadTrackRelations(hasMore ? rawTracks.slice(0, limit) : rawTracks);
 
   return {
     tracks: mappedTracks,
-    nextOffset,
-    total,
+    nextOffset: hasMore ? offset + limit : null,
+    total: counted ?? offset + mappedTracks.length,
   };
 }
 
@@ -444,18 +443,6 @@ export async function deleteTracksAndSync(
     playlistIds: removals.map(removal => removal.next.id),
   });
   return trackIds.length;
-}
-
-// Region-scoped duration aggregate. Lives outside the infinite-query pages so the
-// page lifecycle (refetch/replacement) can't zero it out; keyed by region + search
-// only (never sortKey — the sum is order-independent).
-export async function getIndexTotalDuration(searchQuery = ""): Promise<number> {
-  const q = searchQuery.trim();
-  if (q.length > 0) {
-    const { totalDuration } = await searchIndexedTracks(q, 0, undefined);
-    return totalDuration;
-  }
-  return unwrapResult(trackRepository.sumDurationAll());
 }
 
 export async function getLikedTotalDuration(): Promise<number> {

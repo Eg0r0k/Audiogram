@@ -8,6 +8,7 @@ import type {
   ListenEventEntity,
   OfflineCopyEntity,
   PlaylistEntity,
+  QueueSnapshotEntity,
   RadioStationEntity,
   RecommenderModelEntity,
   SidebarFolderEntity,
@@ -15,7 +16,7 @@ import type {
   TrackChapterEntity,
   TrackEntity,
 } from "./entities";
-import { upgradeToV10, upgradeToV12, upgradeToV14, upgradeToV15, upgradeToV16, upgradeToV18 } from "./migrations";
+import { upgradeToV10, upgradeToV12, upgradeToV14, upgradeToV15, upgradeToV16, upgradeToV18, upgradeToV19 } from "./migrations";
 import type { DbError } from "./errors/db.errors";
 import { toDbError } from "./errors/db.errors";
 import { getLogger } from "@/lib/logger";
@@ -37,6 +38,7 @@ export class AppDatabase extends Dexie {
   offlineCopies!: Table<OfflineCopyEntity, TrackId>;
   downloadJobs!: Table<DownloadJobEntity, string>;
   recommenderModels!: Table<RecommenderModelEntity, "weights">;
+  queueSnapshot!: Table<QueueSnapshotEntity, QueueSnapshotEntity["id"]>;
 
   constructor() {
     super("AudiogramDB");
@@ -122,6 +124,11 @@ export class AppDatabase extends Dexie {
     // Data only: album/artist rows exist for library members alone (upgradeToV18).
     this.version(18).stores({}).upgrade(upgradeToV18);
 
+    // + queueSnapshot: the queue moves out of localStorage (upgradeToV19).
+    this.version(19).stores({
+      queueSnapshot: "&id",
+    }).upgrade(upgradeToV19);
+
     this.tracks = this.table("tracks");
     this.artists = this.table("artists");
     this.albums = this.table("albums");
@@ -136,6 +143,7 @@ export class AppDatabase extends Dexie {
     this.offlineCopies = this.table("offlineCopies");
     this.downloadJobs = this.table("downloadJobs");
     this.recommenderModels = this.table("recommenderModels");
+    this.queueSnapshot = this.table("queueSnapshot");
   }
 }
 

@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  motion-v@2.4.2:
+    hash: 49b68562a0b970363c5bf20d995035b3ec0bb9ab414e9f8de2e59d9ee21b517d
+    path: patches/motion-v@2.4.2.patch
+
 importers:
 
   .:
@@ -121,7 +126,7 @@ importers:
         version: 13.0.0
       motion-v:
         specifier: ^2.4.2
-        version: 2.4.2(@vueuse/core@14.1.0(vue@3.5.25(typescript@5.9.3)))(vue@3.5.25(typescript@5.9.3))
+        version: 2.4.2(patch_hash=49b68562a0b970363c5bf20d995035b3ec0bb9ab414e9f8de2e59d9ee21b517d)(@vueuse/core@14.1.0(vue@3.5.25(typescript@5.9.3)))(vue@3.5.25(typescript@5.9.3))
       music-metadata:
         specifier: ^11.10.4
         version: 11.10.4
@@ -10508,7 +10513,7 @@ snapshots:
 
   motion-utils@13.0.0: {}
 
-  motion-v@2.4.2(@vueuse/core@14.1.0(vue@3.5.25(typescript@5.9.3)))(vue@3.5.25(typescript@5.9.3)):
+  motion-v@2.4.2(patch_hash=49b68562a0b970363c5bf20d995035b3ec0bb9ab414e9f8de2e59d9ee21b517d)(@vueuse/core@14.1.0(vue@3.5.25(typescript@5.9.3)))(vue@3.5.25(typescript@5.9.3)):
     dependencies:
       '@vueuse/core': 14.1.0(vue@3.5.25(typescript@5.9.3))
       framer-motion: 13.2.0

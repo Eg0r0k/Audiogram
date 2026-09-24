@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import { AlbumId, ArtistId, TrackId } from "@/types/ids";
@@ -9,7 +9,8 @@ vi.mock("@/modules/covers/lib/cover-cache", () => ({
 }));
 
 import { db } from "@/db";
-import { getLibrarySummary } from "../library.queries";
+import { trackRepository } from "@/db/repositories";
+import { getLibraryItemTrackCount, getLibrarySummary } from "../library.queries";
 
 const track = (id: string, likedAt?: number): TrackEntity => ({
   id: TrackId(id),
@@ -29,6 +30,10 @@ const track = (id: string, likedAt?: number): TrackEntity => ({
 } as unknown as TrackEntity);
 
 describe("getLibrarySummary", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   beforeEach(async () => {
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
@@ -42,5 +47,27 @@ describe("getLibrarySummary", () => {
 
     expect(summary.likedCount).toBe(2);
     expect(summary).not.toHaveProperty("likedTracks");
+  });
+
+  // One count per album and artist was 4000 IndexedDB reads at 30k tracks,
+  // for a number only the delete dialog shows.
+  it("counts no tracks per album or artist", async () => {
+    await db.albums.put({ id: AlbumId("al-1"), title: "A", artistId: ArtistId("a-1"), pinned: 1, addedAt: 1, updatedAt: 1 } as never);
+    await db.artists.put({ id: ArtistId("a-1"), name: "N", pinned: 1, addedAt: 1, updatedAt: 1 } as never);
+    const byAlbum = vi.spyOn(trackRepository, "countByAlbumIds");
+    const byArtist = vi.spyOn(trackRepository, "countByArtistIds");
+
+    const summary = await getLibrarySummary();
+
+    expect(summary.albums).toHaveLength(1);
+    expect(summary.artists).toHaveLength(1);
+    expect(byAlbum).not.toHaveBeenCalled();
+    expect(byArtist).not.toHaveBeenCalled();
+  });
+
+  it("counts one album or artist on demand", async () => {
+    expect(await getLibraryItemTrackCount("album", AlbumId("al-1"))).toBe(3);
+    expect(await getLibraryItemTrackCount("artist", ArtistId("a-1"))).toBe(3);
+    expect(await getLibraryItemTrackCount("album", AlbumId("missing"))).toBe(0);
   });
 });

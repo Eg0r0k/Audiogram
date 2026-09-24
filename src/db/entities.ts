@@ -238,3 +238,21 @@ export interface RecommenderModelEntity {
   positives: number;
   negatives: number;
 }
+
+/**
+ * The queue is stored in two halves: this row holds the items and both
+ * orders, and a small cursor (the current entry, the repeat mode) lives in
+ * localStorage under QUEUE_CURSOR_STORAGE_KEY, so a skip rewrites only the
+ * cursor. The snapshot's shape belongs to the queue module.
+ */
+export const QUEUE_SNAPSHOT_ID = "current" as const;
+
+export interface QueueSnapshotEntity {
+  id: typeof QUEUE_SNAPSHOT_ID;
+  snapshot: unknown;
+}
+
+export const QUEUE_CURSOR_STORAGE_KEY = "audiogram-queue-v2";
+
+/** Before v19 the whole snapshot lived in localStorage under this key. */
+export const LEGACY_QUEUE_STORAGE_KEY = "audiogram-queue-v1";

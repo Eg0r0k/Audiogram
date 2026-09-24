@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from "pinia";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import { ok } from "neverthrow";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { trackRepository } from "@/db/repositories";
+import { queueSnapshotRepository, trackRepository } from "@/db/repositories";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
 import { getRecommendations } from "@/modules/recommendations/service/recommender.service";
 import { registerAutoplaySource } from "../lib/queue-autoplay";
@@ -25,6 +25,11 @@ vi.mock("@/lib/logger", () => ({
 vi.mock("@/db/repositories", () => ({
   trackRepository: {
     findByIds: vi.fn(),
+  },
+  queueSnapshotRepository: {
+    get: vi.fn(),
+    put: vi.fn(),
+    clear: vi.fn(),
   },
 }));
 
@@ -94,6 +99,10 @@ function createRecommendation(track: TrackEntity) {
 // Seeding helpers over hydrate(): the same semantics the store's derived
 // fields used to have as writable seams.
 type QueueStoreInstance = ReturnType<typeof useQueueStore>;
+// The queue restores from the database row; this is what it will read.
+const seedStoredSnapshot = (snapshot: unknown) => {
+  vi.mocked(queueSnapshotRepository.get).mockResolvedValue(ok(snapshot));
+};
 const seedQueueItems = (store: QueueStoreInstance, list: QueueItem[]) => {
   const currentId = store.currentItem?.id ?? null;
   const keepsCurrent = currentId !== null && list.some(item => item.id === currentId);
@@ -121,10 +130,16 @@ const seedShuffled = (store: QueueStoreInstance, shuffled: boolean) => {
 
 describe("queue.store", () => {
   beforeEach(() => {
+    // The snapshot writer is module-wide: flush what the previous test left
+    // pending before its calls are cleared.
+    window.dispatchEvent(new Event("pagehide"));
     setActivePinia(createPinia());
     localStorage.clear();
     vi.clearAllMocks();
     vi.mocked(trackRepository.findByIds).mockResolvedValue(ok([]));
+    vi.mocked(queueSnapshotRepository.get).mockResolvedValue(ok(null));
+    vi.mocked(queueSnapshotRepository.put).mockResolvedValue(ok(undefined));
+    vi.mocked(queueSnapshotRepository.clear).mockResolvedValue(ok(undefined));
     vi.mocked(getRecommendations).mockResolvedValue([]);
     registerAutoplaySource(getRecommendations);
     registerPlaybackPort(createPlayerPlaybackPort());
@@ -782,7 +797,7 @@ describe("queue.store", () => {
       const store = useQueueStore();
       const playerStore = usePlayerStore();
 
-      store.persistedSnapshot = {
+      seedStoredSnapshot({
         version: 1,
         queue: [
           {
@@ -801,7 +816,7 @@ describe("queue.store", () => {
         originalQueueOrder: ["item-1", "item-2"],
         currentIndex: 1,
         isShuffled: false,
-      };
+      });
 
       const clearSpy = vi.spyOn(playerStore, "clearCurrentTrack");
       await store.restorePersistedQueue();
@@ -1773,13 +1788,13 @@ describe("queue.store", () => {
           () => new Promise((resolve) => { resolveDb = resolve; }) as any,
         );
 
-        store.persistedSnapshot = {
+        seedStoredSnapshot({
           version: 1,
           queue: [{ id: "item-1", track: { kind: "library", trackId: "1" }, source: { type: "manual" }, addedAt: 100 }],
           originalQueueOrder: ["item-1"],
           currentIndex: 0,
           isShuffled: false,
-        };
+        });
 
         const restoring = store.restorePersistedQueue();
         // The user starts their own playback while the snapshot's DB read is
@@ -1804,13 +1819,13 @@ describe("queue.store", () => {
         playerStore.currentTrack = createTrack("9");
         playerStore.playbackState = { kind: "playing" };
 
-        store.persistedSnapshot = {
+        seedStoredSnapshot({
           version: 1,
           queue: [{ id: "item-1", track: { kind: "library", trackId: "1" }, source: { type: "manual" }, addedAt: 100 }],
           originalQueueOrder: ["item-1"],
           currentIndex: 0,
           isShuffled: false,
-        };
+        });
 
         await store.restorePersistedQueue();
 
@@ -1824,13 +1839,13 @@ describe("queue.store", () => {
         vi.mocked(trackRepository.findByIds).mockRejectedValue(new Error("DB error"));
 
         const store = useQueueStore();
-        store.persistedSnapshot = {
+        seedStoredSnapshot({
           version: 1,
           queue: [{ id: "item-1", track: { kind: "library", trackId: "1" }, source: { type: "manual" }, addedAt: 100 }],
           originalQueueOrder: ["item-1"],
           currentIndex: 0,
           isShuffled: false,
-        };
+        });
 
         await store.restorePersistedQueue();
 
@@ -1838,23 +1853,27 @@ describe("queue.store", () => {
         expect(store.currentIndex).toBe(-1);
         // A transient infrastructure failure must not wipe the stored queue —
         // the next healthy launch should still be able to restore it.
-        expect(store.persistedSnapshot).not.toBeNull();
+        window.dispatchEvent(new Event("pagehide"));
+        expect(queueSnapshotRepository.put).not.toHaveBeenCalled();
+        expect(queueSnapshotRepository.clear).not.toHaveBeenCalled();
       });
 
       it("does not touch state for an unknown snapshot version", async () => {
         const store = useQueueStore();
-        store.persistedSnapshot = {
+        seedStoredSnapshot({
           version: 2,
           queue: [],
           originalQueueOrder: [],
           currentIndex: -1,
           isShuffled: false,
-        } as any;
+        } as any);
 
         await store.restorePersistedQueue();
 
         expect(trackRepository.findByIds).not.toHaveBeenCalled();
-        expect(store.persistedSnapshot).not.toBeNull();
+        window.dispatchEvent(new Event("pagehide"));
+        expect(queueSnapshotRepository.put).not.toHaveBeenCalled();
+        expect(queueSnapshotRepository.clear).not.toHaveBeenCalled();
       });
     });
 
@@ -1866,7 +1885,7 @@ describe("queue.store", () => {
         const store = useQueueStore();
         const playerStore = usePlayerStore();
 
-        store.persistedSnapshot = {
+        seedStoredSnapshot({
           version: 1,
           queue: [
             { id: "item-1", track: { kind: "library", trackId: "1" }, source: { type: "manual" }, addedAt: 100 },
@@ -1877,7 +1896,7 @@ describe("queue.store", () => {
           currentIndex: 2,
           currentItemId: "item-3",
           isShuffled: false,
-        } as any;
+        } as any);
 
         await store.restorePersistedQueue();
 
@@ -2387,7 +2406,7 @@ describe("queue.store", () => {
       );
       const store = useQueueStore();
 
-      store.persistedSnapshot = {
+      seedStoredSnapshot({
         version: 1,
         queue: [
           { id: "item-2", track: { kind: "library", trackId: "2" }, source: { type: "manual" }, addedAt: 200 },
@@ -2399,7 +2418,7 @@ describe("queue.store", () => {
         currentIndex: 0,
         currentItemId: "item-2",
         isShuffled: true,
-      } as any;
+      } as any);
 
       await store.restorePersistedQueue();
 
@@ -2417,7 +2436,7 @@ describe("queue.store", () => {
       vi.mocked(trackRepository.findByIds).mockResolvedValue(ok([createTrackEntity("1")]));
       const store = useQueueStore();
 
-      store.persistedSnapshot = {
+      seedStoredSnapshot({
         version: 1,
         queue: [
           { id: "item-1", track: { kind: "library", trackId: "1" }, source: { type: "manual" }, addedAt: 100 },
@@ -2427,7 +2446,7 @@ describe("queue.store", () => {
         currentIndex: 1,
         currentItemId: "item-2",
         isShuffled: false,
-      } as any;
+      } as any);
 
       await store.restorePersistedQueue();
 
@@ -2466,7 +2485,7 @@ describe("queue.store", () => {
       // Writes are debounced; hiding the page flushes them.
       window.dispatchEvent(new Event("pagehide"));
 
-      expect(JSON.parse(localStorage.getItem("audiogram-queue-v1")!).repeatMode).toBe("all");
+      expect(JSON.parse(localStorage.getItem("audiogram-queue-v2")!).repeatMode).toBe("all");
       expect(JSON.parse(localStorage.getItem("lyra-player") ?? "{}").repeatMode).toBeUndefined();
     });
 
@@ -2479,6 +2498,15 @@ describe("queue.store", () => {
     });
 
     it("prefers its own stored repeat mode over the legacy one", () => {
+      localStorage.setItem("lyra-player", JSON.stringify({ repeatMode: "all" }));
+      localStorage.setItem("audiogram-queue-v2", JSON.stringify({ persistedCursor: null, repeatMode: "one" }));
+
+      const store = hydratedStore();
+
+      expect(store.repeatMode).toBe("one");
+    });
+
+    it("adopts the repeat mode of the pre-v19 queue key when the database upgrade could not move it", () => {
       localStorage.setItem("lyra-player", JSON.stringify({ repeatMode: "all" }));
       localStorage.setItem("audiogram-queue-v1", JSON.stringify({ persistedSnapshot: null, repeatMode: "one" }));
 
@@ -2509,13 +2537,13 @@ describe("queue.store", () => {
 
       const store = useQueueStore();
 
-      store.persistedSnapshot = {
+      seedStoredSnapshot({
         version: 1,
         queue: [{ id: "item-1", track: { kind: "library", trackId: "1" }, source: { type: "manual" }, addedAt: 100 }],
         originalQueueOrder: ["item-1"],
         currentIndex: 0,
         isShuffled: false,
-      };
+      });
 
       await store.restorePersistedQueue();
 
@@ -2528,13 +2556,13 @@ describe("queue.store", () => {
 
       const store = useQueueStore();
 
-      store.persistedSnapshot = {
+      seedStoredSnapshot({
         version: 1,
         queue: [{ id: "item-1", track: { kind: "library", trackId: "nonexistent" }, source: { type: "manual" }, addedAt: 100 }],
         originalQueueOrder: ["item-1"],
         currentIndex: 0,
         isShuffled: false,
-      };
+      });
 
       await store.restorePersistedQueue();
 
@@ -2545,7 +2573,7 @@ describe("queue.store", () => {
     it("should restore file-based ephemeral track from snapshot", async () => {
       const store = useQueueStore();
 
-      store.persistedSnapshot = {
+      seedStoredSnapshot({
         version: 1,
         queue: [{
           id: "item-1",
@@ -2561,7 +2589,7 @@ describe("queue.store", () => {
         originalQueueOrder: ["item-1"],
         currentIndex: 0,
         isShuffled: false,
-      };
+      });
 
       await store.restorePersistedQueue();
 
@@ -2603,9 +2631,9 @@ describe("queue.store", () => {
 
     it("rewrites previous-session server URLs with a stale port and token", async () => {
       const store = useQueueStore();
-      store.persistedSnapshot = snapshotWithEphemeral({
+      seedStoredSnapshot(snapshotWithEphemeral({
         source: { type: "url", url: "http://127.0.0.1:60123/staletoken/yt/dQw4w9WgXcQ" },
-      });
+      }));
 
       await store.restorePersistedQueue();
 
@@ -2614,13 +2642,13 @@ describe("queue.store", () => {
 
     it("rewrites proxied cover fields and leaves foreign URLs untouched", async () => {
       const store = useQueueStore();
-      store.persistedSnapshot = snapshotWithEphemeral(
+      seedStoredSnapshot(snapshotWithEphemeral(
         {
           source: { type: "url", url: "https://radio.example/stream.m3u8" },
           cover: "http://127.0.0.1:60123/staletoken/nd/cover/al-1?size=300",
         },
         "http://127.0.0.1:60123/staletoken/nd/cover/al-2",
-      );
+      ));
 
       await store.restorePersistedQueue();
 
@@ -2633,7 +2661,7 @@ describe("queue.store", () => {
     it("rewrites item covers of library tracks too", async () => {
       vi.mocked(trackRepository.findByIds).mockResolvedValue(ok([createTrackEntity("1")]));
       const store = useQueueStore();
-      store.persistedSnapshot = {
+      seedStoredSnapshot({
         version: 1,
         queue: [{
           id: "item-1" as any,
@@ -2645,7 +2673,7 @@ describe("queue.store", () => {
         originalQueueOrder: ["item-1" as any],
         currentIndex: 0,
         isShuffled: false,
-      };
+      });
 
       await store.restorePersistedQueue();
 

@@ -103,7 +103,7 @@ describe("v9 → v10 upgrade (integration)", () => {
     const { db } = await import("@/db");
     await db.open();
 
-    expect(db.verno).toBe(18);
+    expect(db.verno).toBe(19);
 
     const track = await db.tracks.get("t1" as never);
     expect(track).toMatchObject({ id: "t1", pinned: 1, likedAt: 42, playCount: 3 });
@@ -112,6 +112,7 @@ describe("v9 → v10 upgrade (integration)", () => {
 
     // New tables exist and are empty.
     expect(await db.downloadJobs.count()).toBe(0);
+    expect(await db.queueSnapshot.count()).toBe(0);
 
     // v11 removed the empty-key chapters row and left the real one.
     expect(await db.trackChapters.get("" as never)).toBeUndefined();

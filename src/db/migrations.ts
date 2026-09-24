@@ -1,5 +1,5 @@
 import type { Transaction } from "dexie";
-import type { PinnedFlag } from "./entities";
+import { LEGACY_QUEUE_STORAGE_KEY, QUEUE_CURSOR_STORAGE_KEY, QUEUE_SNAPSHOT_ID, type PinnedFlag } from "./entities";
 import { sourceKindOfId } from "@/types/track-ref";
 
 /**
@@ -232,4 +232,45 @@ export const upgradeToV18 = async (tx: UpgradeTransaction): Promise<void> => {
       track.artistIds = track.artistIds.filter(id => !stripped.has(id));
     });
   }
+};
+
+/**
+ * v19: the queue snapshot leaves localStorage, where a queue of ~27k tracks
+ * outgrew the quota and a 10k one rewrote 1.85 MB on every skip. The items
+ * move into queueSnapshot; the current entry and the repeat mode go to the
+ * new cursor key. The old key is removed only once this transaction has
+ * committed, and a key a later session already wrote is kept. A broken old
+ * value is left alone: failing here would fail the whole database open.
+ */
+export const upgradeToV19 = async (tx: Pick<Transaction, "table" | "on">): Promise<void> => {
+  let parsed: unknown;
+  try {
+    const raw = localStorage.getItem(LEGACY_QUEUE_STORAGE_KEY);
+    if (!raw) return;
+    parsed = JSON.parse(raw);
+  }
+  catch {
+    return;
+  }
+  if (!parsed || typeof parsed !== "object") return;
+  const legacy = parsed as { persistedSnapshot?: { currentItemId?: string } | null; repeatMode?: unknown };
+
+  const snapshot = legacy.persistedSnapshot ?? null;
+  if (snapshot) await tx.table("queueSnapshot").put({ id: QUEUE_SNAPSHOT_ID, snapshot });
+
+  const cursor = {
+    ...(snapshot ? { persistedCursor: { currentItemId: snapshot.currentItemId ?? null } } : {}),
+    ...("repeatMode" in legacy ? { repeatMode: legacy.repeatMode } : {}),
+  };
+  tx.on("complete", () => {
+    try {
+      if (localStorage.getItem(QUEUE_CURSOR_STORAGE_KEY) === null) {
+        localStorage.setItem(QUEUE_CURSOR_STORAGE_KEY, JSON.stringify(cursor));
+      }
+      localStorage.removeItem(LEGACY_QUEUE_STORAGE_KEY);
+    }
+    catch {
+      // The table already holds the queue; a stale old key only costs space.
+    }
+  });
 };

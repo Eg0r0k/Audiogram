@@ -1,0 +1,49 @@
+diff --git a/dist/es/components/motion/use-motion-state.mjs b/dist/es/components/motion/use-motion-state.mjs
+index ab91d27e45cb230e04ac629b4b9a98d0901d44e0..7a7280d1f6f6f9b357a769df161c0922cec73bf2 100644
+--- a/dist/es/components/motion/use-motion-state.mjs
++++ b/dist/es/components/motion/use-motion-state.mjs
+@@ -9,6 +9,28 @@ import { MotionState } from "../../state/motion-state.mjs";
+ import { isMotionValue } from "framer-motion/dom";
+ import { getCurrentInstance, onActivated, onBeforeUnmount, onBeforeUpdate, onDeactivated, onMounted, onUnmounted, onUpdated, ref, useAttrs, watch } from "vue";
+ import { invariant, warning } from "hey-listen";
++// A component can unmount while its element stays in the DOM: under
++// AnimatePresence for the exit animation (the exit session unmounts the
++// state after it), but also under a plain <Transition> leave, where nothing
++// ever came back and the state leaked with its listeners and element.
++// Such states wait here until their element is gone.
++const detachPending = /* @__PURE__ */ new Map();
++let detachTimer = null;
++function sweepDetached() {
++	detachTimer = null;
++	detachPending.forEach((el, state) => {
++		if (!state.isMounted()) detachPending.delete(state);
++		else if (!el.isConnected) {
++			detachPending.delete(state);
++			state.unmount();
++		}
++	});
++	if (detachPending.size > 0) detachTimer = setTimeout(sweepDetached, 100);
++}
++function unmountWhenDetached(state, el) {
++	detachPending.set(state, el);
++	if (detachTimer === null) detachTimer = setTimeout(sweepDetached, 100);
++}
+ function useMotionState(props, bundle = {}) {
+ 	const parentState = injectMotion(null);
+ 	const layoutGroup = injectLayoutGroup({});
+@@ -85,11 +107,14 @@ function useMotionState(props, bundle = {}) {
+ 	});
+ 	onMounted(mountState);
+ 	function unmountIfDetached() {
+-		if (!getMotionElement(instance?.$el)?.isConnected) state.unmount();
++		const el = getMotionElement(instance?.$el);
++		if (!el?.isConnected) state.unmount();
++		else unmountWhenDetached(state, el);
+ 	}
+ 	onUnmounted(unmountIfDetached);
+ 	onDeactivated(unmountIfDetached);
+ 	onActivated(() => {
++		detachPending.delete(state);
+ 		if (!state.isMounted()) mountState();
+ 	});
+ 	onBeforeUpdate(() => {

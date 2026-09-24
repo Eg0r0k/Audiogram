@@ -20,8 +20,8 @@ const artist: ArtistEntity = { id: artistId, name: "Local", pinned: 1, addedAt: 
 const album: AlbumEntity = { id: albumId, title: "Album", artistId, pinned: 1, addedAt: 1, updatedAt: 1 };
 
 const summary = (overrides: Partial<LibrarySummaryData> = {}): LibrarySummaryData => ({
-  artists: [{ ...artist, trackCount: 7 }],
-  albums: [{ ...album, trackCount: 3 }],
+  artists: [artist],
+  albums: [album],
   playlists: [],
   folders: [],
   likedCount: 4,
@@ -69,22 +69,22 @@ const summaryOf = (queryClient: QueryClient) =>
   queryClient.getQueryData<LibrarySummaryData>(queryKeys.library.summary())!;
 
 describe("summary counts survive a point-sync", () => {
-  it("keeps an artist's trackCount when its row is re-synced", () => {
+  it("replaces an artist's row in place when it is re-synced", () => {
     const queryClient = seed();
     syncArtistCaches(queryClient, { ...artist, name: "Renamed" });
-    expect(summaryOf(queryClient).artists[0]).toMatchObject({ name: "Renamed", trackCount: 7 });
+    expect(summaryOf(queryClient).artists).toEqual([{ ...artist, name: "Renamed" }]);
   });
 
-  it("keeps an album's trackCount when its row is re-synced", () => {
+  it("replaces an album's row in place when it is re-synced", () => {
     const queryClient = seed();
     syncAlbumCaches(queryClient, { ...album, title: "Renamed" });
-    expect(summaryOf(queryClient).albums[0]).toMatchObject({ title: "Renamed", trackCount: 3 });
+    expect(summaryOf(queryClient).albums).toEqual([{ ...album, title: "Renamed" }]);
   });
 
-  it("a created artist enters the summary with a zero trackCount", () => {
+  it("a created artist enters the summary", () => {
     const queryClient = seed();
     syncArtistCaches(queryClient, { ...artist, id: ArtistId("a-2"), name: "New" });
-    expect(summaryOf(queryClient).artists[1]).toMatchObject({ id: "a-2", trackCount: 0 });
+    expect(summaryOf(queryClient).artists[1]).toMatchObject({ id: "a-2", name: "New" });
   });
 
   it("a like moves the summary's likedCount by one", () => {

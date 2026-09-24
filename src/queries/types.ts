@@ -6,17 +6,9 @@ import type {
 } from "@/db/entities";
 import type { Track } from "@/modules/player/types";
 
-export interface AlbumWithTrackCount extends AlbumEntity {
-  trackCount: number;
-}
-
-export interface ArtistWithTrackCount extends ArtistEntity {
-  trackCount: number;
-}
-
 export interface LibrarySummaryData {
-  artists: ArtistWithTrackCount[];
-  albums: AlbumWithTrackCount[];
+  artists: ArtistEntity[];
+  albums: AlbumEntity[];
   playlists: PlaylistEntity[];
   folders: SidebarFolderEntity[];
   likedCount: number;

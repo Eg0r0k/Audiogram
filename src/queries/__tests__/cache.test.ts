@@ -469,11 +469,13 @@ describe("cache utils", () => {
 });
 
 describe("cache aggregate-key isolation (regression)", () => {
-  it("unlike does not corrupt the index totalDuration aggregate", () => {
+  const AGGREGATE_KEY = ["tracks", "index", "totalDuration", ""];
+
+  it("unlike leaves a scalar under the index prefix alone", () => {
     const queryClient = new QueryClient();
 
     // A scalar aggregate that shares the ["tracks","index"] prefix with the pages.
-    queryClient.setQueryData(queryKeys.tracks.indexTotalDuration(""), 12345);
+    queryClient.setQueryData(AGGREGATE_KEY, 12345);
     queryClient.setQueryData(queryKeys.tracks.likedPageInfinite(), {
       pages: [{ tracks: [{ id: "track-1", isLiked: true, duration: 180 }], nextOffset: null, total: 1 }],
       pageParams: [0],
@@ -510,7 +512,7 @@ describe("cache aggregate-key isolation (regression)", () => {
     };
 
     expect(() => syncTrackLikeCaches(queryClient, trackEntity, track)).not.toThrow();
-    expect(queryClient.getQueryData(queryKeys.tracks.indexTotalDuration(""))).toBe(12345);
+    expect(queryClient.getQueryData(AGGREGATE_KEY)).toBe(12345);
   });
 });
 

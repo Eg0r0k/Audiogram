@@ -23,8 +23,8 @@ const repositories = vi.hoisted(() => ({
     findByAlbumId: vi.fn(),
     findSortedByIds: vi.fn(),
     countAll: vi.fn(),
-    sumDurationAll: vi.fn(),
     findAllSortedPaginated: vi.fn(),
+    findPaginated: vi.fn(),
     findLiked: vi.fn(),
     findLikedSorted: vi.fn(),
     findLikedSortedPaginated: vi.fn(),
@@ -143,9 +143,54 @@ describe("track.queries", () => {
 
     const result = await getTracksPaginated(0, "", 50, "album_asc");
 
-    expect(repositories.trackRepository.findAllSortedPaginated).toHaveBeenCalledWith("album_asc", 0, 50);
+    expect(repositories.trackRepository.findAllSortedPaginated).toHaveBeenCalledWith("album_asc", 0, 51);
     expect(result.tracks.map(track => track.id)).toEqual([trackA.id, trackB.id]);
     expect(result.total).toBe(2);
+  });
+
+  describe("getTracksPaginated over the whole library", () => {
+    const row = (i: number): TrackEntity => ({
+      id: `t-${i}` as TrackId,
+      title: `Track ${i}`,
+      artistIds: [],
+      tagIds: [],
+      source: 0,
+      state: 0,
+      storagePath: `${i}.mp3`,
+      duration: 100,
+      format: {},
+      playCount: 0,
+      addedAt: 1,
+    });
+    const rows = (from: number, count: number) => Array.from({ length: count }, (_, i) => row(from + i));
+
+    beforeEach(() => {
+      repositories.artistRepository.findByIds.mockResolvedValue(ok([]));
+      repositories.albumRepository.findByIds.mockResolvedValue(ok([]));
+      repositories.trackRepository.countAll.mockResolvedValue(ok(1000));
+    });
+
+    it("counts the library for the first page only", async () => {
+      repositories.trackRepository.findAllSortedPaginated.mockResolvedValue(ok(rows(0, 51)));
+      const first = await getTracksPaginated(0, "", 50, "album_asc");
+      expect(first.total).toBe(1000);
+      expect(first.tracks).toHaveLength(50);
+      expect(first.nextOffset).toBe(50);
+
+      repositories.trackRepository.countAll.mockClear();
+      repositories.trackRepository.findPaginated.mockResolvedValue(ok(rows(50, 51)));
+      const second = await getTracksPaginated(50, "", 50, null);
+      expect(repositories.trackRepository.countAll).not.toHaveBeenCalled();
+      expect(second.tracks).toHaveLength(50);
+      expect(second.nextOffset).toBe(100);
+    });
+
+    it("ends the list on a page that comes back short", async () => {
+      repositories.trackRepository.findAllSortedPaginated.mockResolvedValue(ok(rows(950, 50)));
+      const last = await getTracksPaginated(950, "", 50, "album_asc");
+      expect(last.tracks).toHaveLength(50);
+      expect(last.nextOffset).toBeNull();
+    });
   });
 
   describe("getLikedTracksPageData", () => {
@@ -365,16 +410,15 @@ describe("track.queries", () => {
     };
 
     const summaryWith = (albums: AlbumEntity[]): LibrarySummaryData => ({
-      artists: [{ ...artist, trackCount: 1 }],
-      albums: albums.map(album => ({ ...album, trackCount: 0 })),
+      artists: [artist],
+      albums,
       playlists: [],
       folders: [],
       likedCount: 0,
     });
 
     const summaryAlbums = (client: QueryClient) =>
-      client.getQueryData<LibrarySummaryData>(queryKeys.library.summary())!.albums
-        .map(({ trackCount: _trackCount, ...album }) => album);
+      client.getQueryData<LibrarySummaryData>(queryKeys.library.summary())!.albums;
 
     let queryClient: QueryClient;
 

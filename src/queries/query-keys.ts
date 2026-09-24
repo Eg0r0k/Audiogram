@@ -80,7 +80,6 @@ export const queryKeys = {
     localCopy: (remoteId: TrackId) => ["tracks", "localCopy", remoteId] as const,
     allPaginated: (search = "") => ["tracks", "all", "paginated", search] as const,
     indexInfinite: (sortKey: TrackSortKey | null, search = "") => ["tracks", "index", "infinite", sortKey, search] as const,
-    indexTotalDuration: (search = "") => ["tracks", "index", "totalDuration", search] as const,
   },
   trackChapters: {
     detail: (trackId: TrackId) => ["trackChapters", trackId] as const,

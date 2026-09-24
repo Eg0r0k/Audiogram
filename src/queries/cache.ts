@@ -276,10 +276,7 @@ export const syncArtistCaches = (queryClient: QueryClient, artist: ArtistEntity)
     queryKeys.library.summary(),
     data => ({
       ...data,
-      artists: upsertById(data.artists, {
-        ...artist,
-        trackCount: data.artists.find(existing => existing.id === artist.id)?.trackCount ?? 0,
-      }),
+      artists: upsertById(data.artists, artist),
     }),
   );
 };
@@ -304,10 +301,7 @@ export const syncAlbumCaches = (queryClient: QueryClient, album: AlbumEntity) =>
     queryKeys.library.summary(),
     data => ({
       ...data,
-      albums: upsertById(data.albums, {
-        ...album,
-        trackCount: data.albums.find(existing => existing.id === album.id)?.trackCount ?? 0,
-      }),
+      albums: upsertById(data.albums, album),
     }),
   );
 };
