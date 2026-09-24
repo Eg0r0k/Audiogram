@@ -13,7 +13,7 @@
 
   <p>
     <a href="#download"><strong>Download</strong></a> ·
-    <a href="https://rococo-hummingbird-42bcfa.netlify.app"><strong>Try in browser</strong></a> ·
+    <a href="https://audiogram-58l.pages.dev"><strong>Try in browser</strong></a> ·
     <a href="#features">Features</a> ·
     <a href="#faq">FAQ</a> ·
     <a href="#build-from-source">Build from source</a>
@@ -83,7 +83,7 @@ Get the latest build from the [Releases page](https://github.com/Eg0r0k/Audiogra
 - macOS: `Audiogram_universal.app.tar.gz` (or the `.dmg` if present)
 - Linux: `Audiogram_x.y.z_amd64.AppImage`
 - Android: `Audiogram_x.y.z_aarch64.apk`
-- Browser: [open the web version](https://rococo-hummingbird-42bcfa.netlify.app), nothing to install
+- Browser: [open the web version](https://audiogram-58l.pages.dev), nothing to install
 
 > **Windows SmartScreen warning.** Audiogram is not code-signed yet, so Windows may show an "unknown publisher" prompt on first launch. Click *More info*, then *Run anyway*. Every release ships with a minisign signature (`.sig`) that the built-in updater checks before installing.
 
@@ -131,7 +131,7 @@ pnpm tauri android dev  # Android (needs Android SDK + NDK)
 - LAN sync of the library between devices, without a server
 - Portable Windows build
 - Code signing for Windows and macOS builds
-- Better recommendations
+- Better recommendations (done)
 
 Found a bug or have an idea? [Open an issue](https://github.com/Eg0r0k/Audiogram/issues).
 
