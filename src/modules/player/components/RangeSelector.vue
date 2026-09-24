@@ -138,7 +138,9 @@ const hoverPercent = ref(0);
 // microtask of every class change, which on a track change means a forced
 // layout in the middle of the frame that re-keys the cover strip (~10 ms on
 // a phone). At the next frame's start the layout is already clean.
-const { width, height, left, bottom } = useElementBounding(containerRef, { updateTiming: "next-frame" });
+// No window scroll listener: it captures the scroll of every list in the
+// app, and neither host of the bar sits inside a scroller.
+const { width, height, left, bottom } = useElementBounding(containerRef, { updateTiming: "next-frame", windowScroll: false });
 
 const keyStep = computed(() => props.keyboardStep ?? (props.max - props.min) / 20);
 

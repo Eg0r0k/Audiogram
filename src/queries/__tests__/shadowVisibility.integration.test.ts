@@ -21,8 +21,8 @@ vi.mock("@/modules/search/service/searchIndex", () => ({
 import { db } from "@/db";
 import { ensurePinned } from "@/modules/tracks/service/ensurePinned";
 import { buildAllSearchDocuments } from "@/modules/search/service/buildDocuments";
-import { getLibrarySummary } from "../library.queries";
-import { getIndexTotalDuration, getTracksPaginated } from "../track.queries";
+import { getLibraryItemTrackCount, getLibrarySummary } from "../library.queries";
+import { getTracksPaginated } from "../track.queries";
 import { getArtistPageData } from "../artist.queries";
 
 const dto: SourceTrackDTO = {
@@ -51,7 +51,6 @@ describe("shadow rows stay invisible to library surfaces (integration)", () => {
     const indexPage = await getTracksPaginated(0, "", 50, "date_added_desc");
     expect(indexPage.tracks).toHaveLength(0);
     expect(indexPage.total).toBe(0);
-    expect(await getIndexTotalDuration()).toBe(0);
 
     const documents = await buildAllSearchDocuments();
     expect(documents).toHaveLength(0);
@@ -62,14 +61,13 @@ describe("shadow rows stay invisible to library surfaces (integration)", () => {
 
     const summary = await getLibrarySummary();
     expect(summary.albums.map(album => album.id)).toEqual([ndAlbumId("album1")]);
-    expect(summary.albums[0]?.trackCount).toBe(1);
     expect(summary.artists.map(artist => artist.id)).toEqual([ndArtistId("artist1")]);
-    expect(summary.artists[0]?.trackCount).toBe(1);
+    expect(await getLibraryItemTrackCount("album", ndAlbumId("album1"))).toBe(1);
+    expect(await getLibraryItemTrackCount("artist", ndArtistId("artist1"))).toBe(1);
 
     const indexPage = await getTracksPaginated(0, "", 50, "date_added_desc");
     expect(indexPage.tracks.map(track => track.id)).toEqual([dto.id]);
     expect(indexPage.total).toBe(1);
-    expect(await getIndexTotalDuration()).toBe(240);
 
     const documents = await buildAllSearchDocuments();
     expect(documents.map(document => document.id).sort()).toEqual([
@@ -79,14 +77,13 @@ describe("shadow rows stay invisible to library surfaces (integration)", () => {
     ]);
   });
 
-  it("sidebar counts skip shadow siblings of a pinned album", async () => {
+  it("delete dialog counts skip shadow siblings of a pinned album", async () => {
     await ensurePinned({ kind: "remote", dto });
     const sibling: SourceTrackDTO = { ...dto, id: ndTrackId("song2"), title: "Sibling" };
     await ensurePinned({ kind: "remote", dto: sibling }, { pinned: 0 });
 
-    const summary = await getLibrarySummary();
-    expect(summary.albums[0]?.trackCount).toBe(1);
-    expect(summary.artists[0]?.trackCount).toBe(1);
+    expect(await getLibraryItemTrackCount("album", ndAlbumId("album1"))).toBe(1);
+    expect(await getLibraryItemTrackCount("artist", ndArtistId("artist1"))).toBe(1);
   });
 
   it("a local artist page skips absorbed shadow tracks and albums", async () => {

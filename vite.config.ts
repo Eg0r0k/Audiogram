@@ -135,6 +135,10 @@ export default defineConfig({
 
   build: {
     target: "es2020",
+    // vite-plugin-top-level-await reads build.minify before Vite defaults it
+    // and re-prints the chunks it rewrites unminified when it is unset: the
+    // entry shipped at 3 MB instead of 2.
+    minify: "esbuild",
     sourcemap: isAnalyze,
     rollupOptions: {
       output: {

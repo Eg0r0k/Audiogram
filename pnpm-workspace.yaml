@@ -1,2 +1,4 @@
 ignoredBuiltDependencies:
   - esbuild
+patchedDependencies:
+  motion-v@2.4.2: patches/motion-v@2.4.2.patch

@@ -356,9 +356,12 @@ export default function useScrollable(
     }
   }
 
+  // Template refs are already null by the time onUnmounted runs.
+  let mountedContainer: HTMLElement | null = null;
   onMounted(() => {
     const container = containerRef.value;
     if (!container) return;
+    mountedContainer = container;
 
     container.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", handleScroll, { passive: true });
@@ -385,7 +388,7 @@ export default function useScrollable(
   }).catch(() => {});
 
   onUnmounted(() => {
-    const container = containerRef.value;
+    const container = mountedContainer;
     if (!container) return;
 
     container.removeEventListener("scroll", handleScroll);

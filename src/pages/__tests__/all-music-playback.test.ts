@@ -42,7 +42,6 @@ vi.mock("@/modules/tracks/composables/useIndexTracksPage", () => ({
     resolvedSortKey: computed(() => sortKey.value ?? (searchQuery.value.trim() ? null : "date_added_desc")),
     tracks: indexPage.tracks,
     total: ref(1),
-    totalDuration: ref(0),
     isLoading: indexPage.isLoading,
     isError: ref(false),
     error: ref(null),

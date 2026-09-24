@@ -365,19 +365,6 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     }
   }
 
-  async sumDurationAll(): Promise<Result<number, Error>> {
-    try {
-      let total = 0;
-      await this.table.where("pinned").equals(1).each((track) => {
-        total += track.duration;
-      });
-      return ok(total);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
-  }
-
   async setLiked(id: TrackId, isLiked: boolean): Promise<Result<void, Error>> {
     try {
       await this.table.update(id, {

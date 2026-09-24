@@ -9,6 +9,7 @@ import { queryKeys } from "@/queries/query-keys";
 import { coverCache } from "@/modules/covers/lib/cover-cache";
 import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
+import type { AlbumId, ArtistId } from "@/types/ids";
 import { settleLibraryReads } from "./cache";
 import { unwrapResult } from "./shared";
 import type { LibrarySummaryData } from "./types";
@@ -24,28 +25,21 @@ export const getLibrarySummary = async (): Promise<LibrarySummaryData> => {
     unwrapResult(trackRepository.countLiked()),
   ]);
 
-  const [albumTrackCounts, artistTrackCounts] = await Promise.all([
-    unwrapResult(trackRepository.countByAlbumIds(albums.map(a => a.id))),
-    unwrapResult(trackRepository.countByArtistIds(artists.map(a => a.id))),
-  ]);
-
-  const albumsWithCounts = albums.map(album => ({
-    ...album,
-    trackCount: albumTrackCounts.get(album.id) ?? 0,
-  }));
-
-  const artistsWithCounts = artists.map(artist => ({
-    ...artist,
-    trackCount: artistTrackCounts.get(artist.id) ?? 0,
-  }));
-
   return {
-    artists: artistsWithCounts,
-    albums: albumsWithCounts,
+    artists,
+    albums,
     playlists,
     folders,
     likedCount,
   };
+};
+
+// Per-item, for the delete dialog: the summary used to count every album
+// and artist up front, one IndexedDB read each, for this one number.
+export const getLibraryItemTrackCount = async (type: "album" | "artist", id: AlbumId | ArtistId): Promise<number> => {
+  if (type === "album") return unwrapResult(trackRepository.countByAlbumId(id as AlbumId));
+  const counts = await unwrapResult(trackRepository.countByArtistIds([id as ArtistId]));
+  return counts.get(id as ArtistId) ?? 0;
 };
 
 export const libraryQueries = {

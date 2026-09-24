@@ -1,6 +1,6 @@
 import { defineComponent, h, nextTick } from "vue";
 import { mount } from "@vue/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockPlayer = { currentTime: 0, duration: 200 };
 const mockStore = {
@@ -18,11 +18,6 @@ vi.mock("@/modules/player/store/player.store", () => ({ usePlayerStore: () => mo
 import { usePlayerProgress } from "../usePlayerProgress";
 
 let frames: FrameRequestCallback[] = [];
-const runFrame = () => {
-  const queued = frames;
-  frames = [];
-  for (const cb of queued) cb(performance.now());
-};
 
 const Bar = defineComponent({
   setup() {
@@ -37,7 +32,14 @@ const Bar = defineComponent({
 type BarVm = { onScrubStart: () => void; onScrub: (value: number) => void; onScrubEnd: () => void };
 
 describe("usePlayerProgress", () => {
+  // The first mount creates the renderer, which arms a devtools-hook timer
+  // that would count as a loop under fake timers.
+  beforeAll(() => {
+    mount(defineComponent({ render: () => null })).unmount();
+  });
+
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     frames = [];
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
       frames.push(cb);
@@ -51,21 +53,22 @@ describe("usePlayerProgress", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
-  it("runs one animation loop for any number of bars", async () => {
+  it("runs one loop for any number of bars", async () => {
     mockStore.isPlaying = true;
     mockStore.status = "playing";
     const first = mount(Bar);
     const second = mount(Bar);
 
-    expect(frames).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(1);
     mockPlayer.currentTime = 50;
-    runFrame();
+    vi.advanceTimersByTime(100);
     await nextTick();
 
-    expect(frames).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(1);
     expect(first.text()).toBe("25");
     expect(second.text()).toBe("25");
 
@@ -77,18 +80,35 @@ describe("usePlayerProgress", () => {
     mockStore.isPlaying = true;
     mockStore.status = "playing";
     const bar = mount(Bar);
-    expect(frames).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(1);
     bar.unmount();
 
-    expect(cancelAnimationFrame).toHaveBeenCalled();
-    frames = [];
+    expect(vi.getTimerCount()).toBe(0);
     mockPlayer.currentTime = 100;
     const next = mount(Bar);
     await nextTick();
 
-    expect(frames).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(1);
     expect(next.text()).toBe("50");
     next.unmount();
+  });
+
+  it("wakes only as often as the bar can visibly move, not every frame", async () => {
+    mockStore.isPlaying = true;
+    mockStore.status = "playing";
+    const bar = mount(Bar);
+    expect(frames).toHaveLength(0);
+
+    // 0.05 % of a 200 s track is 100 ms.
+    mockPlayer.currentTime = 20;
+    vi.advanceTimersByTime(99);
+    await nextTick();
+    expect(bar.text()).toBe("0");
+
+    vi.advanceTimersByTime(1);
+    await nextTick();
+    expect(bar.text()).toBe("10");
+    bar.unmount();
   });
 
   it("holds the scrub target after release and seeks the player", async () => {

@@ -17,6 +17,7 @@ import {
 } from "@/queries/folder.queries";
 import {
   clearLibraryData,
+  getLibraryItemTrackCount,
   invalidateLibraryData,
   libraryQueries,
 } from "@/queries/library.queries";
@@ -114,7 +115,6 @@ export const useLibrary = () => {
         artistName: artist.name,
         to: routeLocation.artist(artist.id),
         rounded: true,
-        trackCount: artist.trackCount,
       });
     }
 
@@ -132,7 +132,6 @@ export const useLibrary = () => {
         artistName,
         to: routeLocation.album(album.id),
         rounded: false,
-        trackCount: album.trackCount,
       });
     }
 
@@ -357,12 +356,15 @@ export const useLibrary = () => {
   const deleteItem = async (item: LibraryItem) => {
     if (item.type !== "artist" && item.type !== "album" && item.type !== "playlist") return;
 
+    const trackCount = item.type === "playlist"
+      ? item.trackCount ?? 0
+      : await getLibraryItemTrackCount(item.type, item.id as AlbumId | ArtistId);
     const result = await summonDialog("deleteConfirm", {
       data: {
         type: item.type,
         id: item.id as AlbumId | ArtistId | PlaylistId,
         name: item.title,
-        trackCount: item.trackCount ?? 0,
+        trackCount,
         defaultDeleteTracks: item.type === "album" && sourceKindOf(item.id) !== "local",
       } satisfies DeleteConfirmData,
     }, { key: `delete:${item.id}` });

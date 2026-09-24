@@ -5,10 +5,8 @@ import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 
 const PAGE_SIZE = 50;
 const LIBRARY_TOTAL = 500; // 10 pages
-const REAL_TOTAL_DURATION = 9999;
 
-// Pages no longer carry a library-wide duration; it lives in a separate aggregate
-// query. getTracksPaginated returns real rows so the flattened list length (what
+// getTracksPaginated returns real rows so the flattened list length (what
 // VirtualScrollable uses as itemCount) can be asserted.
 vi.mock("@/queries/track.queries", () => ({
   getTracksPaginated: vi.fn(async (offset: number) => ({
@@ -19,12 +17,6 @@ vi.mock("@/queries/track.queries", () => ({
     nextOffset: offset + PAGE_SIZE < LIBRARY_TOTAL ? offset + PAGE_SIZE : null,
     total: LIBRARY_TOTAL,
   })),
-  trackQueries: {
-    indexTotalDuration: (search = "") => ({
-      queryKey: ["tracks", "index", "totalDuration", search],
-      queryFn: async () => REAL_TOTAL_DURATION,
-    }),
-  },
 }));
 
 import { useIndexTracksPage } from "../useIndexTracksPage";
@@ -43,17 +35,15 @@ function mountComposable() {
     }),
     { global: { plugins: [[VueQueryPlugin, { queryClient }]] } },
   );
-  return { api, wrapper };
+  return { api, wrapper, queryClient };
 }
 
 describe("useIndexTracksPage", () => {
-  it("sources totalDuration from the aggregate query, not the infinite pages", async () => {
-    const { api, wrapper } = mountComposable();
+  it("reads the list through the paged query alone, without a duration scan", async () => {
+    const { wrapper, queryClient } = mountComposable();
     await flushPromises();
 
-    const pages = api.data.value?.pages ?? [];
-    expect(pages[0]).not.toHaveProperty("totalDuration");
-    expect(api.totalDuration.value).toBe(REAL_TOTAL_DURATION);
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(1);
 
     wrapper.unmount();
   });

@@ -2,12 +2,13 @@ import { ref, computed, watch, effectScope, onScopeDispose, type Ref, type Effec
 import { usePlayerStore } from "@/modules/player/store/player.store";
 
 // Smallest change of the bar worth a render, in percent: 0.05 % is a fifth
-// of a pixel on a phone-wide bar. The rAF below runs at the display rate
-// (120 Hz on many phones) and every write re-renders each RangeSelector on
-// screen — the full player's and the mini player's under it — plus the
-// mini card; on a long track that was ~10 % of the main thread for
-// movement no one can see.
+// of a pixel on a phone-wide bar. The loop wakes once per that step instead
+// of every display frame: a rAF loop kept the page producing frames at the
+// display rate (144 Hz here) with a style recalc in each, 55 ms/s of main
+// thread for movement no one can see.
 const PROGRESS_EPSILON = 0.05;
+const MIN_TICK_MS = 16;
+const MAX_TICK_MS = 250;
 
 interface ProgressTicker {
   scope: EffectScope;
@@ -16,7 +17,7 @@ interface ProgressTicker {
   subscribers: number;
 }
 
-// One rAF loop for every bar on screen. Each usePlayerProgress instance used
+// One loop for every bar on screen. Each usePlayerProgress instance used
 // to run its own, and the mobile layout mounts two at once (mini player and
 // full player): two loops reading the media element and writing two refs
 // per frame for one position.
@@ -29,7 +30,7 @@ const createTicker = (): ProgressTicker => {
 
   scope.run(() => {
     const playerStore = usePlayerStore();
-    let rafId: number | null = null;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
 
     const readProgress = (): number | null => {
       const player = playerStore.player;
@@ -37,19 +38,26 @@ const createTicker = (): ProgressTicker => {
       return ((player.currentTime as number) / (player.duration as number)) * 100;
     };
 
+    const tickInterval = () => {
+      const duration = playerStore.player?.duration;
+      if (!duration || !isFinite(duration)) return MAX_TICK_MS;
+      const ms = duration * 1000 * (PROGRESS_EPSILON / 100);
+      return Math.min(MAX_TICK_MS, Math.max(MIN_TICK_MS, ms));
+    };
+
     const stop = () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      rafId = null;
+      if (timerId !== null) clearTimeout(timerId);
+      timerId = null;
     };
 
     const start = () => {
-      if (rafId !== null) return;
+      if (timerId !== null) return;
       const update = () => {
         const next = readProgress();
         if (next !== null && Math.abs(next - progress.value) >= PROGRESS_EPSILON) progress.value = next;
-        rafId = playerStore.isPlaying ? requestAnimationFrame(update) : null;
+        timerId = playerStore.isPlaying ? setTimeout(update, tickInterval()) : null;
       };
-      rafId = requestAnimationFrame(update);
+      timerId = setTimeout(update, tickInterval());
     };
 
     const sync = () => {
