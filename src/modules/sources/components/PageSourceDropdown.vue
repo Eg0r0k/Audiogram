@@ -1,5 +1,5 @@
 <template>
-  <DropdownMenu v-if="store.availableSources.length > 1">
+  <DropdownMenu >
     <DropdownMenuTrigger as-child>
       <Button
         variant="ghost"

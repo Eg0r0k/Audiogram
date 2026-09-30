@@ -54,7 +54,7 @@
       <CrossfadeTransition class="flex-1">
         <div
           v-if="isLoading"
-          class="flex flex-col px-4 pt-4 sm:px-6"
+          class="flex flex-col px-4 pt-4"
         >
           <TrackRowLoading :rows="5" />
         </div>
@@ -90,6 +90,7 @@
             >
               <LibrarySortHeader
                 v-model:sort-key="sortKey"
+                class="px-4!"
               />
             </Motion>
 

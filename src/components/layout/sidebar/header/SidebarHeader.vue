@@ -2,9 +2,12 @@
   <div
     data-sidebar-header
     class="flex items-center shrink-0 pb-4"
-    :class="compact ? 'justify-center px-2' : 'gap-3 px-4'"
+    :class="compact ? 'justify-center px-2' : 'gap-3 px-4 pr-3'"
   >
-    <div class="relative size-10 shrink-0">
+    <div
+      class="relative size-10  shrink-0"
+      :class="compact ? '' : 'ml-3' "
+    >
       <AnimatePresence :initial="false">
         <Motion
           v-if="isSearchOpen"

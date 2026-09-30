@@ -13,7 +13,7 @@ const { chapters } = useCurrentTrackChapters();
 </script>
 
 <template>
-  <footer class="p-3 bg-card ">
+  <footer>
     <aside>
       <div class="relative flex items-center justify-between ">
         <div

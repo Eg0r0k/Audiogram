@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-16 items-center gap-2 px-4 py-3">
+  <div class="flex min-h-16 items-center gap-2 p-4">
     <div class="flex shrink-0 items-center gap-2">
       <template
         v-for="control in resolvedLeadingControls"

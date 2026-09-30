@@ -2,6 +2,18 @@
   <SettingsScreen :title="$t('settings.index.storage')">
     <SettingsGroup>
       <Item>
+        <ItemContent>
+          <ItemTitle>{{ $t('settings.storage.usage') }}</ItemTitle>
+          <ItemSubtitle v-if="isLoading">
+            {{ $t('common.loading') }}
+          </ItemSubtitle>
+          <ItemSubtitle v-else>
+            {{ formatted.totalUsed }} {{ $t('settings.storage.used') }}
+            <template v-if="formatted.quotaTotal">
+              · {{ formatted.quotaFree }} {{ $t('settings.storage.free') }}
+            </template>
+          </ItemSubtitle>
+        </ItemContent>
         <ItemMedia>
           <div class="relative size-10 shrink-0 z-1">
             <svg
@@ -35,18 +47,6 @@
             </span>
           </div>
         </ItemMedia>
-        <ItemContent>
-          <ItemTitle>{{ $t('settings.storage.usage') }}</ItemTitle>
-          <ItemSubtitle v-if="isLoading">
-            {{ $t('common.loading') }}
-          </ItemSubtitle>
-          <ItemSubtitle v-else>
-            {{ formatted.totalUsed }} {{ $t('settings.storage.used') }}
-            <template v-if="formatted.quotaTotal">
-              · {{ formatted.quotaFree }} {{ $t('settings.storage.free') }}
-            </template>
-          </ItemSubtitle>
-        </ItemContent>
       </Item>
     </SettingsGroup>
 

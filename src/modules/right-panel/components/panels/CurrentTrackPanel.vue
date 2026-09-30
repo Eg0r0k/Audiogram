@@ -15,7 +15,7 @@
     </RightPanelHeader>
     <Scrollable class="flex-1">
       <div
-        class="grid gap-3 py-4 px-5 pt-0"
+        class="grid gap-1 py-4 px-5 pt-0.5"
       >
         <TrackContextMenu context="current-track">
           <div>
@@ -89,7 +89,7 @@
         </TrackContextMenu>
 
         <template v-if="currentTrack">
-          <div class="grid gap-3">
+          <div class="grid gap-4">
             <div class="flex justify-between items-center relative select-none">
               <div class="grid gap-1 flex-1 min-w-0 max-w-fit overflow-hidden mx-2">
                 <MarqueeBlock

@@ -21,7 +21,7 @@
       </aside>
     </div>
 
-    <FooterMediaPlayer class="footer" />
+    <FooterMediaPlayer class="footer py-3 px-4 bg-card" />
   </div>
 </template>
 

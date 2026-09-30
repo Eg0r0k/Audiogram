@@ -112,7 +112,7 @@
     </SlideTransition>
 
     <div
-      class="pointer-events-none absolute bottom-[calc(1rem+var(--mobile-bottom-inset,0px))] z-50 flex gap-2"
+      class="pointer-events-none absolute right-2 bottom-[calc(1rem+var(--mobile-bottom-inset,0px))] z-50 flex gap-2"
       :class="isCompact
         ? 'inset-x-0 flex-col items-center'
         : 'inset-x-4 flex-row items-center'"
