@@ -92,7 +92,10 @@ const WAVE_BLOBS = [4, 3, 2, 1] as const;
 <style scoped>
 /* Blobs move by transform so the drift stays on the compositor; animating
    background-position repainted the tile every frame. A 170% layer placed
-   at X% sits at -X * 0.7 / 1.7 of its own size. */
+   at X% sits at -X * 0.7 / 1.7 of its own size.
+   steps(46) holds each position ~100 ms, under a pixel of drift: a smooth
+   curve redrew the window at the display rate for as long as the tile was
+   on screen, ~16 % GPU at 144 Hz. */
 .wave-tile {
   position: relative;
   background-color: #6d4dff;
@@ -104,7 +107,7 @@ const WAVE_BLOBS = [4, 3, 2, 1] as const;
   left: 0;
   width: 170%;
   height: 170%;
-  animation: 14s ease-in-out infinite alternate;
+  animation: 14s steps(46) infinite alternate;
 }
 
 .wave-blob-1 {

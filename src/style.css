@@ -352,7 +352,7 @@
     border-radius: 9999px;
     background-color: var(--primary);
     transform-origin: bottom;
-    animation: playing-pulse-bar 840ms var(--ease-in-out) infinite;
+    animation: playing-pulse-bar 840ms step-end infinite;
   }
 
   & > span:nth-child(2) {
@@ -364,15 +364,40 @@
   }
 }
 
+/* The --ease-in-out bounce (0.38 -> 1 at 45% -> 0.38) sampled every 30 ms
+   and held with step-end, ~33 frames/s: the smooth curve redrew the window
+   at the display rate for as long as a track played, ~12 % GPU at 144 Hz.
+   The 120/240 ms bar delays are whole steps, so all three bars change in
+   the same frame. */
 @keyframes playing-pulse-bar {
-  0%,
-  100% {
-    transform: scaleY(0.38);
-  }
-
-  45% {
-    transform: scaleY(1);
-  }
+  0%, 100% { transform: scaleY(0.38); }
+  3.571%  { transform: scaleY(0.382); }
+  7.143%  { transform: scaleY(0.391); }
+  10.714% { transform: scaleY(0.409); }
+  14.286% { transform: scaleY(0.443); }
+  17.857% { transform: scaleY(0.51); }
+  21.429% { transform: scaleY(0.68); }
+  25%     { transform: scaleY(0.854); }
+  28.571% { transform: scaleY(0.925); }
+  32.143% { transform: scaleY(0.962); }
+  35.714% { transform: scaleY(0.983); }
+  39.286% { transform: scaleY(0.994); }
+  42.857% { transform: scaleY(0.999); }
+  46.429% { transform: scaleY(1); }
+  50%     { transform: scaleY(0.997); }
+  53.571% { transform: scaleY(0.989); }
+  57.143% { transform: scaleY(0.976); }
+  60.714% { transform: scaleY(0.953); }
+  64.286% { transform: scaleY(0.915); }
+  67.857% { transform: scaleY(0.843); }
+  71.429% { transform: scaleY(0.687); }
+  75%     { transform: scaleY(0.54); }
+  78.571% { transform: scaleY(0.472); }
+  82.143% { transform: scaleY(0.433); }
+  85.714% { transform: scaleY(0.41); }
+  89.286% { transform: scaleY(0.395); }
+  92.857% { transform: scaleY(0.386); }
+  96.429% { transform: scaleY(0.381); }
 }
 
 @media (prefers-reduced-motion: reduce) {
