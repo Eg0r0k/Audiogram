@@ -163,9 +163,7 @@ mod integration_tests {
     }
 
     fn cached_renditions(cache: &std::path::Path) -> usize {
-        std::fs::read_dir(cache)
-            .map(|dir| dir.filter_map(Result::ok).count())
-            .unwrap_or(0)
+        std::fs::read_dir(cache).map_or(0, |dir| dir.filter_map(Result::ok).count())
     }
 
     fn temp_audio_file(bytes: &[u8]) -> std::path::PathBuf {
