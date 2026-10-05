@@ -55,7 +55,8 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, useTemplateRef, watch } from "vue";
 import { useOwnerResizeObserver } from "@/composables/useOwnerResizeObserver";
-import { MARQUEE_PAUSE_MS, MARQUEE_SPEED, MARQUEE_UPDATE_RATE, marqueeMotion } from "./marqueeMotion";
+import { MARQUEE_PAUSE_MS, MARQUEE_SPEED, marqueeMotion } from "./marqueeMotion";
+import { FRAME_GRID_MS, alignToGrid, gridNow, gridTicks, toGrid } from "@/lib/frame-grid";
 
 interface Props {
   vertical?: boolean;
@@ -127,11 +128,18 @@ const maskStyle = computed(() => {
   return { maskImage: mask, WebkitMaskImage: mask };
 });
 
+// A resume restarts the clock off the grid; moving the start back keeps the
+// line on it and at most one step ahead of where it stopped.
 const syncPlayState = () => {
   const paused = props.pause || (props.pauseOnHover && isHovering.value);
   for (const animation of animations) {
-    if (paused) animation.pause();
-    else animation.play();
+    if (paused) {
+      animation.pause();
+    }
+    else if (animation.playState === "paused") {
+      animation.play();
+      alignToGrid(animation, "back").catch(() => {});
+    }
   }
 };
 
@@ -156,40 +164,45 @@ const animateStartFade = (moveStartMs: number, travelMs: number): Animation[] =>
   if (!props.gradient || props.direction !== "normal") return [];
   const target = props.gradientColor ? startFadeRef.value : containerRef.value;
   if (!target) return [];
-  const rampMs = Math.min((Number.parseFloat(props.gradientLength) / props.speed) * 1000, travelMs / 2);
+  const ticks = gridTicks(Math.min((Number.parseFloat(props.gradientLength) / props.speed) * 1000, travelMs / 2));
+  const rampMs = ticks * FRAME_GRID_MS;
   const [hidden, shown] = props.gradientColor
     ? [{ opacity: 0 }, { opacity: 1 }]
     : [{ "--marquee-fade-start": "0px" }, { "--marquee-fade-start": props.gradientLength }];
+  const timing = { duration: rampMs, easing: `steps(${ticks})` };
   return [
-    target.animate([hidden, shown], { delay: moveStartMs, duration: rampMs, fill: "both" }),
-    target.animate([shown, hidden], { delay: moveStartMs + travelMs - rampMs, duration: rampMs, fill: "forwards" }),
+    target.animate([hidden, shown], { ...timing, delay: moveStartMs, fill: "both" }),
+    target.animate([shown, hidden], { ...timing, delay: moveStartMs + travelMs - rampMs, fill: "forwards" }),
   ];
 };
 
 // One animation moves both copies: after a loop the copy stands where the
 // original started, so the jump back is invisible. Each loop is its own
-// animation, chained on the previous one's end, which falls in the rest.
-const runLoop = (distance: number, index: number, run: number) => {
+// animation; the next one starts on the grid point where this one ends,
+// whenever its `finished` actually resolves (the end falls in the rest).
+const runLoop = (distance: number, index: number, run: number, startTime?: number) => {
   const el = motionRef.value;
   if (!el) return;
   cancelAnimations();
-  const { durationMs, holdOffset } = marqueeMotion(distance, props.speed, MARQUEE_PAUSE_MS);
+  const { durationMs, holdOffset, steps } = marqueeMotion(distance, props.speed, MARQUEE_PAUSE_MS);
   const axis = props.vertical ? "translateY" : "translateX";
   // The first loop skips its rest, so the line starts moving at once.
   const skipRest = index === 1 && props.direction === "normal" ? MARQUEE_PAUSE_MS : 0;
-  const delay = (index === 1 ? props.delay * 1000 : 0) - skipRest;
-  const steps = Math.max(1, Math.round((distance / props.speed) * MARQUEE_UPDATE_RATE));
+  const delay = (index === 1 ? toGrid(props.delay * 1000) : 0) - skipRest;
   const moving = el.animate([
     { transform: `${axis}(0)`, offset: 0 },
     { transform: `${axis}(0)`, offset: holdOffset, easing: `steps(${steps})` },
     { transform: `${axis}(-${distance}px)`, offset: 1 },
   ], { duration: durationMs, delay, direction: props.direction, easing: "linear" });
   animations = [moving, ...animateStartFade(delay + MARQUEE_PAUSE_MS, durationMs - MARQUEE_PAUSE_MS)];
+  const start = startTime ?? gridNow(el.ownerDocument);
+  if (start !== null) for (const animation of animations) animation.startTime = start;
   syncPlayState();
 
   moving.finished.then(() => {
     if (run !== generation || (props.loop !== 0 && index >= props.loop)) return;
-    runLoop(distance, index + 1, run);
+    const end = typeof moving.startTime === "number" ? moving.startTime + delay + durationMs : undefined;
+    runLoop(distance, index + 1, run, end);
   }, () => {});
 };
 

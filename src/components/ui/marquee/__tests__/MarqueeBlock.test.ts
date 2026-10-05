@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import MarqueeBlock from "../MarqueeBlock.vue";
-import { MARQUEE_PAUSE_MS, MARQUEE_SPEED, MARQUEE_UPDATE_RATE, marqueeMotion } from "../marqueeMotion";
+import { MARQUEE_PAUSE_MS, MARQUEE_SPEED, marqueeMotion } from "../marqueeMotion";
+import { FRAME_GRID_MS, gridTicks } from "@/lib/frame-grid";
 
 // happy-dom does no layout: sizes are set by hand, resize notifications are
 // fired by hand, and the animation is a spy.
@@ -20,6 +21,9 @@ interface FakeAnimation {
   target: HTMLElement;
   pause: ReturnType<typeof vi.fn>;
   play: ReturnType<typeof vi.fn>;
+  startTime: number | null;
+  playState: string;
+  ready: Promise<unknown>;
   cancel: ReturnType<typeof vi.fn>;
   finished: Promise<unknown>;
   finish: () => Promise<void>;
@@ -29,7 +33,11 @@ const animate = vi.fn(function (this: HTMLElement, keyframes: Keyframe[], option
   let resolve: (value: unknown) => void = () => {};
   const finished = new Promise((r) => { resolve = r; });
   const animation: FakeAnimation = {
-    keyframes, options, target: this, pause: vi.fn(), play: vi.fn(), cancel: vi.fn(), finished,
+    keyframes, options, target: this, cancel: vi.fn(), finished,
+    startTime: null, playState: "running", ready: Promise.resolve(),
+    pause: vi.fn(() => { animation.playState = "paused"; }),
+    // A resume restarts the clock off the grid.
+    play: vi.fn(() => { animation.playState = "running"; animation.startTime = 1234.5; }),
     finish: async () => { resolve(animation); await finished; await Promise.resolve(); },
   };
   animations.push(animation);
@@ -56,6 +64,7 @@ beforeEach(() => {
   animations.length = 0;
   animate.mockClear();
   vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+  Object.defineProperty(document, "timeline", { configurable: true, value: { currentTime: 1000.5 } });
   HTMLElement.prototype.animate = animate as unknown as HTMLElement["animate"];
 });
 
@@ -107,17 +116,17 @@ describe("MarqueeBlock", () => {
     layout(wrapper, { container: 200, text: 400 });
     await wrapper.vm.$nextTick();
 
-    expect(animations[0]?.options.delay).toBe(2000 - MARQUEE_PAUSE_MS);
+    expect(animations[0]?.options.delay).toBeCloseTo(2000 - MARQUEE_PAUSE_MS);
   });
 
-  it("updates the position a fixed number of times per second, whatever the display rate", async () => {
+  it("updates the position once per grid tick, whatever the display rate", async () => {
     const wrapper = mountMarquee({ speed: 40 });
     await wrapper.vm.$nextTick();
 
     layout(wrapper, { container: 200, text: 400 });
     await wrapper.vm.$nextTick();
 
-    expect(animations[0]?.keyframes[1]?.easing).toBe(`steps(${Math.round((448 / 40) * MARQUEE_UPDATE_RATE)})`);
+    expect(animations[0]?.keyframes[1]?.easing).toBe(`steps(${gridTicks((448 / 40) * 1000)})`);
   });
 
   it("animates the pair of copies as one element", async () => {
@@ -178,6 +187,20 @@ describe("MarqueeBlock", () => {
 
     await wrapper.find(".marquee-wrapper").trigger("pointerleave");
     expect(animations[0]?.play).toHaveBeenCalled();
+  });
+
+  it("puts a resumed line back on the grid, a step ahead at most", async () => {
+    const wrapper = mountMarquee({ pauseOnHover: true });
+    await wrapper.vm.$nextTick();
+    layout(wrapper, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find(".marquee-wrapper").trigger("pointerenter");
+    await wrapper.find(".marquee-wrapper").trigger("pointerleave");
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(movingLoops()[0]!.startTime! / FRAME_GRID_MS).toBeCloseTo(Math.floor(1234.5 / FRAME_GRID_MS));
   });
 
   it("measures on resize notifications only, without polling", async () => {
@@ -256,6 +279,23 @@ describe("MarqueeBlock loops", () => {
     expect(second?.keyframes[1]?.offset).toBeGreaterThan(0);
   });
 
+  it("starts the first loop on the next grid point", async () => {
+    await overflowing();
+
+    expect(movingLoops()[0]!.startTime! / FRAME_GRID_MS).toBeCloseTo(61);
+  });
+
+  it("starts the next loop exactly where the previous one ends", async () => {
+    await overflowing();
+    const first = movingLoops()[0]!;
+
+    await first.finish();
+
+    const second = movingLoops()[1]!;
+    const firstEnd = first.startTime! + (first.options.delay as number) + (first.options.duration as number);
+    expect(second.startTime).toBeCloseTo(firstEnd);
+  });
+
   it("stops after the requested number of loops", async () => {
     await overflowing({ loop: 2 });
 
@@ -303,6 +343,15 @@ describe("MarqueeBlock start fade", () => {
     expect(fadeIn?.options.duration).toBeCloseTo(rampMs);
     expect(fadeOut?.keyframes.map(k => k.opacity)).toEqual([1, 0]);
     expect(fadeOut?.options.delay).toBeCloseTo(travelMs - rampMs);
+  });
+
+  it("steps the fade on the grid and starts it with the line", async () => {
+    const wrapper = await overflowing({ gradientColor: "var(--card)" });
+
+    const [fadeIn, fadeOut] = fadesOn(wrapper.find(".marquee-fade.start").element);
+    expect(fadeIn?.options.easing).toBe(`steps(${gridTicks(rampMs)})`);
+    expect(fadeOut?.options.easing).toBe(`steps(${gridTicks(rampMs)})`);
+    expect(fadeIn?.startTime).toBe(movingLoops()[0]!.startTime);
   });
 
   it("opens the mask's start edge only while the line moves", async () => {
