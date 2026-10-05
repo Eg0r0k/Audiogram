@@ -60,6 +60,7 @@
 
           <span
             v-else-if="overlayState === 'pulse'"
+            v-frame-grid
             class="playing-pulse-dot"
           >
             <span />

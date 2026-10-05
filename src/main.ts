@@ -4,6 +4,7 @@ import { VueQueryPlugin } from "@tanstack/vue-query";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import router from "./app/router";
 import vRipple from "./directives/ripple";
+import vFrameGrid from "./directives/frame-grid";
 import "./style.css";
 import { i18n } from "@/app/i18n";
 import App from "@/app/App.vue";
@@ -35,6 +36,8 @@ import { markRecommenderContextDirty } from "@/modules/recommendations/service/r
 import { invalidateWeightsCache } from "@/modules/recommendations/service/recommender-model.service";
 
 await initLogging();
+
+getLogger().info(`[Boot] engine ${/Chrome\/[\d.]+/.exec(navigator.userAgent)?.[0] ?? "unknown"}`);
 
 // Before the awaits below: the webfont fetch then overlaps them instead of
 // queueing behind the database open, so the first paint is already correct.
@@ -131,6 +134,7 @@ if (import.meta.env.DEV && "serviceWorker" in navigator && !platformCaps.hasFs) 
 }
 
 app.directive("ripple", vRipple);
+app.directive("frame-grid", vFrameGrid);
 app.directive("copy", vCopy);
 
 app.mount("#app");

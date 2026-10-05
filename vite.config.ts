@@ -135,6 +135,11 @@ export default defineConfig({
 
   build: {
     target: "es2020",
+    // Android WebView before 111 has no oklch()/color-mix(): Lightning CSS
+    // writes hex fallbacks down to Chromium 105, the supported floor
+    // (older engines get the update prompt in MainActivity).
+    cssTarget: ["chrome105", "edge105", "safari16.4", "firefox128"],
+    cssMinify: "lightningcss",
     // vite-plugin-top-level-await reads build.minify before Vite defaults it
     // and re-prints the chunks it rewrites unminified when it is unset: the
     // entry shipped at 3 MB instead of 2.

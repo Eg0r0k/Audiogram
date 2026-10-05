@@ -1,3 +1,4 @@
+import { oklchCssToHex } from "@/lib/color/color";
 import type { AccentColor } from "./schema/appearance";
 
 export interface AccentColorOption {
@@ -112,3 +113,9 @@ export const ACCENT_COLOR_OPTIONS: AccentColorOption[] = [
 export function getAccentColorOption(value: AccentColor): AccentColorOption {
   return ACCENT_COLOR_OPTIONS.find(o => o.value === value) ?? ACCENT_COLOR_OPTIONS[0];
 }
+
+const SUPPORTS_OKLCH = typeof CSS !== "undefined" && CSS.supports("color", "oklch(0 0 0)");
+
+/** The preset as written, or its sRGB hex where oklch() is unsupported (Android WebView < 111). */
+export const resolveAccentValue = (value: string, supportsOklch = SUPPORTS_OKLCH): string =>
+  supportsOklch ? value : oklchCssToHex(value) ?? value;

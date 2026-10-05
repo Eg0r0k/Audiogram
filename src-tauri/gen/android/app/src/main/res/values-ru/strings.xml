@@ -1,0 +1,6 @@
+<resources>
+    <string name="webview_outdated_title">Обновите %1$s</string>
+    <string name="webview_outdated_message">Для интерфейса Audiogram нужен %1$s версии %3$d или новее, а на телефоне стоит %2$s. Обновите его в Google Play и снова откройте Audiogram.</string>
+    <string name="webview_outdated_update">Обновить</string>
+    <string name="webview_outdated_continue">Всё равно открыть</string>
+</resources>

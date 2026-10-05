@@ -1,6 +1,9 @@
 package com.eg.audiogram
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -11,9 +14,11 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.webkit.WebViewCompat
 
 class MainActivity : TauriActivity() {
   // TauriActivity opts out of WebView-history back handling; opt back in so
@@ -46,7 +51,43 @@ class MainActivity : TauriActivity() {
     folderPickerLauncher = registerForActivityResult(
       ActivityResultContracts.OpenDocumentTree(),
     ) { uri -> folderPickerBridge?.deliver(uri) }
-    requestRuntimePermissions()
+    val webView = WebViewCompat.getCurrentWebViewPackage(this)
+    if (webView != null && WebViewGate.isOutdated(webView.versionName)) {
+      showOutdatedWebViewDialog(webView)
+    } else {
+      requestRuntimePermissions()
+    }
+  }
+
+  // The permission request waits behind this dialog so two dialogs never stack.
+  private fun showOutdatedWebViewDialog(webView: PackageInfo) {
+    val label = webView.applicationInfo?.loadLabel(packageManager)?.toString() ?: "WebView"
+    AlertDialog.Builder(this)
+      .setTitle(getString(R.string.webview_outdated_title, label))
+      .setMessage(
+        getString(R.string.webview_outdated_message, label, webView.versionName, WebViewGate.MIN_WEBVIEW_MAJOR),
+      )
+      .setCancelable(false)
+      .setPositiveButton(R.string.webview_outdated_update) { _, _ ->
+        openStorePage(webView.packageName)
+        finish()
+      }
+      .setNegativeButton(R.string.webview_outdated_continue) { _, _ -> requestRuntimePermissions() }
+      .show()
+  }
+
+  private fun openStorePage(packageName: String) {
+    val intents = listOf(
+      "market://details?id=$packageName",
+      "https://play.google.com/store/apps/details?id=$packageName",
+    ).map { Intent(Intent.ACTION_VIEW, Uri.parse(it)) }
+    for (intent in intents) {
+      try {
+        startActivity(intent)
+        return
+      } catch (_: ActivityNotFoundException) {
+      }
+    }
   }
 
   override fun onWebViewCreate(webView: WebView) {

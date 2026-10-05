@@ -636,8 +636,14 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
 .virtual-scrollable-sticky {
   position: sticky;
   z-index: 10;
-  background: color-mix(in oklab, var(--background) 92%, transparent);
+  background: var(--background);
   backdrop-filter: blur(16px);
+}
+
+@supports (color: color-mix(in oklab, red, red)) {
+  .virtual-scrollable-sticky {
+    background: color-mix(in oklab, var(--background) 92%, transparent);
+  }
 }
 
 .scrollable::-webkit-scrollbar {

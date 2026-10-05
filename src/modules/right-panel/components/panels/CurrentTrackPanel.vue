@@ -163,7 +163,7 @@
             </div>
 
             <div
-              class="flex flex-col min-w-0 gap-1 p-2 rounded-sm bg-[color-mix(in_oklch,var(--cover-color)_30%,black)] transition-[background-color] duration-900 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+              class="flex flex-col min-w-0 gap-1 p-2 rounded-sm bg-card supports-[color:color-mix(in_oklch,red,red)]:bg-[color-mix(in_oklch,var(--cover-color)_30%,black)] transition-[background-color] duration-900 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
               :style="{ '--cover-color': playerColor.hsl }"
             >
               <div class="flex items-center justify-between gap-3 pl-2">

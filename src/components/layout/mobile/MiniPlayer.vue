@@ -83,6 +83,7 @@ import { Button } from "@/components/ui/button";
 import MiniPlayerCard from "@/components/layout/mobile/MiniPlayerCard.vue";
 import IconPlaylist from "~icons/tabler/playlist";
 import PlayButton from "@/modules/player/components/PlayButton.vue";
+import { mixWithBlack } from "@/lib/color/color-mix";
 
 const rightPanel = useRightPanelStore();
 const wrapperRef = useTemplateRef<HTMLDivElement>("wrapperRef");
@@ -96,12 +97,10 @@ const emit = defineEmits<{
 
 const { color: playerColor } = useMobilePlayerColor();
 
-const cardBackground = computed(() => `color-mix(in oklch, ${playerColor.value.hsl} 80%, black)`);
+const cardBackground = computed(() => mixWithBlack(playerColor.value.hsl, 0.8));
 
-const progressBackground = computed(() => {
-  const accent = playerColor.value.palette?.vivid ?? playerColor.value.hex;
-  return `color-mix(in oklch, ${accent} 50%, black)`;
-});
+const progressBackground = computed(() =>
+  mixWithBlack(playerColor.value.palette?.vivid ?? playerColor.value.hex, 0.5));
 
 const { displayProgress } = usePlayerProgress();
 provide(miniPlayerProgressKey, displayProgress);

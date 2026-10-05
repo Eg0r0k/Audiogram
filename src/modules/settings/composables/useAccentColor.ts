@@ -1,5 +1,5 @@
 import { ref, watch, onUnmounted } from "vue";
-import { getAccentColorOption } from "../accent-colors";
+import { getAccentColorOption, resolveAccentValue } from "../accent-colors";
 import type { AccentColor } from "../schema/appearance";
 
 const DEFAULT_ACCENT_COLOR: AccentColor = "blue";
@@ -27,7 +27,7 @@ function applyAccentColor(color: AccentColor, isDark: boolean) {
   const vars = isDark ? option.dark : option.light;
 
   for (const [key, value] of Object.entries(vars)) {
-    root.style.setProperty(key, value);
+    root.style.setProperty(key, resolveAccentValue(value));
   }
 }
 

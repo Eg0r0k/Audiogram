@@ -25,7 +25,7 @@ const guard = useSheetDragGuard();
     <DrawerOverlay />
     <DrawerContent
       data-slot="drawer-content"
-      :class="cn('bg-card text-card-foreground fixed inset-x-0 bottom-0 z-(--z-dialog) flex max-h-[85dvh] flex-col rounded-t-2xl outline-none', props.class)"
+      :class="cn('bg-card text-card-foreground fixed inset-x-0 bottom-0 z-(--z-dialog) flex max-h-[85vh] supports-[height:100dvh]:max-h-[85dvh] flex-col rounded-t-2xl outline-none', props.class)"
       :style="{ paddingBottom }"
       @pointerdown.capture="guard.onPointerdown"
       @pointerup.capture="guard.onPointerup"

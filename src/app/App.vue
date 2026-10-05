@@ -76,6 +76,7 @@ import { useEventListener } from "@vueuse/core";
 import NetworkStatusToast from "@/components/NetworkStatusToast.vue";
 import { useAnalysisQueueLifecycle } from "@/modules/recommendations/composables/useAnalysisQueueLifecycle";
 import { getLogger } from "@/lib/logger";
+import { applyStartupWindow } from "@/modules/settings/services/startup-window";
 
 const log = getLogger();
 log.info(` \n
@@ -120,9 +121,14 @@ const LayoutComponent = computed(() => {
 });
 
 let unlisten: (() => void) | null = null;
-const { init: initGeneral } = useGeneralSettings();
+const { init: initGeneral, launchMinimized, closeToTray } = useGeneralSettings();
 
 onMounted(async () => {
+  if (platformCaps.hasNativeWindow) {
+    applyStartupWindow({ launchMinimized: launchMinimized.value, closeToTray: closeToTray.value })
+      .catch(error => log.error(`[App] Startup window failed: ${String(error)}`));
+  }
+
   initGeneral().catch(error => log.error(`[App] General settings init failed: ${String(error)}`));
 
   if (platformCaps.hasGlobalShortcuts) {
