@@ -28,7 +28,10 @@ export const applyStartupWindow = async (settings: StartupSettings): Promise<voi
       await window.setFocus();
       break;
     case "taskbar":
+      // A hidden window has no taskbar button; shown after minimizing, it
+      // appears minimized instead of flashing open.
       await window.minimize();
+      await window.show();
       break;
     case "tray":
       break;

@@ -49,10 +49,14 @@ describe("applyStartupWindow", () => {
     expect(windowApi.minimize).not.toHaveBeenCalled();
   });
 
-  it("minimizes to the taskbar when Close to tray is off", async () => {
+  it("minimizes to the taskbar when Close to tray is off, with a taskbar button", async () => {
     invokeCommand.mockResolvedValue({ autostart: true });
     await applyStartupWindow({ launchMinimized: true, closeToTray: false });
+    // A hidden window only gets a taskbar button once shown; shown after
+    // minimizing, it appears minimized.
     expect(windowApi.minimize).toHaveBeenCalled();
+    expect(windowApi.show).toHaveBeenCalled();
+    expect(windowApi.minimize.mock.invocationCallOrder[0]).toBeLessThan(windowApi.show.mock.invocationCallOrder[0]);
     expect(windowApi.setFocus).not.toHaveBeenCalled();
   });
 });
