@@ -352,52 +352,50 @@
     border-radius: 9999px;
     background-color: var(--primary);
     transform-origin: bottom;
-    animation: playing-pulse-bar 840ms step-end infinite;
+    animation: playing-pulse-bar 833.333ms step-end infinite;
   }
 
   & > span:nth-child(2) {
-    animation-delay: 120ms;
+    animation-delay: 133.333ms;
   }
 
   & > span:nth-child(3) {
-    animation-delay: 240ms;
+    animation-delay: 266.667ms;
   }
 }
 
-/* The --ease-in-out bounce (0.38 -> 1 at 45% -> 0.38) sampled every 30 ms
-   and held with step-end, ~33 frames/s: the smooth curve redrew the window
-   at the display rate for as long as a track played, ~12 % GPU at 144 Hz.
-   The 120/240 ms bar delays are whole steps, so all three bars change in
-   the same frame. */
+/* The --ease-in-out bounce (0.38 -> 1 at 45% -> 0.38) sampled every 2 grid
+   ticks and held with step-end: 25 steps over 833.333 ms, 30 updates a
+   second on the shared frame grid (src/lib/frame-grid.ts; v-frame-grid pins
+   the start). The smooth curve redrew the window at the display rate for as
+   long as a track played. The 133.333/266.667 ms bar delays are whole
+   steps, so all three bars change in the same frame. */
 @keyframes playing-pulse-bar {
   0%, 100% { transform: scaleY(0.38); }
-  3.571%  { transform: scaleY(0.382); }
-  7.143%  { transform: scaleY(0.391); }
-  10.714% { transform: scaleY(0.409); }
-  14.286% { transform: scaleY(0.443); }
-  17.857% { transform: scaleY(0.51); }
-  21.429% { transform: scaleY(0.68); }
-  25%     { transform: scaleY(0.854); }
-  28.571% { transform: scaleY(0.925); }
-  32.143% { transform: scaleY(0.962); }
-  35.714% { transform: scaleY(0.983); }
-  39.286% { transform: scaleY(0.994); }
-  42.857% { transform: scaleY(0.999); }
-  46.429% { transform: scaleY(1); }
-  50%     { transform: scaleY(0.997); }
-  53.571% { transform: scaleY(0.989); }
-  57.143% { transform: scaleY(0.976); }
-  60.714% { transform: scaleY(0.953); }
-  64.286% { transform: scaleY(0.915); }
-  67.857% { transform: scaleY(0.843); }
-  71.429% { transform: scaleY(0.687); }
-  75%     { transform: scaleY(0.54); }
-  78.571% { transform: scaleY(0.472); }
-  82.143% { transform: scaleY(0.433); }
-  85.714% { transform: scaleY(0.41); }
-  89.286% { transform: scaleY(0.395); }
-  92.857% { transform: scaleY(0.386); }
-  96.429% { transform: scaleY(0.381); }
+  4%   { transform: scaleY(0.383); }
+  8%   { transform: scaleY(0.394); }
+  12%  { transform: scaleY(0.419); }
+  16%  { transform: scaleY(0.469); }
+  20%  { transform: scaleY(0.592); }
+  24%  { transform: scaleY(0.821); }
+  28%  { transform: scaleY(0.917); }
+  32%  { transform: scaleY(0.961); }
+  36%  { transform: scaleY(0.984); }
+  40%  { transform: scaleY(0.996); }
+  44%  { transform: scaleY(1); }
+  48%  { transform: scaleY(0.999); }
+  52%  { transform: scaleY(0.993); }
+  56%  { transform: scaleY(0.981); }
+  60%  { transform: scaleY(0.959); }
+  64%  { transform: scaleY(0.919); }
+  68%  { transform: scaleY(0.839); }
+  72%  { transform: scaleY(0.656); }
+  76%  { transform: scaleY(0.516); }
+  80%  { transform: scaleY(0.454); }
+  84%  { transform: scaleY(0.42); }
+  88%  { transform: scaleY(0.4); }
+  92%  { transform: scaleY(0.388); }
+  96%  { transform: scaleY(0.382); }
 }
 
 @media (prefers-reduced-motion: reduce) {

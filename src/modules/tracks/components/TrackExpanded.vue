@@ -78,7 +78,10 @@
             >
               <BlurSwapTransition :state="showPauseIcon ? 'playing' : 'play'">
                 <template v-if="showPauseIcon">
-                  <span class="playing-pulse-dot group-hover:hidden">
+                  <span
+                    v-frame-grid
+                    class="playing-pulse-dot group-hover:hidden"
+                  >
                     <span /><span /><span />
                   </span>
                   <IconPause class="hidden size-4 text-white group-hover:block" />

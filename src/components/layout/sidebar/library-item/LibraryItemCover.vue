@@ -48,6 +48,7 @@ const WAVE_BLOBS = [4, 3, 2, 1] as const;
 
       <div
         v-else-if="item.type === 'radio'"
+        v-frame-grid
         class="wave-tile size-full"
       >
         <span
@@ -93,9 +94,11 @@ const WAVE_BLOBS = [4, 3, 2, 1] as const;
 /* Blobs move by transform so the drift stays on the compositor; animating
    background-position repainted the tile every frame. A 170% layer placed
    at X% sits at -X * 0.7 / 1.7 of its own size.
-   steps(46) holds each position ~100 ms, under a pixel of drift: a smooth
-   curve redrew the window at the display rate for as long as the tile was
-   on screen, ~16 % GPU at 144 Hz. */
+   13.8 s with keyframes on thirds and steps(46) hold each position exactly
+   100 ms (6 ticks of the shared frame grid, see src/lib/frame-grid.ts;
+   v-frame-grid pins the start), under a pixel of drift: a smooth curve
+   redrew the window at the display rate for as long as the tile was on
+   screen, ~16 % GPU at 144 Hz. */
 .wave-tile {
   position: relative;
   background-color: #6d4dff;
@@ -107,7 +110,7 @@ const WAVE_BLOBS = [4, 3, 2, 1] as const;
   left: 0;
   width: 170%;
   height: 170%;
-  animation: 14s steps(46) infinite alternate;
+  animation: 13.8s steps(46) infinite alternate;
 }
 
 .wave-blob-1 {
@@ -132,29 +135,29 @@ const WAVE_BLOBS = [4, 3, 2, 1] as const;
 
 @keyframes wave-drift-1 {
   0% { transform: translate(0, 0); }
-  33% { transform: translate(-32.94%, -12.35%); }
-  66% { transform: translate(-41.18%, -41.18%); }
+  33.3333% { transform: translate(-32.94%, -12.35%); }
+  66.6667% { transform: translate(-41.18%, -41.18%); }
   100% { transform: translate(-12.35%, -37.06%); }
 }
 
 @keyframes wave-drift-2 {
   0% { transform: translate(-41.18%, -8.24%); }
-  33% { transform: translate(-8.24%, -41.18%); }
-  66% { transform: translate(0, 0); }
+  33.3333% { transform: translate(-8.24%, -41.18%); }
+  66.6667% { transform: translate(0, 0); }
   100% { transform: translate(-37.06%, -28.82%); }
 }
 
 @keyframes wave-drift-3 {
   0% { transform: translate(-16.47%, -41.18%); }
-  33% { transform: translate(-41.18%, 0); }
-  66% { transform: translate(-8.24%, -16.47%); }
+  33.3333% { transform: translate(-41.18%, 0); }
+  66.6667% { transform: translate(-8.24%, -16.47%); }
   100% { transform: translate(0, 0); }
 }
 
 @keyframes wave-drift-4 {
   0% { transform: translate(-41.18%, -41.18%); }
-  33% { transform: translate(0, -24.71%); }
-  66% { transform: translate(-28.82%, -4.12%); }
+  33.3333% { transform: translate(0, -24.71%); }
+  66.6667% { transform: translate(-28.82%, -4.12%); }
   100% { transform: translate(-16.47%, -41.18%); }
 }
 

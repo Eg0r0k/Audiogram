@@ -4,6 +4,7 @@ import { VueQueryPlugin } from "@tanstack/vue-query";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import router from "./app/router";
 import vRipple from "./directives/ripple";
+import vFrameGrid from "./directives/frame-grid";
 import "./style.css";
 import { i18n } from "@/app/i18n";
 import App from "@/app/App.vue";
@@ -133,6 +134,7 @@ if (import.meta.env.DEV && "serviceWorker" in navigator && !platformCaps.hasFs) 
 }
 
 app.directive("ripple", vRipple);
+app.directive("frame-grid", vFrameGrid);
 app.directive("copy", vCopy);
 
 app.mount("#app");
