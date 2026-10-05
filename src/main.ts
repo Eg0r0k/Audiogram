@@ -36,6 +36,8 @@ import { invalidateWeightsCache } from "@/modules/recommendations/service/recomm
 
 await initLogging();
 
+getLogger().info(`[Boot] engine ${/Chrome\/[\d.]+/.exec(navigator.userAgent)?.[0] ?? "unknown"}`);
+
 // Before the awaits below: the webfont fetch then overlaps them instead of
 // queueing behind the database open, so the first paint is already correct.
 initFont();
