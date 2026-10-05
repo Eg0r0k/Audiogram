@@ -158,17 +158,23 @@ const { isDragging } = useFileDrop({
 }
 
 .full-player-bg {
-  background: linear-gradient(
-    to bottom,
-    var(--player-bg),
-    color-mix(in srgb, var(--player-bg) 20%, black)
-  );
+  background: linear-gradient(to bottom, var(--player-bg), black);
   transition:
     --player-bg 900ms cubic-bezier(0.16, 1, 0.3, 1),
     --player-accent 900ms cubic-bezier(0.16, 1, 0.3, 1),
     --player-on-accent 900ms cubic-bezier(0.16, 1, 0.3, 1),
     --player-text 900ms cubic-bezier(0.16, 1, 0.3, 1),
     --player-text-muted 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@supports (color: color-mix(in srgb, red, red)) {
+  .full-player-bg {
+    background: linear-gradient(
+      to bottom,
+      var(--player-bg),
+      color-mix(in srgb, var(--player-bg) 20%, black)
+    );
+  }
 }
 
 .full-player-accent {
