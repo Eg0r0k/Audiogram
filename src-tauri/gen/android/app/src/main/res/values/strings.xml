@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">Audiogram</string>
     <string name="main_activity_title">Audiogram</string>
+    <string name="webview_outdated_title">Update %1$s</string>
+    <string name="webview_outdated_message">Audiogram needs %1$s %3$d or newer to draw its interface. This phone has version %2$s. Update it in Google Play, then open Audiogram again.</string>
+    <string name="webview_outdated_update">Update</string>
+    <string name="webview_outdated_continue">Open anyway</string>
 </resources>
