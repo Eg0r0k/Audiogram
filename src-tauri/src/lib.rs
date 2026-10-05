@@ -12,6 +12,8 @@ mod updater;
 mod thumbbar;
 #[cfg(desktop)]
 mod tray;
+#[cfg(desktop)]
+mod webview_visibility;
 
 #[cfg(desktop)]
 mod discord;
@@ -261,6 +263,7 @@ pub fn run() {
             {
                 tray::setup_tray(app)?;
                 thumbbar::setup(app)?;
+                webview_visibility::setup(app)?;
 
                 let files: Vec<String> = std::env::args().skip(1).collect();
                 if !files.is_empty() {
