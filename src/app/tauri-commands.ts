@@ -52,6 +52,7 @@ export const COMMANDS = {
   discordSetActivity: "discord_set_activity",
   discordClearActivity: "discord_clear_activity",
   thumbbarSetState: "thumbbar_set_state",
+  launchContext: "launch_context",
 } as const;
 
 export type CommandName = (typeof COMMANDS)[keyof typeof COMMANDS];
@@ -105,6 +106,7 @@ export interface CommandMap {
   discord_set_activity: { args: { payload: DiscordActivityPayload }; result: void };
   discord_clear_activity: { args: undefined; result: void };
   thumbbar_set_state: { args: { state: ThumbbarState }; result: void };
+  launch_context: { args: undefined; result: { autostart: boolean } };
 }
 
 type ArgsOf<N extends CommandName> = CommandMap[N]["args"];
