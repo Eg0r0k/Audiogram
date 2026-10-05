@@ -171,3 +171,14 @@ export function oklchToHex(L: number, C: number, h: number): string {
       .padStart(2, "0");
   return `#${to(r)}${to(g)}${to(b)}`;
 }
+
+const OKLCH_PATTERN = /^oklch\(\s*([\d.]+)(%?)\s+([\d.]+)\s+([\d.]+)\s*\)$/i;
+
+/** `oklch(L C h)` (L as 0-1 or a percentage) to sRGB hex, chroma reduced into gamut; null for any other syntax. */
+export const oklchCssToHex = (css: string): string | null => {
+  const match = OKLCH_PATTERN.exec(css.trim());
+  if (!match) return null;
+  const L = Number(match[1]) / (match[2] ? 100 : 1);
+  const h = Number(match[4]);
+  return oklchToHex(L, clampChromaToGamut(L, Number(match[3]), h), h);
+};
