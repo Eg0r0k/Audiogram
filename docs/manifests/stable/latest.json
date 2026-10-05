@@ -1,27 +1,27 @@
 {
-  "version": "0.2.15",
+  "version": "0.2.16",
   "notes": "",
-  "pub_date": "2026-09-24T13:44:54Z",
+  "pub_date": "2026-10-05T20:48:46Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/Eg0r0k/Audiogram/releases/download/v0.2.15/Audiogram_0.2.15_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRVNHS3p1UXBvc1RMalgxT0x5YzlZRHlJNTdsWFc1TGUrdTh5b3BYMWZZNlpkQUs4eWUwVjJjcWhDVVh0czJhTElUb1U4UnpVUWJaYXNIUmx3dy85bjBLSmhjT1VlR0FVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMjU3NjEyCWZpbGU6QXVkaW9ncmFtXzAuMi4xNV94NjQtc2V0dXAuZXhlCmw4TDIrVE1oRStSR1lyUjBkNjFnOENvS0xoZzlaTG1uUmpUNTZRTVZqTzBKZmZIUmZHb2poMzBoRUl3ODJBMHoxL1MvcFRvZ1dFUHJFckQ4TG5YWkRnPT0K"
+      "url": "https://github.com/Eg0r0k/Audiogram/releases/download/v0.2.16/Audiogram_0.2.16_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRVNHS3p1UXBvc1RUU3doMm1RejBLcVhmUGg4bytYaVp4aE8wVnpRSXZhSVBXVDBNT3Fxa2k0dlU2ejBab0h1MHhuS2ZiOUV1a21kK1J2YXFoWmJmK3U0V21ZYVBXZndNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxMjMzMzI1CWZpbGU6QXVkaW9ncmFtXzAuMi4xNl94NjQtc2V0dXAuZXhlCnlHTXpxTHZ6NWJ5R1hjZVljZWdac3F6UEpHbHNoaysvcGpYWnByd0tUMzBoa09ka0lua3pxeXJmV2d2N0taV0tZRU42TmpmR0Jpb29hamZJMzZhL0FBPT0K"
     },
     "linux-x86_64": {
-      "url": "https://github.com/Eg0r0k/Audiogram/releases/download/v0.2.15/Audiogram_0.2.15_amd64.AppImage",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRVNHS3p1UXBvc1FvM2MrQWlnTjNaRlVwNG9EdjZFaUpIVkl5UHhhTnJicllLeVpsUEVaMjdBYlJvUHlaTC9nY05teEo5OUpkeTlac2NXVVdtQnIrTWd0akNDMHdFYVFvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMjU3NDkzCWZpbGU6QXVkaW9ncmFtXzAuMi4xNV9hbWQ2NC5BcHBJbWFnZQpRQk1nM2grallNc214cSt1SXFFUGNDRkZPQUViTXNZaHpMbFhycXZmakh5a2V5NFVoVWVFRENJb3cyc1JIYTcyMHF2U0c0MWx2ZG1sdTRmS3R0NXVBZz09Cg=="
+      "url": "https://github.com/Eg0r0k/Audiogram/releases/download/v0.2.16/Audiogram_0.2.16_amd64.AppImage",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRVNHS3p1UXBvc1NvM3JudXpjWnlCN1NIN3hLTlVxVDJWRjVoMFY1TUxWYXlxZDdsaENybzg2SGhPT21jV0dvNGI5eDJYYWJQb3Bobkp2RjdGQlArRHhzNjVFYXRzK0EwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxMjMzMzcyCWZpbGU6QXVkaW9ncmFtXzAuMi4xNl9hbWQ2NC5BcHBJbWFnZQo2MkJjUTdBczVScEU3eTRPOWxCK2Q3dStoRzQ2QWJGVHA0SE5MazBpM00zZ2JFanF6eVlrOUpYS0wyRnoyV1pwMXgyRlRTMEM3clZmdFFvL1gxMXBCdz09Cg=="
     },
     "android-aarch64": {
-      "url": "https://github.com/Eg0r0k/Audiogram/releases/download/v0.2.15/Audiogram_0.2.15_aarch64.apk",
+      "url": "https://github.com/Eg0r0k/Audiogram/releases/download/v0.2.16/Audiogram_0.2.16_aarch64.apk",
       "signature": ""
     },
     "darwin-aarch64": {
-      "url": "https://github.com/Eg0r0k/Audiogram/releases/download/v0.2.15/Audiogram_universal.app.tar.gz",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRVNHS3p1UXBvc2JRdHVYM1JteWQyNFpYR3NaVjBFWFBDNGN6b1hrRnVIdTQ2RC9TRmtLLzZqdW1uaUMvU2s2em5KZk9veXV4NmZVYXJVYUI3SS81dUtmNVZkTFJtcFFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMjU3NjY2CWZpbGU6QXVkaW9ncmFtLmFwcC50YXIuZ3oKLzR0cDZqVFVOWGl3NCtEczZPYkFRMTlsZ1crVzNQdGI3Z0M1TjF3UDN0TnRValNMQ0RWQlJSd3NpeW9WeEZJT3YxcTJUWVFpQ001cmhyQjVqeGYxQ2c9PQo="
+      "url": "https://github.com/Eg0r0k/Audiogram/releases/download/v0.2.16/Audiogram_universal.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRVNHS3p1UXBvc1hlaEtFRTdjc0lTTm9YdmxieG1SMkFCYmhiM1oycXViVUdqK2Z2TjRIeW1BT0FVck1aN0ZoNFl3ZTdjcUxZb0tHRHhlSFg0Mnh6eUNyaGRSTWZZWGdJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxMjMzNDgyCWZpbGU6QXVkaW9ncmFtLmFwcC50YXIuZ3oKcVkwSUNrZG00aVovbmVwTmsyZmV5b1UyZDU4dWEzSTlvdTNjWFlJem90QlhkdSt3WXNQd0VqMERCWmhBcmFIcXR2UHBWL3V1VEQwRlF4eGJEOFJMQVE9PQo="
     },
     "darwin-x86_64": {
-      "url": "https://github.com/Eg0r0k/Audiogram/releases/download/v0.2.15/Audiogram_universal.app.tar.gz",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRVNHS3p1UXBvc2JRdHVYM1JteWQyNFpYR3NaVjBFWFBDNGN6b1hrRnVIdTQ2RC9TRmtLLzZqdW1uaUMvU2s2em5KZk9veXV4NmZVYXJVYUI3SS81dUtmNVZkTFJtcFFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMjU3NjY2CWZpbGU6QXVkaW9ncmFtLmFwcC50YXIuZ3oKLzR0cDZqVFVOWGl3NCtEczZPYkFRMTlsZ1crVzNQdGI3Z0M1TjF3UDN0TnRValNMQ0RWQlJSd3NpeW9WeEZJT3YxcTJUWVFpQ001cmhyQjVqeGYxQ2c9PQo="
+      "url": "https://github.com/Eg0r0k/Audiogram/releases/download/v0.2.16/Audiogram_universal.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRVNHS3p1UXBvc1hlaEtFRTdjc0lTTm9YdmxieG1SMkFCYmhiM1oycXViVUdqK2Z2TjRIeW1BT0FVck1aN0ZoNFl3ZTdjcUxZb0tHRHhlSFg0Mnh6eUNyaGRSTWZZWGdJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxMjMzNDgyCWZpbGU6QXVkaW9ncmFtLmFwcC50YXIuZ3oKcVkwSUNrZG00aVovbmVwTmsyZmV5b1UyZDU4dWEzSTlvdTNjWFlJem90QlhkdSt3WXNQd0VqMERCWmhBcmFIcXR2UHBWL3V1VEQwRlF4eGJEOFJMQVE9PQo="
     }
   }
 }
