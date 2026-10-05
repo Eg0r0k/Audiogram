@@ -39,6 +39,42 @@ mod ym;
 
 mod proxy;
 
+/// Passed by the autostart entry, so a launch at login can be told apart.
+#[cfg(desktop)]
+const AUTOSTART_FLAG: &str = "--autostart";
+
+/// Whether the OS started this process at login. `args` is the whole argv.
+#[cfg(desktop)]
+fn is_autostart_launch(args: &[String]) -> bool {
+    args.iter().skip(1).any(|arg| arg == AUTOSTART_FLAG)
+}
+
+/// Paths to open: every argument after the exe except the autostart flag.
+#[cfg(desktop)]
+fn files_to_open(args: &[String]) -> Vec<String> {
+    args.iter()
+        .skip(1)
+        .filter(|arg| *arg != AUTOSTART_FLAG)
+        .cloned()
+        .collect()
+}
+
+#[cfg(desktop)]
+#[derive(serde::Serialize)]
+struct LaunchContext {
+    autostart: bool,
+}
+
+/// The window stays hidden on an autostart launch until the frontend has
+/// read its "Launch minimized" and "Close to tray" settings.
+#[cfg(desktop)]
+#[tauri::command]
+fn launch_context() -> LaunchContext {
+    LaunchContext {
+        autostart: is_autostart_launch(&std::env::args().collect::<Vec<_>>()),
+    }
+}
+
 fn dir_size(path: &Path) -> u64 {
     let mut total = 0;
 
@@ -178,17 +214,38 @@ pub fn run() {
     let builder = builder
         .manage(discord::DiscordPresenceState::default())
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
-            let files: Vec<String> = args.into_iter().skip(1).collect();
+            // A second launch (Start menu, shortcut) means "show me the app",
+            // also when it sits in the tray or on the taskbar.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
 
+            let files = files_to_open(&args);
             if !files.is_empty() {
                 log::info!("second instance opened with files: {files:?}");
                 let _ = app.emit("files-opened", files);
             }
         }))
-        .plugin(tauri_plugin_autostart::Builder::new().build())
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .arg(AUTOSTART_FLAG)
+                .build(),
+        )
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_window_state::Builder::default().build());
+        // Visibility is not restored: the window is created hidden and shown
+        // by setup (or, on an autostart launch, by the frontend); a session
+        // quit from the tray would otherwise start every later one hidden.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all()
+                        - tauri_plugin_window_state::StateFlags::VISIBLE,
+                )
+                .build(),
+        );
 
     #[cfg(desktop)]
     let builder = builder.invoke_handler(tauri::generate_handler![
@@ -199,6 +256,7 @@ pub fn run() {
         discord::discord_set_activity,
         discord::discord_clear_activity,
         thumbbar::thumbbar_set_state,
+        launch_context,
         updater::check_update,
         updater::install_update,
         youtube::yt_register_stream,
@@ -265,7 +323,26 @@ pub fn run() {
                 thumbbar::setup(app)?;
                 webview_visibility::setup(app)?;
 
-                let files: Vec<String> = std::env::args().skip(1).collect();
+                let args: Vec<String> = std::env::args().collect();
+                if !is_autostart_launch(&args) {
+                    if let Some(window) = app.get_webview_window("main") {
+                        window.show()?;
+                        window.set_focus()?;
+                    }
+                }
+
+                // An entry written by an older version has no flag.
+                {
+                    use tauri_plugin_autostart::ManagerExt;
+                    let autolaunch = app.autolaunch();
+                    if autolaunch.is_enabled().unwrap_or(false) {
+                        if let Err(e) = autolaunch.enable() {
+                            log::warn!("autostart: refreshing the entry failed: {e}");
+                        }
+                    }
+                }
+
+                let files = files_to_open(&args);
                 if !files.is_empty() {
                     let app_handle = app.handle().clone();
                     std::thread::spawn(move || {
@@ -297,5 +374,34 @@ mod import_target_tests {
         assert!(!is_safe_import_target(Path::new("tracks/../../x")));
         assert!(!is_safe_import_target(Path::new("/abs/path")));
         assert!(!is_safe_import_target(Path::new("")));
+    }
+}
+
+#[cfg(all(test, desktop))]
+mod launch_args_tests {
+    use super::{files_to_open, is_autostart_launch};
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| (*s).to_string()).collect()
+    }
+
+    #[test]
+    fn detects_the_autostart_flag_after_the_exe() {
+        assert!(is_autostart_launch(&args(&[
+            "audiogram.exe",
+            "--autostart"
+        ])));
+        assert!(!is_autostart_launch(&args(&["audiogram.exe"])));
+        assert!(!is_autostart_launch(&args(&["--autostart"])));
+    }
+
+    #[test]
+    fn opens_every_argument_but_the_flag() {
+        assert_eq!(
+            files_to_open(&args(&["audiogram.exe", "--autostart", "a.flac", "b.mp3"])),
+            args(&["a.flac", "b.mp3"])
+        );
+        assert!(files_to_open(&args(&["audiogram.exe", "--autostart"])).is_empty());
+        assert!(files_to_open(&args(&["audiogram.exe"])).is_empty());
     }
 }
