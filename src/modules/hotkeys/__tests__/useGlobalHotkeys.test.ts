@@ -25,11 +25,14 @@ const player = reactive({
   seekTo: vi.fn((seconds: number) => {
     engine.currentTime = seconds;
   }),
+  toggleMute: vi.fn(),
 });
+const queue = { toggleRepeat: vi.fn(), toggleShuffle: vi.fn(), next: vi.fn(), previous: vi.fn() };
+const rightPanel = { isOpen: false, view: null as string | null, openQueue: vi.fn(), close: vi.fn() };
 
 vi.mock("@/modules/player/store/player.store", () => ({ usePlayerStore: () => player }));
-vi.mock("@/modules/queue/store/queue.store", () => ({ useQueueStore: () => ({}) }));
-vi.mock("@/modules/right-panel/store/right-panel.store", () => ({ useRightPanelStore: () => ({}) }));
+vi.mock("@/modules/queue/store/queue.store", () => ({ useQueueStore: () => queue }));
+vi.mock("@/modules/right-panel/store/right-panel.store", () => ({ useRightPanelStore: () => rightPanel }));
 vi.mock("@/modules/search/composables/useSearch", async () => {
   const { ref } = await import("vue");
   return { useSearch: () => ({ openSearch: vi.fn(), isSearchOpen: ref(false) }) };
@@ -78,6 +81,13 @@ const mountHotkeys = () => {
   }));
 };
 
+const toggles = () => ({
+  repeat: queue.toggleRepeat.mock.calls.length,
+  shuffle: queue.toggleShuffle.mock.calls.length,
+  mute: player.toggleMute.mock.calls.length,
+  queuePanel: rightPanel.openQueue.mock.calls.length,
+});
+
 describe("useGlobalHotKeys", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
@@ -98,6 +108,38 @@ describe("useGlobalHotKeys", () => {
     wrapper?.unmount();
     wrapper = null;
     vi.useRealTimers();
+  });
+
+  describe("single-letter toggles", () => {
+    it("fire on a plain press", async () => {
+      await press("r");
+      await press("s");
+      await press("m");
+      await press("q");
+
+      expect(toggles()).toEqual({ repeat: 1, shuffle: 1, mute: 1, queuePanel: 1 });
+    });
+
+    //
+    // Ctrl+R is the reload. The toggle used to fire on it first, the
+    // debounced store flushed the flipped mode on pagehide, and every reload
+    // turned repeat-all into repeat-one. Ctrl+S, Ctrl+M, Cmd+Q are the same
+    // story with the browser's or the OS's own chords.
+    //
+    it.each([
+      ["Control", "ctrlKey"],
+      ["Meta", "metaKey"],
+      ["Alt", "altKey"],
+    ] as const)("leave a %s chord to the browser", async (modifier, flag) => {
+      await keydown(modifier, { [flag]: true });
+      for (const key of ["r", "s", "m", "q"]) {
+        await keydown(key, { [flag]: true });
+        await keyup(key, { [flag]: true });
+      }
+      await keyup(modifier);
+
+      expect(toggles()).toEqual({ repeat: 0, shuffle: 0, mute: 0, queuePanel: 0 });
+    });
   });
 
   describe("volume with the up and down arrows", () => {

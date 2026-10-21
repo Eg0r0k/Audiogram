@@ -85,13 +85,23 @@ export const useGlobalHotKeys = () => {
   useHoldRepeat(() => keys.arrowup.value && canFire.value, VOLUME_REPEAT_MS, volumeStep(1));
   useHoldRepeat(() => keys.arrowdown.value && canFire.value, VOLUME_REPEAT_MS, volumeStep(-1));
 
+  // A Ctrl, Meta or Alt chord is the browser's or the OS's (Ctrl+R reloads,
+  // Ctrl+S saves). useMagicKeys reports the letter as down either way, and a
+  // toggle fired on Ctrl+R was flushed to storage on pagehide and came back
+  // flipped after the reload. The modifier refs are taken up front: the
+  // proxy only tracks a key once its ref exists, and a lazy read from inside
+  // `chord` would miss the modifier that was pressed before it.
+  const modifiers = [keys.control, keys.meta, keys.alt];
+  const chord = computed(() => modifiers.some(modifier => modifier.value));
+  const plain = (key: string) => () => keys[key].value && !chord.value && canFire.value;
+
   // Toggles
-  whenever(() => keys.m.value && canFire.value, () => player.toggleMute());
-  whenever(() => keys.s.value && canFire.value, () => queue.toggleShuffle());
-  whenever(() => keys.r.value && canFire.value, () => queue.toggleRepeat());
+  whenever(plain("m"), () => player.toggleMute());
+  whenever(plain("s"), () => queue.toggleShuffle());
+  whenever(plain("r"), () => queue.toggleRepeat());
 
   // Queue panel
-  whenever(() => keys.q.value && canFire.value, () => {
+  whenever(plain("q"), () => {
     if (rightPanel.isOpen && rightPanel.view === "queue") {
       rightPanel.close();
     }
