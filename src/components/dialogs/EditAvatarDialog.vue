@@ -1,80 +1,70 @@
 <template>
-  <Dialog
-    :open="open"
-    @update:open="value => emit('update:open', value)"
-  >
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{{ $t("dialogs.editAvatar.title") }}</DialogTitle>
-      </DialogHeader>
+  <DialogContent class="sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle>{{ $t("dialogs.editAvatar.title") }}</DialogTitle>
+    </DialogHeader>
 
-      <Alert
-        v-if="errorMessage"
-        variant="destructive"
-        class="py-2"
+    <div class="h-[400px] w-full rounded-md overflow-hidden relative">
+      <template v-if="currentImageSrc">
+        <vue-cropper
+          ref="cropperRef"
+          :src="currentImageSrc"
+          :aspect-ratio="1"
+          :view-mode="1"
+          drag-mode="move"
+          :background="false"
+          :auto-crop-area="1"
+          class="h-full w-full"
+          @ready="isReady = true"
+        />
+      </template>
+      <div
+        v-else
+        class="flex h-full w-full items-center justify-center bg-muted text-muted-foreground"
       >
-        <IconAlertCircle class="size-4" />
-        <AlertTitle>{{ errorMessage }}</AlertTitle>
-      </Alert>
-
-      <div class="h-[400px] w-full rounded-md overflow-hidden relative">
-        <template v-if="currentImageSrc">
-          <vue-cropper
-            ref="cropperRef"
-            :src="currentImageSrc"
-            :aspect-ratio="1"
-            :view-mode="1"
-            drag-mode="move"
-            :background="false"
-            :auto-crop-area="1"
-            class="h-full w-full"
-            @ready="isReady = true"
-          />
-        </template>
-        <div
-          v-else
-          class="flex h-full w-full items-center justify-center bg-muted text-muted-foreground"
-        >
-          <div class="text-center">
-            <IconPhoto class="mx-auto size-12 mb-2" />
-            <p>{{ $t("dialogs.editAvatar.noImage") }}</p>
-          </div>
+        <div class="text-center">
+          <IconPhoto class="mx-auto size-12 mb-2" />
+          <p>{{ $t("dialogs.editAvatar.noImage") }}</p>
         </div>
       </div>
+    </div>
 
-      <DialogFooter>
-        <Button
-          variant="destructive-link"
-          :disabled="isSaving"
-          @click="dismiss"
-        >
-          {{ $t("common.cancel") }}
-        </Button>
-        <Button
-          variant="ghost-primary"
-          class="sm:mr-auto"
-          :disabled="isSaving"
-          @click="handleSelectFile"
-        >
-          {{ currentImageSrc ? $t("common.change") : $t("common.select") }}
-        </Button>
+    <InlineError v-if="errorMessage">
+      {{ errorMessage }}
+    </InlineError>
+    <DialogFooter>
+      <Button
+        variant="ghost"
+        color="destructive"
+        :disabled="isSaving"
+        @click="dismiss"
+      >
+        {{ $t("common.cancel") }}
+      </Button>
+      <Button
+        variant="ghost"
+        class="sm:mr-auto"
+        :disabled="isSaving"
+        @click="handleSelectFile"
+      >
+        {{ currentImageSrc ? $t("common.change") : $t("common.select") }}
+      </Button>
 
-        <Button
-          v-if="currentImageSrc"
-          variant="ghost-primary"
+      <Button
+        v-if="currentImageSrc"
+        variant="ghost"
 
-          :disabled="isSaving || !isReady"
-          @click="handleSave"
-        >
-          <Spinner
-            v-if="isSaving"
-            class="mr-2 size-4"
-          />
-          {{ $t("common.save") }}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+        :disabled="isSaving || !isReady"
+        @click="handleSave"
+      >
+        <Spinner
+          v-if="isSaving"
+          class="mr-2 size-4"
+        />
+        {{ $t("common.save") }}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
 </template>
 
 <script setup lang="ts">
@@ -83,17 +73,15 @@ import { useI18n } from "vue-i18n";
 import type Cropper from "cropperjs";
 
 import {
-  Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  useDialogContext,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertTitle } from "@/components/ui/alert";
-import { useSummonedDialog } from "@/components/dialogs/summon";
+import InlineError from "@/components/common/InlineError.vue";
 import { Spinner } from "@/components/ui/spinner";
-import IconAlertCircle from "~icons/tabler/alert-circle";
 import IconPhoto from "~icons/tabler/photo";
 import { requestFiles } from "@/lib/files/requestFiles";
 import { IMAGE_MIME_TYPES } from "@/types/media";
@@ -147,15 +135,10 @@ const VueCropper = defineAsyncComponent({
 // Summoned fresh per crop: `imageSrc` is the picked file, the result is the
 // cropped blob. Errors about a file re-picked in here stay in here.
 const props = defineProps<{
-  open: boolean;
   imageSrc: string;
 }>();
 
-const emit = defineEmits<{
-  "update:open": [value: boolean];
-}>();
-
-const { resolve, dismiss } = useSummonedDialog<Blob>();
+const { close, dismiss } = useDialogContext<Blob>();
 const errorMessage = ref<string | null>(null);
 
 const cropperRef = useTemplateRef<VueCropperComponent>("cropperRef");
@@ -249,7 +232,7 @@ const handleSave = (): void => {
   canvas.toBlob(
     (blob: Blob | null): void => {
       if (blob) {
-        resolve(blob);
+        close(blob);
       }
       else {
         showError(t("dialogs.editAvatar.errors.createFailed"));

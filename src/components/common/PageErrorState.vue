@@ -18,7 +18,7 @@
       </Button>
       <Button
         size="xl"
-        variant="ghost-primary"
+        variant="ghost"
         @click="goHome"
       >
         {{ t("nav.home") }}

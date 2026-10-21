@@ -4,7 +4,8 @@
       v-if="isSupported"
       class="rounded-full"
       size="icon-lg"
-      variant="secondary"
+      variant="soft"
+      color="neutral"
       @click="toggle"
     >
       <component

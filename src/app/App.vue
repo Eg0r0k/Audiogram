@@ -1,42 +1,43 @@
 <template>
-  <TooltipProvider
-    :delay-duration="150"
-    :skip-delay-duration="300"
-    disable-hoverable-content
-  >
-    <component :is="LayoutComponent">
-      <RouterView v-slot="{ Component, route }">
-        <SlideTransition
-          :depth="route.meta.depth"
-          history-aware
-        >
-          <component
-            :is="Component"
-            :key="route.fullPath"
-            class="page-wrapper bg-canvas"
-          />
-        </SlideTransition>
-      </RouterView>
-    </component>
-  </TooltipProvider>
-  <WhatsNewDialog />
-  <DialogSummonHost />
-  <NetworkStatusToast />
-  <Toaster
-    :visible-toasts="2"
-    :expand="true"
-    :position="isMobileLayout ? 'bottom-center' : 'top-center'"
-    :offset="toastOffset"
-    :mobile-offset="toastOffset"
-    class="pointer-events-auto"
-  />
+  <ConfigProvider :scroll-body="false">
+    <TooltipProvider
+      :delay-duration="150"
+      :skip-delay-duration="300"
+      disable-hoverable-content
+    >
+      <component :is="LayoutComponent">
+        <RouterView v-slot="{ Component, route }">
+          <SlideTransition
+            :depth="route.meta.depth"
+            history-aware
+          >
+            <component
+              :is="Component"
+              :key="route.fullPath"
+              class="page-wrapper bg-canvas"
+            />
+          </SlideTransition>
+        </RouterView>
+      </component>
+    </TooltipProvider>
+    <WhatsNewDialog />
+    <DialogHost />
+    <NetworkStatusToast />
+    <Toaster
+      :max="2"
+      expand
+      :position="isMobileLayout ? 'bottom-center' : 'top-center'"
+      :class="isMobileLayout ? 'bottom-[calc(var(--mobile-dock-height)+12px)]' : 'top-[calc(var(--toolbar-height)+12px)]'"
+    />
+  </ConfigProvider>
 </template>
 
 <script setup lang="ts">
-import "vue-sonner/style.css";
-import { Toaster } from "@/components/ui/sonner";
+import { ConfigProvider } from "reka-ui";
+import { DialogHost } from "@/components/ui/dialog";
+import { Toaster } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { type Component as VueComponent, computed, onMounted, onUnmounted, watch } from "vue";
+import { type Component as VueComponent, computed, onMounted, onUnmounted, watch, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import DefaultLayout from "@/layouts/DefaultLayout.vue";
 import BlankLayout from "@/layouts/BlankLayout.vue";
@@ -67,12 +68,11 @@ import { useNdSourceSync } from "@/modules/settings/composables/useNdSourceSync"
 import { useYmSourceSync } from "@/modules/sources/yandex/composables/useYmSourceSync";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { ephemeralFromPath } from "@/modules/player/types";
-import { DialogSummonHost } from "@/components/dialogs/summon";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { useNowPlayingTitle } from "@/modules/player/composables/useNowPlayingTitle";
 import { useExternalLinkInterceptor } from "@/composables/useExternalLinkInterceptor";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import { useEventListener } from "@vueuse/core";
+import { useCssVar, useEventListener } from "@vueuse/core";
 import NetworkStatusToast from "@/components/NetworkStatusToast.vue";
 import { useAnalysisQueueLifecycle } from "@/modules/recommendations/composables/useAnalysisQueueLifecycle";
 import { getLogger } from "@/lib/logger";
@@ -92,7 +92,7 @@ Curious? Join us at https://github.com/Eg0r0k/Audiogram/issues :D
 
 const currentRoute = useRoute();
 const { isMobileLayout } = useDeviceLayout();
-const { init } = useWatchedFolders();
+const { init, stopAllWatchers } = useWatchedFolders();
 const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
 const rightPanelStore = useRightPanelStore();
@@ -105,12 +105,12 @@ const layouts: Record<string, VueComponent> = {
 
 // On a phone the top of the screen is the page header (back, sort), so toasts
 // go to the bottom, just above the mini-player + nav dock. On desktop they stay
-// on top, below the window toolbar (0px on the web).
-const toastOffset = computed(() =>
-  isMobileLayout.value
-    ? { bottom: mobileDockHeight.value + 12, left: 16, right: 16 }
-    : { top: "calc(var(--toolbar-height) + 12px)" },
-);
+// on top, below the window toolbar (0px on the web). The toaster is portalled
+// to body, so the dock height reaches it through a root variable.
+const dockHeightVar = useCssVar("--mobile-dock-height");
+watchEffect(() => {
+  dockHeightVar.value = `${mobileDockHeight.value}px`;
+});
 
 const LayoutComponent = computed(() => {
   if (currentRoute.meta.layout === "blank") return BlankLayout;
@@ -155,6 +155,7 @@ onMounted(async () => {
 });
 onUnmounted(() => {
   unlisten?.();
+  stopAllWatchers();
 });
 
 useTheme();

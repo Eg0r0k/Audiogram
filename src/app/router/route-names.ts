@@ -11,6 +11,8 @@ export const ROUTE_NAMES = {
   SETTINGS_STORAGE: "settings-storage",
   SETTINGS_PROXY: "settings-proxy",
   SETTINGS_SOURCES: "settings-sources",
+  SETTINGS_SOURCE: "settings-source",
+  SETTINGS_LIBRARY: "settings-library",
   SETTINGS_LANGUAGE: "settings-language",
   SETTINGS_NOTIFICATIONS: "settings-notifications",
   SETTINGS_STATS: "settings-stats",

@@ -1,13 +1,11 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it } from "vitest";
 import { nextTick } from "vue";
-import { render, screen, fireEvent } from "@testing-library/vue";
-import { createI18n } from "vue-i18n";
+import { screen, fireEvent } from "@testing-library/vue";
 import { VueQueryPlugin } from "@tanstack/vue-query";
-import { messages } from "@/app/i18n/messages";
 import type { PlaylistId } from "@/types/ids";
 import DeleteConfirmDialog from "../DeleteConfirmDialog.vue";
-import { DialogSummonHost, dismissAllSummonedDialogs, summonComponent } from "../summon";
+import { closeDialogs, openForResult, renderDialogHost } from "@/test/dialogs";
 import type { DeleteConfirmData, DeleteConfirmResult } from "../deleteConfirm";
 
 const DATA: DeleteConfirmData = {
@@ -17,27 +15,16 @@ const DATA: DeleteConfirmData = {
   trackCount: 3,
 };
 
-const renderHost = () => render(DialogSummonHost, {
-  global: {
-    plugins: [
-      createI18n({ legacy: false, locale: "en", messages }),
-      VueQueryPlugin,
-    ],
-    // The suite-wide teleport stub swallows the reka dialog portal; this
-    // test needs the real content in document.body.
-    stubs: { teleport: false },
-  },
-});
+const renderHost = renderDialogHost;
 
 describe("DeleteConfirmDialog (summoned)", () => {
   afterEach(async () => {
-    dismissAllSummonedDialogs();
-    await new Promise(resolve => setTimeout(resolve, 350));
+    await closeDialogs();
   });
 
   it("keeps the tracks when the destructive action is confirmed as-is", async () => {
     renderHost();
-    const promise = summonComponent<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });
+    const promise = openForResult<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });
     await nextTick();
 
     expect(await screen.findByText("My Playlist")).toBeInTheDocument();
@@ -48,7 +35,7 @@ describe("DeleteConfirmDialog (summoned)", () => {
 
   it("reports the opt-in to delete the tracks inside", async () => {
     renderHost();
-    const promise = summonComponent<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });
+    const promise = openForResult<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });
     await nextTick();
     await screen.findByText("My Playlist");
 
@@ -59,7 +46,7 @@ describe("DeleteConfirmDialog (summoned)", () => {
 
   it("starts the track opt-in on where the container owns its tracks", async () => {
     renderHost();
-    const promise = summonComponent<DeleteConfirmResult>(DeleteConfirmDialog, {
+    const promise = openForResult<DeleteConfirmResult>(DeleteConfirmDialog, {
       data: { ...DATA, defaultDeleteTracks: true },
     });
     await nextTick();
@@ -71,7 +58,7 @@ describe("DeleteConfirmDialog (summoned)", () => {
 
   it("hides the track opt-in when there are no tracks inside", async () => {
     renderHost();
-    summonComponent<DeleteConfirmResult>(DeleteConfirmDialog, {
+    openForResult<DeleteConfirmResult>(DeleteConfirmDialog, {
       data: { ...DATA, trackCount: 0 },
     });
     await nextTick();
@@ -82,7 +69,7 @@ describe("DeleteConfirmDialog (summoned)", () => {
 
   it("names the source and hides the track opt-in when deleting at the source", async () => {
     renderHost();
-    summonComponent<DeleteConfirmResult>(DeleteConfirmDialog, {
+    openForResult<DeleteConfirmResult>(DeleteConfirmDialog, {
       data: { ...DATA, atSource: "Yandex Music" },
     });
     await nextTick();
@@ -92,9 +79,28 @@ describe("DeleteConfirmDialog (summoned)", () => {
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 
+  it("names what is deleted in the title instead of asking whether the user is sure", async () => {
+    renderHost();
+    openForResult<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });
+    await nextTick();
+
+    expect(await screen.findByText("Delete playlist “My Playlist”?")).toBeInTheDocument();
+    expect(screen.getByText("This cannot be undone.")).toBeInTheDocument();
+    expect(screen.queryByText(/are you sure/i)).toBeNull();
+  });
+
+  it("warns that an artist takes their albums along", async () => {
+    renderHost();
+    openForResult<DeleteConfirmResult>(DeleteConfirmDialog, { data: { ...DATA, type: "artist", name: "Tester" } });
+    await nextTick();
+
+    expect(await screen.findByText("Delete artist “Tester”?")).toBeInTheDocument();
+    expect(screen.getByText("Their albums will be deleted too. This cannot be undone.")).toBeInTheDocument();
+  });
+
   it("resolves undefined when cancelled", async () => {
     renderHost();
-    const promise = summonComponent<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });
+    const promise = openForResult<DeleteConfirmResult>(DeleteConfirmDialog, { data: DATA });
     await nextTick();
     await screen.findByText("My Playlist");
 

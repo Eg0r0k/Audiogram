@@ -6,9 +6,9 @@
     <MobileFullPlayerHeader @close="closePlayer" />
 
     <div class="flex min-h-0 flex-1 flex-col w-full mx-auto px-6 pt-4 pb-6 max-w-md overflow-x-clip [mask-image:linear-gradient(to_right,transparent,#000_1.5rem,#000_calc(100%-1.5rem),transparent)] landscape-short:max-w-4xl landscape-short:flex-row landscape-short:items-stretch landscape-short:gap-6 landscape-short:px-4 landscape-short:pt-2 landscape-short:pb-4 landscape-short:[mask-image:linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-1rem),transparent)]">
-      <MobileFullPlayerCover />
+      <MobileFullPlayerCover class="mt-auto landscape-short:mt-0" />
 
-      <div class="flex flex-col landscape-short:min-w-0 landscape-short:flex-1 landscape-short:justify-center">
+      <div class="contents landscape-short:flex landscape-short:min-w-0 landscape-short:flex-1 landscape-short:flex-col landscape-short:justify-center">
         <MobileFullPlayerTrackInfo @close="closePlayer" />
 
         <MobileFullPlayerProgress

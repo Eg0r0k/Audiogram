@@ -1,6 +1,5 @@
 <template>
   <div
-    ref="rootRef"
     class="relative flex-1 pt-4 h-full flex flex-col min-h-0 overflow-hidden z-1"
   >
     <SidebarHeader :compact="isCompact" />
@@ -10,25 +9,51 @@
         :key="transitionKey"
         class="flex-1 flex flex-col min-h-0 bg-card"
       >
-        <LibrarySidebarFolderHeader
-          v-if="activeFolder"
-          :folder="activeFolder"
-          :compact="isCompact"
-          @close="closeFolder"
-          @rename="renameActiveFolder"
-        />
-
-        <Scrollable
-          v-else-if="!isCompact"
-          direction="horizontal"
-          hide-thumb
-          class="shrink-0 border-b dark:border-background border-border"
-        >
-          <Tabs
-            :model-value="activeFilter"
-            @update:model-value="setFilter($event as LibraryFilter)"
+        <template v-if="activeFolder">
+          <LibrarySidebarFolderHeader
+            :folder="activeFolder"
+            :compact="isCompact"
+            @close="closeFolder"
+            @rename="renameActiveFolder"
+          />
+          <LibraryContextMenu
+            inside-folder
+            @delete="handleDeleteItem"
+            @open-folder="openFolder"
+            @add-to-folder="openFolderPicker"
+            @rename-folder="openRenameFolderDialog"
+            @remove-from-folder="removeItemFromActiveFolder"
           >
-            <TabsList class="inline-flex items-center gap-0 px-4">
+            <LibrarySidebarList
+              class="flex-1 min-h-0"
+              :items="getFolderItems(activeFolder.id)"
+              :loading="isLoading"
+              :loading-more="false"
+              :compact="isCompact"
+              :restore-key="`library-sidebar:folder:${activeFolder.id}`"
+              @scroll="handleScroll"
+              @open-folder="openFolder"
+              @start-radio="startRadio"
+            />
+          </LibraryContextMenu>
+        </template>
+
+        <Tabs
+          v-else
+          :model-value="activeFilter"
+          class="flex-1 min-h-0 gap-0"
+          @update:model-value="setFilter($event as LibraryFilter)"
+        >
+          <Scrollable
+            v-if="!isCompact"
+            direction="horizontal"
+            hide-thumb
+            class="shrink-0 border-b dark:border-background border-border"
+          >
+            <TabsList
+              variant="line"
+              class="inline-flex items-center gap-0 px-2"
+            >
               <TabsTrigger
                 v-for="filter in visibleFilters"
                 :key="filter"
@@ -38,76 +63,54 @@
                 {{ filterLabel(filter) }}
               </TabsTrigger>
             </TabsList>
-            <TabsContent
-              v-for="filter in visibleFilters"
-              :key="filterContentKey(filter)"
-              :value="filter"
-              class="hidden"
-            />
-          </Tabs>
-        </Scrollable>
+          </Scrollable>
 
-        <SourceHealthNotice
-          :kind="catalogKind"
-          class="mx-2 mt-2"
-        />
+          <SourceHealthNotice
+            :kind="catalogKind"
+            class="mx-2 mt-2"
+          />
 
-        <LibraryContextMenu
-          :inside-folder="!!activeFolder"
-          @delete="handleDeleteItem"
-          @open-folder="openFolder"
-          @add-to-folder="openFolderPicker"
-          @rename-folder="openRenameFolderDialog"
-          @remove-from-folder="removeItemFromActiveFolder"
-        >
-          <CrossfadeTransition class="flex-1">
-            <div
-              v-if="listLoading"
-              class="flex flex-col gap-2 overflow-hidden p-2"
+          <LibraryContextMenu
+            @delete="handleDeleteItem"
+            @open-folder="openFolder"
+            @add-to-folder="openFolderPicker"
+            @rename-folder="openRenameFolderDialog"
+            @remove-from-folder="removeItemFromActiveFolder"
+          >
+            <SwipeViews
+              :model-value="activeFilter"
+              :disabled="isCompact"
+              class="flex-1 min-h-0"
+              @update:model-value="setFilter($event as LibraryFilter)"
             >
-              <div
-                v-for="i in 20"
-                :key="i"
-                class="flex items-center gap-3 px-2"
-                :class="isCompact && 'justify-center'"
+              <TabsContent
+                v-for="filter in visibleFilters"
+                :key="filter"
+                :value="filter"
+                force-mount
+                as-child
               >
-                <Skeleton class="size-[54px] rounded-full shrink-0" />
-                <div
-                  v-if="!isCompact"
-                  class="flex flex-col gap-2 w-full"
+                <SwipeView
+                  :value="filter"
+                  class="h-full"
                 >
-                  <Skeleton class="h-3 w-[40%]" />
-                  <Skeleton class="h-3 w-[65%]" />
-                </div>
-              </div>
-            </div>
-
-            <VirtualScrollable
-              v-else
-              ref="scrollableRef"
-              hide-thumb
-              :padding-top="8"
-              :padding-bottom="8"
-              :items="libraryItems"
-              :item-height="74"
-              :get-item-key="getLibraryItemKey"
-              animate-reorder
-              :loading="catalog.isLoadingMore.value"
-              @scroll="handleScroll"
-              @load-more="catalog.loadMoreAlbums"
-            >
-              <template #default="{ item }">
-                <LibrarySidebarItem
-                  :class="isCompact ? 'mx-1' : 'mx-2'"
-                  :item="item"
-                  :compact="isCompact"
-                  @open-folder="openFolder"
-                  @start-radio="startRadio"
-                />
-              </template>
-            </VirtualScrollable>
-          </CrossfadeTransition>
-        </LibraryContextMenu>
+                  <LibrarySidebarList
+                    v-if="mountedFilters.has(filter)"
+                    :items="listItems[filter]"
+                    :loading="listLoading"
+                    :loading-more="isCatalog && catalog.isLoadingMore.value"
+                    :compact="isCompact"
+                    :restore-key="`library-sidebar:${catalogKind ?? 'local'}:${filter}`"
+                    @scroll="handleScroll"
+                    @load-more="catalog.loadMoreAlbums"
+                    @open-folder="openFolder"
+                    @start-radio="startRadio"
+                  />
+                </SwipeView>
+              </TabsContent>
+            </SwipeViews>
+          </LibraryContextMenu>
+        </Tabs>
       </div>
     </SlideTransition>
 
@@ -149,25 +152,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref, useTemplateRef, watch } from "vue";
+import { computed, inject, onBeforeUnmount, ref, shallowRef, watch } from "vue";
+import { TabsContent } from "reka-ui";
 import { useI18n } from "vue-i18n";
 import FloatingActionButton from "@/components/common/FloatingActionButton.vue";
 import SlideTransition from "@/components/transitions/SlideTransition.vue";
-import CrossfadeTransition from "@/components/transitions/CrossfadeTransition.vue";
 import { Button } from "@/components/ui/button";
 import FloatingButton from "@/components/layout/sidebar/floatingButton/FloatingButton.vue";
 import LibrarySidebarFolderHeader from "@/components/layout/sidebar/LibrarySidebarFolderHeader.vue";
-import LibrarySidebarItem from "@/components/layout/sidebar/library-item/LibrarySidebarItem.vue";
+import LibrarySidebarList from "@/components/layout/sidebar/LibrarySidebarList.vue";
 import SearchPanel from "@/modules/search/components/SearchPanel.vue";
 import SidebarHeader from "@/components/layout/sidebar/header/SidebarHeader.vue";
 import { SIDEBAR_COMPACT_KEY } from "@/components/layout/sidebar/sidebarCompact";
 import { useLibrarySidebarFolders } from "@/components/layout/sidebar/useLibrarySidebarFolders";
 import { Scrollable } from "@/components/ui/scrollable";
-import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
-import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
-import Skeleton from "@/components/ui/skeleton/Skeleton.vue";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSwipeControl } from "@/composables/useSwipeControl";
+import { SwipeView, SwipeViews } from "@/components/ui/swipe-views";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { registerOverlayBackHandler } from "@/composables/useOverlayBackButton";
 import LibraryContextMenu from "@/modules/library/components/LibraryContextMenu.vue";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
@@ -181,8 +181,7 @@ import SourceHealthNotice from "@/modules/sources/components/SourceHealthNotice.
 import { useYmRadio } from "@/modules/sources/yandex/composables/useYmRadio";
 
 const {
-  pinnedItems,
-  unpinnedItems,
+  itemsByFilter,
   availableFilters,
   isLoading,
   activeFilter,
@@ -228,8 +227,6 @@ registerOverlayBackHandler({
 
 const { t } = useI18n();
 const isCompact = inject(SIDEBAR_COMPACT_KEY, computed(() => false));
-const scrollableRef = useTemplateRef("scrollableRef");
-const rootRef = useTemplateRef<HTMLElement>("rootRef");
 
 const currentSourceStore = useCurrentSourceStore();
 
@@ -240,16 +237,12 @@ const catalogKind = computed(() =>
   (currentSourceStore.currentSource === "local" ? null : currentSourceStore.currentSource),
 );
 const isCatalog = computed(() => catalogKind.value !== null);
-const catalog = useCatalogLibraryItems(catalogKind, activeFilter);
+const catalog = useCatalogLibraryItems(catalogKind);
 // The station row of the Yandex catalog: the only row that plays instead of navigating.
 const { start: startRadio } = useYmRadio();
 
-const localItems = computed(() => activeFolder.value
-  ? getFolderItems(activeFolder.value.id)
-  : [...pinnedItems.value, ...unpinnedItems.value],
-);
-
-const libraryItems = computed(() => (isCatalog.value ? catalog.items.value : localItems.value));
+// Every filter keeps a list of its own, one swipe view each.
+const listItems = computed(() => (isCatalog.value ? catalog.itemsByFilter.value : itemsByFilter.value));
 const listLoading = computed(() => (isCatalog.value ? catalog.isLoading.value : isLoading.value));
 const visibleFilters = computed(() =>
   (isCatalog.value ? catalogFilters(catalogKind.value) : availableFilters.value),
@@ -263,29 +256,41 @@ watch(visibleFilters, (filters) => {
   if (filters.length > 0 && !filters.includes(activeFilter.value)) setFilter(filters[0]);
 }, { immediate: true });
 
-useScrollRestoration(scrollableRef, {
-  key: "library-sidebar",
-  ready: () => !isLoading.value,
-  deps: () => libraryItems.value.length,
-});
+// Only the list on screen and its neighbours render: every mounted list costs
+// its rows at start-up and re-renders on every library change. The list on
+// screen mounts at once; its neighbours, which a swipe drags into view, wait
+// for an idle moment so it paints first. A list further away unmounts and
+// its scroll position comes back with it.
+const NEIGHBOUR_IDLE_TIMEOUT_MS = 500;
+const mountedFilters = shallowRef(new Set<LibraryFilter>());
+let idleHandle: number | undefined;
 
-// The tab strip these swipes drive is only visible at depth 0 — inside a
-// folder an unconditional swipe would switch the (hidden) library tabs
-// underneath.
-// Swipes walk the strip the user can see, not the local library's list: on
-// a catalog those two differ, and stepping onto a hidden tab would leave no
-// tab highlighted.
-const stepFilter = (delta: number) => {
-  if (folderDepth.value !== 0) return;
-  const filters = visibleFilters.value;
-  const next = filters[filters.indexOf(activeFilter.value) + delta] as LibraryFilter | undefined;
-  if (next) setFilter(next);
+const cancelIdle = () => {
+  if (idleHandle === undefined) return;
+  if (typeof cancelIdleCallback === "function") cancelIdleCallback(idleHandle);
+  else clearTimeout(idleHandle);
+  idleHandle = undefined;
 };
 
-useSwipeControl(rootRef, {
-  onSwipeLeft: () => stepFilter(1),
-  onSwipeRight: () => stepFilter(-1),
-});
+const whenIdle = (run: () => void) => {
+  cancelIdle();
+  idleHandle = typeof requestIdleCallback === "function"
+    ? requestIdleCallback(run, { timeout: NEIGHBOUR_IDLE_TIMEOUT_MS })
+    : window.setTimeout(run, NEIGHBOUR_IDLE_TIMEOUT_MS);
+};
+
+watch([activeFilter, visibleFilters, isCompact], ([active, filters, compact]) => {
+  const index = filters.indexOf(active);
+  const near = (filter: LibraryFilter) => Math.abs(filters.indexOf(filter) - index) <= 1;
+  mountedFilters.value = new Set([...mountedFilters.value].filter(near).concat(active));
+  if (compact) return;
+  whenIdle(() => {
+    idleHandle = undefined;
+    mountedFilters.value = new Set(filters.filter(near));
+  });
+}, { immediate: true });
+
+onBeforeUnmount(cancelIdle);
 
 const filterLabels = computed<Record<LibraryFilter, string>>(() => ({
   all: t("library.filterAll"),
@@ -305,15 +310,6 @@ async function handleDeleteItem(item: LibraryItem) {
 
 function filterLabel(value: LibraryFilter) {
   return filterLabels.value[value];
-}
-
-function filterContentKey(filter: LibraryFilter) {
-  return `content-${filter}`;
-}
-
-function getLibraryItemKey(index: number) {
-  const item = libraryItems.value[index] as (typeof libraryItems.value)[number] | undefined;
-  return item ? `${item.type}:${item.id}` : index;
 }
 
 const transitionKey = computed(() => (activeFolder.value ? `folder-${activeFolder.value.id}` : "main"));

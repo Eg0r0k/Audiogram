@@ -1,9 +1,10 @@
 <template>
-  <div class="flex items-center justify-between mt-6 px-1 landscape-short:mt-3">
+  <div class="flex items-center justify-between mt-auto pt-6 px-1 landscape-short:mt-3 landscape-short:pt-0">
     <Button
       v-if="libraryTrack"
-      size="icon"
+      size="icon-md"
       variant="ghost"
+      color="muted"
       :class="[fullPlayerGhostHover, isChaptersOpen && fullPlayerGhostActive]"
       :aria-label="$t('player.chapters')"
       @click.stop="toggleChapters"
@@ -12,8 +13,9 @@
     </Button>
     <Button
       v-if="libraryTrack"
-      size="icon"
+      size="icon-md"
       variant="ghost"
+      color="muted"
       :class="[fullPlayerGhostHover, isLyricsOpen && fullPlayerGhostActive]"
       :aria-label="$t('player.lyrics')"
       @click.stop="toggleLyrics"
@@ -21,8 +23,9 @@
       <IconMicrophone2 class="size-6" />
     </Button>
     <Button
-      size="icon"
+      size="icon-md"
       variant="ghost"
+      color="muted"
       :class="[fullPlayerGhostHover, isQueueOpen && fullPlayerGhostActive]"
       :aria-label="$t('player.queue')"
       @click.stop="toggleQueue"
@@ -32,8 +35,9 @@
     <ResponsiveMenu>
       <ResponsiveMenuTrigger>
         <Button
-          size="icon"
+          size="icon-md"
           variant="ghost"
+          color="muted"
           :class="[fullPlayerGhostHover, isSleepTimerActive && fullPlayerGhostActive]"
           :aria-label="statusText"
           @click.stop
@@ -59,7 +63,7 @@
         <template v-if="isSleepTimerActive">
           <ResponsiveMenuSeparator />
           <ResponsiveMenuItem
-            variant="destructive"
+            color="destructive"
             @click="cancelSleepTimer()"
           >
             <IconPlayerStop class="size-5" />

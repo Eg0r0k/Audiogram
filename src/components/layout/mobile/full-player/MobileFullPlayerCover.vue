@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex-1 min-h-0 @container-[size] select-none flex items-center justify-center pb-2 touch-pan-y landscape-short:flex-none landscape-short:basis-[50%] landscape-short:pb-0 landscape-short:overflow-x-clip landscape-short:[mask-image:linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-1rem),transparent)]"
+    class="aspect-square min-h-0 @container-[size] select-none flex items-center justify-center touch-pan-y landscape-short:aspect-auto landscape-short:flex-none landscape-short:basis-[50%] landscape-short:overflow-x-clip landscape-short:[mask-image:linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-1rem),transparent)]"
     @pointerdown="startDrag"
   >
     <motion.div
@@ -25,7 +25,7 @@
           :key="slot.key"
           :aria-hidden="slot.role === 'center' ? undefined : 'true'"
           :class="COVER_SLOT_CLASS[slot.role]"
-          :style="{ y: arcs[slot.role].y, rotate: arcs[slot.role].rotate, opacity: slotOpacity[slot.role] }"
+          :style="{ opacity: slotOpacity[slot.role] }"
         >
           <motion.div
             class="size-full"
@@ -134,33 +134,14 @@ onScopeDispose(() => {
 // decode of full-size album art landed in the frame that switched tracks —
 // 15 ms of an 80 ms frame on a phone.
 //
-// Each slot keeps its own compositor layer: the arc's per-frame y/rotate and
-// opacity writes otherwise repaint the full-size art into the strip's tiles
-// on every frame of the drag (20–40 ms GPU raster tasks on a phone).
-const SLOT_LAYER = "will-change-[transform,opacity]";
+// Each slot keeps its own compositor layer: the per-frame opacity writes
+// otherwise repaint the full-size art into the strip's tiles on every frame
+// of the drag (20–40 ms GPU raster tasks on a phone).
+const SLOT_LAYER = "will-change-[opacity]";
 const COVER_SLOT_CLASS: Record<SwipeSlotRole, string> = {
   previous: `pointer-events-none absolute top-0 right-[calc(100%+32px)] size-full rounded-2xl bg-muted overflow-hidden shadow-lg ${SLOT_LAYER}`,
   center: `relative z-10 size-full rounded-2xl bg-muted overflow-hidden shadow-lg ${SLOT_LAYER}`,
   next: `pointer-events-none absolute top-0 left-[calc(100%+32px)] size-full rounded-2xl bg-muted overflow-hidden shadow-lg ${SLOT_LAYER}`,
-};
-
-const ARC_ANGLE = 12;
-const ARC_DIP = 32;
-const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
-const dipScale = ARC_DIP / (1 - Math.cos(toRadians(ARC_ANGLE)));
-
-const useArc = (slot: -1 | 0 | 1) => {
-  const angleAt = (value: number) => (value / Math.max(1, slotWidth()) + slot) * ARC_ANGLE;
-  return {
-    y: useTransform(x, value => dipScale * (1 - Math.cos(toRadians(angleAt(value))))),
-    rotate: useTransform(x, value => angleAt(value)),
-  };
-};
-
-const arcs: Record<SwipeSlotRole, ReturnType<typeof useArc>> = {
-  previous: useArc(-1),
-  center: useArc(0),
-  next: useArc(1),
 };
 
 const travel = (value: number) => Math.min(1, Math.abs(value) / Math.max(1, slotWidth()));

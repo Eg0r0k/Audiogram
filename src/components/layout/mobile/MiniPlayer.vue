@@ -51,6 +51,7 @@
             />
             <Button
               variant="ghost"
+              color="muted"
               size="icon-lg"
               class="rounded-full text-white"
               :aria-label="$t('player.queue')"

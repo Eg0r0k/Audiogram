@@ -1,51 +1,44 @@
 <template>
   <nav
     :aria-label="t('nav.menu')"
-    class="flex h-14 items-stretch gap-1 p-1 mb-1 backdrop-blur-xl bg-muted rounded-lg"
+    class="grid h-14 auto-cols-fr grid-flow-col gap-(--nav-gap) p-1 mb-1 backdrop-blur-xl bg-muted rounded-lg [--nav-gap:--spacing(1)]"
   >
-    <template
-      v-for="item in items"
-      :key="item.key"
+    <span
+      v-if="activeIndex >= 0"
+      aria-hidden="true"
+      class="pointer-events-none col-start-1 row-start-1 flex items-center justify-center transition-[translate] duration-short-4 ease-standard motion-reduce:transition-none"
+      :style="{ translate: `calc(${activeIndex} * (100% + var(--nav-gap)))` }"
     >
-      <Button
-        v-if="item.to"
-        as-child
-        variant="ghost"
-        :class="itemClass(item)"
-      >
-        <Link
-          :to="item.to"
-          @click="leaveSearch"
-        >
-          <component
-            :is="isActive(item) ? item.activeIcon : item.icon"
-            class="size-[22px]"
-          />
-          <span class="text-[10px] font-medium leading-none">{{ t(item.label) }}</span>
-        </Link>
-      </Button>
-      <Button
-        v-else
-        variant="ghost"
-        :class="itemClass(item)"
-        :aria-current="isActive(item) ? 'page' : undefined"
-        @click="item.action?.()"
+      <span class="h-8 w-16 rounded-full bg-primary" />
+    </span>
+    <button
+      v-for="(item, index) in items"
+      :key="item.key"
+      type="button"
+      :aria-label="t(item.label)"
+      :aria-current="activeKey === item.key ? 'page' : undefined"
+      :data-active="activeKey === item.key || undefined"
+      :style="{ gridColumn: index + 1 }"
+      class="relative row-start-1 flex min-w-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground outline-none transition-colors duration-short-4 ease-standard focus-visible:focus-ring data-active:text-primary-foreground"
+      @click="select(item)"
+    >
+      <span
+        v-ripple
+        class="state-layer relative flex h-8 w-16 items-center justify-center rounded-full"
       >
         <component
-          :is="isActive(item) ? item.activeIcon : item.icon"
-          class="size-[22px]"
+          :is="activeKey === item.key ? item.activeIcon : item.icon"
+          class="size-6"
         />
-        <span class="text-[10px] font-medium leading-none">{{ t(item.label) }}</span>
-      </Button>
-    </template>
+      </span>
+    </button>
   </nav>
 </template>
 <script setup lang="ts">
-import type { Component } from "vue";
+import { computed, ref, type Component } from "vue";
 import { useI18n } from "vue-i18n";
-import { useRoute, useRouter } from "vue-router";
-import Link from "@/components/ui/link/Link.vue";
-import { Button } from "@/components/ui/button";
+import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
+import vRipple from "@/lib/ripple";
 import { ROUTE_NAMES } from "@/app/router/route-names";
 import { routeLocation } from "@/app/router/route-locations";
 import { useSearch } from "@/modules/search/composables/useSearch";
@@ -54,10 +47,9 @@ import { getLogger } from "@/lib/logger";
 import IconHome from "~icons/tabler/home";
 import IconHomeFilled from "~icons/tabler/home-filled";
 import IconSearch from "~icons/tabler/search";
-import IconBookmark from "~icons/tabler/bookmark";
-import IconBookmarkFilled from "~icons/tabler/bookmark-filled";
-import IconLibrary from "~icons/tabler/library";
-import IconLibraryFilled from "~icons/tabler/library-filled";
+import IconChartBar from "~icons/tabler/chart-bar";
+import IconSettings from "~icons/tabler/settings";
+import IconSettingsFilled from "~icons/tabler/settings-filled";
 
 const { t } = useI18n();
 const router = useRouter();
@@ -87,6 +79,13 @@ const goHome = async () => {
   await router.push(routeLocation.home());
 };
 
+// Search is dropped only once the page has changed: the route stays on home
+// until a lazy page loads, and a closed search on home reads as the home tab.
+const goToPage = (to: RouteLocationRaw) => async () => {
+  await router.push(to);
+  leaveSearch();
+};
+
 interface NavItem {
   key: string;
   label: string;
@@ -94,11 +93,14 @@ interface NavItem {
   /** Filled variant shown while the entry is the current one. */
   activeIcon: Component;
   active: () => boolean;
-  to?: ReturnType<typeof routeLocation.home>;
-  action?: () => void;
+  go: () => Promise<void>;
 }
 
 const isHomeRoute = () => route.name === ROUTE_NAMES.HOME;
+const isStatsRoute = () => route.name === ROUTE_NAMES.SETTINGS_STATS;
+// Stats is a settings subpage with a tab of its own, so it lights that tab instead.
+const isSettingsRoute = () =>
+  typeof route.name === "string" && route.name.startsWith(ROUTE_NAMES.SETTINGS) && !isStatsRoute();
 
 const items: NavItem[] = [
   {
@@ -107,9 +109,7 @@ const items: NavItem[] = [
     icon: IconHome,
     activeIcon: IconHomeFilled,
     active: () => isHomeRoute() && !isSearchOpen.value,
-    action: () => {
-      goHome().catch(error => getLogger().error(`[Nav] Going home failed: ${String(error)}`));
-    },
+    go: goHome,
   },
   {
     key: "search",
@@ -117,32 +117,38 @@ const items: NavItem[] = [
     icon: IconSearch,
     activeIcon: IconSearch,
     active: () => isHomeRoute() && isSearchOpen.value,
-    action: () => {
-      goToSearch().catch(error => getLogger().error(`[Nav] Opening search failed: ${String(error)}`));
-    },
+    go: goToSearch,
   },
   {
-    key: "library",
-    label: "nav.library",
-    icon: IconLibrary,
-    activeIcon: IconLibraryFilled,
-    active: () => route.name === ROUTE_NAMES.ALL_MUSIC,
-    to: routeLocation.allMusic(),
+    key: "stats",
+    label: "nav.stats",
+    icon: IconChartBar,
+    activeIcon: IconChartBar,
+    active: isStatsRoute,
+    go: goToPage(routeLocation.settingsStats()),
   },
   {
-    key: "favorite",
-    label: "nav.favorite",
-    icon: IconBookmark,
-    activeIcon: IconBookmarkFilled,
-    active: () => route.name === ROUTE_NAMES.LIKED,
-    to: routeLocation.liked(),
+    key: "settings",
+    label: "nav.settings",
+    icon: IconSettings,
+    activeIcon: IconSettingsFilled,
+    active: isSettingsRoute,
+    go: goToPage(routeLocation.settings()),
   },
 ];
 
-const isActive = (item: NavItem) => item.active();
+// The tapped tab holds the highlight until its navigation settles, so the
+// pill heads there at once instead of waiting on the page to load.
+const pendingKey = ref<string | null>(null);
+const activeKey = computed(() => pendingKey.value ?? items.find(item => item.active())?.key ?? null);
+const activeIndex = computed(() => items.findIndex(item => item.key === activeKey.value));
 
-const itemClass = (item: NavItem) => [
-  "h-auto min-w-0 flex-1 flex-col gap-1 rounded-xl py-1.5 rounded-md!",
-  isActive(item) ? "text-primary" : "text-muted-foreground",
-];
+const select = (item: NavItem) => {
+  pendingKey.value = item.key;
+  item.go()
+    .catch(error => getLogger().error(`[Nav] Opening the ${item.key} tab failed: ${String(error)}`))
+    .finally(() => {
+      if (pendingKey.value === item.key) pendingKey.value = null;
+    });
+};
 </script>

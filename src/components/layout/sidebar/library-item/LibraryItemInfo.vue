@@ -55,7 +55,8 @@ defineProps<{
 
         <Badge
           v-if="item.type === 'folder'"
-          variant="secondary"
+          variant="soft"
+          color="neutral"
           size="md"
           class="shrink-0 h-5 min-w-5 px-1 py-0 font-medium! text-white!"
         >{{ item.folderItemCount ?? 0 }}</Badge>

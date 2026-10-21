@@ -5,6 +5,7 @@
   >
     <Button
       variant="ghost"
+      color="muted"
       size="icon-lg"
       class="rounded-full"
 
@@ -17,30 +18,33 @@
       v-if="!compact"
       class="min-w-0 flex-1"
     >
-      <EditableValue
+      <Editable
         :model-value="folder.name"
-        type="text"
         :max-length="FOLDER_NAME_MAX_LENGTH"
-        :validate="isValidFolderName"
-        root-class="max-w-full"
-        display-class="text-lg font-bold truncate min-w-0"
-        input-class="text-lg font-bold"
-        @change="(name) => emit('rename', name as string)"
-      />
+        activation-mode="dblclick"
+        submit-mode="both"
+        select-on-focus
+        class="max-w-full text-lg font-bold"
+        :title="$t('common.editHint')"
+        @submit="rename"
+      >
+        <EditableArea class="min-w-0">
+          <EditablePreview class="truncate" />
+          <EditableInput :aria-label="$t('common.editLabel')" />
+        </EditableArea>
+      </Editable>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
-import { EditableValue } from "@/components/ui/editable";
+import { Editable, EditableArea, EditableInput, EditablePreview } from "@/components/ui/editable";
 import type { SidebarFolderEntity } from "@/db/entities";
 import { FOLDER_NAME_MAX_LENGTH, validateFolderName } from "@/modules/library/lib/folderName";
-
-const isValidFolderName = (name: string) => validateFolderName(name) === null;
 import IconArrowLeft from "~icons/tabler/arrow-left";
 
-defineProps<{
+const props = defineProps<{
   folder: SidebarFolderEntity;
   compact?: boolean;
 }>();
@@ -49,4 +53,11 @@ const emit = defineEmits<{
   close: [];
   rename: [name: string];
 }>();
+
+// The value stays bound to the stored name, so a rejected one reverts on its own.
+const rename = (value: string | null | undefined) => {
+  const name = value?.trim() ?? "";
+  if (name === props.folder.name || validateFolderName(name) !== null) return;
+  emit("rename", name);
+};
 </script>

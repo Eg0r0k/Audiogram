@@ -2,11 +2,10 @@
   <div
     data-sidebar-header
     class="flex items-center shrink-0 pb-4"
-    :class="compact ? 'justify-center px-2' : 'gap-3 px-4 pr-3'"
+    :class="compact ? 'justify-center px-2 pb-0!' : 'gap-3 px-3'"
   >
     <div
       class="relative size-10  shrink-0"
-      :class="compact ? '' : 'ml-3' "
     >
       <AnimatePresence :initial="false">
         <Motion
@@ -20,6 +19,7 @@
         >
           <Button
             variant="ghost"
+            color="muted"
             size="icon-lg"
             class="rounded-full"
             @click="handleClose"
@@ -41,6 +41,7 @@
             <ResponsiveMenuTrigger>
               <Button
                 variant="ghost"
+                color="muted"
                 size="icon-lg"
                 class="relative rounded-full"
                 :aria-label="$t('nav.menu')"
@@ -117,13 +118,18 @@
       class="flex-1"
       @focusin="openSearch()"
     >
-      <InputGroup class="bg-canvas! rounded-full h-10 flex-1">
+      <InputGroup
+        variant="soft"
+        size="lg"
+        class="bg-canvas! flex-1 rounded-full"
+      >
         <InputGroupAddon tabindex="-1">
-          <DropdownMenu v-if="searchSources.length > 1">
-            <DropdownMenuTrigger as-child>
-              <Button
-                variant="ghost"
-                class="h-8 rounded-full px-1.5! gap-0.5 text-muted-foreground"
+          <template v-if="searchSources.length > 1">
+            <MenuTrigger as-child>
+              <InputGroupButton
+                size="sm"
+                color="muted"
+                class="gap-0.5 px-1.5"
                 :aria-label="$t(sourceUI(source).labelKey)"
                 :title="$t(sourceUI(source).labelKey)"
               >
@@ -132,13 +138,14 @@
                   class="size-5"
                 />
                 <IconChevronDown class="size-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
+              </InputGroupButton>
+            </MenuTrigger>
+            <Menu
               class="w-44"
-              align="start"
+              anchor="bottom start"
+              self="top start"
             >
-              <DropdownMenuItem
+              <MenuItem
                 v-for="ui in searchSources"
                 :key="ui.kind"
                 @click="selectSource(ui.kind)"
@@ -152,9 +159,9 @@
                   v-if="source === ui.kind"
                   class="ml-auto size-4"
                 />
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </MenuItem>
+            </Menu>
+          </template>
           <IconSearch
             v-else
             class="ml-1 mr-2 size-5"
@@ -176,14 +183,15 @@
           tabindex="-1"
           align="inline-end"
         >
-          <Button
-            class="rounded-full"
-            variant="ghost-primary"
+          <InputGroupButton
+            color="primary"
             size="icon-sm"
+            class="icon-size-5"
+            :aria-label="$t('search.noResults.clear')"
             @click="clear"
           >
-            <IconX class="size-5" />
-          </Button>
+            <IconX />
+          </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>
     </div>
@@ -211,11 +219,10 @@ import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Menu,
+  MenuItem,
+  MenuTrigger,
+} from "@/components/ui/menu";
 import {
   ResponsiveMenu,
   ResponsiveMenuContent,
@@ -227,6 +234,7 @@ import {
 import {
   InputGroup,
   InputGroupAddon,
+  InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { AnimatePresence, Motion } from "motion-v";

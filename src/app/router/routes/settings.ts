@@ -1,5 +1,7 @@
 import type { RouteRecordRaw } from "vue-router";
 import { ROUTE_NAMES } from "@/app/router/route-names";
+import { routeLocation } from "@/app/router/route-locations";
+import { sources } from "@/modules/sources";
 
 export const settingsRoutes: RouteRecordRaw[] = [
   {
@@ -53,7 +55,7 @@ export const settingsRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/settings/ProxySettings.vue"),
     meta: {
       titleKey: "settings.proxy",
-      depth: 2,
+      depth: 3,
     },
   },
   {
@@ -66,11 +68,33 @@ export const settingsRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: "/settings/sources/:kind",
+    name: ROUTE_NAMES.SETTINGS_SOURCE,
+    component: () => import("@/pages/settings/SourceSettings.vue"),
+    beforeEnter: (to) => {
+      const kind = to.params.kind;
+      return sources.all().some(provider => provider.id === kind) ? true : routeLocation.settingsSources();
+    },
+    meta: {
+      titleKey: "settings.sources",
+      depth: 3,
+    },
+  },
+  {
     path: "/settings/language",
     name: ROUTE_NAMES.SETTINGS_LANGUAGE,
     component: () => import("@/pages/settings/LanguageSettings.vue"),
     meta: {
       titleKey: "settings.language",
+      depth: 3,
+    },
+  },
+  {
+    path: "/settings/library",
+    name: ROUTE_NAMES.SETTINGS_LIBRARY,
+    component: () => import("@/pages/settings/LibrarySettings.vue"),
+    meta: {
+      titleKey: "settings.library",
       depth: 2,
     },
   },

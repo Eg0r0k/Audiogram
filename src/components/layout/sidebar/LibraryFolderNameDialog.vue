@@ -1,56 +1,51 @@
 <template>
-  <Dialog
-    :open="open"
-    @update:open="value => emit('update:open', value)"
-  >
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{{ title }}</DialogTitle>
-      </DialogHeader>
+  <DialogContent class="sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle>{{ title }}</DialogTitle>
+    </DialogHeader>
 
-      <div class="flex flex-col gap-4 h-full">
-        <div class="flex flex-col gap-1.5">
-          <Input
-            :id="fieldId"
-            v-model="name"
-            surface="card"
-            :label="$t('library.folder.namePlaceholder')"
-            :maxlength="FOLDER_NAME_MAX_LENGTH"
-            :aria-invalid="!!errors.name || undefined"
-            :aria-describedby="errors.name ? errorId : undefined"
-            :class="{ 'border-destructive focus-visible:ring-destructive': errors.name }"
-            @keydown.enter.prevent="onSubmit"
-          />
-          <p
-            v-if="errors.name"
-            :id="errorId"
-            class="text-xs text-destructive"
-            role="alert"
-          >
-            {{ errors.name }}
-          </p>
-        </div>
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="destructive-link"
-            @click="dismiss"
-          >
-            {{ $t("common.cancel") }}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost-primary"
-            :disabled="!meta.valid"
-            @click="onSubmit"
-          >
-            {{ $t("common.save") }}
-          </Button>
-        </DialogFooter>
+    <div class="flex flex-col gap-4 h-full">
+      <div class="flex flex-col gap-1.5">
+        <InputFloating
+          :id="fieldId"
+          v-model="name"
+          variant="soft"
+          :label="$t('library.folder.namePlaceholder')"
+          :maxlength="FOLDER_NAME_MAX_LENGTH"
+          :aria-invalid="!!errors.name || undefined"
+          :aria-describedby="errors.name ? errorId : undefined"
+          :class="{ 'border-destructive focus-visible:ring-destructive': errors.name }"
+          @keydown.enter.prevent="onSubmit"
+        />
+        <p
+          v-if="errors.name"
+          :id="errorId"
+          class="text-xs text-destructive"
+          role="alert"
+        >
+          {{ errors.name }}
+        </p>
       </div>
-    </DialogContent>
-  </Dialog>
+
+      <DialogFooter>
+        <Button
+          type="button"
+          variant="ghost"
+          @click="dismiss"
+        >
+          {{ $t("common.cancel") }}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          :disabled="!meta.valid"
+          @click="onSubmit"
+        >
+          {{ $t("common.save") }}
+        </Button>
+      </DialogFooter>
+    </div>
+  </DialogContent>
 </template>
 
 <script setup lang="ts">
@@ -60,25 +55,19 @@ import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/valibot";
 import { maxLength, minLength, object, pipe, string, transform } from "valibot";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { useSummonedDialog } from "@/components/dialogs/summon";
+import { DialogContent, DialogFooter, DialogHeader, DialogTitle, useDialogContext } from "@/components/ui/dialog";
+import { InputFloating } from "@/components/ui/input-floating";
 import { FOLDER_NAME_MAX_LENGTH, normalizeFolderName } from "@/modules/library/lib/folderName";
 
 // Summoned fresh per use, so the field starts from `initialName` with no
 // error left over from a previous attempt.
 const props = defineProps<{
-  open: boolean;
   /** What the field starts with: the current name on rename, a default on create. */
   initialName: string;
   title: string;
 }>();
 
-const emit = defineEmits<{
-  "update:open": [open: boolean];
-}>();
-
-const { resolve, dismiss } = useSummonedDialog<string>();
+const { close, dismiss } = useDialogContext<string>();
 
 const { t } = useI18n();
 const fieldId = useId();
@@ -106,6 +95,6 @@ watch(() => props.initialName, (name) => {
 const [name] = defineField("name");
 
 const onSubmit = handleSubmit((values) => {
-  resolve(values.name);
+  close(values.name);
 });
 </script>

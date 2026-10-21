@@ -2,6 +2,7 @@
   <div class="flex items-center justify-between px-4 pt-2 h-14 shrink-0">
     <Button
       variant="ghost"
+      color="muted"
       size="icon-lg"
       :class="[fullPlayerGhostHover, 'text-foreground rounded-full']"
       :aria-label="$t('common.close')"
@@ -29,6 +30,7 @@
       <Button
         v-if="currentChapter"
         variant="ghost"
+        color="muted"
         :class="[fullPlayerGhostHover, 'mt-0.5 flex h-6 max-w-55 items-center gap-1 rounded-full px-2 text-muted-foreground']"
         :aria-label="$t('player.chapters')"
         @click.stop="openChapters"
@@ -42,6 +44,7 @@
 
     <Button
       variant="ghost"
+      color="muted"
       size="icon-lg"
       :class="[fullPlayerGhostHover, 'rounded-full text-foreground']"
       @click.stop="onDotsClick"

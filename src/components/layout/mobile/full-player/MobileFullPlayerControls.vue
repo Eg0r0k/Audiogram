@@ -3,15 +3,24 @@
     <Button
       size="icon-lg"
       variant="ghost"
-      :class="[fullPlayerGhostHover, 'text-foreground', queueStore.isShuffled && fullPlayerGhostActive]"
-      :aria-label="$t('player.shuffle')"
-      @click.stop="queueStore.toggleShuffle()"
+      color="muted"
+      :class="[fullPlayerGhostHover, 'text-foreground', queueStore.repeatMode !== 'off' && fullPlayerGhostActive]"
+      :aria-label="$t('player.repeat')"
+      @click.stop="queueStore.toggleRepeat"
     >
-      <IconShuffle class="size-6" />
+      <IconRepeatOnce
+        v-if="queueStore.repeatMode === 'one'"
+        class="size-6"
+      />
+      <IconRepeat
+        v-else
+        class="size-6"
+      />
     </Button>
     <Button
       size="icon-lg"
       variant="ghost"
+      color="muted"
       :class="[fullPlayerGhostHover, 'text-foreground']"
       :disabled="!queueStore.hasPrevious"
       :aria-label="$t('player.previousTrack')"
@@ -26,6 +35,7 @@
     <Button
       size="icon-lg"
       variant="ghost"
+      color="muted"
       :class="[fullPlayerGhostHover, 'text-foreground']"
       :disabled="!queueStore.hasNext"
       :aria-label="$t('player.nextTrack')"
@@ -36,18 +46,12 @@
     <Button
       size="icon-lg"
       variant="ghost"
-      :class="[fullPlayerGhostHover, 'text-foreground', queueStore.repeatMode !== 'off' && fullPlayerGhostActive]"
-      :aria-label="$t('player.repeat')"
-      @click.stop="queueStore.toggleRepeat"
+      color="muted"
+      :class="[fullPlayerGhostHover, 'text-foreground', queueStore.isShuffled && fullPlayerGhostActive]"
+      :aria-label="$t('player.shuffle')"
+      @click.stop="queueStore.toggleShuffle()"
     >
-      <IconRepeatOnce
-        v-if="queueStore.repeatMode === 'one'"
-        class="size-6"
-      />
-      <IconRepeat
-        v-else
-        class="size-6"
-      />
+      <IconShuffle class="size-6" />
     </Button>
   </div>
 </template>

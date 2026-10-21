@@ -1,12 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { nextTick } from "vue";
-import { render, screen, fireEvent } from "@testing-library/vue";
-import { createI18n } from "vue-i18n";
-import { messages } from "@/app/i18n/messages";
+import { screen, fireEvent } from "@testing-library/vue";
 import type { SidebarFolderEntity } from "@/db/entities";
 import type { LibraryItem } from "@/modules/library/types";
 import MoveToFolderDialog from "../MoveToFolderDialog.vue";
-import { DialogSummonHost, dismissAllSummonedDialogs, summonComponent } from "../summon";
+import { closeDialogs, openForResult, renderDialogHost } from "@/test/dialogs";
 
 const item: LibraryItem = {
   id: "al1", type: "album", title: "Nevermind", isPinned: false, addedAt: 1, to: "/", rounded: false,
@@ -15,22 +13,16 @@ const item: LibraryItem = {
 const folder = (id: string, name: string): SidebarFolderEntity =>
   ({ id, name, items: [], addedAt: 1, updatedAt: 1 }) as unknown as SidebarFolderEntity;
 
-const renderHost = () => render(DialogSummonHost, {
-  global: {
-    plugins: [createI18n({ legacy: false, locale: "en", messages })],
-    stubs: { teleport: false },
-  },
-});
+const renderHost = renderDialogHost;
 
 describe("MoveToFolderDialog (summoned)", () => {
   afterEach(async () => {
-    dismissAllSummonedDialogs();
-    await new Promise(resolve => setTimeout(resolve, 350));
+    await closeDialogs();
   });
 
   it("resolves with the id of the picked folder", async () => {
     renderHost();
-    const promise = summonComponent<string>(MoveToFolderDialog, {
+    const promise = openForResult<string>(MoveToFolderDialog, {
       item,
       folders: [folder("f1", "Rock"), folder("f2", "Grunge")],
     });
@@ -43,7 +35,7 @@ describe("MoveToFolderDialog (summoned)", () => {
 
   it("shows the empty hint when there are no folders", async () => {
     renderHost();
-    summonComponent<string>(MoveToFolderDialog, { item, folders: [] });
+    openForResult<string>(MoveToFolderDialog, { item, folders: [] });
     await nextTick();
 
     expect(await screen.findByText("Create a folder first")).toBeInTheDocument();
