@@ -5,7 +5,7 @@
     class="min-w-0 rounded-full bg-background!"
   >
     <InputGroupAddon tabindex="-1">
-      <IconSearch class="ml-1 size-5 text-muted-foreground" />
+      <IconSearch class="mr-1 size-5 text-muted-foreground" />
     </InputGroupAddon>
 
     <InputGroupInput
@@ -28,7 +28,7 @@
         :aria-label="t('search.noResults.clear')"
         @click="search = ''"
       >
-        <IconX />
+        <IconX class="size-5" />
       </InputGroupButton>
 
       <TrackSortMenu v-model:sort-key="sortKey" />

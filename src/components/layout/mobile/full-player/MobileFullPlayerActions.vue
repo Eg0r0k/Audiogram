@@ -2,7 +2,7 @@
   <div class="flex items-center justify-between mt-auto pt-6 px-1 landscape-short:mt-3 landscape-short:pt-0">
     <Button
       v-if="libraryTrack"
-      size="icon-md"
+      size="icon-xl"
       variant="ghost"
       color="muted"
       :class="[fullPlayerGhostHover, isChaptersOpen && fullPlayerGhostActive]"
@@ -13,7 +13,7 @@
     </Button>
     <Button
       v-if="libraryTrack"
-      size="icon-md"
+      size="icon-xl"
       variant="ghost"
       color="muted"
       :class="[fullPlayerGhostHover, isLyricsOpen && fullPlayerGhostActive]"
@@ -23,7 +23,7 @@
       <IconMicrophone2 class="size-6" />
     </Button>
     <Button
-      size="icon-md"
+      size="icon-xl"
       variant="ghost"
       color="muted"
       :class="[fullPlayerGhostHover, isQueueOpen && fullPlayerGhostActive]"
@@ -35,7 +35,7 @@
     <ResponsiveMenu>
       <ResponsiveMenuTrigger>
         <Button
-          size="icon-md"
+          size="icon-xl"
           variant="ghost"
           color="muted"
           :class="[fullPlayerGhostHover, isSleepTimerActive && fullPlayerGhostActive]"

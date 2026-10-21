@@ -12,11 +12,15 @@
       @close="emit('close')"
     />
 
-    <div class="bg-card px-4 pb-2">
+    <div class="bg-card px-4 pb-1">
       <InputGroup
         variant="soft"
-        class="flex-1 bg-background! rounded-full"
+        size="lg"
+        class="flex-1 rounded-full"
       >
+        <InputGroupAddon tabindex="-1">
+          <IconSearch class="ml-1 size-5 text-muted-foreground" />
+        </InputGroupAddon>
         <InputGroupInput
           :model-value="search"
           class="pl-3! text-[15px]"
@@ -122,6 +126,7 @@ import SearchNoResults from "@/modules/search/components/SearchNoResults.vue";
 import AddFloatingButton from "@/modules/tracks/components/tracks-sheet/AddFloatingButton.vue";
 import IconInbox from "~icons/tabler/inbox";
 import IconX from "~icons/tabler/x";
+import IconSearch from "~icons/tabler/search";
 
 const props = withDefaults(defineProps<{
   title: string;

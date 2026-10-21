@@ -6,7 +6,7 @@
     :aria-label="t('library.sortBy')"
     :title="t('library.sortBy')"
   >
-    <IconSort />
+    <IconSort class="size-5" />
     <Menu
       anchor="bottom end"
       self="top end"
@@ -22,11 +22,11 @@
         <span class="flex-1 truncate">{{ t(field.labelKey) }}</span>
         <IconChevronDown
           v-if="directionOf(field.value) === 'asc'"
-          class="size-3.5 rotate-180 text-green-400!"
+          class="size-5 rotate-180 text-green-400!"
         />
         <IconChevronDown
           v-else-if="directionOf(field.value) === 'desc'"
-          class="size-3.5 text-green-400!"
+          class="size-5 text-green-400!"
         />
       </MenuItem>
     </Menu>

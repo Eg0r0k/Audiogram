@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-center justify-between mt-6 landscape-short:mt-3">
     <Button
-      size="icon-lg"
+      size="icon-xl"
       variant="ghost"
       color="muted"
       :class="[fullPlayerGhostHover, 'text-foreground', queueStore.repeatMode !== 'off' && fullPlayerGhostActive]"
@@ -18,7 +18,7 @@
       />
     </Button>
     <Button
-      size="icon-lg"
+      size="icon-xl"
       variant="ghost"
       color="muted"
       :class="[fullPlayerGhostHover, 'text-foreground']"
@@ -33,7 +33,7 @@
       @click.stop
     />
     <Button
-      size="icon-lg"
+      size="icon-xl"
       variant="ghost"
       color="muted"
       :class="[fullPlayerGhostHover, 'text-foreground']"
@@ -44,7 +44,7 @@
       <IconForvard class="size-6" />
     </Button>
     <Button
-      size="icon-lg"
+      size="icon-xl"
       variant="ghost"
       color="muted"
       :class="[fullPlayerGhostHover, 'text-foreground', queueStore.isShuffled && fullPlayerGhostActive]"

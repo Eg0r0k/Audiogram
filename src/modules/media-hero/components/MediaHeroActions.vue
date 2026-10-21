@@ -77,7 +77,7 @@
       <InputGroup
         v-if="props.filterable"
         variant="soft"
-        class="min-w-32 max-w-56 flex-1 bg-black/30 text-white rounded-full"
+        class="min-w-32 max-w-56 flex-1 bg-background text-white rounded-full"
       >
         <InputGroupAddon tabindex="-1">
           <IconSearch class="size-5 text-white/70" />

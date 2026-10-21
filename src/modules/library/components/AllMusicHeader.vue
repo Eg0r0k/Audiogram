@@ -1,7 +1,7 @@
 <template>
   <header
     class="relative mx-auto w-full max-w-page shrink-0 bg-card px-4"
-    :class="mobile ? 'h-16 pt-2' : 'h-[72px]'"
+    :class="mobile ? 'h-16 pt-2' : 'h-18'"
   >
     <Motion
       class="relative flex h-full items-center gap-2"

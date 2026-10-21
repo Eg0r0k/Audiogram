@@ -38,7 +38,7 @@
         v-if="libraryTrack"
         variant="ghost"
         color="muted"
-        size="icon-lg"
+        size="icon-xl"
         :class="[fullPlayerGhostHover, 'rounded-full text-foreground']"
         :aria-label="libraryTrack.isLiked ? $t('player.unlike') : $t('player.like')"
         @click.stop="toggleLike"
