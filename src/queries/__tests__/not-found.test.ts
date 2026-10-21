@@ -26,6 +26,8 @@ import { getAlbumByIdOrThrow, getAlbumPageData } from "../album.queries";
 import { getArtistByIdOrThrow } from "../artist.queries";
 import { getPlaylistByIdOrThrow } from "../playlist.queries";
 import {
+  addTracksToAlbumAndSync,
+  addTracksToArtistAndSync,
   attachTrackLyricsAndSync,
   deleteTrackAndSync,
   toggleTrackLikeAndSync,
@@ -73,6 +75,24 @@ describe("not-found lookups (integration)", () => {
       expect(error, message).toBeInstanceOf(DbError);
       expect((error as DbError).code).toBe("NOT_FOUND");
       expect((error as DbError).message).toBe(message);
+    }
+  });
+
+  it("adding a missing track to an album or an artist throws DbError NOT_FOUND", async () => {
+    const artistId = ArtistId("ar-present");
+    await db.artists.put({ id: artistId, name: "Present", pinned: 1, addedAt: 1, updatedAt: 1 });
+
+    const additions = [
+      () => addTracksToAlbumAndSync(queryClient, orphanAlbumId, [missingTrack]),
+      () => addTracksToArtistAndSync(queryClient, artistId, [missingTrack]),
+    ];
+
+    for (const add of additions) {
+      const error = await rejectionOf(add());
+
+      expect(error).toBeInstanceOf(DbError);
+      expect((error as DbError).code).toBe("NOT_FOUND");
+      expect((error as DbError).message).toBe("Track not found: t-missing");
     }
   });
 
