@@ -2,6 +2,7 @@ import type { AudioFeaturesEntity, ListenEventEntity, TrackEntity } from "@/db/e
 import { trackRepository } from "@/db/repositories";
 import { audioFeaturesRepository } from "@/db/repositories/audioFeatures.repository";
 import { SESSION_GAP_MS, statsRepository } from "@/db/repositories/stats.repository";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import type { ArtistId, TrackId } from "@/types/ids";
 import { buildAffinityMap, buildArtistAffinityMap, DEFAULT_AFFINITY_OPTIONS } from "../lib/affinity";
@@ -130,9 +131,9 @@ const loadRecommenderContext = async (): Promise<LoadResult> => {
   ]);
 
   const hadError = tracksResult.isErr() || eventsResult.isErr() || featuresResult.isErr();
-  if (tracksResult.isErr()) getLogger().error(`[Recommendations] Reading tracks failed: ${String(tracksResult.error)}`);
-  if (eventsResult.isErr()) getLogger().error(`[Recommendations] Reading listen events failed: ${String(eventsResult.error)}`);
-  if (featuresResult.isErr()) getLogger().error(`[Recommendations] Reading audio features failed: ${String(featuresResult.error)}`);
+  if (tracksResult.isErr()) getLogger().error(`[Recommendations] Reading tracks failed: ${formatError(tracksResult.error)}`);
+  if (eventsResult.isErr()) getLogger().error(`[Recommendations] Reading listen events failed: ${formatError(eventsResult.error)}`);
+  if (featuresResult.isErr()) getLogger().error(`[Recommendations] Reading audio features failed: ${formatError(featuresResult.error)}`);
 
   const ctx = buildRecommenderContext({
     tracks: tracksResult.isOk() ? tracksResult.value : [],

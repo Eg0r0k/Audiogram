@@ -86,6 +86,7 @@ const notifyBatchFinished = (result: ImportBatchResult) => {
     toaster.add({ title: t("common.import.toast.alreadyInLibrary"), color: "neutral" });
   }
   else if (imported === 0) {
+    // eslint-disable-next-line no-restricted-syntax
     toaster.add({ title: t("common.import.toast.noneImported"), color: "destructive", actions: details });
   }
   else {

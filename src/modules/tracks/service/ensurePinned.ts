@@ -250,7 +250,7 @@ export async function ensurePinnedMany(
 
   if (pinned.length === 0 && failures.length > 0) throw failures[0];
   if (failures.length > 0) {
-    getLogger().warn(`[Pin] ${failures.length} of ${remote.length} track(s) failed: ${String(failures[0])}`);
+    getLogger().warn(`[Pin] ${failures.length} of ${remote.length} track(s) failed: ${formatError(failures[0])}`);
   }
 
   requestShadowCovers(pinned);

@@ -165,6 +165,20 @@ export default withVueTs(
     },
   },
 
+  {
+    files: ["src/**/*.{ts,vue}"],
+    rules: {
+      "no-restricted-syntax": ["error", {
+        selector: "CallExpression[callee.object.name='toaster'][callee.property.name='add'] > ObjectExpression > Property[key.name='color'] > Literal[value='destructive']",
+        message: "Report failures with reportError() from @/app/error-feedback; a destructive toaster.add belongs only there.",
+      }],
+    },
+  },
+  {
+    files: ["src/app/error-feedback.ts", "src/**/__tests__/**", "src/**/*.test.ts", "src/test/**"],
+    rules: { "no-restricted-syntax": "off" },
+  },
+
   // Import bans share one core rule, and ESLint does not merge a rule's
   // options across config objects (the last match wins), so the full set is
   // composed here once and each exempt location re-applies the set minus

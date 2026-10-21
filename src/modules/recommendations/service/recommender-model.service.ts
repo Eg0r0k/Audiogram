@@ -49,7 +49,7 @@ const loadRow = async (): Promise<RecommenderModelEntity | null> => {
     loadingRow = recommenderModelRepository.get()
       .then((result) => {
         if (result.isErr()) {
-          getLogger().error(`[Recommendations] Reading the learned model failed: ${String(result.error)}`);
+          getLogger().error(`[Recommendations] Reading the learned model failed: ${formatError(result.error)}`);
           // Not cached: a transient read failure should not stick as "no model" forever.
           return null;
         }
@@ -80,7 +80,7 @@ export const invalidateWeightsCache = (): void => {
 export const clearModel = async (): Promise<void> => {
   const result = await recommenderModelRepository.clear();
   if (result.isErr()) {
-    getLogger().error(`[Recommendations] Clearing the learned model failed: ${String(result.error)}`);
+    getLogger().error(`[Recommendations] Clearing the learned model failed: ${formatError(result.error)}`);
   }
   invalidateWeightsCache();
 };
@@ -135,7 +135,7 @@ const trainOnAllExamples = async (ctx: RecommenderContext): Promise<void> => {
     negatives,
   });
   if (putResult.isErr()) {
-    getLogger().error(`[Recommendations] Saving the learned model failed: ${String(putResult.error)}`);
+    getLogger().error(`[Recommendations] Saving the learned model failed: ${formatError(putResult.error)}`);
     return;
   }
   invalidateWeightsCache();

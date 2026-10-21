@@ -20,6 +20,7 @@ export const useYmRadio = () => {
         // No access is not something a second try changes.
         if (result.error.kind === "FORBIDDEN") {
           getLogger().warn(`[YM radio] ${station} did not start (${result.error.kind}): ${result.error.message}`);
+          // eslint-disable-next-line no-restricted-syntax
           toaster.add({ title: t("settings.sources.ym.stationNeedsPlus"), color: "destructive" });
         }
         else {
