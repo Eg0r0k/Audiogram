@@ -72,9 +72,9 @@ const handleClick = () => {
             class="min-w-0 py-2 transition-colors pointer-events-none"
             :class="[
               isExactActive && isPageRow
-                ? 'bg-primary text-primary-foreground group-hover/row:bg-primary/95 group-data-[menu-open]/row:bg-primary/95'
-                : 'group-hover/row:bg-accent/60 group-data-[menu-open]/row:bg-accent/60',
-              compact ? 'justify-center gap-0 px-2' : 'gap-3 px-3',
+                ? 'bg-primary text-primary-foreground group-hover/row:bg-primary/95 group-data-menu-open/row:bg-primary/95'
+                : 'group-hover/row:bg-accent/60 group-data-menu-open/row:bg-accent/60',
+              compact ? 'justify-center gap-0 px-2 mx-1' : 'gap-3 px-3',
             ]"
           >
             <LibraryItemCover

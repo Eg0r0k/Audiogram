@@ -10,7 +10,7 @@
         class="flex items-center gap-3 px-2"
         :class="compact && 'justify-center'"
       >
-        <Skeleton class="size-[54px] rounded-full shrink-0" />
+        <Skeleton class="size-13.5 rounded-full shrink-0" />
         <div
           v-if="!compact"
           class="flex flex-col gap-2 w-full"
@@ -37,7 +37,6 @@
     >
       <template #default="{ item }">
         <LibrarySidebarItem
-          :class="compact ? 'mx-1' : 'mx-2'"
           :item="item"
           :compact="compact"
           @open-folder="emit('openFolder', $event)"

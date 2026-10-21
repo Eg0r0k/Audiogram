@@ -35,7 +35,7 @@
           </p>
         </div>
 
-        <div class="space-y-2 rounded-lg border border-border p-3">
+        <div class="space-y-2 rounded-lg bg-accent p-3">
           <div class="flex items-center justify-between gap-2">
             <span class="text-sm font-medium">{{ $t('track.edit.fields.artists') }}</span>
 
@@ -58,7 +58,7 @@
             <Badge
               v-for="name in artistChips"
               :key="name"
-              variant="soft"
+              variant="outline"
               color="neutral"
               class="max-w-full"
             >
@@ -81,7 +81,7 @@
           </p>
         </div>
 
-        <div class="space-y-2 rounded-lg border border-border p-3">
+        <div class="space-y-2 rounded-lg bg-accent p-3">
           <div class="flex items-center justify-between gap-2">
             <span class="text-sm font-medium">{{ $t('track.edit.fields.album') }}</span>
 
