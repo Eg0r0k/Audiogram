@@ -27,7 +27,8 @@
         class="state-layer relative flex h-8 w-16 items-center justify-center rounded-full"
       >
         <component
-          :is="activeKey === item.key ? item.activeIcon : item.icon"
+          :is="item.icon"
+          :plays="plays[item.key] ?? 0"
           class="size-6"
         />
       </span>
@@ -35,7 +36,7 @@
   </nav>
 </template>
 <script setup lang="ts">
-import { computed, ref, type Component } from "vue";
+import { computed, reactive, ref, type Component } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
 import vRipple from "@/lib/ripple";
@@ -43,14 +44,8 @@ import { ROUTE_NAMES } from "@/app/router/route-names";
 import { routeLocation } from "@/app/router/route-locations";
 import { useSearch } from "@/modules/search/composables/useSearch";
 import { getLogger } from "@/lib/logger";
-
-import IconHome from "~icons/tabler/home";
-import IconHomeFilled from "~icons/tabler/home-filled";
-import IconSearch from "~icons/tabler/search";
-import IconChartBar from "~icons/tabler/chart-bar";
-import IconSettings from "~icons/tabler/settings";
-import IconSettingsFilled from "~icons/tabler/settings-filled";
 import { formatError } from "@/lib/errors";
+import { HomeNavIcon, SearchNavIcon, SettingsNavIcon, StatsNavIcon } from "./nav-icons";
 
 const { t } = useI18n();
 const router = useRouter();
@@ -91,8 +86,6 @@ interface NavItem {
   key: string;
   label: string;
   icon: Component;
-  /** Filled variant shown while the entry is the current one. */
-  activeIcon: Component;
   active: () => boolean;
   go: () => Promise<void>;
 }
@@ -107,32 +100,28 @@ const items: NavItem[] = [
   {
     key: "home",
     label: "nav.home",
-    icon: IconHome,
-    activeIcon: IconHomeFilled,
+    icon: HomeNavIcon,
     active: () => isHomeRoute() && !isSearchOpen.value,
     go: goHome,
   },
   {
     key: "search",
     label: "nav.search",
-    icon: IconSearch,
-    activeIcon: IconSearch,
+    icon: SearchNavIcon,
     active: () => isHomeRoute() && isSearchOpen.value,
     go: goToSearch,
   },
   {
     key: "stats",
     label: "nav.stats",
-    icon: IconChartBar,
-    activeIcon: IconChartBar,
+    icon: StatsNavIcon,
     active: isStatsRoute,
     go: goToPage(routeLocation.settingsStats()),
   },
   {
     key: "settings",
     label: "nav.settings",
-    icon: IconSettings,
-    activeIcon: IconSettingsFilled,
+    icon: SettingsNavIcon,
     active: isSettingsRoute,
     go: goToPage(routeLocation.settings()),
   },
@@ -144,7 +133,10 @@ const pendingKey = ref<string | null>(null);
 const activeKey = computed(() => pendingKey.value ?? items.find(item => item.active())?.key ?? null);
 const activeIndex = computed(() => items.findIndex(item => item.key === activeKey.value));
 
+const plays = reactive<Record<string, number>>({});
+
 const select = (item: NavItem) => {
+  plays[item.key] = (plays[item.key] ?? 0) + 1;
   pendingKey.value = item.key;
   item.go()
     .catch(error => getLogger().error(`[Nav] Opening the ${item.key} tab failed: ${formatError(error)}`))

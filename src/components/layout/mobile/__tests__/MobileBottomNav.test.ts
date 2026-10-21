@@ -72,6 +72,22 @@ describe("MobileBottomNav tabs", () => {
     expect(tab("settings").hasAttribute("data-active")).toBe(false);
     expect(tab("stats").hasAttribute("data-active")).toBe(true);
   });
+
+  it("plays the tapped tab's icon on every tap and leaves the others still", async () => {
+    await renderNav();
+    const icon = (key: string) => tab(key).querySelector("svg")!;
+
+    expect(icon("stats").hasAttribute("data-playing")).toBe(false);
+
+    await fireEvent.click(tab("stats"));
+    const first = icon("stats");
+    await fireEvent.click(tab("stats"));
+
+    expect(first.hasAttribute("data-playing")).toBe(true);
+    expect(icon("stats")).not.toBe(first);
+    expect(icon("stats").hasAttribute("data-playing")).toBe(true);
+    expect(icon("home").hasAttribute("data-playing")).toBe(false);
+  });
 });
 
 describe("MobileBottomNav and the search field", () => {
