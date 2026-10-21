@@ -2,16 +2,19 @@
 import { computed } from "vue";
 
 import { Spinner } from "@/components/ui/spinner";
-import { type Toast, toastIcons } from ".";
+import { type Toast, toastStatuses } from ".";
 import ToastAction from "./ToastAction.vue";
 import ToastClose from "./ToastClose.vue";
 import ToastDescription from "./ToastDescription.vue";
+import ToastStatusIcon from "./ToastStatusIcon.vue";
 import ToastTitle from "./ToastTitle.vue";
 
 const props = defineProps<{ toast: Toast }>();
 
-const icon = computed(() =>
-  props.toast.icon === false ? undefined : (props.toast.icon ?? toastIcons[props.toast.color ?? "neutral"]),
+// Keyed by status in the template, so a toast updated to another color draws
+// its new icon from the start instead of reusing the ring already drawn.
+const status = computed(() =>
+  props.toast.icon === undefined ? toastStatuses[props.toast.color ?? "neutral"] : undefined,
 );
 </script>
 
@@ -22,8 +25,16 @@ const icon = computed(() =>
       class="size-5"
     />
     <component
-      :is="icon"
-      v-else-if="icon"
+      :is="props.toast.icon"
+      v-else-if="props.toast.icon"
+      data-slot="toast-icon"
+      aria-hidden="true"
+      class="size-5 shrink-0 text-tone-text"
+    />
+    <ToastStatusIcon
+      v-else-if="status"
+      :key="status"
+      :status="status"
       data-slot="toast-icon"
       aria-hidden="true"
       class="size-5 shrink-0 text-tone-text"

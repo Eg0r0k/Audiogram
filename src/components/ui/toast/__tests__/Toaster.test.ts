@@ -70,4 +70,17 @@ describe("Toaster", () => {
 
     expect(document.querySelector("[data-slot=toast-icon]")?.classList).toContain("text-tone-text");
   });
+
+  it("picks the status icon from the toast's color, and none for a neutral toast", async () => {
+    const toaster = mountToaster();
+    toaster.add({ title: "Saved", color: "success" });
+    toaster.add({ title: "Could not save", color: "destructive" });
+    toaster.add({ title: "Read only", color: "warning" });
+    toaster.add({ title: "Copied" });
+    await flushPromises();
+
+    const statuses = [...document.querySelectorAll("[data-slot=toast-icon]")].map(el => el.getAttribute("data-status"));
+
+    expect(statuses.sort()).toEqual(["error", "success", "warning"]);
+  });
 });

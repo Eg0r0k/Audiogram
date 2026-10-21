@@ -1,7 +1,3 @@
-import IconCircleCheck from "~icons/tabler/circle-check-filled";
-import IconCircleX from "~icons/tabler/circle-x-filled";
-import IconInfoCircle from "~icons/tabler/info-circle-filled";
-import IconAlertTriangle from "~icons/tabler/alert-triangle-filled";
 import {
   type ToastManager,
   type ToastOptions,
@@ -16,10 +12,13 @@ export { default as ToastAction } from "./ToastAction.vue";
 export { default as ToastClose } from "./ToastClose.vue";
 export { default as ToastDescription } from "./ToastDescription.vue";
 export { default as ToastRow } from "./ToastRow.vue";
+export { default as ToastStatusIcon } from "./ToastStatusIcon.vue";
 export { default as ToastTitle } from "./ToastTitle.vue";
 export { default as Toaster } from "./Toaster.vue";
 
 export type ToastColor = "primary" | "neutral" | "destructive" | "success" | "warning" | "info";
+
+export type ToastStatus = "success" | "info" | "warning" | "error";
 
 export type ToastPosition = "top-start" | "top-center" | "top-end" | "bottom-start" | "bottom-center" | "bottom-end";
 
@@ -43,13 +42,13 @@ export type Toast = ToastRecord<ToastContent>;
 export type ToastInput = ToastOptions<ToastContent>;
 export type Toasts = ToastManager<ToastContent>;
 
-export const toastIcons: Record<ToastColor, Component | undefined> = {
-  primary: IconInfoCircle,
+export const toastStatuses: Record<ToastColor, ToastStatus | undefined> = {
+  primary: "info",
   neutral: undefined,
-  destructive: IconCircleX,
-  success: IconCircleCheck,
-  warning: IconAlertTriangle,
-  info: IconInfoCircle,
+  destructive: "error",
+  success: "success",
+  warning: "warning",
+  info: "info",
 };
 
 export const createToaster = (): Toasts =>
