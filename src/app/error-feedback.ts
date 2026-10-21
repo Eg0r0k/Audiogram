@@ -114,8 +114,11 @@ export const reportError = (thrown: unknown, { title, scope, id, retry }: Report
 export const installGlobalErrorHandlers = (app: App, target: Window = window): void => {
   app.config.errorHandler = (err, _instance, info) => {
     getLogger().error(`[Vue] ${info}: ${formatError(err)}`);
+    // An installed errorHandler silences Vue's own console output; in dev the stack must stay visible.
+    if (import.meta.env.DEV) console.error(err);
   };
   target.addEventListener("unhandledrejection", (event) => {
     getLogger().error(`[Unhandled] ${formatError(event.reason)}`);
+    if (import.meta.env.DEV) console.error(event.reason);
   });
 };
