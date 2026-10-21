@@ -8,7 +8,7 @@
     <Button
       ref="buttonRef"
       size="icon-sm"
-      variant="ghost-primary"
+      variant="ghost"
       class="rounded-full"
       :aria-label="$t('player.volume')"
       aria-haspopup="true"
@@ -49,7 +49,7 @@
       >
         <Slider
           v-if="position === 'top'"
-          :model-value="[volumePercent]"
+          :model-value="volumePercent"
           :max="100"
           :step="1"
           orientation="vertical"
@@ -61,7 +61,7 @@
 
         <Slider
           v-else
-          :model-value="[volumePercent]"
+          :model-value="volumePercent"
           :max="100"
           :step="1"
           orientation="horizontal"
@@ -191,9 +191,9 @@ const onSliderInteractionEnd = () => {
   isInteracting.value = false;
 };
 
-const onVolumeChange = (value: number[] | undefined) => {
-  if (!value || value.length === 0) return;
-  const newVolume = sliderToLinear(value[0]);
+const onVolumeChange = (value: number | number[] | undefined) => {
+  if (typeof value !== "number") return;
+  const newVolume = sliderToLinear(value);
   if (newVolume > 0) lastVolume.value = newVolume;
   playerStore.setVolume(newVolume);
   if (playerStore.isMuted && newVolume > 0) playerStore.setMuted(false);

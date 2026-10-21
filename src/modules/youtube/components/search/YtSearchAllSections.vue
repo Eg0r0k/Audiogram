@@ -26,7 +26,7 @@
               {{ $t("search.filter.track") }}
             </p>
             <Button
-              variant="ghost-primary"
+              variant="ghost"
               size="sm"
               class="rounded-full text-xs"
               @click="emit('showAll', 'tracks')"

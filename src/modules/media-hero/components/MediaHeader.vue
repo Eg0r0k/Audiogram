@@ -7,6 +7,7 @@
     <div class="mx-auto flex w-full max-w-page items-center gap-7 sm:px-6 px-4 py-4">
       <Button
         variant="ghost"
+        color="muted"
         size="icon-lg"
         class="rounded-full shrink-0 text-white"
         @click="goBack()"
@@ -123,7 +124,7 @@ const headerStyle = computed(() => {
   }
 
   return {
-    background: props.color ?? "var(--color-background)",
+    background: props.color ?? "var(--color-card)",
   };
 });
 </script>

@@ -3,6 +3,7 @@
     <div class="mx-auto flex w-full max-w-page items-center gap-3 px-4 pb-2 pt-4 sm:px-6">
       <Button
         variant="ghost"
+        color="muted"
         size="icon-lg"
         class="shrink-0 rounded-full"
         :aria-label="$t('common.back')"

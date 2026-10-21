@@ -12,7 +12,8 @@
         <template v-if="isEditing">
           <Button
             variant="ghost"
-            size="icon"
+            color="muted"
+            size="icon-md"
             class="shrink-0 rounded-full"
             :aria-label="t('chapters.save')"
             :disabled="!isFormValid || isSaving"
@@ -25,7 +26,8 @@
         <template v-else>
           <Button
             variant="ghost"
-            size="icon"
+            color="muted"
+            size="icon-md"
             class="shrink-0 rounded-full"
             :aria-label="t('chapters.importCue')"
             :disabled="isImporting"
@@ -39,7 +41,8 @@
 
           <Button
             variant="ghost"
-            size="icon"
+            color="muted"
+            size="icon-md"
             class="shrink-0 rounded-full"
             :aria-label="t('chapters.edit')"
             @click="isEditing = true"
@@ -80,7 +83,8 @@
           </EmptyHeader>
           <EmptyContent>
             <Button
-              variant="outline"
+              variant="solid"
+              color="surface"
               :disabled="isImporting"
               @click="openCueDialog()"
             >
@@ -125,8 +129,9 @@
 
           <ItemActions class="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 transition-opacity ml-2 shrink-0">
             <Button
-              size="icon"
-              variant="destructive-link"
+              size="icon-md"
+              variant="ghost"
+              color="destructive"
               class="pointer-events-auto rounded-full"
               :aria-label="t('chapters.delete')"
               @click.stop="removeSavedChapter(index)"
@@ -160,7 +165,7 @@ import IconPencil from "~icons/tabler/pencil";
 import IconUpload from "~icons/tabler/upload";
 import IconPlay from "~icons/audiogram/play-rounded";
 import IconTrash from "~icons/tabler/trash";
-import { parseCueSheet } from "@/lib/cue/parseCueSheet";
+import { type CueTrackEntry, parseCueSheet } from "@/lib/cue/parseCueSheet";
 import { formatDuration } from "@/lib/format/time";
 import { object, number, string, pipe, minValue, maxValue, safeParse } from "valibot";
 import { usePlayerStore } from "@/modules/player/store/player.store";
@@ -251,16 +256,24 @@ watch(trackId, () => {
 
 const { open: openCueDialog, onChange } = useFileDialog({ accept: ".cue", multiple: false });
 
+const readCueEntries = async (file: File): Promise<CueTrackEntry[] | null> => {
+  try {
+    const parsed = parseCueSheet(await file.text());
+    if (parsed.length > 0) return parsed;
+    importError.value = t("chapters.cueParseEmpty");
+  }
+  catch {
+    importError.value = t("chapters.cueParseError");
+  }
+  return null;
+};
+
 const importCueFile = async (file: File) => {
   isImporting.value = true;
   importError.value = null;
   try {
-    const text = await file.text();
-    const parsed = parseCueSheet(text);
-    if (parsed.length === 0) {
-      importError.value = t("chapters.cueParseEmpty");
-      return;
-    }
+    const parsed = await readCueEntries(file);
+    if (!parsed) return;
 
     const existingTimes = new Set(chapters.value.map(c => Math.round(c.time)));
     const merged = [
@@ -270,10 +283,8 @@ const importCueFile = async (file: File) => {
         .map(entry => ({ time: entry.time, title: entry.title })),
     ].sort((a, b) => a.time - b.time);
 
-    await saveMutation.mutateAsync({ trackId: props.track.id, chapters: merged });
-  }
-  catch {
-    importError.value = t("chapters.cueParseError");
+    // A failed save is the save mutation's to report, not a bad file.
+    await saveMutation.mutateAsync({ trackId: props.track.id, chapters: merged }).catch(() => undefined);
   }
   finally {
     isImporting.value = false;
@@ -292,16 +303,22 @@ function handleSeek(time: number): void {
   player.seekTo(time);
 }
 
-async function removeSavedChapter(index: number): Promise<void> {
+function removeSavedChapter(index: number): void {
   const next = chapters.value.filter((_, i) => i !== index);
-  await saveMutation.mutateAsync({ trackId: props.track.id, chapters: next });
+  saveMutation.mutate({ trackId: props.track.id, chapters: next });
 }
 
 async function handleSave(): Promise<void> {
   clearAutoSave();
   const payload = toPayload(draft.value);
   if (!sameChapters(payload, chapters.value)) {
-    await saveMutation.mutateAsync({ trackId: props.track.id, chapters: payload });
+    try {
+      await saveMutation.mutateAsync({ trackId: props.track.id, chapters: payload });
+    }
+    catch {
+      // The mutation reported it; the draft stays open for another try.
+      return;
+    }
   }
   isEditing.value = false;
 }

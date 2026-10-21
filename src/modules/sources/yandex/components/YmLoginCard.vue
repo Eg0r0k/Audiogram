@@ -19,6 +19,7 @@
         </div>
         <Button
           variant="ghost"
+          color="muted"
           size="sm"
           :disabled="busy"
           @click="signOut"
@@ -35,7 +36,7 @@
             {{ $t("settings.sources.ym.codeHint", { url: step.verificationUrl }) }}
           </p>
           <p
-            v-copy="{ text: step.userCode, onCopy: handleCodeCopied }"
+            v-copy="{ text: step.userCode, onCopy: handleCodeCopied, onError: handleCopyFailed }"
             class="font-mono text-3xl font-semibold tracking-[0.3em]"
             data-testid="ym-user-code"
           >
@@ -46,14 +47,14 @@
           </p>
           <div class="flex flex-wrap items-center gap-2 pt-1">
             <Button
-              variant="ghost-primary"
+              variant="ghost"
               @click="openYandex"
             >
               <IconExternalLink class="size-4" />
               {{ $t("settings.sources.ym.openYandex") }}
             </Button>
             <Button
-              variant="destructive-link"
+              variant="ghost"
               @click="cancelSignIn"
             >
               {{ $t("settings.sources.ym.cancel") }}
@@ -84,7 +85,7 @@
       <Button
         class="w-full h-14 justify-start"
         size="xl"
-        variant="ghost-primary"
+        variant="ghost"
         :disabled="busy"
         @click="signIn"
       >
@@ -100,7 +101,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useNow } from "@vueuse/core";
 import { Button } from "@/components/ui/button";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import IconExternalLink from "~icons/tabler/external-link";
 import IconLogin from "~icons/tabler/login-2";
 import { openExternal } from "@/composables/useExternalLinkInterceptor";
@@ -125,13 +126,14 @@ const remainingLabel = computed(() => {
   return t("settings.sources.ym.codeExpiresIn", { minutes: Math.max(1, Math.ceil(seconds / 60)) });
 });
 
-const guarded = async (action: () => Promise<void>) => {
+const guarded = async (action: () => Promise<void>, failedTitle?: string) => {
   busy.value = true;
   try {
     await action();
   }
   catch (error) {
     getLogger().error(`[YM] ${String(error)}`);
+    if (failedTitle) toaster.add({ title: failedTitle, color: "destructive" });
   }
   finally {
     busy.value = false;
@@ -139,11 +141,15 @@ const guarded = async (action: () => Promise<void>) => {
 };
 
 const signIn = () => guarded(start);
-const signOut = () => guarded(logout);
+const signOut = () => guarded(logout, t("settings.sources.ym.signOutFailed"));
 const cancelSignIn = () => guarded(cancel);
 
 const handleCodeCopied = () => {
-  toast.success(t("common.copied"));
+  toaster.add({ title: t("common.copied"), color: "success" });
+};
+
+const handleCopyFailed = () => {
+  toaster.add({ title: t("common.copyFailed"), color: "destructive" });
 };
 
 const openYandex = () => {

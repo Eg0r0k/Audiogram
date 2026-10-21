@@ -8,7 +8,7 @@
 //   3. User clicks the sidebar update button → applyPwaUpdate() → SW
 //      skipWaiting → reload
 //   4. On reload, useChangelogOnStartup() resolves release notes for the
-//      actual new __APP_VERSION__ → WhatsNewModal opens
+//      actual new __APP_VERSION__ → a toast offers them
 //
 // Changelog is intentionally NOT staged here: the version the SW installs is
 // whatever the host deployed, which need not equal GitHub's latest tag, so

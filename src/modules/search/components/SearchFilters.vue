@@ -38,11 +38,15 @@ function filterLabel(value: SearchFilter) {
       :model-value="activeFilter"
       @update:model-value="emit('update:filter', $event as SearchFilter)"
     >
-      <TabsList class="inline-flex items-center gap-0 px-4">
+      <TabsList
+        variant="chip"
+        size="sm"
+        class="inline-flex items-center px-4 py-2"
+      >
         <TabsTrigger
           v-for="filter in availableFilters"
           :key="filter.value"
-          class="text-base font-medium mb-0.5"
+          class="text-sm font-medium"
           :value="filter.value"
         >
           {{ filterLabel(filter.value) }}

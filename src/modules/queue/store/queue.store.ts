@@ -597,6 +597,7 @@ export const useQueueStore = defineStore("queue", () => {
   };
 
   function appendItems(entries: readonly { track: PlayerTrack; source: QueueSource }[]): void {
+    shadowPinRemoteTracks(entries.map(e => e.track));
     const added = entries.map(e => createItem(e.track, e.source));
     commit({
       items: [...items.value, ...added],
@@ -633,6 +634,7 @@ export const useQueueStore = defineStore("queue", () => {
     source: QueueSource = { type: "manual" },
   ): QueueItem {
     leaveRadioFor(source);
+    shadowPinRemoteTracks([track]);
     const item = createItem(track, source);
     const current = currentItem.value;
 
@@ -656,6 +658,7 @@ export const useQueueStore = defineStore("queue", () => {
   ): QueueItem[] {
     if (tracks.length === 0) return [];
     leaveRadioFor(source);
+    shadowPinRemoteTracks(tracks);
     const added = tracks.map(t => createItem(t, source));
     const current = currentItem.value;
 

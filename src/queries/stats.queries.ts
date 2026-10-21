@@ -184,6 +184,14 @@ export const statsQueries = {
       staleTime: STATS_STALE_TIME,
       placeholderData: keepPreviousData,
     }),
+  /** Seconds listened in [from, to): the period a total is compared with. */
+  totalBetween: (from: number, to: number) =>
+    queryOptions({
+      queryKey: queryKeys.stats.totalBetween(from, to),
+      queryFn: async ({ client }) =>
+        aggregateTotalSeconds((await eventsOf(client, from)).filter(event => event.startedAt < to)),
+      staleTime: STATS_STALE_TIME,
+    }),
   hourlyActivity: (since?: number) =>
     queryOptions({
       queryKey: queryKeys.stats.hourlyActivity(since),

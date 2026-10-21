@@ -78,11 +78,6 @@ export const useGeneralSettings = () => {
     store.updateGeneral({ analyzeTracks: value });
   };
 
-  const confirmTrackDeletion = computed(() => store.general.confirmTrackDeletion);
-  const setConfirmTrackDeletion = (value: boolean) => {
-    store.updateGeneral({ confirmTrackDeletion: value });
-  };
-
   const setCloseToTray = (value: boolean) => {
     if (!platformCaps.hasNativeWindow) return;
     store.updateGeneral({ closeToTray: value });
@@ -165,8 +160,6 @@ export const useGeneralSettings = () => {
     setLanguage,
     setCheckUpdatesOnLaunch,
     setAnalyzeTracks,
-    confirmTrackDeletion,
-    setConfirmTrackDeletion,
     setCloseToTray,
     setLaunchAtStartup,
     setLaunchMinimized,

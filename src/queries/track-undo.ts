@@ -9,6 +9,7 @@ import {
 } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
 import { indexImportedTracks } from "@/modules/search/service/searchIndex";
+import { deleteOwnedFiles } from "@/services/track-files";
 import type { TrackId } from "@/types/ids";
 import { invalidateForTrackMutation, removeCoverCache, settleLibraryReads } from "./cache";
 import { unique, unwrapResult } from "./shared";
@@ -19,7 +20,7 @@ export interface TrackDeletionUndo {
   deleted: number;
   /** Puts every deleted row back; a no-op once finalized. */
   restore: () => Promise<void>;
-  /** Kept for the undo window API; nothing is deferred any more. */
+  /** Closes the undo window and deletes the files the tracks owned; a no-op after restore. */
   finalize: () => Promise<void>;
 }
 
@@ -30,10 +31,15 @@ const gone = <T extends { id: string }>(before: readonly T[], after: readonly T[
   return before.filter(row => !alive.has(row.id));
 };
 
-// Audio files are never part of the track cascade, so undo is a row snapshot:
-// what the cascade deletes (tracks, their covers, playlist references,
-// orphaned albums and artists) is read before it runs and written back on
-// restore. Nothing outside the database is deferred.
+// Undo is a row snapshot: what the cascade deletes (tracks, their covers,
+// playlist references, orphaned albums and artists) is read before it runs
+// and written back on restore. A deleted file could not come back, so the
+// files wait for finalize.
+//
+// Known gap, accepted on purpose: the undo window lives only in memory. If the
+// app closes while the undo toast is still open, finalize never runs and those
+// files stay in storage as orphans. A persisted list of pending deletions or an
+// orphan sweep on startup would close it; worth revisiting if the leak matters.
 export const deleteTracksWithUndo = async (
   queryClient: QueryClient,
   ids: TrackId[],
@@ -78,11 +84,10 @@ export const deleteTracksWithUndo = async (
 
   let settled = false;
 
-  // Nothing is deferred any more; the call only closes the undo window so a
-  // late `restore` cannot resurrect rows the user let go.
-  const finalize = (): Promise<void> => {
+  const finalize = async (): Promise<void> => {
+    if (settled) return;
     settled = true;
-    return Promise.resolve();
+    await deleteOwnedFiles(tracks);
   };
 
   const restore = async () => {

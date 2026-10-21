@@ -13,7 +13,10 @@
     />
 
     <div class="bg-card px-4 pb-2">
-      <InputGroup class="flex-1 bg-background! rounded-full">
+      <InputGroup
+        variant="soft"
+        class="flex-1 bg-background! rounded-full"
+      >
         <InputGroupInput
           :model-value="search"
           class="pl-3! text-[15px]"
@@ -28,7 +31,7 @@
         >
           <Button
             class="rounded-full"
-            variant="ghost-primary"
+            variant="ghost"
             size="icon-sm"
             @click="emit('update:search', '')"
           >
@@ -63,6 +66,13 @@
               :index="index"
             />
           </div>
+        </template>
+
+        <template
+          v-if="$slots['load-more-error']"
+          #load-more-error
+        >
+          <slot name="load-more-error" />
         </template>
 
         <template #empty>

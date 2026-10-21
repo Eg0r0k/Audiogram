@@ -6,9 +6,10 @@ import { getLogger } from "@/lib/logger";
 /**
  * Tracks queued straight from live browsing (a remote page's DTO) shadow-pin
  * their rows, so the persisted snapshot — which stores library entries by
- * id only — can restore them next session. Idempotent upserts,
- * fire-and-forget; a failure only means those entries will drop out of the
- * restored queue.
+ * id only — can restore them next session. The pin also stores their cover,
+ * the only place queue previews read a remote entry's art from before it
+ * plays. Idempotent upserts, fire-and-forget; a failure only means those
+ * entries will drop out of the restored queue.
  *
  * One batch, not one call per track: a queued album is hundreds of tracks,
  * and each pin on its own re-reads the whole artists table.

@@ -1,4 +1,4 @@
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 import { summonDialog } from "@/components/dialogs/summonDialog";
 import { getLogger } from "@/lib/logger";
@@ -9,8 +9,12 @@ export const useClearHistory = () => {
   const { t } = useI18n();
 
   const clearHistory = async (): Promise<boolean> => {
-    const cleared = await summonDialog("clearHistory", {
-      clear: async () => {
+    const cleared = await summonDialog("confirmWipe", {
+      title: t("settings.stats.clearDialogTitle"),
+      description: t("settings.stats.clearDialogDesc"),
+      confirmLabel: t("settings.stats.clearConfirm"),
+      failedText: t("settings.stats.clearFailed"),
+      run: async () => {
         try {
           await statsService.clearHistory();
           // Weights fitted on the history just erased must not keep steering autoplay.
@@ -18,13 +22,12 @@ export const useClearHistory = () => {
         }
         catch (error) {
           getLogger().error(`[Stats] Clearing listening history failed: ${String(error)}`);
-          toast.error(t("errors.unknown"));
           throw error;
         }
       },
     }, { key: "clear-history" });
 
-    if (cleared) toast.success(t("settings.stats.cleared"));
+    if (cleared) toaster.add({ title: t("settings.stats.cleared"), color: "success" });
     return cleared === true;
   };
 

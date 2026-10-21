@@ -19,11 +19,11 @@ export const useWatchedFoldersStore = defineStore("watched-folders", () => {
       .map(f => f.path);
   }
 
-  function addFolder(path: string): { ok: boolean; error?: string } {
+  function addFolder(path: string): { ok: true } | { ok: false; error: "already-added" } {
     const normalized = normalizePath(path);
 
     if (folderPaths.value.has(normalized)) {
-      return { ok: false, error: "Folder already added" };
+      return { ok: false, error: "already-added" };
     }
 
     const name = normalized.split("/").pop() ?? normalized;

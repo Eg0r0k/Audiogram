@@ -30,6 +30,13 @@
         </div>
       </template>
 
+      <template
+        v-if="errorText && rows.length > 0"
+        #load-more-error
+      >
+        <LoadMoreError @retry="fetchNextPage" />
+      </template>
+
       <template #loader>
         <div class="flex justify-center py-6">
           <Spinner class="size-5 text-muted-foreground" />
@@ -56,6 +63,7 @@
 </template>
 
 <script setup lang="ts">
+import LoadMoreError from "@/components/common/LoadMoreError.vue";
 import { computed, toRef } from "vue";
 import { useI18n } from "vue-i18n";
 import type { RouteLocationRaw } from "vue-router";

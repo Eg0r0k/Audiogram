@@ -3,6 +3,7 @@ import { defineComponent, h, nextTick, type Ref } from "vue";
 import { mount } from "@vue/test-utils";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { errAsync, okAsync, ResultAsync } from "neverthrow";
+import { shownToasts } from "@/test/toasts";
 
 const provider = vi.hoisted(() => ({
   setEntityLiked: vi.fn(),
@@ -23,8 +24,7 @@ vi.mock("../useSourceCatalog", async () => {
   };
 });
 
-const toast = vi.hoisted(() => ({ error: vi.fn() }));
-vi.mock("vue-sonner", () => ({ toast }));
+vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 vi.mock("@/app/i18n", () => ({ i18n: { global: { t: (key: string) => key } } }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ warn: vi.fn(), error: vi.fn() }) }));
 
@@ -87,7 +87,24 @@ describe("useEntityLike", () => {
     await nextTick();
 
     expect(like.isLiked.value).toBe(true);
-    expect(toast.error).toHaveBeenCalledTimes(1);
+    expect(shownToasts("destructive")).toHaveLength(1);
+  });
+
+  it("offers a retry that asks the source for the same like again", async () => {
+    provider.setEntityLiked
+      .mockReturnValueOnce(errAsync({ kind: "NETWORK", message: "offline" }))
+      .mockReturnValueOnce(okAsync(undefined));
+    const like = mountLike("ym", "ym:1");
+    vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+    await like.toggle();
+
+    const [failure] = shownToasts("destructive");
+    expect(failure.actions?.[0]?.label).toBe("common.retry");
+    failure.actions?.[0]?.onClick?.(new MouseEvent("click"));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(provider.setEntityLiked).toHaveBeenCalledTimes(2);
+    expect(provider.setEntityLiked).toHaveBeenLastCalledWith("artist", "ym:1", true);
   });
 
   it("ignores a second press while the first request is in flight", async () => {

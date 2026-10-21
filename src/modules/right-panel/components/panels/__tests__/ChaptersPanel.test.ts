@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/vue";
+import { flushPromises } from "@vue/test-utils";
 import { nextTick, ref } from "vue";
 import { VueQueryPlugin } from "@tanstack/vue-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,6 +20,20 @@ vi.mock("@/modules/tracks/composables/useTrackChapters", async () => {
     __mocks: { data, mutate, mutateAsync },
   };
 });
+
+const fileDialog = vi.hoisted(() => ({ onChange: undefined as ((files: File[] | null) => void) | undefined }));
+
+vi.mock("@vueuse/core", async importOriginal => ({
+  ...(await importOriginal<typeof import("@vueuse/core")>()),
+  useFileDialog: () => ({
+    open: () => {},
+    onChange: (handler: (files: File[] | null) => void) => {
+      fileDialog.onChange = handler;
+    },
+  }),
+}));
+
+const CUE = ["TRACK 01 AUDIO", "  TITLE \"Intro\"", "  INDEX 01 00:00:00", "TRACK 02 AUDIO", "  TITLE \"Two\"", "  INDEX 01 01:00:00"].join("\n");
 
 const mocks = (chaptersModule as unknown as {
   __mocks: { data: ReturnType<typeof ref<TrackChapterMark[]>>; mutate: ReturnType<typeof vi.fn>; mutateAsync: ReturnType<typeof vi.fn> };
@@ -95,7 +110,8 @@ describe("ChaptersPanel", () => {
   });
 
   it("autosaves the draft 1500 ms after the last edit", async () => {
-    vi.useFakeTimers();
+    // Date stays real: Vue drops a bubbling handler whose attach time equals the event stamp, and a frozen clock makes them equal.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     mocks.data.value = [{ time: 10, title: "Intro" }];
     renderPanel();
     await enterEdit();
@@ -111,7 +127,7 @@ describe("ChaptersPanel", () => {
   });
 
   it("does not write again on save when the autosave already persisted the draft", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     mocks.data.value = [{ time: 10, title: "Intro" }];
     renderPanel();
     await enterEdit();
@@ -130,5 +146,16 @@ describe("ChaptersPanel", () => {
 
     expect(mocks.mutateAsync).not.toHaveBeenCalled();
     expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  it("leaves a failed CUE save to the save toast instead of calling the file unreadable", async () => {
+    mocks.mutateAsync.mockRejectedValueOnce(new Error("quota"));
+    renderPanel();
+
+    fileDialog.onChange?.([new File([CUE], "album.cue")]);
+    await flushPromises();
+
+    expect(mocks.mutateAsync).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Failed to parse CUE file")).toBeNull();
   });
 });

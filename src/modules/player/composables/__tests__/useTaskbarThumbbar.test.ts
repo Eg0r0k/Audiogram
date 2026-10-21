@@ -107,8 +107,8 @@ describe("useTaskbarThumbbar", () => {
       hasNext: false,
     });
     expect(state.tooltips).toEqual({
-      like: "Like",
-      unlike: "Remove like",
+      like: "Add to favorites",
+      unlike: "Remove from favorites",
       previous: "Previous",
       play: "Play",
       pause: "Pause",

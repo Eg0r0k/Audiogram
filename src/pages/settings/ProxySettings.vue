@@ -4,9 +4,9 @@
       <Item @click="setEnabled(!enabled)">
         <ItemContent>
           <ItemTitle>{{ $t("settings.proxy.enable") }}</ItemTitle>
-          <ItemSubtitle>
+          <ItemDescription>
             {{ $t("settings.proxy.description") }}
-          </ItemSubtitle>
+          </ItemDescription>
         </ItemContent>
         <ItemActions>
           <Switch
@@ -33,6 +33,7 @@
             @update:model-value="(val) => setProtocol(val as ProxyProtocol)"
           >
             <SelectTrigger
+              variant="ghost"
               class="w-[120px] h-8 font-medium pointer-events-auto"
               :aria-label="$t('settings.proxy.protocol')"
             >
@@ -52,13 +53,19 @@
       </Item>
 
       <div class="px-4 py-3 space-y-4">
-        <div class="grid grid-cols-[1fr_auto] gap-3">
-          <div class="min-w-0 space-y-1.5">
-            <Input
+        <div class="grid grid-cols-[1fr_7rem] gap-x-3 gap-y-1.5">
+          <Label
+            for="proxy-port"
+            class="col-start-2"
+          >
+            {{ $t('settings.proxy.port') }}
+          </Label>
+          <div class="row-start-2 min-w-0 space-y-1.5">
+            <InputFloating
               id="proxy-host"
+              variant="soft"
               :model-value="host"
               :label="$t('settings.proxy.host')"
-              surface="card"
               placeholder="127.0.0.1"
               autocomplete="off"
               spellcheck="false"
@@ -76,35 +83,40 @@
               {{ hostError }}
             </p>
           </div>
-          <div class="w-28">
-            <Input
-              id="proxy-port"
-              :model-value="port"
-              :label="$t('settings.proxy.port')"
-              type="number"
-              surface="card"
-              inputmode="numeric"
-              @update:model-value="(val) => setPortValue(val)"
-            />
-          </div>
+          <InputNumber
+            id="proxy-port"
+            variant="soft"
+            size="xl"
+            orientation="vertical"
+            class="row-start-2 col-start-2"
+            :model-value="port"
+            :min="1"
+            :max="65535"
+            :format-options="PORT_FORMAT"
+            @update:model-value="setPortValue"
+          >
+            <InputNumberInput />
+            <InputNumberIncrement />
+            <InputNumberDecrement />
+          </InputNumber>
         </div>
 
-        <Input
+        <InputFloating
           id="proxy-username"
+          variant="soft"
           :model-value="username"
           :label="$t('settings.proxy.username')"
-          surface="card"
           autocomplete="off"
           spellcheck="false"
           @update:model-value="(val) => setUsername(String(val))"
         />
 
-        <Input
+        <InputFloating
           id="proxy-password"
+          variant="soft"
           :model-value="password"
           :label="$t('settings.proxy.password')"
           type="password"
-          surface="card"
           autocomplete="off"
           @update:model-value="(val) => setPassword(String(val))"
         />
@@ -112,7 +124,7 @@
       <Button
         class="w-full h-14 justify-start"
         size="xl"
-        variant="ghost-primary"
+        variant="ghost"
         :disabled="!canTest || isTesting"
         @click="handleTest"
       >
@@ -151,6 +163,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { getLogger } from "@/lib/logger";
 import {
   Item,
   ItemActions,
@@ -158,7 +171,9 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
+import { InputFloating } from "@/components/ui/input-floating";
+import { InputNumber, InputNumberDecrement, InputNumberIncrement, InputNumberInput } from "@/components/ui/input-number";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -175,7 +190,7 @@ import { isValidProxyHost } from "@/modules/settings/schema/proxy";
 import { useProxySettings } from "@/modules/settings/store/proxy";
 import { checkProxyConnection } from "@/modules/settings/services/proxy";
 import type { ProxyProtocol } from "@/modules/settings/schema";
-import ItemSubtitle from "@/components/ui/item/ItemSubtitle.vue";
+import ItemDescription from "@/components/ui/item/ItemDescription.vue";
 
 const { t } = useI18n();
 
@@ -196,10 +211,12 @@ const {
   setPassword,
 } = useProxySettings();
 
-const setPortValue = (value: string | number) => {
-  const parsed = Math.trunc(Number(value));
-  if (!Number.isFinite(parsed)) return;
-  setPort(Math.min(65535, Math.max(1, parsed)));
+// A port is never grouped: "10 808" would not read as one.
+const PORT_FORMAT: Intl.NumberFormatOptions = { maximumFractionDigits: 0, useGrouping: false };
+
+// The field clamps to 1..65535 itself; an emptied field keeps the last port.
+const setPortValue = (value: number | undefined) => {
+  if (value !== undefined && Number.isFinite(value)) setPort(Math.trunc(value));
 };
 
 const isTesting = ref(false);
@@ -230,8 +247,9 @@ const handleTest = async () => {
       testMessage.value = t("settings.proxy.testOk", { ms: latency });
     },
     (error) => {
+      getLogger().warn(`[ProxySettings] Proxy check failed: ${error.message}`);
       testState.value = "error";
-      testMessage.value = t("settings.proxy.testFailed", { error: error.message });
+      testMessage.value = t("settings.proxy.testFailed");
     },
   );
 

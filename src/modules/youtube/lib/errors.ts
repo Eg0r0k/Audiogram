@@ -3,8 +3,8 @@ import type { SourceError } from "@/types/source-dto";
 import type { YoutubeError } from "../types";
 
 /**
- * Human message for a YouTube error, special-casing YouTube's bot check —
- * its raw message ("Sign in to confirm you're not a bot") confuses users.
+ * Human message for a YouTube error. The bot check gets its own explanation;
+ * any other raw message stays in the log, the user sees a plain failure.
  * Takes anything carrying a message: by the time a search failure reaches a
  * pane it has usually been through the source boundary and is a
  * SourceQueryError.
@@ -12,7 +12,7 @@ import type { YoutubeError } from "../types";
 export function youtubeErrorMessage(error: { message: string }, t: ComposerTranslation): string {
   const message = error.message;
   if (/not a bot|sign in to confirm/i.test(message)) return t("youtube.botError");
-  return t("youtube.errorPrefix", { message });
+  return t("youtube.failed");
 }
 
 /**

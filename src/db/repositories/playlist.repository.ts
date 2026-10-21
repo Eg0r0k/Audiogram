@@ -111,6 +111,24 @@ class PlaylistRepository extends BaseRepository<PlaylistEntity, PlaylistId> {
     }
   }
 
+  /** Puts the track at `index` (clamped to the end) unless the playlist already has it. */
+  insertTrack = async (playlistId: PlaylistId, trackId: TrackId, index: number): Promise<Result<number, Error>> => {
+    try {
+      const count = await this.table
+        .where("id")
+        .equals(playlistId)
+        .modify((playlist) => {
+          if (playlist.trackIds.includes(trackId)) return;
+          playlist.trackIds.splice(Math.min(index, playlist.trackIds.length), 0, trackId);
+          playlist.updatedAt = Date.now();
+        });
+      return ok(count);
+    }
+    catch (error) {
+      return err(toDbError(error));
+    }
+  };
+
   async reorderTracks(playlistId: PlaylistId, trackIds: TrackId[]): Promise<Result<number, Error>> {
     try {
       const count = await this.table

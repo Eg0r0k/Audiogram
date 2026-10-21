@@ -1,4 +1,6 @@
-import { render, screen } from "@testing-library/vue";
+import { fireEvent, render, screen } from "@testing-library/vue";
+import { flushPromises } from "@vue/test-utils";
+import { shownToasts } from "@/test/toasts";
 import { VueQueryPlugin } from "@tanstack/vue-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
@@ -20,9 +22,12 @@ vi.mock("@/queries/localCopy.queries", async () => {
     },
   };
 });
+const deletion = vi.hoisted(() => ({ deleteWithUndo: vi.fn() }));
 vi.mock("@/modules/tracks/composables/useTrackDeletion", () => ({
-  useTrackDeletion: () => ({ confirmDeletion: vi.fn(), deleteWithUndo: vi.fn() }),
+  useTrackDeletion: () => deletion,
 }));
+vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
+vi.mock("@/lib/logger", () => ({ getLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn() }) }));
 vi.mock("@/components/dialogs/summonDialog", () => ({ summonDialog: vi.fn() }));
 
 const slotStub = { template: "<div><slot /></div>" };
@@ -99,5 +104,21 @@ describe("TrackInfoPanel", () => {
     renderPanel(payloadTrack());
 
     expect(screen.getByText("Portishead")).toBeInTheDocument();
+  });
+
+  it("shows a failed delete under the delete button instead of a toast", async () => {
+    queries.getTrackEntityById.mockReturnValue(new Promise(() => {}));
+    deletion.deleteWithUndo.mockRejectedValueOnce(new Error("quota"));
+    renderPanel(payloadTrack());
+
+    const deleteButtons = screen.getAllByRole("button", { name: "Delete" });
+    const deleteButton = deleteButtons[deleteButtons.length - 1]!;
+    await fireEvent.click(deleteButton);
+    await flushPromises();
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Failed to delete track");
+    expect(deleteButton.nextElementSibling).toBe(alert);
+    expect(shownToasts("destructive")).toHaveLength(0);
   });
 });

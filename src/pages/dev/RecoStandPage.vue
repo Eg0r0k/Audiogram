@@ -68,7 +68,7 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { onKeyStroke } from "@vueuse/core";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { getLogger } from "@/lib/logger";
 import type { ComponentKey } from "@/modules/recommendations/lib/scoring";
 import type { FeedbackLabel } from "@/modules/recommendations/service/stand-feedback.store";
@@ -95,21 +95,21 @@ const {
 const titleOf = (id: TrackId | null) => (id && ctx.value?.tracks.get(id)?.title) ?? "";
 
 const run = (action: () => Promise<void>) => {
-  action().catch(error => toast.error(String(error)));
+  action().catch(error => toaster.add({ title: String(error), color: "destructive" }));
 };
 
 const onCopy = async () => {
   await copyWeightsJson();
-  toast.success("Веса скопированы");
+  toaster.add({ title: "Веса скопированы", color: "success" });
 };
 
 const onExport = async () => {
   const file = await exportSnapshot();
   if (!file) {
-    toast.error("Нет данных для снимка");
+    toaster.add({ title: "Нет данных для снимка", color: "destructive" });
     return;
   }
-  toast.success(`Снимок записан: ${file}`);
+  toaster.add({ title: `Снимок записан: ${file}`, color: "success" });
 };
 
 const onRate = async (id: TrackId, label: FeedbackLabel) => {
@@ -117,7 +117,7 @@ const onRate = async (id: TrackId, label: FeedbackLabel) => {
     await rate(id, label);
   }
   catch (error) {
-    toast.error(`Не удалось сохранить оценку: ${String(error)}`);
+    toaster.add({ title: `Не удалось сохранить оценку: ${String(error)}`, color: "destructive" });
   }
 };
 

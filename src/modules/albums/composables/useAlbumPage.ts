@@ -60,6 +60,7 @@ export function useAlbumPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
     hasNextPage,
     isLoading: isTracksLoading,
     isFetchingNextPage,
+    isFetchNextPageError,
   } = useInfiniteQuery({
     queryKey: computed(() => queryKeys.albums.tracksPage(albumId.value, sortKey.value, normalizedSearchQuery.value)),
     queryFn: ({ pageParam = 0, client }) => normalizedSearchQuery.value
@@ -186,5 +187,6 @@ export function useAlbumPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
     hasNextPage,
     isTracksLoading,
     isFetchingNextPage,
+    isFetchNextPageError,
   };
 }

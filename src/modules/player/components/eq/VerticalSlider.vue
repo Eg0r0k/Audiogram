@@ -41,18 +41,14 @@ const emit = defineEmits<{
 }>();
 
 const proxyValue = computed({
-  get: () => [props.modelValue],
-  set: (val) => {
-    if (val.length > 0) {
-      emit("update:modelValue", val[0]);
-    }
+  get: () => props.modelValue,
+  set: (val: number | number[] | undefined) => {
+    if (typeof val === "number") emit("update:modelValue", val);
   },
 });
 
-const onValueCommit = (val: number[]) => {
-  if (val.length > 0) {
-    emit("change", val[0]);
-  }
+const onValueCommit = (val: number | number[]) => {
+  if (typeof val === "number") emit("change", val);
 };
 
 const handleScroll = (e: WheelEvent) => {

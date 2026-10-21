@@ -6,6 +6,7 @@
     <div class="mx-auto flex h-full w-full items-center gap-6 px-4 @settings-wide:max-w-settings">
       <Button
         variant="ghost"
+        color="muted"
         size="icon-lg"
         class="rounded-full"
         @click="$router.back()"

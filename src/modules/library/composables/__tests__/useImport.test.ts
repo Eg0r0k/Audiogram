@@ -1,11 +1,11 @@
 import { nextTick } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { toast } from "vue-sonner";
 import { i18n } from "@/app/i18n";
 import { invalidateLibraryData } from "@/queries/library.queries";
 import { musicLibraryEngine } from "@/services/importer.service";
 import { IMPORT_AUTO_DISMISS_MS, useImport } from "../useImport";
 import type { ImportBatchResult, ImportControl } from "@/services/importer.service";
+import { shownToasts } from "@/test/toasts";
 
 vi.mock("@tanstack/vue-query", () => ({
   useQueryClient: () => ({ queryClient: true }),
@@ -32,12 +32,11 @@ vi.mock("@/modules/search/service/searchIndex", () => ({
   indexImportedTracks: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("vue-sonner", () => ({
-  toast: {
-    success: vi.fn(),
-    warning: vi.fn(),
-  },
-}));
+vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
+
+const picker = vi.hoisted(() => ({ requestFiles: vi.fn() }));
+vi.mock("@/lib/files/requestFiles", () => picker);
+vi.mock("@/lib/logger", () => ({ getLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn() }) }));
 
 const rightPanelMocks = vi.hoisted(() => ({ openImport: vi.fn(), isOpen: false, view: "none" }));
 vi.mock("@/modules/right-panel/store/right-panel.store", () => ({
@@ -258,8 +257,49 @@ describe("useImport completion feedback", () => {
 
     await useImport().importFiles([createFile("a.mp3"), createFile("b.mp3")]);
 
-    expect(toast.success).toHaveBeenCalledWith("Imported 2 tracks");
-    expect(toast.warning).not.toHaveBeenCalled();
+    expect(shownToasts("success")).toContainEqual(expect.objectContaining({ title: "Imported 2 tracks" }));
+    expect(shownToasts("warning")).toHaveLength(0);
+  });
+
+  it("does not dress an import that brought nothing in as a success", async () => {
+    vi.mocked(musicLibraryEngine.importFiles).mockResolvedValue(createResult({ total: 1 }));
+
+    await useImport().importFiles([createFile("a.mp3")]);
+
+    expect(shownToasts("success")).toHaveLength(0);
+    expect(shownToasts()).toContainEqual(expect.objectContaining({ title: "Nothing imported" }));
+  });
+
+  it("reports an import that failed outright instead of rejecting into nothing", async () => {
+    picker.requestFiles.mockResolvedValue([createFile("a.mp3")]);
+    vi.mocked(musicLibraryEngine.importFiles).mockRejectedValue(new Error("worker died"));
+
+    await expect(useImport().pickAndImport()).resolves.toBeUndefined();
+
+    expect(shownToasts("destructive")).toContainEqual(expect.objectContaining({ title: "Couldn't import the files" }));
+  });
+
+  it("reports an import where every file failed as a failure, with the details one click away", async () => {
+    vi.mocked(musicLibraryEngine.importFiles).mockResolvedValue(createResult({
+      failed: [{ fileName: "a.mp3", error: { code: "PARSE_FAILED", message: "bad" } as never }],
+      total: 1,
+    }));
+
+    await useImport().importFiles([createFile("a.mp3")]);
+
+    expect(shownToasts("warning")).toHaveLength(0);
+    const [shown] = shownToasts("destructive");
+    expect(shown?.title).toBe("None of the files were imported");
+    expect(shown?.actions?.[0]?.label).toBe("Details");
+  });
+
+  it("says the files are already in the library when nothing new came in", async () => {
+    vi.mocked(musicLibraryEngine.importFiles).mockResolvedValue(createResult({ skipped: 2, total: 2 }));
+
+    await useImport().importFiles([createFile("a.mp3"), createFile("b.mp3")]);
+
+    expect(shownToasts("warning")).toHaveLength(0);
+    expect(shownToasts("neutral")).toContainEqual(expect.objectContaining({ title: "These files are already in your library" }));
   });
 
   it("raises a warning toast whose action opens the import panel when files failed", async () => {
@@ -271,12 +311,12 @@ describe("useImport completion feedback", () => {
 
     await useImport().importFiles([createFile("a.mp3"), createFile("b.mp3")]);
 
-    expect(toast.success).not.toHaveBeenCalled();
-    expect(toast.warning).toHaveBeenCalledOnce();
-    const [message, options] = vi.mocked(toast.warning).mock.calls[0] as [string, { action: { label: string; onClick: () => void } }];
-    expect(message).toBe("Imported 1, 1 with issues");
-    expect(options.action.label).toBe("Details");
-    options.action.onClick();
+    expect(shownToasts("success")).toHaveLength(0);
+    expect(shownToasts("warning")).toHaveLength(1);
+    const [shown] = shownToasts("warning");
+    expect(shown.title).toBe("Imported 1, 1 with issues");
+    expect(shown.actions?.[0].label).toBe("Details");
+    shown.actions?.[0].onClick?.(new MouseEvent("click"));
     expect(rightPanelMocks.openImport).toHaveBeenCalledOnce();
   });
 
@@ -296,8 +336,8 @@ describe("useImport completion feedback", () => {
     gate.resolve();
     await run;
 
-    expect(toast.success).not.toHaveBeenCalled();
-    expect(toast.warning).not.toHaveBeenCalled();
+    expect(shownToasts("success")).toHaveLength(0);
+    expect(shownToasts("warning")).toHaveLength(0);
   });
 });
 

@@ -29,21 +29,36 @@
       @relink="relinkFolder"
     />
 
-    <Button
+    <Item
       v-if="canAddFolder"
-      class="w-full h-14 justify-start"
-      variant="ghost-primary"
-      size="xl"
-      @click="addFolder"
+      v-ripple
+      as-child
+      size="sm"
+      class="cursor-pointer"
     >
-      <IconFolderPlus class="size-6" />
-      {{ $t(addFolderLabelKey) }}
-    </Button>
+      <button
+        type="button"
+        class="w-full text-left"
+        @click="handleAddFolder"
+      >
+        <ItemMedia>
+          <IconFolderPlus class="size-6 mr-3 text-primary" />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle class="text-primary">
+            {{ $t(addFolderLabelKey) }}
+          </ItemTitle>
+          <InlineError v-if="addFolderError">
+            {{ addFolderError }}
+          </InlineError>
+        </ItemContent>
+      </button>
+    </Item>
 
     <Button
       v-if="folders.length > 0"
       class="w-full h-14 justify-start"
-      variant="ghost-primary"
+      variant="ghost"
       size="xl"
       :disabled="isAnyScanning"
       @click="scanAllFolders"
@@ -55,8 +70,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { toast } from "vue-sonner";
+import { computed, ref } from "vue";
+import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 import { getLogger } from "@/lib/logger";
 import { Switch } from "@/components/ui/switch";
@@ -67,8 +82,10 @@ import {
   ItemActions,
   ItemContent,
   ItemDescription,
+  ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
+import InlineError from "@/components/common/InlineError.vue";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import WatchedFolderItem from "./WatchedFolderItem.vue";
 import { useWatchedFolders } from "../composables/useWatchedFolders";
@@ -106,6 +123,13 @@ const addFolderLabelKey = computed(() =>
   IS_MOBILE && !hasMobilePicker ? "watchedFolders.addMusicFolder" : "watchedFolders.addFolder",
 );
 
+const addFolderError = ref<string | null>(null);
+
+const handleAddFolder = async () => {
+  addFolderError.value = null;
+  addFolderError.value = await addFolder();
+};
+
 function handleScan(folder: WatchedFolder) {
   scanFolder(folder).catch(error => getLogger().error(`[WatchedFolders] Scanning ${folder.name} failed: ${String(error)}`));
 }
@@ -124,7 +148,7 @@ async function confirmRemove(id: string) {
     // Unawaited, this rejected into nothing: the dialog closed, the folder
     // stayed and neither the user nor the log heard about it.
     getLogger().error(`[WatchedFolders] Removing ${folder.name} failed: ${String(e)}`);
-    toast.error(t("watchedFolders.removeFailed", { name: folder.name }));
+    toaster.add({ title: t("watchedFolders.removeFailed", { name: folder.name }), color: "destructive" });
   }
 }
 </script>

@@ -20,7 +20,6 @@ function actions(canManage: boolean): MediaActions {
     addToQueue: () => {},
     edit: () => {},
     delete: () => {},
-    share: () => {},
     canManage: computed(() => canManage),
     canDownloadOffline: computed(() => true),
     downloadOffline: () => {},

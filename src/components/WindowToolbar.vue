@@ -10,25 +10,29 @@
       class="titlebar-left"
       data-tauri-drag-region
     >
-      <button
-        class="nav-btn"
-        type="button"
-        :disabled="!canGoBack"
-        :aria-label="$t('common.back')"
-        :title="$t('common.back')"
-        @click="goBack"
-      >
-        <IconChevronLeft class="size-4" />
-      </button>
-      <button
-        class="nav-btn"
-        type="button"
-        :aria-label="$t('common.next')"
-        :title="$t('common.next')"
-        @click="goNext"
-      >
-        <IconChevronRight class="size-4" />
-      </button>
+      <ButtonGroup>
+        <Button
+          variant="ghost"
+          color="muted"
+          size="icon-xs"
+          :disabled="!canGoBack"
+          :aria-label="$t('common.back')"
+          :title="$t('common.back')"
+          @click="goBack"
+        >
+          <IconChevronLeft />
+        </Button>
+        <Button
+          variant="ghost"
+          color="muted"
+          size="icon-xs"
+          :aria-label="$t('common.next')"
+          :title="$t('common.next')"
+          @click="goNext"
+        >
+          <IconChevronRight />
+        </Button>
+      </ButtonGroup>
     </div>
 
     <WindowToolbarSource v-if="isDesktopLayout" />
@@ -106,6 +110,8 @@ import { useRouter } from "vue-router";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import WindowToolbarSource from "@/components/WindowToolbarSource.vue";
+import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import IconChevronLeft from "~icons/tabler/chevron-left";
 import IconChevronRight from "~icons/tabler/chevron-right";
 
@@ -172,44 +178,11 @@ onMounted(async () => {
 .titlebar-left {
   display: flex;
   align-items: center;
-  justify-content: center;
+  padding: 0 0 0 4px;
   gap: 4px;
   width: 80px; /* matches the compact sidebar column (SIDEBAR_COMPACT_WIDTH) */
   height: 100%;
   -webkit-app-region: no-drag;
-}
-
-.nav-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 24px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.nav-btn:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--accent), var(--foreground) 10%);
-  color: var(--foreground);
-}
-
-.nav-btn:active:not(:disabled) {
-  background: color-mix(in oklab, var(--accent), var(--foreground) 16%);
-}
-
-.nav-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.nav-btn:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: -2px;
 }
 
 .titlebar-controls {
@@ -267,7 +240,6 @@ onMounted(async () => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nav-btn,
   .ctl {
     transition: none;
   }

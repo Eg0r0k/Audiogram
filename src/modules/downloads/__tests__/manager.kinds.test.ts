@@ -9,7 +9,6 @@ const providerMock = vi.hoisted(() => ({
   downloadToFile: vi.fn(),
   cancelDownload: vi.fn(),
 }));
-const toastMock = vi.hoisted(() => ({ error: vi.fn() }));
 
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
@@ -23,7 +22,7 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   readDir: vi.fn(async () => []),
   remove: vi.fn(async () => {}),
 }));
-vi.mock("vue-sonner", () => ({ toast: toastMock }));
+vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 vi.mock("../service/finalize", () => ({
   finalizeDownloadImport: vi.fn(async () => {}),
 }));
@@ -42,7 +41,6 @@ describe("download manager — subscription and rate-limit failures", () => {
   beforeEach(async () => {
     setActivePinia(createPinia());
     providerMock.downloadToFile.mockReset();
-    toastMock.error.mockReset();
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
   });

@@ -1,5 +1,5 @@
 import { computed, ref } from "vue";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 import { getLogger } from "@/lib/logger";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
@@ -17,9 +17,19 @@ export const useYmRadio = () => {
       const result = await queue.startRadio(createYmRadioSession(station));
       if (result.isErr()) {
         getLogger().warn(`[YM radio] ${station} did not start (${result.error.kind}): ${result.error.message}`);
-        toast.error(result.error.kind === "FORBIDDEN"
-          ? t("settings.sources.ym.noPlus")
-          : t("queue.radioFailed"));
+        // No access is not something a second try changes.
+        toaster.add(result.error.kind === "FORBIDDEN"
+          ? { title: t("settings.sources.ym.stationNeedsPlus"), color: "destructive" }
+          : {
+              title: t("queue.radioFailed"),
+              color: "destructive",
+              actions: [{
+                label: t("common.retry"),
+                onClick: () => {
+                  start(station).catch(() => undefined);
+                },
+              }],
+            });
       }
     }
     finally {

@@ -15,7 +15,7 @@
     <Item @click="setEnabled(!enabled)">
       <ItemContent>
         <ItemTitle>{{ $t("settings.sources.ym.enable") }}</ItemTitle>
-        <ItemSubtitle>{{ $t("settings.sources.ym.description") }}</ItemSubtitle>
+        <ItemDescription>{{ $t("settings.sources.ym.description") }}</ItemDescription>
       </ItemContent>
       <ItemActions>
         <Switch
@@ -31,7 +31,7 @@
 <script setup lang="ts">
 import { Switch } from "@/components/ui/switch";
 import { Item, ItemActions, ItemContent, ItemTitle } from "@/components/ui/item";
-import ItemSubtitle from "@/components/ui/item/ItemSubtitle.vue";
+import ItemDescription from "@/components/ui/item/ItemDescription.vue";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import { useYmSourceSettings } from "@/modules/settings/store/sources";
 import { useYmAuth } from "@/modules/sources/yandex/composables/useYmAuth";

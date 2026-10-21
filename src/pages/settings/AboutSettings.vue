@@ -14,7 +14,7 @@
         <div class="flex gap-2">
           <Button
             size="icon-lg"
-            variant="link"
+            variant="ghost"
             as-child
           >
             <Link
@@ -28,7 +28,7 @@
           </Button>
           <Button
             size="icon-lg"
-            variant="link"
+            variant="ghost"
             as-child
           >
             <Link
@@ -47,7 +47,7 @@
       <Button
         class="w-full h-14 justify-start"
         size="xl"
-        variant="ghost-primary"
+        variant="ghost"
         :class="{ 'text-destructive': updateStore.status === 'error' }"
         :disabled="updateStore.isBusy"
         :title="updateStore.error?.message"
@@ -72,7 +72,9 @@
         {{ checkStateLabel }}
       </Button>
       <SettingsItem
+        :icon="IconSparkles"
         :title="$t('settings.about.whatsNew')"
+        :error="releaseNotesError ?? undefined"
         @click="handleOpenWhatsNew"
       >
         <template #action>
@@ -95,7 +97,9 @@
         </template>
       </SettingsItem>
       <SettingsItem
+        :icon="IconFileExport"
         :title="$t('settings.about.exportLogs')"
+        :error="exportLogsError ?? undefined"
         @click="handleExportLogs"
       >
         <template #action>
@@ -114,6 +118,7 @@
 
     <SettingsGroup class="mt-3">
       <SettingsItem
+        :icon="IconFileDescription"
         :title="$t('settings.about.termsOfService')"
         @click="router.push(routeLocation.settingsTerms())"
       >
@@ -125,6 +130,7 @@
       </SettingsItem>
 
       <SettingsItem
+        :icon="IconShieldLock"
         :title="$t('settings.about.privacyPolicy')"
         @click="router.push(routeLocation.settingsPrivacy())"
       >
@@ -140,6 +146,7 @@
         confirm-external
       >
         <SettingsItem
+          :icon="IconLicense"
           :title="$t('settings.about.licenses')"
         >
           <template #action>
@@ -176,9 +183,14 @@ import IconDownload from "~icons/tabler/download";
 import IconCloudDownload from "~icons/tabler/cloud-download";
 import IconCheck from "~icons/tabler/check";
 import IconAlertTriangle from "~icons/tabler/alert-triangle";
+import IconSparkles from "~icons/tabler/sparkles";
+import IconFileExport from "~icons/tabler/file-export";
+import IconFileDescription from "~icons/tabler/file-description";
+import IconShieldLock from "~icons/tabler/shield-lock";
+import IconLicense from "~icons/tabler/license";
 
 import IconLogo from "~icons/audiogram/logo";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 
 import Button from "@/components/ui/button/Button.vue";
@@ -191,7 +203,7 @@ import { useChangelogStore } from "@/modules/update/store/changelog.store";
 import { useUpdateStore } from "@/modules/update/store/update.store";
 import { routeLocation } from "@/app/router/route-locations";
 import { useRouter } from "vue-router";
-import { exportLogs } from "@/lib/logger";
+import { exportLogs, getLogger } from "@/lib/logger";
 import { computed, ref } from "vue";
 
 const isExporting = ref(false);
@@ -225,20 +237,26 @@ const {
   openCurrent,
 } = useReleaseNotesDialog();
 
+const exportLogsError = ref<string | null>(null);
+const releaseNotesError = ref<string | null>(null);
+
 const handleExportLogs = async () => {
+  exportLogsError.value = null;
   isExporting.value = true;
   await exportLogs().match(
     (success) => {
       if (success.kind === "saved")
-        toast.success(t("settings.about.logsExportedTo", { path: success.path }));
+        toaster.add({ title: t("settings.about.logsExportedTo", { path: success.path }), color: "success" });
       if (success.kind === "downloaded")
-        toast.success(t("settings.about.logsDownloaded", { filename: success.filename }));
+        toaster.add({ title: t("settings.about.logsDownloaded", { filename: success.filename }), color: "success" });
     },
     (err) => {
       if (err.type === "NO_DATA")
-        toast.warning(t("settings.about.logsEmpty"));
-      else
-        toast.error(t("settings.about.logsExportFailed", { reason: err.reason }));
+        toaster.add({ title: t("settings.about.logsEmpty"), color: "warning" });
+      else {
+        getLogger().error(`[AboutSettings] Exporting logs failed: ${err.reason}`);
+        exportLogsError.value = t("settings.about.logsExportFailed");
+      }
     },
   );
 
@@ -246,11 +264,13 @@ const handleExportLogs = async () => {
 };
 
 const handleOpenWhatsNew = async () => {
+  releaseNotesError.value = null;
   const isOpened = await openCurrent();
 
   if (isOpened) return;
 
-  toast.error(error.value ?? t("settings.about.releaseNotesLoadFailed"));
+  getLogger().warn(`[AboutSettings] Loading release notes failed: ${error.value ?? "unknown"}`);
+  releaseNotesError.value = t("settings.about.releaseNotesLoadFailed");
   clearError();
 };
 

@@ -10,7 +10,8 @@ import { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 // The "also delete the tracks inside" opt-in. Without it album/artist/playlist
 // deletion leaves the tracks in the library (ungrouped, detached, unreferenced);
 // with it the track rows and their playlist references go too, and GC takes
-// whatever that empties. No file on disk is touched either way.
+// whatever that empties, and the files Audiogram owns for those tracks are
+// deleted once the rows are gone. Without it no file is touched.
 //
 
 const storageMock = vi.hoisted(() => ({
@@ -50,7 +51,7 @@ const localTrack = (id: string, title: string): TrackEntity => ({
   artistIds: [artistId],
   albumId,
   tagIds: [],
-  source: TrackSource.LOCAL,
+  source: TrackSource.LOCAL_INTERNAL,
   state: TrackState.READY,
   storagePath: `tracks/${id}.mp3`,
   duration: 100,
@@ -60,6 +61,8 @@ const localTrack = (id: string, title: string): TrackEntity => ({
   albumTitle: "Local Album",
   artistName: "Local",
 } as unknown as TrackEntity);
+
+const deletedFiles = () => storageMock.deleteFile.mock.calls.map(([path]) => path as string).sort();
 
 const seedLibrary = async () => {
   await db.artists.put(artist);
@@ -94,7 +97,7 @@ describe("deleteTracks option (integration)", () => {
     expect(await db.albums.count()).toBe(0);
     expect(await db.artists.count()).toBe(0);
     expect((await db.playlists.get(playlistId))?.trackIds).toEqual([]);
-    expect(storageMock.deleteFile).not.toHaveBeenCalled();
+    expect(deletedFiles()).toEqual(["tracks/t-1.mp3", "tracks/t-2.mp3"]);
   });
 
   it("a local album without the opt-in still only ungroups its tracks", async () => {
@@ -115,7 +118,7 @@ describe("deleteTracks option (integration)", () => {
     expect(await db.tracks.count()).toBe(0);
     expect(await db.albums.count()).toBe(0);
     expect(await db.artists.count()).toBe(0);
-    expect(storageMock.deleteFile).not.toHaveBeenCalled();
+    expect(deletedFiles()).toEqual(["tracks/t-1.mp3", "tracks/t-2.mp3"]);
   });
 
   it("an artist without the opt-in keeps the tracks and detaches them", async () => {
@@ -150,7 +153,7 @@ describe("deleteTracks option (integration)", () => {
     expect(await db.tracks.get(TrackId("t-1"))).toBeUndefined();
     expect(await db.tracks.get(TrackId("t-2"))).toBeDefined();
     expect((await db.playlists.get(otherId))?.trackIds).toEqual([TrackId("t-2")]);
-    expect(storageMock.deleteFile).not.toHaveBeenCalled();
+    expect(deletedFiles()).toEqual(["tracks/t-1.mp3"]);
   });
 
   it("a playlist without the opt-in leaves every track in the library", async () => {

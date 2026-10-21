@@ -85,10 +85,17 @@
       >
         <ColorPicker
           class="w-64"
-          format="hexa"
+          format="hex"
           :model-value="customColor"
           @update:model-value="onCustomColorChange"
-        />
+        >
+          <ColorPickerArea />
+          <ColorPickerSlider channel="hue" />
+          <div class="flex gap-(--color-picker-gap)">
+            <ColorPickerPreview />
+            <ColorPickerField />
+          </div>
+        </ColorPicker>
       </PopoverContent>
     </Popover>
   </div>
@@ -97,7 +104,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ColorPicker } from "@/components/ui/color-picker";
+import {
+  ColorPicker,
+  ColorPickerArea,
+  ColorPickerField,
+  ColorPickerPreview,
+  ColorPickerSlider,
+} from "@/components/ui/color-picker";
 import IconColorPicker from "~icons/tabler/palette-filled";
 import type { AccentColorOption } from "@/modules/settings/accent-colors";
 import type { AccentColor } from "../schema/appearance";
@@ -120,7 +133,7 @@ const customSwatchBackground = computed(() =>
     : "conic-gradient(from 0deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
 );
 
-function onCustomColorChange(value: string | object | null) {
+function onCustomColorChange(value: string | undefined) {
   if (typeof value === "string") emit("selectCustom", value);
 }
 </script>

@@ -5,8 +5,9 @@
         <div class="flex flex-1 gap-2 justify-end">
           <Button
             class="rounded-full"
-            size="icon"
+            size="icon-md"
             variant="ghost"
+            color="muted"
             :class="{ 'text-primary': queueStore.isShuffled }"
             :aria-label="$t('player.shuffle')"
             @click="queueStore.toggleShuffle()"
@@ -15,8 +16,9 @@
           </Button>
           <Button
             class="rounded-full"
-            size="icon"
+            size="icon-md"
             variant="ghost"
+            color="muted"
             :disabled="!queueStore.hasPrevious"
             :aria-label="$t('player.previousTrack')"
             @click="queueStore.previous()"
@@ -30,8 +32,9 @@
         <div class="flex flex-1 gap-2">
           <Button
             class="rounded-full"
-            size="icon"
+            size="icon-md"
             variant="ghost"
+            color="muted"
             :disabled="!queueStore.hasNext"
             :aria-label="$t('player.nextTrack')"
             @click="queueStore.next()"
@@ -40,8 +43,9 @@
           </Button>
           <Button
             class="rounded-full"
-            size="icon"
+            size="icon-md"
             variant="ghost"
+            color="muted"
             :class="repeatModeClass"
             :aria-label="$t('player.repeat')"
             @click="queueStore.toggleRepeat"

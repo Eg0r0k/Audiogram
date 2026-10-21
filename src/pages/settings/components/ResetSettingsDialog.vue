@@ -1,59 +1,46 @@
 <template>
-  <Dialog
-    :open="open"
-    @update:open="value => emit('update:open', value)"
-  >
-    <DialogContent class="sm:max-w-sm">
-      <DialogHeader>
-        <DialogTitle>{{ $t("settings.index.resetAllDialogTitle") }}</DialogTitle>
-        <DialogDescription>
-          {{ $t("settings.index.resetAllDialogDesc") }}
-        </DialogDescription>
-      </DialogHeader>
+  <DialogContent class="sm:max-w-sm">
+    <DialogHeader>
+      <DialogTitle>{{ $t("settings.index.resetAllDialogTitle") }}</DialogTitle>
+      <DialogDescription>
+        {{ $t("settings.index.resetAllDialogDesc") }}
+      </DialogDescription>
+    </DialogHeader>
 
-      <DialogFooter>
-        <Button
-          variant="ghost-primary"
-          @click="dismiss"
-        >
-          {{ $t("common.cancel") }}
-        </Button>
-        <Button
-          variant="destructive-link"
-          :disabled="countdown > 0"
-          @click="resolve(true)"
-        >
-          {{ countdown > 0
-            ? $t("settings.index.resetAllConfirmCountdown", { seconds: countdown })
-            : $t("settings.index.resetAllConfirm") }}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+    <DialogFooter>
+      <Button
+        variant="ghost"
+        @click="dismiss"
+      >
+        {{ $t("common.cancel") }}
+      </Button>
+      <Button
+        variant="ghost"
+        color="destructive"
+        :disabled="countdown > 0"
+        @click="close(true)"
+      >
+        {{ countdown > 0
+          ? $t("settings.index.resetAllConfirmCountdown", { seconds: countdown })
+          : $t("settings.index.resetAllConfirm") }}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
 </template>
 
 <script setup lang="ts">
 import { onBeforeUnmount, ref } from "vue";
 import {
-  Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  useDialogContext,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useSummonedDialog } from "@/components/dialogs/summon";
 
-defineProps<{
-  open: boolean;
-}>();
-
-const emit = defineEmits<{
-  "update:open": [boolean];
-}>();
-
-const { resolve, dismiss } = useSummonedDialog<boolean>();
+const { close, dismiss } = useDialogContext<boolean>();
 
 // The instance is summoned fresh per confirmation, so the countdown simply
 // starts at mount — same delayed-confirm pattern as the storage clear dialog.

@@ -36,6 +36,7 @@ import {
   trackCascadeTables,
 } from "./track-cascade";
 import type { ArtistPageData, PaginatedTracksResult, PaginatedAlbumsResult } from "./types";
+import { deleteOwnedFiles } from "@/services/track-files";
 
 /** The artist row under an id, or null — a miss is an answer, not an error. */
 export async function getArtistLibraryRow(artistId: ArtistId): Promise<ArtistEntity | null> {
@@ -403,6 +404,7 @@ export async function deleteArtistAndSync(
     },
   );
   if (txResult.isErr()) throw txResult.error;
+  if (cascadeTracks) await deleteOwnedFiles(affectedTracks);
 
   await settleLibraryReads(queryClient);
   await syncAfterTrackPurge(

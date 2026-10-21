@@ -42,7 +42,7 @@
 
   <ResponsiveMenuItem
     v-if="props.deleteItem"
-    variant="destructive"
+    color="destructive"
     @select="props.deleteItem"
   >
     <IconTrash class="size-5" />

@@ -28,6 +28,7 @@
       <div class="flex items-center justify-between gap-2 pt-1">
         <Button
           variant="ghost"
+          color="muted"
           size="sm"
           :aria-label="isPaused ? t('common.import.a11y.resume') : t('common.import.a11y.pause')"
           :disabled="isCancelling"
@@ -44,7 +45,8 @@
           {{ isPaused ? t("common.import.resume") : t("common.import.pause") }}
         </Button>
         <Button
-          variant="destructive-link"
+          variant="ghost"
+          color="destructive"
           size="sm"
           :disabled="isCancelling"
           @click="requestCancel"
@@ -59,7 +61,7 @@
       class="flex justify-end px-4 pb-3"
     >
       <Button
-        variant="ghost-primary"
+        variant="ghost"
         size="sm"
         @click="goToLibrary"
       >
@@ -72,7 +74,7 @@
       v-model="activeFilter"
       class="px-4 pb-2"
     >
-      <TabsList class="w-full">
+      <TabsList variant="line" class="w-full">
         <TabsTrigger
           v-for="tab in filterTabs"
           :key="tab.key"
@@ -128,13 +130,13 @@
             <ItemTitle class="w-full text-sm font-normal">
               <span class="min-w-0 truncate">{{ file.name }}</span>
             </ItemTitle>
-            <ItemSubtitle
+            <ItemDescription
               v-if="secondaryLine(file)"
               class="line-clamp-1 text-xs"
               :class="file.status === 'error' ? 'text-destructive' : ''"
             >
               {{ secondaryLine(file) }}
-            </ItemSubtitle>
+            </ItemDescription>
           </ItemContent>
         </Item>
       </template>
@@ -157,7 +159,7 @@ import { useImport, type ImportFileItem, type ImportFileStatus } from "@/modules
 import { Button } from "@/components/ui/button";
 import { summonDialog } from "@/components/dialogs/summonDialog";
 import { Empty, EmptyDescription } from "@/components/ui/empty";
-import { Item, ItemContent, ItemMedia, ItemSubtitle, ItemTitle } from "@/components/ui/item";
+import { Item, ItemContent, ItemMedia, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import RightPanelHeader from "@/modules/right-panel/components/RightPanelHeader.vue";

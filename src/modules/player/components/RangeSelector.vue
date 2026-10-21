@@ -1,59 +1,71 @@
 <!-- eslint-disable vuejs-accessibility/form-control-has-label -->
 <template>
-  <div
-    ref="containerRef"
-    :class="containerClasses"
+  <Tooltip
+    :open="isTooltipOpen"
+    touch="off"
+    :close-on-click="false"
   >
-    <div class="range-selector__track">
+    <TooltipTrigger
+      as-child
+      :reference="tooltipAnchor"
+    >
       <div
-        v-for="(segment, i) in segments"
-        :key="i"
-        class="range-selector__segment"
-        :class="{ 'range-selector__segment--hover': hoverSegmentIndex === i }"
-        :style="segmentStyle(segment)"
-      />
-    </div>
+        ref="containerRef"
+        v-bind="$attrs"
+        :class="containerClasses"
+      >
+        <div class="range-selector__track">
+          <div
+            v-for="(segment, i) in segments"
+            :key="i"
+            class="range-selector__segment"
+            :class="{ 'range-selector__segment--hover': hoverSegmentIndex === i }"
+            :style="segmentStyle(segment)"
+          />
+        </div>
 
-    <div
-      ref="hoverFilledRef"
-      class="range-selector__hover-filled"
-      style="display: none"
-    />
-    <div
-      ref="filledRef"
-      class="range-selector__filled"
-    />
-    <div
-      v-if="showThumb"
-      ref="thumbRef"
-      class="range-selector__thumb"
-    />
+        <div
+          ref="hoverFilledRef"
+          class="range-selector__hover-filled"
+          style="display: none"
+        />
+        <div
+          ref="filledRef"
+          class="range-selector__filled"
+        />
+        <div
+          v-if="showThumb"
+          ref="thumbRef"
+          class="range-selector__thumb"
+        />
 
-    <div
-      v-if="showTooltip && (isHovering || mousedown) && hoverTimeLabel"
-      class="range-selector__tooltip"
-      :style="tooltipStyle"
+        <input
+          ref="seekRef"
+          class="range-selector__input"
+          type="range"
+          :disabled="disabled"
+          :step="step"
+          :min="min"
+          :max="max"
+          :aria-label="$t('common.progress')"
+          @input="onInput"
+          @keydown="onKeyDown"
+        >
+      </div>
+    </TooltipTrigger>
+    <TooltipContent
+      side="top"
+      :side-offset="8"
+      update-position-strategy="always"
+      class="flex flex-col items-center px-2 py-1 tabular-nums data-[state=instant-open]:animate-[kappa-overlay-in_var(--transition-duration-short-4)_var(--ease-emphasized-decelerate)]"
     >
       <span
-        v-if="hoverChapterTitle"
-        class="range-selector__tooltip-title"
-      >{{ hoverChapterTitle }}</span>
-      <span class="range-selector__tooltip-time">{{ hoverTimeLabel }}</span>
-    </div>
-
-    <input
-      ref="seekRef"
-      class="range-selector__input"
-      type="range"
-      :disabled="disabled"
-      :step="step"
-      :min="min"
-      :max="max"
-      :aria-label="$t('common.progress')"
-      @input="onInput"
-      @keydown="onKeyDown"
-    >
-  </div>
+        v-if="tooltipChapter"
+        class="max-w-55 truncate font-medium"
+      >{{ tooltipChapter }}</span>
+      <span>{{ tooltipTime }}</span>
+    </TooltipContent>
+  </Tooltip>
 </template>
 
 <script setup lang="ts">
@@ -61,6 +73,7 @@ import { computed, onMounted, ref, useTemplateRef, watch } from "vue";
 import { useElementBounding, useEventListener } from "@vueuse/core";
 import { clamp } from "@/lib/math";
 import { isRTL } from "@/lib/environment/lang";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export interface GrabEvent {
   x: number;
@@ -96,6 +109,10 @@ export interface RangeSelectorProps {
   duration?: number;
   showTooltip?: boolean;
 }
+// The root is the tooltip, which renders no element of its own: a host's
+// class or style goes on the bar.
+defineOptions({ inheritAttrs: false });
+
 const props = withDefaults(defineProps<RangeSelectorProps>(), {
   min: 0,
   max: 100,
@@ -229,16 +246,29 @@ const hoverTimeLabel = computed(() => {
   return formatTime((hoverPercent.value / 100) * props.duration);
 });
 
-const tooltipStyle = computed(() => {
-  const percent = hoverPercent.value;
-  let translateX = "-50%";
-  if (percent < 8) translateX = "0%";
-  else if (percent > 99) translateX = "-100%";
-  return {
-    left: `${percent}%`,
-    transform: `translateX(${translateX})`,
-  };
+const isTooltipOpen = computed(() => props.showTooltip && hoverTimeLabel.value !== null);
+
+// Kept through the close animation: emptied as the pointer leaves, the
+// tooltip shrank and jumped while it faded out.
+const tooltipTime = ref("");
+const tooltipChapter = ref<string | null>(null);
+watch([hoverTimeLabel, hoverChapterTitle], ([time, chapter]) => {
+  if (time === null) return;
+  tooltipTime.value = time;
+  tooltipChapter.value = chapter;
 });
+
+// The tooltip points at the hovered time, not at the bar: a zero-width rect
+// at that spot. It reads hoverPercent, which stays clamped to the bar while
+// a drag wanders off it, so the tooltip stops at the bar's ends.
+const tooltipAnchor = {
+  getBoundingClientRect: () => {
+    const rect = containerRef.value?.getBoundingClientRect() ?? new DOMRect();
+    const offset = (hoverPercent.value / 100) * rect.width;
+    const x = !props.vertical && isRTL() ? rect.right - offset : rect.left + offset;
+    return new DOMRect(x, rect.top, 0, rect.height);
+  },
+};
 
 function setHoverFilled(percent: number): void {
   const el = hoverFilledRef.value;
@@ -562,40 +592,6 @@ defineExpose({
   background-color: var(--range-filled);
   transform: translate(-50%, 50%);
   pointer-events: none;
-}
-
-.range-selector__tooltip {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  font-weight: 500;
-  padding: 3px 7px;
-  border-radius: 4px;
-  background-color: var(--card, #111);
-  color: var(--foreground, #fff);
-  font-size: 11px;
-  line-height: 1.4;
-  white-space: nowrap;
-  pointer-events: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-  opacity: 1;
-  transition: opacity 0.12s ease-out;
-  z-index: 50;
-}
-
-.range-selector__tooltip-title {
-  font-weight: 500;
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.range-selector__tooltip-time {
-  opacity: 0.75;
 }
 
 /* No hover, no "grow on hover": touch devices get the hover height as the

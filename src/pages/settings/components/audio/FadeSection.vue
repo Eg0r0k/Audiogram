@@ -26,11 +26,11 @@
           </span>
         </div>
         <Slider
-          :model-value="[fadeInDuration]"
+          :model-value="fadeInDuration"
           :min="0"
           :max="10"
           :step="0.1"
-          @update:model-value="(val) => setFadeInDuration(val![0])"
+          @update:model-value="(val) => setFadeInDuration(val as number)"
         />
       </div>
 
@@ -42,11 +42,11 @@
           </span>
         </div>
         <Slider
-          :model-value="[fadeOutDuration]"
+          :model-value="fadeOutDuration"
           :min="0"
           :max="10"
           :step="0.1"
-          @update:model-value="(val) => setFadeOutDuration(val![0])"
+          @update:model-value="(val) => setFadeOutDuration(val as number)"
         />
       </div>
     </div>

@@ -5,7 +5,7 @@
     </ItemMedia>
     <ItemContent>
       <ItemTitle>{{ $t("downloads.active") }}</ItemTitle>
-      <ItemSubtitle>
+      <ItemDescription>
         <span class="flex flex-col gap-0.5 text-sm text-muted-foreground">
           <span
             v-for="(batch, id) in activeBatches"
@@ -27,14 +27,14 @@
             <span>{{ singleCount }}</span>
           </span>
         </span>
-      </ItemSubtitle>
+      </ItemDescription>
     </ItemContent>
   </Item>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { Item, ItemContent, ItemMedia, ItemSubtitle, ItemTitle } from "@/components/ui/item";
+import { Item, ItemContent, ItemMedia, ItemDescription, ItemTitle } from "@/components/ui/item";
 import IconProgressDown from "~icons/tabler/progress-down";
 import { useDownloadsStore, type BatchProgress } from "../store/downloads.store";
 

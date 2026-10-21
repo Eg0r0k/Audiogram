@@ -25,7 +25,8 @@
       <Button
         v-if="canPin"
         size="icon-sm"
-        variant="secondary"
+        variant="soft"
+        color="neutral"
         class="pin-button absolute left-2 top-2 rounded-full bg-card/80 text-foreground shadow-md backdrop-blur-sm hover:bg-card"
         :class="item.isPinned
           ? 'translate-y-0 opacity-100'

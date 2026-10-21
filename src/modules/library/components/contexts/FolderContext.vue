@@ -15,7 +15,7 @@
   </ResponsiveMenuItem>
 
   <ResponsiveMenuItem
-    variant="destructive"
+    color="destructive"
     @select="props.deleteFolder"
   >
     <IconTrash class="size-5" />

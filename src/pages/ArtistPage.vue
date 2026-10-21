@@ -26,7 +26,7 @@
           :padding-bottom="16"
           sticky-offset="72px"
           :loading="isTracksLoading || isFetchingNextTrackPage"
-          class="h-full"
+          class="h-full bg-card [--sticky-surface:var(--card)]"
           @load-more="handleTrackLoadMore"
         >
           <template #before>
@@ -38,10 +38,12 @@
               :filterable="!!artist"
               :catalog-route="catalogViewRoute('artist', artistId, !!artist)"
               :like="like.state.value"
+              :can-add-tracks="!!artist"
               @play="handlePlayAll"
               @shuffle="handleShuffle"
               @edit="openEditDialog"
               @delete="openDeleteDialog"
+              @add-tracks="openAddTracksPanel"
             />
             <section
               v-if="albums.length > 0 || artist"
@@ -60,6 +62,7 @@
 
                 <Button
                   variant="ghost"
+                  color="muted"
                   size="sm"
                   class="shrink-0 rounded-full px-2"
                   @click="router.push(routeLocation.artistAlbums(artistId, { catalog: !artist }))"
@@ -108,16 +111,10 @@
             </section>
           </template>
 
-          <template #leading>
-            <div class="px-4 mb-2">
-              <AddTrackRow
-                v-if="artist"
-                @add="openAddTracksPanel"
-              />
-            </div>
-          </template>
-
-          <template #sticky>
+          <template
+            v-if="!isMobileLayout"
+            #sticky
+          >
             <LibrarySortHeader
               v-model:sort-key="sortKey"
               :sortable="canSort"
@@ -137,6 +134,13 @@
             </div>
           </template>
 
+          <template
+            v-if="isFetchNextTrackPageError"
+            #load-more-error
+          >
+            <LoadMoreError @retry="handleTrackLoadMore" />
+          </template>
+
           <template #loader>
             <div class="flex items-center px-4 flex-col w-full">
               <TrackRowLoading />
@@ -151,9 +155,9 @@
 </template>
 
 <script setup lang="ts">
-import { errorMessage } from "@/lib/errors";
+import LoadMoreError from "@/components/common/LoadMoreError.vue";
 import { computed, ref, useTemplateRef } from "vue";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import PageErrorState from "@/components/common/PageErrorState.vue";
@@ -178,7 +182,6 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
-import AddTrackRow from "@/modules/tracks/components/AddTrackRow.vue";
 import AlbumItem from "@/modules/albums/components/AlbumItem.vue";
 import CreateAlbumCard from "@/modules/albums/components/CreateAlbumCard.vue";
 import { useCreateAlbum } from "@/modules/albums/composables/useCreateAlbum";
@@ -191,6 +194,7 @@ import LibraryContextMenu from "@/modules/library/components/LibraryContextMenu.
 import { Button } from "@/components/ui/button";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { useRoute, useRouter } from "vue-router";
+import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 import { getLogger } from "@/lib/logger";
 
@@ -198,6 +202,7 @@ const { t } = useI18n();
 const playerStore = usePlayerStore();
 const rightPanelStore = useRightPanelStore();
 const route = useRoute();
+const { isMobileLayout } = useDeviceLayout();
 const router = useRouter();
 const { openMenu } = useTrackMenu();
 const { isPinned, deleteItem: deleteLibraryItem } = useLibrary();
@@ -229,6 +234,7 @@ const {
   hasNextTrackPage,
   isTracksLoading,
   isFetchingNextTrackPage,
+  isFetchNextTrackPageError,
 } = useArtistPage(sortKey, searchQuery);
 
 const like = useEntityLike(remoteKind, "artist", artistId);
@@ -240,7 +246,7 @@ const handleCreateAlbum = () => {
   if (!artist.value) return;
   createAlbum(artist.value.id).catch((error: unknown) => {
     getLogger().error(`[ArtistPage] Creating an album failed: ${String(error)}`);
-    toast.error(errorMessage(error, t("errors.loadFailed")));
+    toaster.add({ title: t("album.createFailed"), color: "destructive" });
   });
 };
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
@@ -331,7 +337,7 @@ async function handleDelete(deleteTracks: boolean) {
     await deleteArtist({ deleteTracks });
   }
   catch {
-    toast.error(t("artist.deleteFailed"));
+    toaster.add({ title: t("artist.deleteFailed"), color: "destructive" });
   }
 }
 
@@ -342,7 +348,7 @@ const openEditDialog = () => {
       await updateArtist(changes);
     }
     catch (e) {
-      toast.error(errorMessage(e, t("errors.loadFailed")));
+      getLogger().error(`[ArtistPage] Updating the artist failed: ${String(e)}`);
       throw e;
     }
   }).catch(() => undefined);

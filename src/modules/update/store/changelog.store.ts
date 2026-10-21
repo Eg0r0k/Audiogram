@@ -120,6 +120,12 @@ export const useChangelogStore = defineStore("changelog", () => {
       clearStagedChangelog();
     }
 
+    // A first launch has no earlier version to tell news about.
+    if (!lastSeenVersion.value) {
+      lastSeenVersion.value = __APP_VERSION__;
+      return false;
+    }
+
     return lastSeenVersion.value !== __APP_VERSION__;
   };
 

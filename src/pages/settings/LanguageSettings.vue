@@ -17,11 +17,11 @@
           @keypress.enter.space="setLanguage(lang.code)"
         >
           <ItemMedia>
-            <RadioGroupItem :value="lang.code" />
+            <Radio :value="lang.code" />
           </ItemMedia>
           <ItemContent class="ml-4">
             <ItemTitle>{{ lang.native }}</ItemTitle>
-            <ItemSubtitle class="flex items-center gap-2">
+            <ItemDescription class="flex items-center gap-2">
               <span>{{ lang.name }}</span>
               <span
                 v-if="lang.code === 'system'"
@@ -29,7 +29,7 @@
               >
                 → {{ systemLanguageDisplay }}
               </span>
-            </ItemSubtitle>
+            </ItemDescription>
           </ItemContent>
         </Item>
       </RadioGroup>
@@ -39,8 +39,8 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Item, ItemContent, ItemTitle, ItemSubtitle, ItemMedia } from "@/components/ui/item";
+import { RadioGroup, Radio } from "@/components/ui/radio-group";
+import { Item, ItemContent, ItemTitle, ItemDescription, ItemMedia } from "@/components/ui/item";
 import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import { useGeneralSettings, LANGUAGE_OPTIONS } from "@/modules/settings/store/general";

@@ -9,6 +9,7 @@
           v-if="control === 'back'"
           size="icon-lg"
           variant="ghost"
+          color="muted"
           class="shrink-0 rounded-full"
           @click="emit('back')"
         >
@@ -19,6 +20,7 @@
           v-else-if="control === 'close'"
           size="icon-lg"
           variant="ghost"
+          color="muted"
           class="shrink-0 rounded-full"
           @click="emit('close')"
         >
@@ -50,8 +52,9 @@
       >
         <Button
           v-if="control === 'back'"
-          size="icon"
+          size="icon-md"
           variant="ghost"
+          color="muted"
           class="shrink-0 rounded-full"
           @click="emit('back')"
         >
@@ -60,8 +63,9 @@
 
         <Button
           v-else-if="control === 'close'"
-          size="icon"
+          size="icon-md"
           variant="ghost"
+          color="muted"
           class="shrink-0 rounded-full"
           @click="emit('close')"
         >

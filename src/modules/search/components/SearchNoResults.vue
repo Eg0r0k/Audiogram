@@ -32,7 +32,8 @@ const { t } = useI18n();
     </EmptyHeader>
     <EmptyContent>
       <Button
-        variant="outline"
+        variant="solid"
+        color="surface"
         @click="emit('clear')"
       >
         <IconX />

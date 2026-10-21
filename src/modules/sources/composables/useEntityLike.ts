@@ -1,6 +1,6 @@
 import { computed, ref, toValue, type MaybeRefOrGetter } from "vue";
 import { useQueryClient } from "@tanstack/vue-query";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { i18n } from "@/app/i18n";
 import { getLogger } from "@/lib/logger";
 import { queryKeys } from "@/queries/query-keys";
@@ -71,13 +71,12 @@ export const useEntityLike = (
     return target !== null && (likedIds.value?.has(target) ?? false);
   });
 
-  const toggle = async (): Promise<void> => {
+  const setLiked = async (next: boolean): Promise<void> => {
     const target = toValue(id);
     const resolved = toValue(kind);
     const current = provider.value;
     if (!target || !resolved || !current?.setEntityLiked || isPending.value) return;
 
-    const next = !isLiked.value;
     optimistic.value = next;
     isPending.value = true;
     const result = await current.setEntityLiked(entity, target, next);
@@ -86,7 +85,16 @@ export const useEntityLike = (
     if (result.isErr()) {
       optimistic.value = null;
       getLogger().warn(`[Sources] ${next ? "Liking" : "Unliking"} ${entity} ${target} at ${resolved} failed (${result.error.kind}): ${result.error.message}`);
-      toast.error(i18n.global.t("media.likeFailed"));
+      toaster.add({
+        title: i18n.global.t("media.likeFailed"),
+        color: "destructive",
+        actions: [{
+          label: i18n.global.t("common.retry"),
+          onClick: () => {
+            setLiked(next).catch(retryError => getLogger().error(`[Sources] Retrying the ${entity} like failed: ${String(retryError)}`));
+          },
+        }],
+      });
       return;
     }
     // invalidateQueries resolves once the active list refetched, so the
@@ -94,6 +102,8 @@ export const useEntityLike = (
     await queryClient.invalidateQueries({ queryKey: listKey(resolved) });
     optimistic.value = null;
   };
+
+  const toggle = (): Promise<void> => setLiked(!isLiked.value);
 
   const state = computed<EntityLikeState | undefined>(() =>
     (supported.value

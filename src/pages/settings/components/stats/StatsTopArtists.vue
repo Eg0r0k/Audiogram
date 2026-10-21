@@ -1,6 +1,6 @@
 <template>
   <SettingsGroup class="mt-3">
-    <div class="px-4 py-3 text-primary font-medium">
+    <div class="px-4 py-3 font-semibold text-foreground">
       {{ $t("settings.stats.topArtists") }}
     </div>
 
@@ -21,7 +21,8 @@
         :key="entry.id"
         as="button"
         type="button"
-        class="w-full cursor-pointer text-left"
+        size="sm"
+        class="w-full cursor-pointer border-0 py-2 text-left"
         @click="goToArtist(entry.artist.id)"
       >
         <ItemMedia>
@@ -32,13 +33,13 @@
             image-class="size-10 rounded-full object-cover"
           />
         </ItemMedia>
-        <ItemContent class="ml-3 min-w-0">
+        <ItemContent class="ml-3 min-w-0 gap-0">
           <ItemTitle class="truncate">
             {{ entry.artist.name }}
           </ItemTitle>
-          <ItemSubtitle class="truncate">
+          <ItemDescription class="truncate text-xs">
             {{ formatTotalDuration(entry.secondsListened, t) }}
-          </ItemSubtitle>
+          </ItemDescription>
         </ItemContent>
       </Item>
     </template>
@@ -49,7 +50,7 @@
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
-import { Item, ItemContent, ItemMedia, ItemSubtitle, ItemTitle } from "@/components/ui/item";
+import { Item, ItemContent, ItemMedia, ItemDescription, ItemTitle } from "@/components/ui/item";
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";
 import { useTopArtists } from "@/composables/useStatsQueries";
 import { formatTotalDuration } from "@/lib/format/time";

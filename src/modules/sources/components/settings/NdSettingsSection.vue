@@ -3,7 +3,7 @@
     <Item @click="setEnabled(!enabled)">
       <ItemContent>
         <ItemTitle>{{ $t("settings.sources.nd.enable") }}</ItemTitle>
-        <ItemSubtitle>{{ $t("settings.sources.nd.description") }}</ItemSubtitle>
+        <ItemDescription>{{ $t("settings.sources.nd.description") }}</ItemDescription>
       </ItemContent>
       <ItemActions>
         <Switch
@@ -20,33 +20,33 @@
     :class="{ 'opacity-40 pointer-events-none': !enabled }"
   >
     <div class="px-2 pt-3 space-y-4">
-      <Input
+      <InputFloating
         id="nd-base-url"
+        variant="soft"
         :model-value="baseUrl"
         :label="$t('settings.sources.nd.baseUrl')"
-        surface="card"
         placeholder="https://music.example.com"
         autocomplete="off"
         spellcheck="false"
         @update:model-value="(val) => setBaseUrl(String(val))"
       />
 
-      <Input
+      <InputFloating
         id="nd-username"
+        variant="soft"
         :model-value="username"
         :label="$t('settings.sources.nd.username')"
-        surface="card"
         autocomplete="off"
         spellcheck="false"
         @update:model-value="(val) => setUsername(String(val))"
       />
 
-      <Input
+      <InputFloating
         id="nd-password"
+        variant="soft"
         :model-value="password"
         :label="$t('settings.sources.nd.password')"
         type="password"
-        surface="card"
         autocomplete="off"
         @update:model-value="(val) => setPassword(String(val))"
       />
@@ -55,10 +55,10 @@
 </template>
 
 <script setup lang="ts">
-import { Input } from "@/components/ui/input";
+import { InputFloating } from "@/components/ui/input-floating";
 import { Switch } from "@/components/ui/switch";
 import { Item, ItemActions, ItemContent, ItemTitle } from "@/components/ui/item";
-import ItemSubtitle from "@/components/ui/item/ItemSubtitle.vue";
+import ItemDescription from "@/components/ui/item/ItemDescription.vue";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import { useNdSourceSettings } from "@/modules/settings/store/sources";
 

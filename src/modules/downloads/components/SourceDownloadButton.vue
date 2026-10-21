@@ -3,6 +3,7 @@
     v-if="!hasCopy"
     size="icon-sm"
     variant="ghost"
+    color="muted"
     class="shrink-0 rounded-full text-muted-foreground hover:text-foreground transition-opacity"
     :class="[
       activeJob ? '' : 'opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100',

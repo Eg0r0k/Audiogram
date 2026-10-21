@@ -1,42 +1,6 @@
-import {
-  ephemeralFromUrl,
-  isEphemeralTrack,
-  type EphemeralTrack,
-  type PlayerTrack,
-} from "@/modules/player/types";
-import { ytStreamUrl, ytVideoIdFromStreamUrl } from "@/lib/stream-url";
 import type { SourceTrackDTO } from "@/modules/sources/types";
 import { ytAlbumId, ytArtistId, ytTrackId } from "@/types/track-ref";
-import { proxiedThumbnail, unproxiedThumbnail } from "./thumbnail";
-import type { YtMusicTrack, YtPlayable, YtSearchResult } from "../types";
-
-/**
- * Rebuilds a {@link YtPlayable} from an ephemeral `stream://…/yt/…` queue
- * track (the video id is the stream URL's last path segment) so menu actions
- * like download can work on already-playing YouTube tracks. Returns null for
- * non-YT tracks.
- */
-export function ytPlayableFromEphemeral(track: PlayerTrack | null): YtPlayable | null {
-  if (!isEphemeralTrack(track) || track.source.type !== "url") return null;
-
-  const id = ytVideoIdFromStreamUrl(track.source.url);
-  if (!id) return null;
-
-  const coverUrl = unproxiedThumbnail(track.cover);
-  return {
-    id,
-    title: track.title,
-    artist: track.artist ?? null,
-    thumbnail: coverUrl,
-    duration: track.duration ?? null,
-    meta: {
-      title: track.title,
-      artists: track.artist ? track.artist.split(/,\s*/).filter(Boolean) : [],
-      album: track.albumName ?? null,
-      coverUrl,
-    },
-  };
-}
+import type { YtMusicTrack, YtSearchResult } from "../types";
 
 /**
  * Full DTO from a music-track entity (collection/artist pages): carries the
@@ -86,61 +50,5 @@ export function ytVideoToDto(video: YtSearchResult): SourceTrackDTO {
     artistName: video.uploader ?? undefined,
     duration: video.duration ?? undefined,
     coverRef: video.thumbnail ?? undefined,
-  };
-}
-
-/**
- * Bridges a YT playable into the generic source DTO — the shape the pin
- * cascade and the download manager consume (M5: shared offline mechanism).
- * Playables carry no album/artist ids, so the row links to no album; use
- * {@link ytMusicTrackToDto} where the full entity is available.
- */
-export function ytPlayableToDto(item: YtPlayable): SourceTrackDTO {
-  return {
-    id: ytTrackId(item.id),
-    title: item.title,
-    artistName: item.artist ?? undefined,
-    albumTitle: item.meta?.album ?? undefined,
-    duration: item.duration ?? undefined,
-    coverRef: item.thumbnail ?? undefined,
-  };
-}
-
-/**
- * Builds an ephemeral queue track streaming over `stream://…/yt/…`. The scheme
- * resolves the googlevideo URL lazily on first request, so no `yt_resolve`
- * round-trip is needed up front — this is what makes synchronous play-all
- * queues possible. `sourceDto` attaches the catalog identity the row came
- * from: only downloads read it, and without it the pin lands artist- and
- * album-less.
- */
-export function ytEphemeralTrack(item: YtPlayable, sourceDto?: SourceTrackDTO): EphemeralTrack {
-  const track = ephemeralFromUrl(ytStreamUrl(item.id), {
-    title: item.title,
-    artist: item.artist ?? undefined,
-    albumName: item.meta?.album ?? undefined,
-    duration: item.duration ?? undefined,
-    cover: item.thumbnail ? proxiedThumbnail(item.thumbnail) : undefined,
-  });
-  return sourceDto ? { ...track, sourceDto } : track;
-}
-
-/**
- * The DTO a download should pin: the catalog one when the row carries it,
- * otherwise the playable's reduced shape (a stream rebuilt from its URL —
- * "Open with"-style entry points and older queue entries).
- */
-export function ytDownloadDto(track: PlayerTrack | null, playable: YtPlayable): SourceTrackDTO {
-  const carried = isEphemeralTrack(track) ? track.sourceDto : track?.sourceDto;
-  return carried ?? ytPlayableToDto(playable);
-}
-
-export function playableFromVideo(video: YtSearchResult): YtPlayable {
-  return {
-    id: video.id,
-    title: video.title,
-    artist: video.uploader,
-    thumbnail: video.thumbnail,
-    duration: video.duration,
   };
 }

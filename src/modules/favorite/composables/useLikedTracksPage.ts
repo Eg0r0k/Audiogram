@@ -14,7 +14,8 @@ export function useLikedTracksPage(sortKey: Ref<TrackSortKey | null>, searchQuer
   const {
     data: infiniteData,
     isLoading,
-    isError,
+    isError: isQueryError,
+    isFetchNextPageError,
     error,
     refetch,
     fetchNextPage,
@@ -29,6 +30,9 @@ export function useLikedTracksPage(sortKey: Ref<TrackSortKey | null>, searchQuer
     getNextPageParam: lastPage => lastPage.nextOffset,
     placeholderData: previousData => previousData,
   });
+
+  // A failed next page is shown at the end of the list it failed to extend.
+  const isError = computed(() => isQueryError.value && !isFetchNextPageError.value);
 
   const { data: likedTotalDurationSeconds } = useQuery(trackQueries.likedTotalDuration());
 
@@ -65,5 +69,6 @@ export function useLikedTracksPage(sortKey: Ref<TrackSortKey | null>, searchQuer
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetchNextPageError,
   };
 }

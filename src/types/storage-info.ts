@@ -11,6 +11,7 @@ export const StorageInfoSchema = object({
   tracksCount: optional(number(), 0),
   albumsCount: optional(number(), 0),
   artistsCount: optional(number(), 0),
+  listensCount: optional(number(), 0),
   storagePath: optional(string(), ""),
 });
 

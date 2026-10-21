@@ -138,6 +138,7 @@ export const queryKeys = {
       ["stats", "artistPlays", artistId] as const,
     topGenres: (limit: number, since?: number) => ["stats", "topGenres", limit, since] as const,
     totalTime: (since?: number) => ["stats", "totalTime", since] as const,
+    totalBetween: (from: number, to: number) => ["stats", "totalBetween", from, to] as const,
     dailyActivity: (days: number) => ["stats", "dailyActivity", days] as const,
     recentHistory: (limit: number) => ["stats", "recentHistory", limit] as const,
     summary: (since?: number) => ["stats", "summary", since] as const,

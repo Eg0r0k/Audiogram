@@ -17,10 +17,10 @@
         @submit.prevent="onSubmit"
       >
         <div class="space-y-2">
-          <Input
+          <InputFloating
             id="track-title"
             v-model="titleInput"
-            surface="card"
+            variant="soft"
             :label="$t('track.edit.placeholders.title')"
             :disabled="isPending"
             :class="{ 'border-destructive focus-visible:ring-destructive': errors.title }"
@@ -41,7 +41,7 @@
 
             <Button
               type="button"
-              variant="ghost-primary"
+              variant="ghost"
               size="sm"
               :aria-label="changeArtistsLabel"
               :disabled="isPending"
@@ -58,7 +58,8 @@
             <Badge
               v-for="name in artistChips"
               :key="name"
-              variant="secondary"
+              variant="soft"
+              color="neutral"
               class="max-w-full"
             >
               <span class="min-w-0 truncate">{{ name }}</span>
@@ -86,7 +87,7 @@
 
             <Button
               type="button"
-              variant="ghost-primary"
+              variant="ghost"
               size="sm"
               :aria-label="changeAlbumLabel"
               :disabled="isPending"
@@ -131,16 +132,24 @@
 
         <div class="grid grid-cols-2 gap-3">
           <div class="space-y-2">
-            <Input
+            <Label for="track-number">
+              {{ $t('track.edit.fields.trackNo') }}
+            </Label>
+            <InputNumber
               id="track-number"
-              v-model="trackNoInput"
-              type="number"
-              inputmode="numeric"
-              surface="card"
-              :label="$t('track.edit.fields.trackNo')"
+              v-model="trackNo"
+              variant="soft"
+              size="xl"
+              orientation="vertical"
+              :min="1"
+              :format-options="INTEGER_FORMAT"
               :disabled="isPending"
-              :class="{ 'border-destructive focus-visible:ring-destructive': errors.trackNo }"
-            />
+              :aria-invalid="!!errors.trackNo || undefined"
+            >
+              <InputNumberInput />
+              <InputNumberIncrement />
+              <InputNumberDecrement />
+            </InputNumber>
 
             <p
               v-if="errors.trackNo"
@@ -151,16 +160,24 @@
           </div>
 
           <div class="space-y-2">
-            <Input
+            <Label for="disk-number">
+              {{ $t('track.edit.fields.diskNo') }}
+            </Label>
+            <InputNumber
               id="disk-number"
-              v-model="diskNoInput"
-              type="number"
-              inputmode="numeric"
-              surface="card"
-              :label="$t('track.edit.fields.diskNo')"
+              v-model="diskNo"
+              variant="soft"
+              size="xl"
+              orientation="vertical"
+              :min="1"
+              :format-options="INTEGER_FORMAT"
               :disabled="isPending"
-              :class="{ 'border-destructive focus-visible:ring-destructive': errors.diskNo }"
-            />
+              :aria-invalid="!!errors.diskNo || undefined"
+            >
+              <InputNumberInput />
+              <InputNumberIncrement />
+              <InputNumberDecrement />
+            </InputNumber>
 
             <p
               v-if="errors.diskNo"
@@ -194,12 +211,14 @@ import { toTypedSchema } from "@vee-validate/valibot";
 import { array, integer, maxLength, minLength, minValue, number, object, optional, pipe, string } from "valibot";
 import type { InferOutput } from "valibot";
 import { useI18n } from "vue-i18n";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { Badge } from "@/components/ui/badge";
 import { sameArtistNames, splitArtistNames } from "@/lib/artist-names";
 import { NAME_MAX_LENGTH } from "@/lib/limits";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InputFloating } from "@/components/ui/input-floating";
+import { InputNumber, InputNumberDecrement, InputNumberIncrement, InputNumberInput } from "@/components/ui/input-number";
+import { Label } from "@/components/ui/label";
 import { Scrollable } from "@/components/ui/scrollable";
 import FloatingActionButton from "@/components/common/FloatingActionButton.vue";
 import { useKeyboardInset } from "@/composables/useKeyboardInset";
@@ -303,16 +322,6 @@ const artistsError = computed<string | undefined>(() => {
 const changeArtistsLabel = computed(() => `${t("common.change")} — ${t("track.edit.fields.artists")}`);
 const changeAlbumLabel = computed(() => `${t("common.change")} — ${t("track.edit.fields.album")}`);
 
-const toOptionalNumber = (value: string | number): number | undefined => {
-  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
-
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-
-  const parsed = Number(trimmed);
-  return Number.isFinite(parsed) ? parsed : undefined;
-};
-
 const titleInput = computed<string | number>({
   get: () => title.value,
   set: (value) => {
@@ -320,19 +329,8 @@ const titleInput = computed<string | number>({
   },
 });
 
-const trackNoInput = computed<string | number>({
-  get: () => trackNo.value ?? "",
-  set: (value) => {
-    trackNo.value = toOptionalNumber(value);
-  },
-});
-
-const diskNoInput = computed<string | number>({
-  get: () => diskNo.value ?? "",
-  set: (value) => {
-    diskNo.value = toOptionalNumber(value);
-  },
-});
+// Track and disc numbers are whole and never grouped ("1 000").
+const INTEGER_FORMAT: Intl.NumberFormatOptions = { maximumFractionDigits: 0, useGrouping: false };
 
 const draftFromTrack = (source: Track): TrackEditDraft => ({
   trackId: source.id,
@@ -487,7 +485,7 @@ const { mutateAsync: updateTrack, isPending } = useMutation({
     return updateTrackMetadataAndSync(queryClient, track.value, changes);
   },
   onError: () => {
-    toast.error(t("track.edit.saveFailed"));
+    toaster.add({ title: t("track.edit.saveFailed"), color: "destructive" });
   },
 });
 
@@ -510,7 +508,7 @@ const onSubmit = handleSubmit(async (values) => {
 
   clearDraft();
   queueStore.syncTrackMetadata(nextTrack);
-  toast.success(t("track.edit.saved"));
+  toaster.add({ title: t("track.edit.saved"), color: "success" });
   rightPanel.openTrackInfo({ track: nextTrack }, { depth: 1 });
 });
 </script>

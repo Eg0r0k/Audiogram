@@ -42,6 +42,8 @@ vi.mock("@/lib/logger", () => ({
 }));
 vi.mock("@/lib/environment/userAgent", () => ({ IS_TAURI: true, IS_MOBILE: false, IS_WINDOWS: false }));
 vi.mock("@/db/storage", () => ({ storageService: storageMock }));
+// Toasts are UI; the real toaster drags its components into this module graph.
+vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 vi.mock("@/modules/sources", () => ({
   sources: { get: () => providerMock, forTrack: () => providerMock },
 }));

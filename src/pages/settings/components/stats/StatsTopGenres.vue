@@ -3,7 +3,7 @@
     v-if="genres.length > 0"
     class="mt-3"
   >
-    <div class="px-4 py-3 text-primary font-medium">
+    <div class="px-4 py-3 font-semibold text-foreground">
       {{ $t("settings.stats.topGenres") }}
     </div>
     <div class="flex flex-col gap-2 px-4 pb-4">

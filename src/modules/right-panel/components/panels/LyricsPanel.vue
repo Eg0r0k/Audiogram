@@ -11,7 +11,8 @@
         <Button
           v-if="attachableTrack"
           variant="ghost"
-          size="icon"
+          color="muted"
+          size="icon-md"
           class="shrink-0 rounded-full"
           :aria-label="attachLabel"
           :disabled="isAttachingLyrics"

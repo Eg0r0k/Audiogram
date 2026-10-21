@@ -3,6 +3,7 @@
     v-if="pip.PIP_SUPPORTED"
     size="icon-sm"
     variant="ghost"
+    color="muted"
     :class="{ 'text-primary': pip.isPipOpen.value }"
     @click="handleToggle"
   >

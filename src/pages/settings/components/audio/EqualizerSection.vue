@@ -24,7 +24,7 @@
             :model-value="currentPreset"
             @update:model-value="(val) => applyPreset(val as string)"
           >
-            <SelectTrigger class="w-[180px] h-8 font-medium">
+            <SelectTrigger variant="ghost" class="w-[180px] h-8 font-medium">
               <SelectValue :placeholder="$t('settings.audio.selectPreset')" />
             </SelectTrigger>
             <SelectContent class="max-h-[300px]">
@@ -52,7 +52,7 @@
 
         <Button
           size="sm"
-          variant="ghost-primary"
+          variant="ghost"
           @click="resetEqualizer"
         >
           <TrashIcon class="size-4.5" />
@@ -74,17 +74,26 @@
             :key="band.frequency"
             class="flex flex-col items-center group relative h-full"
           >
-            <EditableValue
-              :model-value="band.gain"
-              :min="-15"
-              :max="15"
-              :step="1"
-              suffix=" dB"
-              class="absolute -top-6 z-10 [&:focus-within>span]:opacity-100!"
-              display-class="text-[11px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-background/80 px-1 rounded backdrop-blur-sm"
-              input-class="text-[11px] w-[24px] text-center"
-              @update:model-value="(val: string | number) => setBandGain(index, val as number)"
-            />
+            <Editable
+              :model-value="String(band.gain)"
+              activation-mode="dblclick"
+              submit-mode="both"
+              select-on-focus
+              class="absolute -top-6 z-10 text-[11px] font-bold text-primary"
+              :title="$t('common.editHint')"
+              @submit="(value) => submitGain(index, value)"
+            >
+              <EditableArea class="bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                <EditablePreview class="whitespace-nowrap">
+                  {{ formatGain(band.gain) }}
+                </EditablePreview>
+                <EditableInput
+                  inputmode="numeric"
+                  :aria-label="$t('common.editLabel')"
+                  class="text-center"
+                />
+              </EditableArea>
+            </Editable>
 
             <VerticalSlider
               :model-value="band.gain"
@@ -123,7 +132,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { EditableValue } from "@/components/ui/editable";
+import { Editable, EditableArea, EditableInput, EditablePreview } from "@/components/ui/editable";
 
 import VerticalSlider from "@/modules/player/components/eq/VerticalSlider.vue";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
@@ -145,4 +154,15 @@ const {
   resetEqualizer,
   setEqEnabled,
 } = useAudioSettings();
+
+const GAIN_LIMIT = 15;
+
+const formatGain = (gain: number) => `${gain > 0 ? "+" : ""}${gain} dB`;
+
+// Unparsable input leaves the stored gain, and the bound value with it, as is.
+const submitGain = (index: number, value: string | null | undefined) => {
+  const gain = Math.round(Number.parseFloat(value ?? ""));
+  if (Number.isNaN(gain)) return;
+  setBandGain(index, Math.min(GAIN_LIMIT, Math.max(-GAIN_LIMIT, gain)));
+};
 </script>

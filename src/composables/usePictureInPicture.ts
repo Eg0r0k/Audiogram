@@ -1,4 +1,4 @@
-import vRipple from "@/directives/ripple";
+import vRipple from "@/lib/ripple";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import type { App, Component } from "vue";
 import { createApp, ref, shallowRef } from "vue";

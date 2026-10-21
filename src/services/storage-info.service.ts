@@ -69,14 +69,18 @@ async function getStoragePath(): Promise<string> {
   return "Browser OPFS";
 }
 
-async function getDbSize(): Promise<number> {
-  if (!platformCaps.hasFs && navigatorStorage?.estimate) {
+// The origin's usage is IndexedDB plus whatever else the origin stores. In
+// the browser that includes OPFS, where the tracks and lyrics live, so their
+// already counted sizes come off; with a native file system they are outside.
+async function getDbSize(fileBytes: number): Promise<number> {
+  if (navigatorStorage?.estimate) {
     try {
       const estimate = await navigatorStorage.estimate();
-      return estimate.usage ?? 0;
+      const usage = estimate.usage ?? 0;
+      return platformCaps.hasFs ? usage : Math.max(0, usage - fileBytes);
     }
     catch {
-      return 0;
+      // Fall through to the row-count guess.
     }
   }
 
@@ -97,28 +101,32 @@ async function getDbSize(): Promise<number> {
 }
 
 export async function collectStorageInfo(): Promise<StorageInfo> {
-  const [folderSizes, dbSize, quota, storagePath, [tracksCount, albumsCount, artistsCount]] = await Promise.all([
+  const [folderSizes, quota, storagePath, [tracksCount, albumsCount, artistsCount, listensCount]] = await Promise.all([
     calculateFolderSizeParallel(["tracks", "lyrics"]),
-    getDbSize(),
     getQuotaInfo(),
     getStoragePath(),
     Promise.all([
       db.tracks.where("pinned").equals(1).count(),
       db.albums.where("pinned").equals(1).count(),
       db.artists.where("pinned").equals(1).count(),
+      db.listenEvents.count(),
     ]),
   ]);
+  const tracksSize = folderSizes.get("tracks") ?? 0;
+  const lyricsSize = folderSizes.get("lyrics") ?? 0;
+  const dbSize = await getDbSize(tracksSize + lyricsSize);
 
   return {
-    tracksSize: folderSizes.get("tracks") ?? 0,
+    tracksSize,
     coversSize: 0,
-    lyricsSize: folderSizes.get("lyrics") ?? 0,
+    lyricsSize,
     dbSize,
     quotaTotal: quota.total,
     quotaUsed: quota.used,
     tracksCount,
     albumsCount,
     artistsCount,
+    listensCount,
     storagePath,
   };
 }

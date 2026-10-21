@@ -1,6 +1,6 @@
 <template>
   <SettingsGroup class="mt-3">
-    <div class="px-4 py-3 text-primary font-medium">
+    <div class="px-4 py-3 font-semibold text-foreground">
       {{ $t("settings.stats.topTracks") }}
     </div>
 

@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   Dialog,
@@ -53,15 +53,6 @@ const activeChangelog = computed(() => {
   }
   return changelog;
 });
-
-watch(
-  () => changelogStore.hasUnseenUpdate,
-  (hasUnseenUpdate) => {
-    if (!hasUnseenUpdate || changelogStore.isDialogOpen) return;
-    changelogStore.openPending();
-  },
-  { immediate: true },
-);
 
 const handleOpenChange = (open: boolean) => {
   if (!open) {

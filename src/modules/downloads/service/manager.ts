@@ -1,5 +1,5 @@
 import pLimit from "p-limit";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { i18n } from "@/app/i18n";
 import type { DownloadJobEntity } from "@/db/entities";
 import { downloadJobRepository, trackRepository } from "@/db/repositories";
@@ -71,6 +71,7 @@ export async function enqueueTrackDownload(trackId: TrackId, batchId?: string): 
 
   // A terminal error from a previous run is superseded by this attempt.
   await unwrapResult(downloadJobRepository.deleteErrorsByTrackId(trackId));
+  useDownloadsStore().removeFailed(trackId);
 
   const job: DownloadJobEntity = {
     id: crypto.randomUUID(),
@@ -117,6 +118,12 @@ export async function cancelTrackDownload(jobId: string): Promise<void> {
   if (job.batchId) useDownloadsStore().shrinkBatch(job.batchId);
 }
 
+/** Drops a failed download the user gave up on, error row included. */
+export const dismissFailedDownload = async (jobId: string): Promise<void> => {
+  await unwrapResult(downloadJobRepository.delete(jobId));
+  useDownloadsStore().dismissFailed(jobId);
+};
+
 /**
  * Called once at startup: requeues jobs a dead session left running, sweeps
  * temp orphans BEFORE the first job can start (a sweep racing an active
@@ -132,6 +139,8 @@ export async function initDownloadManager(): Promise<void> {
   const store = useDownloadsStore();
   const queued = await unwrapResult(downloadJobRepository.findByStatus("queued"));
   for (const job of queued) store.upsert(runtimeOf(job));
+  const failed = await unwrapResult(downloadJobRepository.findByStatus("error"));
+  for (const job of failed) store.addFailed({ jobId: job.id, trackId: job.trackId });
 
   // pump() reports its own failures; callers only kick the scheduler.
   pump().catch(() => {});
@@ -280,13 +289,29 @@ async function failJob(job: DownloadJobEntity, error: SourceError): Promise<void
     error: error.message,
   }));
   store.remove(job.id);
+  store.addFailed({ jobId: job.id, trackId: job.trackId });
   if (job.batchId) store.bumpBatch(job.batchId, "failed");
   getLogger().error(`[Downloads] Failed ${job.trackId} (${error.kind}): ${error.message}`);
   await notifyTerminalFailure(job.trackId);
 }
 
-/** Terminal failure toast; the title lookup is best-effort decoration. */
-async function notifyTerminalFailure(trackId: TrackId): Promise<void> {
+const FAILED_TOAST_ID = "downloads-failed";
+/** Tracks the open failure toast speaks for; a batch that fails folds into one toast. */
+let unacknowledged: TrackId[] = [];
+
+const retryDownloads = async (trackIds: TrackId[]): Promise<void> => {
+  try {
+    for (const trackId of trackIds) await enqueueTrackDownload(trackId);
+  }
+  catch (error) {
+    getLogger().error(`[Downloads] Retrying failed downloads failed: ${String(error)}`);
+    toaster.add({ title: i18n.global.t("downloads.failed"), color: "destructive" });
+  }
+};
+
+/** The single-track title names the track; the lookup is best-effort decoration. */
+const failureTitle = async (trackId: TrackId, count: number): Promise<string> => {
+  if (count > 1) return i18n.global.t("downloads.failedMany", { count });
   let title: string | undefined;
   try {
     title = (await unwrapResult(trackRepository.findById(trackId)))?.title;
@@ -294,7 +319,24 @@ async function notifyTerminalFailure(trackId: TrackId): Promise<void> {
   catch {
     // The toast still fires, just without the track name.
   }
-  toast.error(title
-    ? i18n.global.t("downloads.failedTitled", { title })
-    : i18n.global.t("downloads.failed"));
-}
+  return title ? i18n.global.t("downloads.failedTitled", { title }) : i18n.global.t("downloads.failed");
+};
+
+const notifyTerminalFailure = async (trackId: TrackId): Promise<void> => {
+  unacknowledged = [...unacknowledged.filter(id => id !== trackId), trackId];
+  const trackIds = unacknowledged;
+  toaster.add({
+    id: FAILED_TOAST_ID,
+    title: await failureTitle(trackId, trackIds.length),
+    color: "destructive",
+    actions: [{
+      label: i18n.global.t("common.retry"),
+      onClick: () => {
+        retryDownloads(trackIds).catch(() => undefined);
+      },
+    }],
+    onClose: () => {
+      unacknowledged = [];
+    },
+  });
+};

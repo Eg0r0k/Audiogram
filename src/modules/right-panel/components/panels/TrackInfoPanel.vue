@@ -8,33 +8,32 @@
       @close="rightPanel.close()"
     >
       <template #trailing>
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <Button
-              size="icon"
-              class="rounded-full"
-              variant="ghost"
-            >
-              <IconDots class="size-6" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            side="left"
-            align="start"
+        <MenuTrigger as-child>
+          <Button
+            size="icon-md"
+            class="rounded-full"
+            variant="ghost"
+            color="muted"
           >
-            <DropdownMenuItem @click="openEdit">
-              <IconPencil class="size-5" />
-              {{ $t('common.edit') }}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              @click="handleDelete"
-            >
-              <TrashIcon class="size-5" />
-              {{ $t('common.delete') }}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <IconDots class="size-6" />
+          </Button>
+        </MenuTrigger>
+        <Menu
+          anchor="top start"
+          self="top end"
+        >
+          <MenuItem @click="openEdit">
+            <IconPencil class="size-5" />
+            {{ $t('common.edit') }}
+          </MenuItem>
+          <MenuItem
+            color="destructive"
+            @click="handleDelete"
+          >
+            <TrashIcon class="size-5" />
+            {{ $t('common.delete') }}
+          </MenuItem>
+        </Menu>
       </template>
     </RightPanelHeader>
 
@@ -197,12 +196,19 @@
           <Button
             class="w-full h-14 justify-start  "
             size="xl"
-            variant="destructive-link"
+            variant="ghost"
+            color="destructive"
             @click="handleDelete"
           >
             <TrashIcon class="size-6" />
             {{ $t('common.delete') }}
           </Button>
+          <InlineError
+            v-if="deleteFailed"
+            class="px-4 pb-2"
+          >
+            {{ $t('track.deleteFailed') }}
+          </InlineError>
         </section>
       </div>
     </Scrollable>
@@ -213,7 +219,7 @@
 import { computed, ref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
-import { toast } from "vue-sonner";
+import InlineError from "@/components/common/InlineError.vue";
 import { Button } from "@/components/ui/button";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { formatDuration } from "@/lib/format/time";
@@ -248,10 +254,8 @@ import TrashIcon from "~icons/tabler/trash";
 import IconUsers from "~icons/tabler/users";
 import IconWaveSine from "~icons/tabler/wave-sine";
 import IconWorld from "~icons/tabler/world";
-import DropdownMenu from "@/components/ui/dropdown-menu/DropdownMenu.vue";
-import DropdownMenuTrigger from "@/components/ui/dropdown-menu/DropdownMenuTrigger.vue";
-import DropdownMenuContent from "@/components/ui/dropdown-menu/DropdownMenuContent.vue";
-import DropdownMenuItem from "@/components/ui/dropdown-menu/DropdownMenuItem.vue";
+import { Menu, MenuItem, MenuTrigger } from "@/components/ui/menu";
+
 const props = defineProps<{
   payload: RightPanelTrackInfoPayload;
 }>();
@@ -274,7 +278,7 @@ const storagePathValue = computed(() =>
   track.value.storagePath || localCopy.value?.storagePath || "—",
 );
 
-const { confirmDeletion, deleteWithUndo } = useTrackDeletion();
+const { deleteWithUndo } = useTrackDeletion();
 const isDeleting = ref(false);
 
 const formattedDuration = computed(() => formatDuration(track.value.duration));
@@ -302,14 +306,11 @@ function handleBack(): void {
   rightPanel.back();
 }
 
+const deleteFailed = ref(false);
+
 async function handleDelete(): Promise<void> {
   if (isDeleting.value) return;
-  if (!(await confirmDeletion([track.value.id], track.value.title))) return;
-  await performDelete();
-}
-
-async function performDelete(): Promise<void> {
-  if (isDeleting.value) return;
+  deleteFailed.value = false;
 
   isDeleting.value = true;
   try {
@@ -319,7 +320,7 @@ async function performDelete(): Promise<void> {
   }
   catch (error) {
     getLogger().error(`[TrackInfoPanel] Deleting the track failed: ${String(error)}`);
-    toast.error(t("track.deleteFailed"));
+    deleteFailed.value = true;
   }
   finally {
     isDeleting.value = false;

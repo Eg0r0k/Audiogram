@@ -34,11 +34,15 @@ const chipLabels: Record<YtChip, string> = {
       :model-value="chip"
       @update:model-value="emit('update:chip', $event as YtChip)"
     >
-      <TabsList class="inline-flex items-center gap-0 px-4">
+      <TabsList
+        variant="chip"
+        size="sm"
+        class="inline-flex items-center px-4 py-2"
+      >
         <TabsTrigger
           v-for="value in CHIPS"
           :key="value"
-          class="text-base font-medium mb-0.5"
+          class="text-sm font-medium"
           :value="value"
         >
           {{ chipLabels[value] }}

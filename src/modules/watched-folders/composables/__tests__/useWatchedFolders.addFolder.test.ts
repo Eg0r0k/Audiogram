@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
-import { toast } from "vue-sonner";
 import type { WatchedFolder } from "../../types";
+import { shownToasts } from "@/test/toasts";
 
 const pickerMock = vi.hoisted(() => ({
   isAndroidFolderPickerAvailable: vi.fn(() => true),
@@ -39,9 +39,7 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   exists: vi.fn(async () => false),
   stat: vi.fn(),
 }));
-vi.mock("vue-sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
-}));
+vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 vi.mock("vue-i18n", () => ({
   useI18n: () => ({ t: (key: string, params?: Record<string, unknown>) =>
     params ? `${key} ${JSON.stringify(params)}` : key }),
@@ -81,8 +79,8 @@ describe("useWatchedFolders.addFolder on Android", () => {
     await useWatchedFolders().addFolder();
 
     expect(storeMock.addFolder).toHaveBeenCalledWith("/storage/emulated/0/Download/Albums");
-    expect(toast.error).not.toHaveBeenCalled();
-    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining("watchedFolders.folderAdded"));
+    expect(shownToasts("destructive")).toHaveLength(0);
+    expect(shownToasts("success")).toContainEqual(expect.objectContaining({ title: expect.stringContaining("watchedFolders.folderAdded") }));
   });
 
   it("does nothing when the user cancels the picker", async () => {
@@ -91,17 +89,16 @@ describe("useWatchedFolders.addFolder on Android", () => {
     await useWatchedFolders().addFolder();
 
     expect(storeMock.addFolder).not.toHaveBeenCalled();
-    expect(toast.error).not.toHaveBeenCalled();
-    expect(toast.success).not.toHaveBeenCalled();
+    expect(shownToasts("destructive")).toHaveLength(0);
+    expect(shownToasts("success")).toHaveLength(0);
   });
 
-  it("rejects non-primary volumes with a toast and adds nothing", async () => {
+  it("turns non-primary volumes away with the reason and adds nothing", async () => {
     pickerMock.pickAndroidFolderTreeUri.mockResolvedValue(`${TREE}1D04-2A08%3AMusic`);
 
-    await useWatchedFolders().addFolder();
+    await expect(useWatchedFolders().addFolder()).resolves.toBe("watchedFolders.unsupportedVolume");
 
     expect(storeMock.addFolder).not.toHaveBeenCalled();
-    expect(toast.error).toHaveBeenCalledWith("watchedFolders.unsupportedVolume");
   });
 
   it("falls back to the public Music folder when the bridge is unavailable", async () => {

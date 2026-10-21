@@ -30,6 +30,7 @@
           <Button
             v-if="active"
             variant="ghost"
+            color="muted"
             size="sm"
             @click="$emit('rebuild')"
           >

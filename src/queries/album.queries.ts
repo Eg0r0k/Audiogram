@@ -31,6 +31,7 @@ import {
   trackCascadeTables,
 } from "./track-cascade";
 import type { AlbumPageData, PaginatedTracksResult } from "./types";
+import { deleteOwnedFiles } from "@/services/track-files";
 
 const PAGE_SIZE = 50;
 
@@ -279,7 +280,7 @@ export async function updateAlbumAndSync(
 
 /**
  * `deleteTracks` cascades the album's tracks and their playlist references in
- * one transaction; cache and search sync run strictly after it. Without it the
+ * one transaction; cache, search and their files are dealt with strictly after it. Without it the
  * album only ungroups — its tracks stay in the library, remote ones included,
  * keeping whatever is downloaded.
  */
@@ -320,6 +321,7 @@ export async function deleteAlbumAndSync(
     },
   );
   if (txResult.isErr()) throw txResult.error;
+  if (cascadeTracks) await deleteOwnedFiles(rawTracks);
 
   await settleLibraryReads(queryClient);
   await syncAfterTrackPurge(

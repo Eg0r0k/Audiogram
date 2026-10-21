@@ -53,3 +53,15 @@ export const parseYoutubeCollectionUrl = (input: string): YtLinkTarget | null =>
 
   return null;
 };
+
+/** A short, readable form of a pasted YouTube link; null when it opens nothing. */
+export const formatYoutubeQueryLink = (url: URL): string | null => {
+  const target = parseYoutubeCollectionUrl(url.href);
+  switch (target?.kind) {
+    case "video": return `youtu.be/${target.id}`;
+    case "playlist": return `youtube.com/playlist?list=${target.id}`;
+    case "album": return `music.youtube.com/browse/${target.id}`;
+    case "artist": return `youtube.com/channel/${target.id}`;
+    default: return null;
+  }
+};

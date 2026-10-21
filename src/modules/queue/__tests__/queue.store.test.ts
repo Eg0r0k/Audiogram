@@ -17,6 +17,7 @@ import { setMediaServerBaseForTests } from "@/lib/stream-url";
 import { useEventBus } from "@vueuse/core";
 import { PlaybackFailure } from "@/modules/player/service/playback-resolver.service";
 import { playbackStalledEvent, trackSkippedEvent } from "../lib/queue-events";
+import { shadowPinRemoteTracks } from "../lib/shadow-pin";
 import { useQueueStore } from "../store/queue.store";
 
 vi.mock("@/lib/logger", () => ({
@@ -36,6 +37,7 @@ vi.mock("@/db/repositories", () => ({
 vi.mock("@/modules/recommendations/service/recommender.service", () => ({
   getRecommendations: vi.fn(),
 }));
+vi.mock("../lib/shadow-pin", () => ({ shadowPinRemoteTracks: vi.fn() }));
 
 function createTrack(id: string, title: string = "Test Track"): Track {
   return {
@@ -465,6 +467,7 @@ describe("queue.store", () => {
       store.addMultipleToQueue(tracks);
 
       expect(store.queue).toHaveLength(3);
+      expect(shadowPinRemoteTracks).toHaveBeenCalledWith(tracks);
     });
   });
 
@@ -498,6 +501,17 @@ describe("queue.store", () => {
       expect(store.queue[1]).toBe(item);
       expect(store.currentTrack?.id).toBe("9");
       expect(playSpy).toHaveBeenLastCalledWith(createTrack("9"));
+    });
+
+    it("shadow-pins what it inserts, like setQueue does", () => {
+      const store = useQueueStore();
+      const single = createTrack("one");
+      const many = [createTrack("two"), createTrack("three")];
+
+      store.insertNext(single);
+      store.insertMultipleNext(many);
+
+      expect(vi.mocked(shadowPinRemoteTracks).mock.calls).toEqual([[[single]], [many]]);
     });
 
     it("should insert at beginning when no current track", () => {

@@ -31,7 +31,7 @@
     <component
       :is="Item"
       v-if="canDelete"
-      variant="destructive"
+      color="destructive"
       @click="actions.delete"
     >
       <IconTrash class="size-5.5" />

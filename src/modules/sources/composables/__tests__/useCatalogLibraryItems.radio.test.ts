@@ -16,7 +16,7 @@ import { useCatalogLibraryItems } from "../useCatalogLibraryItems";
 
 const itemsFor = (kind: SourceKind, filter: LibraryFilter) => {
   const scope = effectScope();
-  const items = scope.run(() => useCatalogLibraryItems(kind, filter).items.value)!;
+  const items = scope.run(() => useCatalogLibraryItems(kind).itemsByFilter.value[filter])!;
   scope.stop();
   return items;
 };

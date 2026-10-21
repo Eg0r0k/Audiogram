@@ -8,7 +8,7 @@ import { filterFilesByExtension } from "@/lib/files/filterFiles";
 import { ACCEPTED_AUDIO_EXTENSIONS } from "@/lib/files/acceptedAudioExtensions";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { requestFiles } from "@/lib/files/requestFiles";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { i18n } from "@/app/i18n";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import type { ImportBatchResult, ImportErrorCode } from "@/services/types";
@@ -68,20 +68,27 @@ const clearDismissTimer = () => {
 
 const notifyBatchFinished = (result: ImportBatchResult) => {
   const { t } = i18n.global;
-  const issues = result.failed.length + result.skipped;
+  const imported = result.successful.length;
+  const failed = result.failed.length;
+  const issues = failed + result.skipped;
+  const details = [{
+    label: t("common.import.toast.details"),
+    onClick: () => useRightPanelStore().openImport(),
+  }];
+
   if (issues === 0) {
-    toast.success(t("common.import.toast.done", result.successful.length));
-    return;
+    toaster.add({ title: t("common.import.toast.done", imported), color: imported > 0 ? "success" : "neutral" });
   }
-  toast.warning(
-    t("common.import.toast.doneWithIssues", { imported: result.successful.length, issues }),
-    {
-      action: {
-        label: t("common.import.toast.details"),
-        onClick: () => useRightPanelStore().openImport(),
-      },
-    },
-  );
+  // Skipped files are duplicates of library tracks, not failures.
+  else if (imported === 0 && failed === 0) {
+    toaster.add({ title: t("common.import.toast.alreadyInLibrary"), color: "neutral" });
+  }
+  else if (imported === 0) {
+    toaster.add({ title: t("common.import.toast.noneImported"), color: "destructive", actions: details });
+  }
+  else {
+    toaster.add({ title: t("common.import.toast.doneWithIssues", { imported, issues }), color: "warning", actions: details });
+  }
 };
 
 export function useImport() {
@@ -331,7 +338,7 @@ export function useImport() {
    * `<input type=file>` picker misbehaves in WebView2 and forces the slower
    * web-`File` branch. The web build keeps the HTML input.
    */
-  async function pickAndImport(options?: { title?: string }) {
+  async function pickAndImportOrThrow(options?: { title?: string }) {
     if (platformCaps.hasFs && musicLibraryEngine.isNativeImportAvailable) {
       const paths = await musicLibraryEngine.pickFiles({
         title: options?.title ?? "Import tracks",
@@ -350,6 +357,16 @@ export function useImport() {
       await importFiles(files);
     }
   }
+
+  const pickAndImport = async (options?: { title?: string }): Promise<void> => {
+    try {
+      await pickAndImportOrThrow(options);
+    }
+    catch (error) {
+      getLogger().error(`[Import] Picking and importing files failed: ${String(error)}`);
+      toaster.add({ title: i18n.global.t("common.import.toast.failed"), color: "destructive" });
+    }
+  };
 
   return {
     isOpen,

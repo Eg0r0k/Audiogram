@@ -1,5 +1,5 @@
 import { platformCaps } from "@/lib/environment/platformCaps";
-import { proxyPathFromUrl, ytImageUrl } from "@/lib/stream-url";
+import { ytImageUrl } from "@/lib/stream-url";
 import { THUMB_SIZE_FULL } from "@/lib/media/cover-sizes";
 
 /**
@@ -28,22 +28,4 @@ export function proxiedThumbnail(url: string, size: number = THUMB_SIZE_FULL): s
   const sharp = upscaledThumbnail(url, size);
   if (!platformCaps.hasYoutube) return sharp;
   return ytImageUrl(sharp);
-}
-
-/**
- * Recovers the original https thumbnail URL from one proxied through the
- * `ytimg/<enc url>` server route. Non-proxied URLs pass through unchanged;
- * anything that is not a URL at all yields null.
- */
-export function unproxiedThumbnail(url: string | null | undefined): string | null {
-  if (!url) return null;
-  const route = proxyPathFromUrl(url);
-  if (route?.startsWith("ytimg/")) return route.slice("ytimg/".length);
-  try {
-    new URL(url);
-    return url;
-  }
-  catch {
-    return null;
-  }
 }

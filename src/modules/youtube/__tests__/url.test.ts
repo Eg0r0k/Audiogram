@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseYoutubeCollectionUrl } from "../lib/url";
+import { formatYoutubeQueryLink, parseYoutubeCollectionUrl } from "../lib/url";
 
 describe("parseYoutubeCollectionUrl", () => {
   it("recognizes playlist links in every common shape", () => {
@@ -68,5 +68,24 @@ describe("parseYoutubeCollectionUrl", () => {
     expect(parseYoutubeCollectionUrl("https://vimeo.com/playlist?list=PLabc")).toBeNull();
     expect(parseYoutubeCollectionUrl("https://youtu.be/")).toBeNull();
     expect(parseYoutubeCollectionUrl("")).toBeNull();
+  });
+});
+
+describe("formatYoutubeQueryLink", () => {
+  it("shortens a watch link to youtu.be and drops the rest of the query", () => {
+    expect(formatYoutubeQueryLink(new URL("https://www.youtube.com/watch?v=vzhH2312345&t=30&list=RDvzhH2312345"))).toBe("youtu.be/vzhH2312345");
+  });
+
+  it("names a playlist by its list id", () => {
+    expect(formatYoutubeQueryLink(new URL("https://music.youtube.com/playlist?list=PLabc123"))).toBe("youtube.com/playlist?list=PLabc123");
+  });
+
+  it("keeps albums and channels as short paths", () => {
+    expect(formatYoutubeQueryLink(new URL("https://music.youtube.com/browse/MPREb_x1"))).toBe("music.youtube.com/browse/MPREb_x1");
+    expect(formatYoutubeQueryLink(new URL("https://www.youtube.com/channel/UCabc"))).toBe("youtube.com/channel/UCabc");
+  });
+
+  it("leaves links it cannot open to the generic cleanup", () => {
+    expect(formatYoutubeQueryLink(new URL("https://www.youtube.com/feed/library"))).toBeNull();
   });
 });

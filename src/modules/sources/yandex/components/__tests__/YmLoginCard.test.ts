@@ -15,13 +15,20 @@ vi.mock("@/queries/source.queries", () => ({ invalidateSource: vi.fn(() => Promi
 vi.mock("@/lib/environment/userAgent", () => ({ IS_TAURI: true, IS_MOBILE: false, IS_WINDOWS: true }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn() }) }));
 
+import { toaster } from "@/app/toaster";
+import { vCopy } from "@/directives/copy";
 import { useYmAuthStore } from "../../store/ym-auth.store";
 import YmLoginCard from "../YmLoginCard.vue";
 
 const CODE = { userCode: "fzlazd3z", verificationUrl: "https://ya.ru/device", expiresIn: 300, interval: 5 };
 
 let pinia = createPinia();
-const renderCard = () => render(YmLoginCard, { global: { plugins: [pinia, i18n] } });
+const renderCard = () => render(YmLoginCard, { global: { plugins: [pinia, i18n], directives: { copy: vCopy } } });
+const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+const shownTitles = (color: string) => vi.mocked(toaster.add).mock.calls
+  .map(([toast]) => toast)
+  .filter(toast => toast.color === color)
+  .map(toast => toast.title);
 
 describe("YmLoginCard", () => {
   beforeEach(() => {
@@ -29,6 +36,8 @@ describe("YmLoginCard", () => {
     setActivePinia(pinia);
     invokeCommand.mockReset();
     openExternal.mockClear();
+    i18n.global.locale.value = "en";
+    vi.spyOn(toaster, "add").mockReturnValue("toast").mockClear();
   });
 
   it("offers to sign in when nobody is signed in", async () => {
@@ -64,6 +73,30 @@ describe("YmLoginCard", () => {
 
     await fireEvent.click(screen.getByRole("button", { name: /sign out/i }));
     expect(invokeCommand).toHaveBeenCalledWith("ym_auth_logout");
+  });
+
+  it("reports a sign-out that failed", async () => {
+    invokeCommand.mockRejectedValue(new Error("keyring locked"));
+    useYmAuthStore().applyStatus({ loggedIn: true, uid: 42, hasPlus: false, displayName: "Tester" });
+    renderCard();
+
+    await fireEvent.click(screen.getByRole("button", { name: /sign out/i }));
+    await flush();
+
+    expect(shownTitles("destructive")).toEqual(["Couldn't sign out of Yandex Music"]);
+  });
+
+  it("says when the code could not be copied", async () => {
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: () => Promise.reject(new Error("denied")) }, configurable: true });
+    Object.defineProperty(document, "execCommand", { value: () => false, configurable: true });
+    useYmAuthStore().beginPending(CODE, Date.now());
+    renderCard();
+
+    await fireEvent.click(screen.getByText("fzlazd3z"));
+    await flush();
+
+    expect(shownTitles("success")).toEqual([]);
+    expect(shownTitles("destructive")).toEqual(["Couldn't copy"]);
   });
 
   it("an expired session shows the banner and the way back in", () => {

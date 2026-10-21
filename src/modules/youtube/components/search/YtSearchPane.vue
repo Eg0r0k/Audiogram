@@ -34,12 +34,11 @@
             context="yt-search"
           >
             <TrackRow
-              :track="linkVideo.track"
-              :cover-url="linkVideo.cover"
+              :track="linkVideo"
               hide-index
               :menu-index="0"
               menu-target="yt-search"
-              @play="play(linkVideo.playable)"
+              @play="playLinkVideo(linkVideo)"
             />
             <TrackDropdown context="yt-search" />
           </TrackContextMenu>
@@ -114,14 +113,14 @@ import { routeLocation } from "@/app/router/route-locations";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
-import type { PlayerTrack, Track } from "@/modules/player/types";
+import type { Track } from "@/modules/player/types";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
+import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
+import { getLogger } from "@/lib/logger";
+import { ytTrackId } from "@/types/track-ref";
 import { youtubeProvider } from "../../provider";
 import { parseYoutubeCollectionUrl } from "../../lib/url";
-import { playableFromVideo } from "../../lib/playable";
-import { THUMB_SIZE_ROW } from "@/lib/media/cover-sizes";
-import { proxiedThumbnail } from "../../lib/thumbnail";
-import { useYoutube, ytEphemeralTrack } from "../../composables/useYoutube";
-import type { YtPlayable } from "../../types";
+import { ytVideoToDto } from "../../lib/playable";
 import IconBrandYoutube from "~icons/tabler/brand-youtube-filled";
 import SourceHealthNotice from "@/modules/sources/components/SourceHealthNotice.vue";
 import YtSearchAllSections from "./YtSearchAllSections.vue";
@@ -179,20 +178,15 @@ const linkRoute = computed<RouteLocationRaw | null>(() => {
   }
 });
 
-const { play } = useYoutube();
-
-interface LinkVideoRow {
-  playable: YtPlayable;
-  track: Track;
-  cover?: string;
-}
+const queueStore = useQueueStore();
 
 // A bare/mix video link carries no metadata of its own — a search by the raw
 // id returns the exact video (title, thumbnail, duration), fetched eagerly so
 // the pasted link renders as a real TrackRow. If the lookup misses, the row
 // still plays blind: the stream proxy needs only the id, and the thumbnail
-// URL shape is deterministic.
-const linkVideo = shallowRef<LinkVideoRow | null>(null);
+// URL shape is deterministic. Either way it is a catalog row like any search
+// hit, so it plays, downloads and opens its menu through the same path.
+const linkVideo = shallowRef<Track | null>(null);
 
 watch(linkTarget, async (target) => {
   linkVideo.value = null;
@@ -206,22 +200,20 @@ watch(linkTarget, async (target) => {
   const match = results.isOk()
     ? results.value.find(video => video.id === id)
     : undefined;
-  const playable: YtPlayable = match
-    ? playableFromVideo(match)
-    : {
-        id,
-        title: `YouTube · ${id}`,
-        artist: null,
-        thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
-        duration: null,
-      };
 
-  linkVideo.value = {
-    playable,
-    track: ytEphemeralTrack(playable) as PlayerTrack as Track,
-    cover: playable.thumbnail ? proxiedThumbnail(playable.thumbnail, THUMB_SIZE_ROW) : undefined,
-  };
+  linkVideo.value = sourceTrackToDisplay(match
+    ? ytVideoToDto(match)
+    : {
+        id: ytTrackId(id),
+        title: `YouTube · ${id}`,
+        coverRef: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+      });
 }, { immediate: true });
+
+const playLinkVideo = (track: Track) => {
+  queueStore.setQueue([track], 0, { type: "manual" })
+    .catch(error => getLogger().error(`[YouTube] Playing a pasted link failed: ${String(error)}`));
+};
 
 function applyYtHistoryItem(value: string) {
   applyHistoryItem(value);

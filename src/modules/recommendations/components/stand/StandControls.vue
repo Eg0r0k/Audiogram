@@ -7,23 +7,31 @@
     >
       <div class="flex items-center justify-between text-xs">
         <span :title="COMPONENT_DESCRIPTIONS[key]">{{ key }}</span>
-        <input
-          type="number"
-          step="0.05"
-          min="0"
-          max="1"
-          class="w-16 rounded border bg-transparent px-1 text-right tabular-nums"
-          :aria-label="key"
-          :value="weights[key].toFixed(2)"
-          @change="setWeight(key, ($event.target as HTMLInputElement).valueAsNumber)"
+        <InputNumber
+          size="xs"
+          orientation="vertical"
+          class="w-20"
+          :step="0.05"
+          :min="0"
+          :max="1"
+          :format-options="WEIGHT_FORMAT"
+          :model-value="weights[key]"
+          @update:model-value="v => v !== undefined && setWeight(key, v)"
         >
+          <InputNumberInput
+            class="tabular-nums"
+            :aria-label="key"
+          />
+          <InputNumberIncrement />
+          <InputNumberDecrement />
+        </InputNumber>
       </div>
       <Slider
-        :model-value="[weights[key]]"
+        :model-value="weights[key]"
         :min="0"
         :max="1"
         :step="0.05"
-        @update:model-value="v => setWeight(key, v?.[0] ?? 0)"
+        @update:model-value="v => setWeight(key, (v as number | undefined) ?? 0)"
       />
     </div>
 
@@ -34,23 +42,28 @@
         :for="`stand-param-${spec.key}`"
         class="flex flex-col gap-1"
       >{{ spec.key }}
-        <input
+        <InputNumber
           :id="`stand-param-${spec.key}`"
-          type="number"
+          size="xs"
+          orientation="vertical"
           :min="spec.min"
           :max="spec.max"
           :step="spec.step"
-          class="rounded border bg-transparent px-1"
-          :value="params[spec.key]"
-          @change="setParam(spec, $event)"
+          :model-value="params[spec.key]"
+          @update:model-value="v => v !== undefined && setParam(spec, v)"
         >
+          <InputNumberInput class="tabular-nums" />
+          <InputNumberIncrement />
+          <InputNumberDecrement />
+        </InputNumber>
       </label>
     </div>
 
     <div class="flex flex-wrap gap-2">
       <Button
         size="sm"
-        variant="secondary"
+        variant="soft"
+        color="neutral"
         @click="$emit('reset')"
       >
         Сброс
@@ -64,7 +77,8 @@
       </Button>
       <Button
         size="sm"
-        variant="secondary"
+        variant="soft"
+        color="neutral"
         @click="$emit('copy')"
       >
         Скопировать JSON
@@ -72,6 +86,7 @@
       <Button
         size="sm"
         variant="ghost"
+        color="muted"
         @click="$emit('reload')"
       >
         Перезагрузить данные
@@ -79,6 +94,7 @@
       <Button
         size="sm"
         variant="ghost"
+        color="muted"
         @click="$emit('export')"
       >
         Экспорт снимка
@@ -90,6 +106,7 @@
 <script setup lang="ts">
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
+import { InputNumber, InputNumberDecrement, InputNumberIncrement, InputNumberInput } from "@/components/ui/input-number";
 import { COMPONENT_KEYS, type ComponentKey, type ComponentWeights } from "@/modules/recommendations/lib/scoring";
 import { COMPONENT_DESCRIPTIONS } from "@/modules/recommendations/service/stand-signal-meta";
 import type { StandParams } from "@/modules/recommendations/composables/useRecoStand";
@@ -120,8 +137,9 @@ const PARAM_SPECS: readonly ParamSpec[] = [
   { key: "exploreShare", min: 0, max: 1, step: 0.05 },
 ];
 
-const setParam = (spec: ParamSpec, e: Event) => {
-  const raw = (e.target as HTMLInputElement).valueAsNumber;
+const WEIGHT_FORMAT: Intl.NumberFormatOptions = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+
+const setParam = (spec: ParamSpec, raw: number) => {
   if (!Number.isFinite(raw)) return;
   const clamped = Math.max(spec.min, Math.min(spec.max, raw));
   emit("update:param", spec.key, spec.step === 1 ? Math.round(clamped) : clamped);

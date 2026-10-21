@@ -1,5 +1,5 @@
 <template>
-  <div class="library-sort-header-container border-b border-border/40 px-4 sm:px-6">
+  <div class="library-sort-header-container border-b border-canvas px-4 sm:px-6">
     <div class="library-sort-header">
       <div class="index-col flex items-center pl-3">
         <IconHashtag class="size-4" />
@@ -7,6 +7,7 @@
 
       <Button
         variant="ghost"
+        color="muted"
         class="first-col justify-start gap-2 truncate px-2 font-medium"
         :disabled="!sortable"
         @click="toggle('title')"
@@ -24,6 +25,7 @@
 
       <Button
         variant="ghost"
+        color="muted"
         class="var1-col justify-start gap-2 truncate px-2 font-medium"
         :disabled="!sortable"
         @click="toggle('album')"
@@ -41,6 +43,7 @@
 
       <Button
         variant="ghost"
+        color="muted"
         class="var2-col justify-start truncate px-2 font-medium"
         :disabled="!sortable"
         @click="toggle('dateAdded')"
@@ -59,6 +62,7 @@
       <Button
         class="last-col"
         variant="ghost"
+        color="muted"
         :disabled="!sortable"
         @click="toggle('duration')"
       >
@@ -114,7 +118,7 @@ function toggle(field: TrackSortField) {
   display: grid;
   grid-template-columns: var(--grid-template-columns);
   align-items: center;
-  height: 48px;
+  height: var(--sort-header-height, 48px);
   gap: 12px;
   color: var(--muted-foreground);
 }

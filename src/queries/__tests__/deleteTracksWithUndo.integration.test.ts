@@ -47,7 +47,7 @@ const localTrack = (id: string, title: string): TrackEntity => ({
   artistIds: [artistId],
   albumId,
   tagIds: [],
-  source: TrackSource.LOCAL,
+  source: TrackSource.LOCAL_INTERNAL,
   state: TrackState.READY,
   storagePath: `tracks/${id}.mp3`,
   duration: 100,
@@ -97,7 +97,7 @@ describe("deleteTracksWithUndo (integration)", () => {
     } satisfies PlaylistEntity);
   });
 
-  it("deletes like the plain cascade and never touches a file on disk", async () => {
+  it("deletes like the plain cascade and keeps the files until finalize", async () => {
     const undo = await deleteTracksWithUndo(queryClient, [TrackId("t-1"), TrackId("t-2")]);
 
     expect(undo.deleted).toBe(2);
@@ -107,7 +107,7 @@ describe("deleteTracksWithUndo (integration)", () => {
     expect(storageMock.deleteFile).not.toHaveBeenCalled();
 
     await undo.finalize();
-    expect(storageMock.deleteFile).not.toHaveBeenCalled();
+    expect(storageMock.deleteFile.mock.calls.map(([path]) => path as string).sort()).toEqual(["tracks/t-1.mp3", "tracks/t-2.mp3"]);
   });
 
   it("restore brings back rows, covers and the playlist order, never touching files", async () => {

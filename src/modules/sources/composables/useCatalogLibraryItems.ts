@@ -37,10 +37,7 @@ const catalogRow = (kind: SourceKind, coverRef: string | undefined) => ({
   imageLow: sourceCoverUrl(kind, coverRef, THUMB_SIZE_LQ) || undefined,
 });
 
-export function useCatalogLibraryItems(
-  kind: MaybeRefOrGetter<SourceKind | null>,
-  filter: MaybeRefOrGetter<LibraryFilter>,
-) {
+export function useCatalogLibraryItems(kind: MaybeRefOrGetter<SourceKind | null>) {
   // Each collection is queried only from a source that can enumerate it —
   // otherwise the query would fire straight into an `unsupported` error.
   const kindFor = (entity: SourceEntity) => computed(() => {
@@ -52,18 +49,23 @@ export function useCatalogLibraryItems(
   const playlistsQuery = useSourcePlaylists(kindFor("playlists"));
   const albumsQuery = useSourceAlbumsInfinite(kindFor("albums"), "alpha");
 
-  const items = computed<LibraryItem[]>(() => {
+  // Every sidebar filter's rows in one pass over the collections, each list
+  // in the order the single list had: station, artists, albums, playlists.
+  const itemsByFilter = computed<Record<LibraryFilter, LibraryItem[]>>(() => {
+    const lists: Record<LibraryFilter, LibraryItem[]> = { all: [], playlist: [], artist: [], album: [] };
     const resolved = toValue(kind);
-    if (!resolved) return [];
+    if (!resolved) return lists;
 
-    const active = toValue(filter);
-    const result: LibraryItem[] = [];
+    const push = (item: LibraryItem, filter: Exclude<LibraryFilter, "all">) => {
+      lists.all.push(item);
+      lists[filter].push(item);
+    };
 
     // Yandex's station leads its catalog like Liked Songs leads the library:
     // a system row that starts playback instead of opening a page. Its `to`
     // is the folder rows' placeholder — the row intercepts the click.
-    if (resolved === "ym" && (active === "all" || active === "playlist")) {
-      result.push({
+    if (resolved === "ym") {
+      push({
         id: MY_WAVE_STATION,
         type: "radio",
         title: i18n.global.t("queue.myWave"),
@@ -75,54 +77,48 @@ export function useCatalogLibraryItems(
         updatedAt: 0,
         to: "/",
         rounded: false,
-      });
+      }, "playlist");
     }
 
-    if (active === "all" || active === "artist") {
-      for (const artist of artistsQuery.data.value ?? []) {
-        result.push({
-          ...catalogRow(resolved, artist.coverRef),
-          id: artist.id,
-          type: "artist",
-          title: artist.name,
-          artistName: artist.name,
-          to: routeLocation.artist(artist.id, CATALOG),
-          rounded: true,
-        });
-      }
+    for (const artist of artistsQuery.data.value ?? []) {
+      push({
+        ...catalogRow(resolved, artist.coverRef),
+        id: artist.id,
+        type: "artist",
+        title: artist.name,
+        artistName: artist.name,
+        to: routeLocation.artist(artist.id, CATALOG),
+        rounded: true,
+      }, "artist");
     }
 
-    if (active === "all" || active === "album") {
-      for (const album of albumsQuery.data.value?.pages.flat() ?? []) {
-        result.push({
-          ...catalogRow(resolved, album.coverRef),
-          id: album.id,
-          type: "album",
-          title: album.title,
-          subtitle: album.artistName,
-          artistName: album.artistName,
-          to: routeLocation.album(album.id, CATALOG),
-          rounded: false,
-          trackCount: album.trackCount,
-        });
-      }
+    for (const album of albumsQuery.data.value?.pages.flat() ?? []) {
+      push({
+        ...catalogRow(resolved, album.coverRef),
+        id: album.id,
+        type: "album",
+        title: album.title,
+        subtitle: album.artistName,
+        artistName: album.artistName,
+        to: routeLocation.album(album.id, CATALOG),
+        rounded: false,
+        trackCount: album.trackCount,
+      }, "album");
     }
 
-    if (active === "all" || active === "playlist") {
-      for (const playlist of playlistsQuery.data.value ?? []) {
-        result.push({
-          ...catalogRow(resolved, playlist.coverRef),
-          id: playlist.id,
-          type: "playlist",
-          title: playlist.name,
-          to: routeLocation.playlist(playlist.id, CATALOG),
-          rounded: false,
-          trackCount: playlist.trackCount,
-        });
-      }
+    for (const playlist of playlistsQuery.data.value ?? []) {
+      push({
+        ...catalogRow(resolved, playlist.coverRef),
+        id: playlist.id,
+        type: "playlist",
+        title: playlist.name,
+        to: routeLocation.playlist(playlist.id, CATALOG),
+        rounded: false,
+        trackCount: playlist.trackCount,
+      }, "playlist");
     }
 
-    return result;
+    return lists;
   });
 
   const isLoading = computed(() =>
@@ -139,5 +135,5 @@ export function useCatalogLibraryItems(
     });
   };
 
-  return { items, isLoading, isLoadingMore: albumsQuery.isFetchingNextPage, loadMoreAlbums };
+  return { itemsByFilter, isLoading, isLoadingMore: albumsQuery.isFetchingNextPage, loadMoreAlbums };
 }

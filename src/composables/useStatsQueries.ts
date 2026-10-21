@@ -42,6 +42,13 @@ export function useStatsSummary(since: MaybeSince = undefined) {
   return useQuery(computed(() => statsQueries.summary(toValue(since))));
 }
 
+/** Seconds listened in [from, to); disabled while there is no range. */
+export const usePeriodTotal = (range: MaybeRefOrGetter<{ from: number; to: number } | undefined>) =>
+  useQuery(computed(() => {
+    const value = toValue(range);
+    return { ...statsQueries.totalBetween(value?.from ?? 0, value?.to ?? 0), enabled: value !== undefined };
+  }));
+
 export function useHourlyActivity(since: MaybeSince = undefined) {
   return useQuery(computed(() => statsQueries.hourlyActivity(toValue(since))));
 }

@@ -45,6 +45,7 @@
 
     <Button
       variant="ghost"
+      color="muted"
       size="icon-sm"
       class="rounded-full shrink-0 hidden sm:opacity-0 sm:group-hover:flex sm:group-hover:opacity-100 transition-opacity"
       :aria-label="$t('queue.remove')"

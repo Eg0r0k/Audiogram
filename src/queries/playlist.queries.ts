@@ -13,7 +13,7 @@ import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/s
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import type { Track } from "@/modules/player/types";
-import type { PlaylistId } from "@/types/ids";
+import type { PlaylistId, TrackId } from "@/types/ids";
 import { PlaylistId as createPlaylistId } from "@/types/ids";
 import { queryOptions, skipToken, type QueryClient } from "@tanstack/vue-query";
 import {
@@ -35,6 +35,7 @@ import {
   trackCascadeTables,
 } from "./track-cascade";
 import type { PlaylistPageData, PaginatedPlaylistTracksResult } from "./types";
+import { deleteOwnedFiles } from "@/services/track-files";
 
 const PAGE_SIZE = 50;
 
@@ -282,6 +283,7 @@ export async function deletePlaylistAndSync(
     },
   );
   if (txResult.isErr()) throw txResult.error;
+  await deleteOwnedFiles(tracks);
 
   await settleLibraryReads(queryClient);
   // This playlist is gone — re-syncing its caches would put it back.
@@ -315,6 +317,31 @@ export async function removeTrackFromPlaylistAndSync(
 
   return nextPlaylist;
 }
+
+/**
+ * Removes the track and hands back an undo that puts it back at its old
+ * position in the playlist as it is by then; a track that came back some
+ * other way meanwhile is not added twice.
+ */
+export const removeTrackFromPlaylistWithUndo = async (
+  queryClient: QueryClient,
+  playlistId: PlaylistId,
+  trackId: TrackId,
+): Promise<{ restore: () => Promise<void> }> => {
+  const index = (await getPlaylistByIdOrThrow(playlistId)).trackIds.indexOf(trackId);
+  await removeTrackFromPlaylistAndSync(queryClient, playlistId, trackId);
+
+  const restore = async (): Promise<void> => {
+    if (index === -1) return;
+    await unwrapResult(playlistRepository.insertTrack(playlistId, trackId, index));
+    const nextPlaylist = await getPlaylistByIdOrThrow(playlistId);
+    await settleLibraryReads(queryClient);
+    syncPlaylistCaches(queryClient, nextPlaylist);
+    invalidateForPlaylistMutation(queryClient, { kind: "tracksChange", playlistId });
+  };
+
+  return { restore };
+};
 
 export async function addTrackToPlaylistAndSync(
   queryClient: QueryClient,

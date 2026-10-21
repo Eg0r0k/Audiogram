@@ -141,10 +141,19 @@ class StatsService {
     return this._finalizePending(secondsListened, options.skipped ?? false, options.completed ?? false);
   }
 
-  async removeFromHistory(trackId: TrackId): Promise<void> {
+  /** Deletes the track's listens and returns an undo that writes them back. */
+  async removeFromHistory(trackId: TrackId): Promise<() => Promise<void>> {
+    const events = await statsRepository.eventsForTrack(trackId);
+    if (events.isErr()) throw events.error;
     const result = await statsRepository.deleteEventsForTrack(trackId);
     if (result.isErr()) throw result.error;
     await this._notifyNow();
+
+    return async () => {
+      const restored = await statsRepository.restoreEvents(events.value);
+      if (restored.isErr()) throw restored.error;
+      await this._notifyNow();
+    };
   }
 
   async clearHistory(): Promise<void> {

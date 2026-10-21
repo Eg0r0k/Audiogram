@@ -29,11 +29,11 @@
           </span>
         </div>
         <Slider
-          :model-value="[normalizationTargetLufs]"
+          :model-value="normalizationTargetLufs"
           :min="-24"
           :max="-6"
           :step="1"
-          @update:model-value="(val) => setNormalizationTargetLufs(val![0])"
+          @update:model-value="(val) => setNormalizationTargetLufs(val as number)"
         />
       </div>
 

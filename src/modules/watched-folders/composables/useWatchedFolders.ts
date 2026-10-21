@@ -1,10 +1,8 @@
-import { errorMessage } from "@/lib/errors";
-import { onUnmounted } from "vue";
 import { storeToRefs } from "pinia";
 import { open } from "@tauri-apps/plugin-dialog";
 import { exists, stat } from "@tauri-apps/plugin-fs";
 import { useQueryClient } from "@tanstack/vue-query";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 
 import { useWatchedFoldersStore } from "../store/watched-folders.store";
@@ -33,6 +31,10 @@ const activeWatchers = new Map<string, StopWatchFn>();
  *  preview): the public Music directory, readable via direct paths. */
 const ANDROID_MUSIC_DIR = "/storage/emulated/0/Music";
 
+/**
+ * The watchers are app-wide: App owns them (init, stopAllWatchers), any other
+ * caller only borrows the actions and must not tear them down on unmount.
+ */
 export function useWatchedFolders() {
   const store = useWatchedFoldersStore();
   const queryClient = useQueryClient();
@@ -43,46 +45,55 @@ export function useWatchedFolders() {
   // SAF tree picker → real path on the primary volume. The pipeline stays
   // path-based (READ_MEDIA_AUDIO grants direct-path reads of audio under any
   // public folder); SD-card/USB volumes have no path mapping and are
-  // rejected with a toast. Cancel → null, silent.
-  async function pickMobileFolderPath(): Promise<string | null> {
-    if (!isAndroidFolderPickerAvailable()) return ANDROID_MUSIC_DIR;
+  // turned away with the reason. Cancel → null, silent.
+  async function pickMobileFolderPath(): Promise<{ path: string } | { failed: string } | null> {
+    if (!isAndroidFolderPickerAvailable()) return { path: ANDROID_MUSIC_DIR };
 
     const uri = await pickAndroidFolderTreeUri();
     if (!uri) return null;
 
     const path = treeUriToPath(uri);
-    if (!path) {
-      toast.error(t("watchedFolders.unsupportedVolume"));
-      return null;
-    }
-    return path;
+    return path ? { path } : { failed: t("watchedFolders.unsupportedVolume") };
   }
 
-  async function addFolder() {
-    const selected = IS_MOBILE
-      ? await pickMobileFolderPath()
-      : await open({
-          directory: true,
-          multiple: false,
-          title: t("watchedFolders.selectFolder"),
-        });
+  const pickFolderPath = async (): Promise<{ path: string } | { failed: string } | null> => {
+    if (IS_MOBILE) return pickMobileFolderPath();
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: t("watchedFolders.selectFolder"),
+    });
+    return typeof selected === "string" ? { path: selected } : null;
+  };
 
-    if (!selected || typeof selected !== "string") return;
+  async function addPickedFolder(): Promise<string | null> {
+    const picked = await pickFolderPath();
+    if (!picked) return null;
+    if ("failed" in picked) return picked.failed;
 
-    const result = store.addFolder(selected);
-    if (!result.ok) {
-      toast.error(result.error!);
-      return;
-    }
+    const result = store.addFolder(picked.path);
+    if (!result.ok) return t("watchedFolders.alreadyAdded");
 
     const folder = store.folders[store.folders.length - 1];
-    toast.success(t("watchedFolders.folderAdded", { name: folder.name }));
+    toaster.add({ title: t("watchedFolders.folderAdded", { name: folder.name }), color: "success" });
 
     await restartAffectedWatchers(folder.path);
 
     await scanFolder(folder);
     await startFolderWatcher(folder);
+    return null;
   }
+
+  /** Resolves to the reason the folder was not added (for the caller to show), or null; never rejects. */
+  const addFolder = async (): Promise<string | null> => {
+    try {
+      return await addPickedFolder();
+    }
+    catch (error) {
+      getLogger().error(`[WatchedFolders] Adding a folder failed: ${String(error)}`);
+      return t("watchedFolders.addFailed");
+    }
+  };
 
   function handleFolderMissing(folderId: string) {
     stopFolderWatcher(folderId);
@@ -115,7 +126,7 @@ export function useWatchedFolders() {
       const folderExists = await exists(folder.path);
       if (!folderExists) {
         store.updateFolderStatus(folder.id, "missing", {
-          errorMessage: "Folder not found",
+          errorMessage: t("watchedFolders.folderMissing"),
         });
         return;
       }
@@ -135,15 +146,15 @@ export function useWatchedFolders() {
       }
 
       if (result.added > 0 || result.removed > 0) {
-        toast.success(t("watchedFolders.scanComplete", {
+        toaster.add({ title: t("watchedFolders.scanComplete", {
           added: result.added,
           removed: result.removed,
-        }));
+        }), color: "success" });
       }
     }
     catch (e) {
-      const message = errorMessage(e, "Scan failed");
-      store.updateFolderStatus(folder.id, "error", { errorMessage: message });
+      getLogger().error(`[WatchedFolders] Scanning ${folder.path} failed: ${String(e)}`);
+      store.updateFolderStatus(folder.id, "error", { errorMessage: t("watchedFolders.scanFailed") });
     }
   }
 
@@ -211,8 +222,8 @@ export function useWatchedFolders() {
       store.updateFolderStatus(folder.id, "watching");
     }
     catch (e) {
-      const message = errorMessage(e, "Watch failed");
-      store.updateFolderStatus(folder.id, "error", { errorMessage: message });
+      getLogger().error(`[WatchedFolders] Watching ${folder.path} failed: ${String(e)}`);
+      store.updateFolderStatus(folder.id, "error", { errorMessage: t("watchedFolders.watchFailed") });
     }
   }
 
@@ -306,19 +317,14 @@ export function useWatchedFolders() {
       await scanFolder(updatedFolder);
       await startFolderWatcher(updatedFolder);
 
-      toast.success(t("watchedFolders.folderRelinked", { name: updatedFolder.name }));
+      toaster.add({ title: t("watchedFolders.folderRelinked", { name: updatedFolder.name }), color: "success" });
       invalidateLibrary();
     }
     catch (e) {
-      const message = errorMessage(e, "Relink failed");
-      store.updateFolderStatus(folderId, "error", { errorMessage: message });
-      toast.error(message);
+      getLogger().error(`[WatchedFolders] Relinking ${oldPath} to ${newPath} failed: ${String(e)}`);
+      store.updateFolderStatus(folderId, "error", { errorMessage: t("watchedFolders.relinkFailed") });
     }
   }
-
-  onUnmounted(() => {
-    stopAllWatchers();
-  });
 
   return {
     folders,

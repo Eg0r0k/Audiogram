@@ -27,7 +27,7 @@
           :padding-bottom="16"
           sticky-offset="72px"
           :loading="isLoading || isFetchingNextPage"
-          class="h-full"
+          class="h-full bg-card [--sticky-surface:var(--card)]"
           @load-more="handleLoadMore"
         >
           <template #before>
@@ -36,19 +36,18 @@
               :data="likedData"
               :has-tracks="tracks.length > 0"
               filterable
+              can-add-tracks
               @play="playAll"
               @shuffle="shuffle"
               @add-to-queue="addToQueue"
+              @add-tracks="openAddTracksPanel"
             />
           </template>
 
-          <template #leading>
-            <div class="px-4 mb-2">
-              <AddTrackRow @add="openAddTracksPanel" />
-            </div>
-          </template>
-
-          <template #sticky>
+          <template
+            v-if="!isMobileLayout"
+            #sticky
+          >
             <LibrarySortHeader
               v-model:sort-key="sortKey"
             />
@@ -69,6 +68,13 @@
             </div>
           </template>
 
+          <template
+            v-if="isFetchNextPageError"
+            #load-more-error
+          >
+            <LoadMoreError @retry="handleLoadMore" />
+          </template>
+
           <template #loader>
             <div class="flex items-center px-4 flex-col w-full">
               <TrackRowLoading />
@@ -83,8 +89,10 @@
 </template>
 
 <script setup lang="ts">
+import LoadMoreError from "@/components/common/LoadMoreError.vue";
 import { computed, ref, useTemplateRef } from "vue";
 import { useRoute } from "vue-router";
+import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 import PageErrorState from "@/components/common/PageErrorState.vue";
@@ -101,7 +109,6 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
-import AddTrackRow from "@/modules/tracks/components/AddTrackRow.vue";
 import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback";
 import { getLogger } from "@/lib/logger";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
@@ -110,6 +117,7 @@ const playerStore = usePlayerStore();
 const rightPanelStore = useRightPanelStore();
 const { openMenu } = useTrackMenu();
 const route = useRoute();
+const { isMobileLayout } = useDeviceLayout();
 const sortKey = ref<TrackSortKey | null>(null);
 const searchQuery = ref("");
 
@@ -123,6 +131,7 @@ const {
   fetchNextPage,
   hasNextPage,
   isFetchingNextPage,
+  isFetchNextPageError,
 } = useLikedTracksPage(sortKey, searchQuery);
 
 // The queue takes what the page shows: every liked row, or the filter's matches.

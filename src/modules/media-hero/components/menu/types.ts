@@ -6,7 +6,6 @@ export interface MediaActions {
   addToQueue: () => void;
   edit: () => void;
   delete: () => void;
-  share: () => void;
   /**
    * The entity is a library row, so edit/delete have something to write to.
    * False on live catalog pages (ND album/artist) where both were no-ops.

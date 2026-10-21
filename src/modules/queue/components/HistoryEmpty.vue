@@ -13,7 +13,8 @@
     </EmptyHeader>
     <EmptyContent>
       <Button
-        variant="outline"
+        variant="solid"
+        color="surface"
         @click="goToAllMusic"
       >
         {{ t("player.browseMusic") }}

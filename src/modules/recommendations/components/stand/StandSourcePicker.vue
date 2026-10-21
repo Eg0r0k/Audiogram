@@ -20,14 +20,16 @@
     </div>
     <div class="flex gap-2">
       <Button
-        variant="secondary"
+        variant="soft"
+        color="neutral"
         size="sm"
         @click="$emit('pickCurrent')"
       >
         Играющий сейчас
       </Button>
       <Button
-        variant="secondary"
+        variant="soft"
+        color="neutral"
         size="sm"
         @click="$emit('pickRandom')"
       >

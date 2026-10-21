@@ -30,6 +30,7 @@
           class="control-extra rounded-full"
           size="icon-sm"
           variant="ghost"
+          color="muted"
           :class="{ 'text-primary': queueStore.isShuffled }"
           @click="queueStore.toggleShuffle()"
         >
@@ -40,6 +41,7 @@
           class="control-previous control-extra rounded-full"
           size="icon-sm"
           variant="ghost"
+          color="muted"
           :disabled="!queueStore.hasPrevious"
           @click="queueStore.previous()"
         >
@@ -54,6 +56,7 @@
           class="control-next rounded-full"
           size="icon-sm"
           variant="ghost"
+          color="muted"
           :disabled="!queueStore.hasNext"
           @click="queueStore.next()"
         >
@@ -64,6 +67,7 @@
           class="control-extra rounded-full"
           size="icon-sm"
           variant="ghost"
+          color="muted"
           :class="{ 'text-primary': queueStore.repeatMode !== 'off' }"
           @click="queueStore.toggleRepeat()"
         >
@@ -81,6 +85,7 @@
           class="control-extra rounded-full"
           size="icon-sm"
           variant="ghost"
+          color="muted"
           :class="{ 'text-primary': isLiked }"
           @click="toggleLike"
         >

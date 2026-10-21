@@ -1,8 +1,9 @@
 <template>
-  <div class="@container flex flex-col items-center gap-4 @md:flex-row @md:items-center @md:justify-between">
-    <div class="flex shrink-0 items-center justify-center gap-4 @md:justify-start">
+  <div :class="props.mobile ? 'flex items-center' : '@container flex flex-col items-center gap-4 @md:flex-row @md:items-center @md:justify-between'">
+    <div :class="props.mobile ? 'flex w-full items-center gap-2' : 'flex shrink-0 items-center justify-center gap-2 @md:justify-start'">
       <Button
-        class="size-14 rounded-full "
+        class="size-14 rounded-full"
+        :class="{ 'order-2': props.mobile }"
         :disabled="showLoadingIndicator || !props.hasTracks"
         @click="handlePlay"
       >
@@ -20,10 +21,23 @@
         class="rounded-full text-white"
         size="icon-lg"
         variant="ghost"
-        :class="{ 'text-primary': isShuffleActive }"
+        color="muted"
+        :class="{ 'text-primary': isShuffleActive, 'order-1 ml-auto': props.mobile }"
         @click="emit('shuffle')"
       >
-        <IconShuffle class="size-5" />
+        <IconShuffle class="size-7" />
+      </Button>
+
+      <Button
+        v-if="props.canAddTracks"
+        class="rounded-full text-white"
+        size="icon-lg"
+        variant="ghost"
+        color="muted"
+        :aria-label="$t('track.addTracks')"
+        @click="emit('addTracks')"
+      >
+        <IconCirclePlus class="size-7" />
       </Button>
 
       <Button
@@ -31,6 +45,7 @@
         class="rounded-full text-white"
         size="icon-lg"
         variant="ghost"
+        color="muted"
         :class="{ 'text-primary': props.like.isLiked }"
         :disabled="props.like.isPending"
         :aria-label="props.like.isLiked ? $t('media.unlike') : $t('media.like')"
@@ -38,11 +53,11 @@
       >
         <IconLikedFilled
           v-if="props.like.isLiked"
-          class="size-5"
+          class="size-7"
         />
         <IconLike
           v-else
-          class="size-5"
+          class="size-7"
         />
       </Button>
 
@@ -55,10 +70,14 @@
       <slot name="after-primary" />
     </div>
 
-    <div class="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-2 @md:justify-end">
+    <div
+      v-if="!props.mobile"
+      class="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-2 @md:justify-end"
+    >
       <InputGroup
         v-if="props.filterable"
-        class="h-9 min-w-32 max-w-56 flex-1 rounded-full border-0 bg-black/30 text-white shadow-none"
+        variant="soft"
+        class="min-w-32 max-w-56 flex-1 bg-black/30 text-white rounded-full"
       >
         <InputGroupAddon tabindex="-1">
           <IconSearch class="size-5 text-white/70" />
@@ -80,6 +99,7 @@
           <Button
             class="rounded-full text-white hover:text-white"
             variant="ghost"
+            color="muted"
             size="icon-sm"
             :aria-label="$t('media.filterClear')"
             @click="filter = ''"
@@ -98,6 +118,7 @@ import MediaDropdown from "./menu/dropdown/MediaDropdown.vue";
 import IconPlay from "~icons/audiogram/play-rounded";
 import IconPause from "~icons/audiogram/pause-rounded";
 import IconShuffle from "~icons/tabler/arrows-shuffle";
+import IconCirclePlus from "~icons/tabler/circle-plus";
 import IconLike from "~icons/tabler/heart";
 import IconLikedFilled from "~icons/tabler/heart-filled";
 import IconSearch from "~icons/tabler/search";
@@ -124,11 +145,16 @@ const props = defineProps<{
   filterable?: boolean;
   /** The entity's like at its source; absent = the source keeps no such likes (or this is a library row). */
   like?: EntityLikeState;
+  /** Shows the "add tracks" button; only library entities take tracks. */
+  canAddTracks?: boolean;
+  /** Phone row: the entity's own actions on the left, shuffle and play pinned right, no filter. */
+  mobile?: boolean;
 }>();
 
 const emit = defineEmits<{
   play: [];
   shuffle: [];
+  addTracks: [];
 }>();
 
 const filter = defineModel<string>("filter", { default: "" });

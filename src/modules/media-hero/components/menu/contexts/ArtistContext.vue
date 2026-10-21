@@ -11,7 +11,7 @@
 
     <component
       :is="Item"
-      variant="destructive"
+      color="destructive"
       @click="actions.delete"
     >
       <IconTrash class="size-5.5" />

@@ -3,19 +3,17 @@ import { render, screen } from "@testing-library/vue";
 import { createPinia } from "pinia";
 import { createI18n } from "vue-i18n";
 import { VueQueryPlugin } from "@tanstack/vue-query";
-import { toast } from "vue-sonner";
 import { TrackId } from "@/types/ids";
 import type { SourceTrackDTO } from "@/modules/sources/types";
 import { downloadSubject } from "../service/enqueue";
 import SourceDownloadButton from "../components/SourceDownloadButton.vue";
+import { shownToasts } from "@/test/toasts";
 
 vi.mock("../service/enqueue", () => ({
   downloadSubject: vi.fn(),
 }));
 
-vi.mock("vue-sonner", () => ({
-  toast: { info: vi.fn(), error: vi.fn() },
-}));
+vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 
 vi.mock("@/db/repositories", () => ({
   trackRepository: { findBySourceRef: vi.fn().mockResolvedValue({ isErr: () => false, isOk: () => true, value: undefined }) },
@@ -56,7 +54,7 @@ describe("SourceDownloadButton", () => {
     await Promise.resolve();
 
     expect(downloadSubject).toHaveBeenCalledWith({ kind: "remote", dto });
-    expect(toast.info).not.toHaveBeenCalled();
+    expect(shownToasts("info")).toHaveLength(0);
   });
 
   it("tells the user when nothing needs downloading (copy already exists)", async () => {
@@ -68,7 +66,7 @@ describe("SourceDownloadButton", () => {
     const button = await screen.findByRole("button");
     button.click();
     await vi.waitFor(() => {
-      expect(toast.info).toHaveBeenCalledTimes(1);
+      expect(shownToasts("info")).toHaveLength(1);
     });
   });
 });

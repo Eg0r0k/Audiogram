@@ -5,9 +5,10 @@
         class="rounded-full text-white"
         size="icon-lg"
         variant="ghost"
+        color="muted"
       >
         <IconDots
-          class="size-5"
+          class="size-7"
         />
       </Button>
     </ResponsiveMenuTrigger>
@@ -15,6 +16,7 @@
       class="w-60"
       align="start"
     >
+      <OpenInCatalogItem />
       <component
         :is="contextComponent"
         v-bind="contextProps"
@@ -34,6 +36,7 @@ import { computed, type Component } from "vue";
 import { useMediaContext } from "@/modules/media-hero/composables/useMediaContext";
 import type { MediaContext } from "../types";
 import AlbumContext from "../contexts/AlbumContext.vue";
+import OpenInCatalogItem from "../OpenInCatalogItem.vue";
 import ArtistContext from "../contexts/ArtistContext.vue";
 import IconDots from "~icons/tabler/dots";
 import PlaylistContext from "../contexts/PlaylistContext.vue";

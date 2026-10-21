@@ -9,14 +9,11 @@
       <p class="text-sm font-medium text-destructive">
         {{ title }}
       </p>
-      <p class="text-xs text-muted-foreground wrap-break-word">
-        {{ failure.message }}
-      </p>
-
       <div class="flex items-center gap-1 pt-1.5 -ml-2">
         <Button
           size="sm"
           variant="ghost"
+          color="muted"
           :disabled="isChecking"
           @click="retry"
         >
@@ -29,6 +26,7 @@
         <Button
           size="sm"
           variant="ghost"
+          color="muted"
           @click="openSettings"
         >
           {{ $t("source.health.settings") }}

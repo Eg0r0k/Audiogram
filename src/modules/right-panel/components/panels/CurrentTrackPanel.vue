@@ -4,9 +4,10 @@
       <template #trailing>
         <Button
           v-if="currentTrack"
-          size="icon"
+          size="icon-md"
           class="rounded-full"
           variant="ghost"
+          color="muted"
           @click.stop="onDotsClick"
         >
           <IconDots class="size-6" />
@@ -15,7 +16,7 @@
     </RightPanelHeader>
     <Scrollable class="flex-1">
       <div
-        class="grid gap-1 py-4 px-5 pt-0.5"
+        class="grid gap-4 py-4 px-5 pt-0.5"
       >
         <TrackContextMenu context="current-track">
           <div>
@@ -89,7 +90,7 @@
         </TrackContextMenu>
 
         <template v-if="currentTrack">
-          <div class="grid gap-4">
+          <div class="grid gap-5">
             <div class="flex justify-between items-center relative select-none">
               <div class="grid gap-1 flex-1 min-w-0 max-w-fit overflow-hidden mx-2">
                 <MarqueeBlock
@@ -135,7 +136,8 @@
               <Button
                 v-if="libraryTrack"
                 variant="ghost"
-                size="icon"
+                color="muted"
+                size="icon-md"
                 class="shrink-0 rounded-full"
                 @click="toggleLike"
               >
@@ -151,7 +153,8 @@
               <Button
                 v-else-if="importPath"
                 variant="ghost"
-                size="icon"
+                color="muted"
+                size="icon-md"
                 class="shrink-0 rounded-full"
                 :disabled="isImportRunning"
                 :title="$t('common.import.toLibrary')"
@@ -163,7 +166,7 @@
             </div>
 
             <div
-              class="flex flex-col min-w-0 gap-1 p-2 rounded-sm bg-card supports-[color:color-mix(in_oklch,red,red)]:bg-[color-mix(in_oklch,var(--cover-color)_30%,black)] transition-[background-color] duration-900 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+              class="flex flex-col min-w-0 gap-1 p-1 rounded-sm bg-card supports-[color:color-mix(in_oklch,red,red)]:bg-[color-mix(in_oklch,var(--cover-color)_30%,black)] transition-[background-color] duration-900 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
               :style="{ '--cover-color': playerColor.hsl }"
             >
               <div class="flex items-center justify-between gap-3 pl-2">
@@ -175,6 +178,7 @@
 
                 <Button
                   variant="ghost"
+                  color="muted"
                   size="sm"
                   class="rounded-full px-2"
                   @click="rightPanel.openQueue()"
@@ -213,7 +217,8 @@
           </EmptyHeader>
           <EmptyContent>
             <Button
-              variant="outline"
+              variant="solid"
+              color="surface"
               @click="goToAllMusic"
             >
               {{ $t('player.browseMusic') }}

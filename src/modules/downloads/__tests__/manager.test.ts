@@ -6,12 +6,12 @@ import { ndTrackId } from "@/types/track-ref";
 import { AlbumId, TrackId } from "@/types/ids";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { SourceError } from "@/modules/sources/types";
+import { resetShownToasts, shownToasts } from "@/test/toasts";
 
 const providerMock = vi.hoisted(() => ({
   downloadToFile: vi.fn(),
   cancelDownload: vi.fn(),
 }));
-const toastMock = vi.hoisted(() => ({ error: vi.fn() }));
 const fsMock = vi.hoisted(() => ({
   readDir: vi.fn(async () => [] as { name: string; isFile: boolean }[]),
   remove: vi.fn(async () => {}),
@@ -29,7 +29,7 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   readDir: fsMock.readDir,
   remove: fsMock.remove,
 }));
-vi.mock("vue-sonner", () => ({ toast: toastMock }));
+vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 // The real finalizer runs the import pipeline — these tests cover the loop only.
 vi.mock("../service/finalize", () => ({
   finalizeDownloadImport: vi.fn(async () => {}),
@@ -54,6 +54,11 @@ function deferredDownload() {
   };
 }
 
+const authFailure = () => ResultAsync.fromPromise(
+  Promise.reject({ kind: "AUTH", message: "upstream status 401" } satisfies SourceError),
+  e => e as SourceError,
+);
+
 async function freshManager(): Promise<Manager> {
   vi.resetModules();
   return import("../service/manager");
@@ -64,7 +69,7 @@ describe("download manager", () => {
     setActivePinia(createPinia());
     providerMock.downloadToFile.mockReset();
     providerMock.cancelDownload.mockReset();
-    toastMock.error.mockReset();
+    resetShownToasts();
     fsMock.readDir.mockReset().mockResolvedValue([]);
     fsMock.remove.mockReset().mockResolvedValue(undefined);
     await db.open();
@@ -172,7 +177,61 @@ describe("download manager", () => {
     });
     expect(providerMock.downloadToFile).toHaveBeenCalledTimes(1);
     // The toast trails the row write (best-effort title lookup in between).
-    await vi.waitFor(() => expect(toastMock.error).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(shownToasts("destructive")).toHaveLength(1));
+  });
+
+  it("keeps a terminal failure listed and retries it from the toast", async () => {
+    const retried = deferredDownload();
+    providerMock.downloadToFile
+      .mockImplementationOnce(authFailure)
+      .mockImplementationOnce(() => retried.result);
+    const manager = await freshManager();
+    const { useDownloadsStore } = await import("../store/downloads.store");
+
+    await manager.enqueueTrackDownload(ndTrackId("s1"));
+    await vi.waitFor(() => expect(shownToasts("destructive")).toHaveLength(1));
+    expect(Object.values(useDownloadsStore().failed)).toEqual([expect.objectContaining({ trackId: ndTrackId("s1") })]);
+
+    shownToasts("destructive")[0]?.actions?.[0]?.onClick?.(new MouseEvent("click"));
+
+    await vi.waitFor(() => expect(providerMock.downloadToFile).toHaveBeenCalledTimes(2));
+    expect(useDownloadsStore().failed).toEqual({});
+  });
+
+  it("folds failures that pile up into one toast", async () => {
+    providerMock.downloadToFile.mockImplementation(authFailure);
+    const manager = await freshManager();
+
+    await manager.enqueueTrackDownload(ndTrackId("s1"));
+    await vi.waitFor(() => expect(shownToasts("destructive")).toHaveLength(1));
+    await manager.enqueueTrackDownload(ndTrackId("s2"));
+    await vi.waitFor(() => expect(shownToasts("destructive")).toHaveLength(2));
+
+    const [first, second] = shownToasts("destructive");
+    expect(second?.id).toBe(first?.id);
+    expect(second?.title).toContain("2");
+  });
+
+  it("brings back the failures of the last session on init", async () => {
+    await db.downloadJobs.put({ id: "old-error", trackId: ndTrackId("s1"), status: "error", attempts: 3, error: "401", addedAt: 1 });
+    const manager = await freshManager();
+    const { useDownloadsStore } = await import("../store/downloads.store");
+
+    await manager.initDownloadManager();
+
+    expect(useDownloadsStore().failed["old-error"]).toMatchObject({ trackId: ndTrackId("s1") });
+  });
+
+  it("forgets a dismissed failure", async () => {
+    await db.downloadJobs.put({ id: "old-error", trackId: ndTrackId("s1"), status: "error", attempts: 3, error: "401", addedAt: 1 });
+    const manager = await freshManager();
+    const { useDownloadsStore } = await import("../store/downloads.store");
+    await manager.initDownloadManager();
+
+    await manager.dismissFailedDownload("old-error");
+
+    expect(await db.downloadJobs.get("old-error")).toBeUndefined();
+    expect(useDownloadsStore().failed).toEqual({});
   });
 
   it("a re-enqueue replaces the stale error job with a fresh queued one", async () => {

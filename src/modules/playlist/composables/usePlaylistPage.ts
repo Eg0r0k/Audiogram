@@ -61,7 +61,10 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
 
   const remoteState = {
     isLoading: computed(() => (isPaged.value ? pagedQuery.isLoading.value : wholeQuery.isLoading.value)),
-    isError: computed(() => (isPaged.value ? pagedQuery.isError.value : wholeQuery.isError.value)),
+    // A failed next page is shown at the end of the list it failed to extend.
+    isError: computed(() => (isPaged.value
+      ? pagedQuery.isError.value && !pagedQuery.isFetchNextPageError.value
+      : wholeQuery.isError.value)),
   };
 
   const {
@@ -85,6 +88,7 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
     hasNextPage: hasNextLocalPage,
     isLoading: isLocalTracksLoading,
     isFetchingNextPage: isFetchingNextLocalPage,
+    isFetchNextPageError: isFetchNextLocalPageError,
   } = useInfiniteQuery({
     queryKey: computed(() => queryKeys.playlists.tracksPage(playlistId.value, sortKey.value, normalizedSearchQuery.value)),
     queryFn: ({ pageParam = 0 }) => normalizedSearchQuery.value
@@ -123,6 +127,9 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
   );
   const isFetchingNextPage = computed(() =>
     (isPaged.value ? pagedQuery.isFetchingNextPage.value : isFetchingNextLocalPage.value),
+  );
+  const isFetchNextPageError = computed(() =>
+    (isPaged.value ? pagedQuery.isFetchNextPageError.value : isFetchNextLocalPageError.value),
   );
   // On the whole-playlist path the tracks came with the playlist itself, so
   // there is no second load to wait on.
@@ -292,5 +299,6 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
     hasNextPage,
     isTracksLoading,
     isFetchingNextPage,
+    isFetchNextPageError,
   };
 }

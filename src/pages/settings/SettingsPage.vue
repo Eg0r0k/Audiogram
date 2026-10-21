@@ -10,48 +10,48 @@
         :to="routeLocation.settingsAppearance()"
         :icon="IconPalette"
         :title="$t('settings.index.appearance')"
+        :subtitle="themeLabel"
       />
-      <SettingsLink
-        :to="routeLocation.settingsLanguage()"
-        :icon="IconLanguage"
-        :title="$t('settings.index.language')"
-        :subtitle="language"
-      />
-    </SettingsGroup>
-
-    <SettingsGroup class=" mt-3">
       <SettingsLink
         :to="routeLocation.settingsAudio()"
         :icon="IconHeadphones"
         :title="$t('settings.index.audio')"
       />
+    </SettingsGroup>
+
+    <SettingsGroup class="mt-3">
       <SettingsLink
-        :to="routeLocation.settingsStorage()"
-        :icon="IconDatabase"
-        :title="$t('settings.index.storage')"
-      />
-      <SettingsLink
-        :to="routeLocation.settingsStats()"
-        :icon="IconChartBar"
-        :title="$t('settings.index.stats')"
-      />
-      <SettingsLink
-        v-if="platformCaps.hasNativeProxy"
-        :to="routeLocation.settingsProxy()"
-        :icon="IconWorld"
-        :title="$t('settings.index.proxy')"
+        :to="routeLocation.settingsLibrary()"
+        :icon="IconBooks"
+        :title="$t('settings.index.library')"
+        :description="$t('settings.index.libraryDescription')"
       />
       <SettingsLink
         v-if="platformCaps.canProxyStream"
         :to="routeLocation.settingsSources()"
         :icon="IconServer"
         :title="$t('settings.index.sources')"
+      >
+        <template #description>
+          <span class="inline-flex flex-wrap items-center gap-x-1.5">
+            <template v-if="needsAttention">
+              <span
+                class="size-2 shrink-0 rounded-full bg-destructive"
+                aria-hidden="true"
+              />
+              <span>{{ $t('settings.index.needsAttention') }}</span>
+              <span aria-hidden="true">·</span>
+            </template>
+            <span>{{ $t('settings.index.sourcesCount', sourceCount) }}</span>
+          </span>
+        </template>
+      </SettingsLink>
+      <SettingsLink
+        :to="routeLocation.settingsStorage()"
+        :icon="IconDatabase"
+        :title="$t('settings.index.storage')"
+        :description="storageDescription"
       />
-    <!-- <SettingsLink
-      :to="routeLocation.settingsNotifications()"
-      :icon="IconBell"
-      :title="$t('settings.index.notifications')"
-    /> -->
     </SettingsGroup>
 
     <SettingsGroup class="mt-3">
@@ -59,6 +59,7 @@
         :to="routeLocation.settingsAbout()"
         :icon="IconInfo"
         :title="$t('settings.index.about')"
+        :subtitle="appVersion"
       />
       <SettingsLink
         v-if="isDev"
@@ -67,77 +68,50 @@
         title="Dev: стенд рекомендаций"
       />
     </SettingsGroup>
-
-    <SettingsGroup class="mt-3">
-      <div class="px-4 py-3">
-        <div class="mb-1 text-primary font-medium">
-          {{ $t("settings.index.resetAll") }}
-        </div>
-        <div class="text-sm text-muted-foreground">
-          {{ $t("settings.index.resetAllDescription") }}
-        </div>
-      </div>
-
-      <Button
-        class="w-full h-14 justify-start  "
-        size="xl"
-        variant="ghost-primary"
-        @click="handleResetAllSettings"
-      >
-        <IconRefresh class="size-6" />
-        {{ $t("settings.index.resetAllAction") }}
-      </Button>
-    </SettingsGroup>
   </SettingsScreen>
 </template>
 
 <script setup lang="ts">
-import { toast } from "vue-sonner";
+import { computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
-import { Button } from "@/components/ui/button";
 import IconSettings from "~icons/tabler/settings";
 import IconPalette from "~icons/tabler/palette";
-import IconLanguage from "~icons/tabler/language";
 import IconHeadphones from "~icons/tabler/headphones";
+import IconBooks from "~icons/tabler/books";
 import IconDatabase from "~icons/tabler/database";
-import IconChartBar from "~icons/tabler/chart-bar";
 import IconServer from "~icons/tabler/server";
 import IconInfo from "~icons/tabler/info-circle";
-import IconWorld from "~icons/tabler/world";
-import IconRefresh from "~icons/tabler/refresh";
 import IconFlask from "~icons/tabler/flask";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsLink from "@/modules/settings/components/SettingsLink.vue";
-import { useGeneralSettings } from "@/modules/settings/store/general";
 import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
-import { useSettingsStore } from "@/modules/settings/store";
-import { useAudioSettingsStore } from "@/modules/settings/store/audio";
 import { useTheme } from "@/modules/settings/composables/useTheme";
-import { useAccentColor } from "@/modules/settings/composables/useAccentColor";
-import { useZoom } from "@/modules/settings/composables/useZoom";
+import { useStorageSettings } from "@/modules/settings/store/storage";
+import { sources } from "@/modules/sources";
+import { sourceHealth } from "@/modules/sources/lib/health";
 import { routeLocation } from "@/app/router/route-locations";
-import { summonDialog } from "@/components/dialogs/summonDialog";
 import { platformCaps } from "@/lib/environment/platformCaps";
+import { getLogger } from "@/lib/logger";
 
-const { language } = useGeneralSettings();
 const { t } = useI18n();
-const settingsStore = useSettingsStore();
-const audioSettingsStore = useAudioSettingsStore();
-const { changeTheme } = useTheme();
-const { resetAccentColor } = useAccentColor();
-const { resetZoom } = useZoom();
+const { mode } = useTheme();
 const isDev = import.meta.env.DEV;
+const appVersion = __APP_VERSION__;
 
-const handleResetAllSettings = async () => {
-  const confirmed = await summonDialog("resetSettings", {}, { key: "reset-settings" });
-  if (!confirmed) return;
+const themeLabel = computed(() => t(`settings.appearance.themes.${mode.value}`));
 
-  settingsStore.reset();
-  audioSettingsStore.reset();
-  changeTheme("system");
-  resetAccentColor();
-  resetZoom();
-  toast.success(t("settings.index.resetAllDone"));
-};
+const sourceCount = computed(() => sources.all().length);
+// Only a verdict counts: a source nobody has asked yet is not a problem.
+const needsAttention = computed(() => sources.all().some(provider => sourceHealth(provider.id).state === "failed"));
 
+const { info, formatted, refresh } = useStorageSettings();
+const storageDescription = computed(() =>
+  info.value ? t("settings.index.storageUsed", { size: formatted.value.totalUsed }) : undefined,
+);
+
+onMounted(() => {
+  refresh().catch((err: unknown) => {
+    getLogger().warn(`[SettingsPage] Refreshing storage usage failed: ${String(err)}`);
+  });
+});
 </script>

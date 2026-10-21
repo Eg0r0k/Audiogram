@@ -1,25 +1,20 @@
 <template>
-  <DropdownMenu>
-    <DropdownMenuTrigger as-child>
-      <Button
-        variant="ghost"
-        size="icon-lg"
-        class="shrink-0 rounded-full"
-        :class="sortKey && 'text-foreground'"
-        :aria-label="t('library.sortBy')"
-        :title="t('library.sortBy')"
-      >
-        <IconSort class="size-6" />
-      </Button>
-    </DropdownMenuTrigger>
-
-    <DropdownMenuContent
-      align="end"
+  <InputGroupButton
+    color="muted"
+    size="icon-sm"
+    :class="sortKey && 'text-foreground'"
+    :aria-label="t('library.sortBy')"
+    :title="t('library.sortBy')"
+  >
+    <IconSort />
+    <Menu
+      anchor="bottom end"
+      self="top end"
       class="min-w-52"
     >
-      <DropdownMenuLabel>{{ t('library.sortBy') }}</DropdownMenuLabel>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem
+      <MenuLabel>{{ t('library.sortBy') }}</MenuLabel>
+      <MenuSeparator />
+      <MenuItem
         v-for="field in SORT_FIELDS"
         :key="field.value"
         @select="toggle(field.value)"
@@ -33,22 +28,15 @@
           v-else-if="directionOf(field.value) === 'desc'"
           class="size-3.5 text-green-400!"
         />
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
+      </MenuItem>
+    </Menu>
+  </InputGroupButton>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+import { InputGroupButton } from "@/components/ui/input-group";
+import { Menu, MenuItem, MenuLabel, MenuSeparator } from "@/components/ui/menu";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import IconChevronDown from "~icons/tabler/chevron-down";
 import IconSort from "~icons/tabler/arrows-sort";

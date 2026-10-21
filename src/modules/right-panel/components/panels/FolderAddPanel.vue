@@ -22,7 +22,7 @@
           :model-value="filter"
           @update:model-value="filter = $event as FolderPickerFilter"
         >
-          <TabsList class="inline-flex items-center gap-0 px-4">
+          <TabsList variant="line" class="inline-flex items-center gap-0 px-4">
             <TabsTrigger
               v-for="chip in chips"
               :key="chip.value"
@@ -31,7 +31,8 @@
             >
               <span>{{ chip.label }}</span>
               <Badge
-                variant="secondary"
+                variant="soft"
+                color="neutral"
                 size="md"
                 class="h-5 min-w-5 px-1 py-0 tabular-nums"
               >
@@ -99,7 +100,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { EntitySelectPanel } from "@/components/entity-select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -234,7 +235,7 @@ const handleConfirm = async () => {
     await setFolderItems(target.id, [...target.items, ...entries]);
   }
   catch {
-    toast.error(t("sheet.addFailed"));
+    toaster.add({ title: t("sheet.folderAddFailed"), color: "destructive" });
     return;
   }
   clearSelection();

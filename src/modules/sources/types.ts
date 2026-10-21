@@ -103,6 +103,11 @@ export interface SourceProvider {
    */
   externalUrl?(track: { id: TrackId; albumId?: AlbumId }): string | null;
   /**
+   * A short, readable form of a pasted link this source can open (youtu.be/ID),
+   * for lists of past queries. Optional; null for links it does not know.
+   */
+  shortLink?(url: URL): string | null;
+  /**
    * The source keeps its own likes (Yandex "Мне нравится"): a like on one
    * of its tracks is sent there too, and the like button of its catalog
    * rows starts from what the source knows. Both optional; a source

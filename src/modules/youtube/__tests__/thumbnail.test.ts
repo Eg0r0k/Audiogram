@@ -5,7 +5,7 @@ vi.mock("@/lib/environment/platformCaps", () => ({ platformCaps: caps }));
 
 import { setMediaServerBaseForTests } from "@/lib/stream-url";
 import { THUMB_SIZE_ROW } from "@/lib/media/cover-sizes";
-import { proxiedThumbnail, unproxiedThumbnail } from "../lib/thumbnail";
+import { proxiedThumbnail } from "../lib/thumbnail";
 
 const BASE = "http://127.0.0.1:4321/tokentokentokentokentokentokento";
 const COVER = "https://lh3.googleusercontent.com/cover=w120-h120-l90-rj";
@@ -25,18 +25,5 @@ describe("proxiedThumbnail", () => {
   it("returns the sharp URL untouched where the route does not exist", () => {
     caps.hasYoutube = false;
     expect(proxiedThumbnail(COVER, THUMB_SIZE_ROW)).toBe(SHARP_ROW);
-  });
-});
-
-describe("unproxiedThumbnail", () => {
-  it("round-trips through proxiedThumbnail", () => {
-    expect(unproxiedThumbnail(proxiedThumbnail(COVER, THUMB_SIZE_ROW))).toBe(SHARP_ROW);
-  });
-
-  it("passes plain URLs through and rejects non-URLs", () => {
-    expect(unproxiedThumbnail(SHARP_ROW)).toBe(SHARP_ROW);
-    expect(unproxiedThumbnail(`${BASE}/yt/dQw4w9WgXcQ`)).toBe(`${BASE}/yt/dQw4w9WgXcQ`);
-    expect(unproxiedThumbnail("not a url")).toBeNull();
-    expect(unproxiedThumbnail(null)).toBeNull();
   });
 });

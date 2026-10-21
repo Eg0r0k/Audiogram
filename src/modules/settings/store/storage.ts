@@ -35,6 +35,7 @@ export function useStorageSettings() {
         tracksCount: 0,
         albumsCount: 0,
         artistsCount: 0,
+        listensCount: 0,
         storagePath: "—",
         usagePercent: 0,
       };
@@ -53,6 +54,7 @@ export function useStorageSettings() {
       tracksCount: i.tracksCount,
       albumsCount: i.albumsCount,
       artistsCount: i.artistsCount,
+      listensCount: i.listensCount,
       storagePath: i.storagePath,
       usagePercent: i.quotaTotal > 0
         ? Math.round((i.quotaUsed / i.quotaTotal) * 100)

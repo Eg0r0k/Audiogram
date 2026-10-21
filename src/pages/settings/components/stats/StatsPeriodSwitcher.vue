@@ -3,7 +3,7 @@
     :model-value="model"
     @update:model-value="model = $event as StatsPeriod"
   >
-    <TabsList class="flex w-full">
+    <TabsList variant="line" class="flex w-full">
       <TabsTrigger
         v-for="p in PERIODS"
         :key="p"

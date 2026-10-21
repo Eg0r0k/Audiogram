@@ -12,6 +12,12 @@ export interface DownloadRuntime {
   cancelling: boolean;
 }
 
+/** A job that failed for good; its error row stays in Dexie until a retry or a dismiss. */
+export interface FailedDownload {
+  jobId: string;
+  trackId: TrackId;
+}
+
 /**
  * Runtime mirror of the active download queue — progress and statuses the
  * UI reads reactively. Dexie's downloadJobs table stays the source of truth
@@ -27,6 +33,7 @@ export interface BatchProgress {
 export const useDownloadsStore = defineStore("downloads", () => {
   const jobs = ref<Record<string, DownloadRuntime>>({});
   const batches = ref<Record<string, BatchProgress>>({});
+  const failed = ref<Record<string, FailedDownload>>({});
 
   const byTrackId = computed(() => {
     const map: Partial<Record<TrackId, DownloadRuntime>> = {};
@@ -93,9 +100,24 @@ export const useDownloadsStore = defineStore("downloads", () => {
     delete batches.value[batchId];
   }
 
+  const addFailed = (entry: FailedDownload): void => {
+    failed.value[entry.jobId] = entry;
+  };
+
+  const removeFailed = (trackId: TrackId): void => {
+    for (const entry of Object.values(failed.value)) {
+      if (entry.trackId === trackId) delete failed.value[entry.jobId];
+    }
+  };
+
+  const dismissFailed = (jobId: string): void => {
+    delete failed.value[jobId];
+  };
+
   return {
     jobs,
     batches,
+    failed,
     byTrackId,
     upsert,
     setStatus,
@@ -107,5 +129,8 @@ export const useDownloadsStore = defineStore("downloads", () => {
     bumpBatch,
     shrinkBatch,
     clearBatch,
+    addFailed,
+    removeFailed,
+    dismissFailed,
   };
 });

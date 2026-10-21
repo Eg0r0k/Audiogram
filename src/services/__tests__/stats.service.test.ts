@@ -131,6 +131,21 @@ describe("statsService change notifications", () => {
     off();
   });
 
+  it("removing a track from history hands back an undo that puts its listens back", async () => {
+    statsService.startListening(TRACK_ID, ARTIST_ID, ALBUM_ID, DURATION, "user");
+    await flush();
+    await statsService.stopListening(DURATION, { completed: true });
+    await flush();
+    const [listen] = await db.listenEvents.toArray();
+
+    const restore = await statsService.removeFromHistory(TRACK_ID);
+    expect(await db.listenEvents.count()).toBe(0);
+
+    await restore();
+
+    expect(await db.listenEvents.toArray()).toEqual([listen]);
+  });
+
   it("a history edit notifies before it resolves", async () => {
     const onChange = vi.fn();
     const { off } = statsService.onChange(onChange);

@@ -73,6 +73,7 @@
         size="icon-sm"
         class="rounded-full mr-1"
         variant="ghost"
+        color="muted"
         :aria-label="$t('player.moreOptions')"
         @click.stop="onDotsClick"
       >
@@ -81,6 +82,7 @@
       <template v-if="libraryTrack">
         <Button
           variant="ghost"
+          color="muted"
           size="icon-sm"
           class="rounded-full"
           :aria-label="libraryTrack.isLiked ? $t('player.unlike') : $t('player.like')"

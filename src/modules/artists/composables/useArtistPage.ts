@@ -75,6 +75,7 @@ export function useArtistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Re
     hasNextPage: hasNextTrackPage,
     isLoading: isTracksLoading,
     isFetchingNextPage: isFetchingNextTrackPage,
+    isFetchNextPageError: isFetchNextTrackPageError,
   } = useInfiniteQuery({
     queryKey: computed(() => queryKeys.artists.tracksPage(artistId.value, sortKey.value, normalizedSearchQuery.value)),
     queryFn: ({ pageParam = 0, client }) => normalizedSearchQuery.value
@@ -230,6 +231,7 @@ export function useArtistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Re
     hasNextTrackPage,
     isTracksLoading,
     isFetchingNextTrackPage,
+    isFetchNextTrackPageError,
     fetchNextAlbumPage,
     hasNextAlbumPage,
     isFetchingNextAlbumPage,

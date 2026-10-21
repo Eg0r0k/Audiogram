@@ -19,7 +19,7 @@
       <TrackContextMenu
         context="playlist"
         :playlist-id="playlist?.id"
-        :is-playlist-owner="playlistData?.isOwner ?? true"
+        :is-playlist-owner="canRemoveTracks"
       >
         <VirtualScrollable
           ref="scrollableRef"
@@ -31,7 +31,7 @@
           :padding-bottom="16"
           sticky-offset="72px"
           :loading="isTracksLoading || isFetchingNextPage"
-          class="h-full"
+          class="h-full bg-card [--sticky-surface:var(--card)]"
           @load-more="handleLoadMore"
         >
           <template #before>
@@ -44,25 +44,20 @@
               :catalog-route="catalogViewRoute('playlist', playlistId, !!playlist)"
               :like="playlistData.isOwner ? undefined : like.state.value"
               :can-delete-at-source="canDeleteAtSource"
+              :can-add-tracks="!!playlist"
               @play="handlePlayAll"
               @shuffle="handleShuffle"
               @edit="openEditDialog"
               @delete="openDeleteDialog"
               @add-to-queue="handleAddToQueue"
-              @share="handleShare"
+              @add-tracks="openAddTracksPanel"
             />
           </template>
 
-          <template #leading>
-            <div class="px-4 mb-2">
-              <AddTrackRow
-                v-if="playlist"
-                @add="openAddTracksPanel"
-              />
-            </div>
-          </template>
-
-          <template #sticky>
+          <template
+            v-if="!isMobileLayout"
+            #sticky
+          >
             <LibrarySortHeader
               v-model:sort-key="sortKey"
               :sortable="canSort"
@@ -82,6 +77,13 @@
             </div>
           </template>
 
+          <template
+            v-if="isFetchNextPageError"
+            #load-more-error
+          >
+            <LoadMoreError @retry="handleLoadMore" />
+          </template>
+
           <template #loader>
             <div class="flex items-center px-4 flex-col w-full">
               <TrackRowLoading />
@@ -93,18 +95,19 @@
       <TrackDropdown
         context="playlist"
         :playlist-id="playlist?.id"
-        :is-playlist-owner="playlistData?.isOwner ?? true"
+        :is-playlist-owner="canRemoveTracks"
       />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { errorMessage } from "@/lib/errors";
+import LoadMoreError from "@/components/common/LoadMoreError.vue";
 import { computed, ref, useTemplateRef } from "vue";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
+import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { catalogViewRoute } from "@/app/router/route-locations";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
@@ -127,7 +130,6 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
-import AddTrackRow from "@/modules/tracks/components/AddTrackRow.vue";
 import { getLogger } from "@/lib/logger";
 
 const { t } = useI18n();
@@ -135,6 +137,7 @@ const playerStore = usePlayerStore();
 const rightPanelStore = useRightPanelStore();
 const { openMenu } = useTrackMenu();
 const route = useRoute();
+const { isMobileLayout } = useDeviceLayout();
 const sortKey = ref<TrackSortKey | null>(null);
 const searchQuery = ref("");
 
@@ -160,10 +163,16 @@ const {
   hasNextPage,
   isTracksLoading,
   isFetchingNextPage,
+  isFetchNextPageError,
 } = usePlaylistPage(sortKey, searchQuery);
 
 const playlistId = computed(() => route.params.id as string);
 const like = useEntityLike(remoteKind, "playlist", playlistId);
+
+// A catalog playlist is the source's list: no provider removes a track from
+// one, so its track menu offers no removal. An own YM playlist still reports
+// isOwner, which only the hero's delete-at-source reads.
+const canRemoveTracks = computed(() => !remoteKind.value);
 
 const editPlaylist = useEditPlaylistDialog();
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
@@ -221,10 +230,6 @@ const {
   loadAll: loadAllTracks,
 });
 
-function handleShare() {
-  toast.info(t("common.comingSoon"));
-}
-
 const openDeleteDialog = async () => {
   if (playlist.value) {
     const result = await summonDialog("deleteConfirm", {
@@ -251,7 +256,7 @@ const openDeleteDialog = async () => {
     },
   }, { key: `delete:${data.id}` });
   if (!confirmed) return;
-  if (!(await deleteAtSource())) toast.error(t("playlist.deleteFailed"));
+  if (!(await deleteAtSource())) toaster.add({ title: t("playlist.deleteFailed"), color: "destructive" });
 };
 
 async function handleDelete(deleteTracks: boolean) {
@@ -259,7 +264,7 @@ async function handleDelete(deleteTracks: boolean) {
     await deletePlaylist({ deleteTracks });
   }
   catch {
-    toast.error(t("playlist.deleteFailed"));
+    toaster.add({ title: t("playlist.deleteFailed"), color: "destructive" });
   }
 }
 
@@ -270,7 +275,7 @@ const openEditDialog = () => {
       await updatePlaylist(changes);
     }
     catch (e) {
-      toast.error(errorMessage(e, t("playlist.updateFailed")));
+      getLogger().error(`[PlaylistPage] Updating the playlist failed: ${String(e)}`);
       throw e;
     }
   }).catch(() => undefined);

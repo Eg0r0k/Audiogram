@@ -14,10 +14,10 @@ describe("Button", () => {
     expect(screen.getByRole("button")).toHaveTextContent("Click me");
   });
 
-  it("applies variant classes", () => {
+  it("fills a solid button with its colour's tone", () => {
     renderWithPlugins(Button, {
       props: {
-        variant: "destructive",
+        color: "destructive",
       },
       slots: {
         default: "Delete",
@@ -25,7 +25,8 @@ describe("Button", () => {
     });
 
     const button = screen.getByRole("button");
-    expect(button).toHaveClass("bg-destructive");
+    expect(button).toHaveAttribute("data-color", "destructive");
+    expect(button).toHaveClass("bg-tone");
   });
 
   it("is disabled when prop is passed", () => {

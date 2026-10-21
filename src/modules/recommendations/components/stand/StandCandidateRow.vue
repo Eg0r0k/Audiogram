@@ -37,7 +37,8 @@
     <div class="flex gap-1">
       <Button
         size="icon-sm"
-        :variant="row.label === 1 ? 'default' : 'ghost'"
+        :variant="row.label === 1 ? 'solid' : 'ghost'"
+        :color="row.label === 1 ? 'primary' : 'muted'"
         :disabled="!row.sourceId"
         aria-label="Нравится"
         title="Нравится"
@@ -47,7 +48,8 @@
       </Button>
       <Button
         size="icon-sm"
-        :variant="row.label === -1 ? 'default' : 'ghost'"
+        :variant="row.label === -1 ? 'solid' : 'ghost'"
+        :color="row.label === -1 ? 'primary' : 'muted'"
         :disabled="!row.sourceId"
         aria-label="Не нравится"
         title="Не нравится"
@@ -58,6 +60,7 @@
       <Button
         size="icon-sm"
         variant="ghost"
+        color="muted"
         aria-label="Перейти"
         title="Перейти"
         @click="$emit('jump')"

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { shownToasts } from "@/test/toasts";
 
 const mockPlayer = {
   currentTrack: null as unknown,
@@ -6,7 +7,12 @@ const mockPlayer = {
   listenedSeconds: 0,
   getListenedSeconds: () => mockPlayer.listenedSeconds,
 };
-const mockQueue = { advance: vi.fn(async () => {}), currentItem: null as unknown };
+const mockQueue = {
+  advance: vi.fn(async () => {}),
+  jumpToId: vi.fn(async () => {}),
+  currentItem: null as unknown,
+  queue: [] as { id: string; track: unknown }[],
+};
 const mockLyrics = { loadFor: vi.fn(async () => {}) };
 
 vi.mock("../store/player.store", () => ({ usePlayerStore: () => mockPlayer }));
@@ -19,8 +25,7 @@ vi.mock("@/services/stats.service", () => ({
   },
 }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ error: vi.fn() }) }));
-const mockToast = vi.hoisted(() => ({ warning: vi.fn(), error: vi.fn() }));
-vi.mock("vue-sonner", () => ({ toast: mockToast }));
+vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 vi.mock("@/app/i18n", () => ({
   i18n: { global: { t: (key: string, params?: Record<string, unknown>) => (params ? `${key}:${JSON.stringify(params)}` : key) } },
 }));
@@ -61,6 +66,7 @@ describe("player lifecycle", () => {
     mockPlayer.currentTime = 0;
     mockPlayer.listenedSeconds = 0;
     mockQueue.currentItem = null;
+    mockQueue.queue = [];
   });
 
   it("wires the next-track prefetch watcher exactly once at init", () => {
@@ -132,10 +138,10 @@ describe("player lifecycle", () => {
     const track = { ...libraryTrack, title: "Song", source: TrackSource.LOCAL_INTERNAL } as unknown as PlayerTrack;
 
     bus.emit({ track, error: { kind: "source", cause: { kind: "NETWORK", message: "down" } } });
-    expect(mockToast.warning).toHaveBeenLastCalledWith('queue.trackSkipped:{"title":"Song"}', { id: "queue-track-skipped" });
+    expect(shownToasts("warning").at(-1)).toMatchObject({ title: 'queue.trackSkipped:{"title":"Song"}', id: "queue-track-skipped" });
 
     bus.emit({ track, error: { kind: "storage", cause: StorageError.readFailed("/x") } });
-    expect(mockToast.warning).toHaveBeenCalledTimes(1);
+    expect(shownToasts("warning")).toHaveLength(1);
   });
 
   it("points at the watched folder when its file is gone", () => {
@@ -146,7 +152,7 @@ describe("player lifecycle", () => {
       error: { kind: "storage", cause: new StorageError(StorageErrorCode.FILE_NOT_FOUND, "gone") },
     });
 
-    expect(mockToast.warning).toHaveBeenLastCalledWith("watchedFolders.trackPathMissing");
+    expect(shownToasts("warning").at(-1)).toMatchObject({ title: "watchedFolders.trackPathMissing" });
   });
 
   it("reports a stalled queue as an error", () => {
@@ -156,7 +162,21 @@ describe("player lifecycle", () => {
       failures: 3,
     });
 
-    expect(mockToast.error).toHaveBeenCalledWith('queue.playbackStalled:{"count":3}');
+    expect(shownToasts("destructive")).toContainEqual(expect.objectContaining({ title: 'queue.playbackStalled:{"count":3}' }));
+  });
+
+  it("offers a retry that plays the stalled track again", () => {
+    mockQueue.queue = [{ id: "q1", track: { id: "other" } }, { id: "q2", track: libraryTrack }];
+    useEventBus(playbackStalledEvent).emit({
+      track: libraryTrack,
+      error: { kind: "timeout", phase: "loading" },
+      failures: 3,
+    });
+
+    const [stalled] = shownToasts("destructive");
+    stalled?.actions?.[0]?.onClick?.(new MouseEvent("click"));
+
+    expect(mockQueue.jumpToId).toHaveBeenCalledWith("q2");
   });
 
   it("still advances the queue for non-library tracks without touching stats", () => {

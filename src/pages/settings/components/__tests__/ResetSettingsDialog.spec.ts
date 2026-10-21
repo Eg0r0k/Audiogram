@@ -1,19 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
-import { render, screen, fireEvent } from "@testing-library/vue";
-import { createI18n } from "vue-i18n";
-import { messages } from "@/app/i18n/messages";
+import { screen, fireEvent } from "@testing-library/vue";
 import ResetSettingsDialog from "@/pages/settings/components/ResetSettingsDialog.vue";
-import { DialogSummonHost, dismissAllSummonedDialogs, summonComponent } from "@/components/dialogs/summon";
+import { closeDialogs, openForResult, renderDialogHost } from "@/test/dialogs";
 
-const renderHost = () => render(DialogSummonHost, {
-  global: {
-    plugins: [createI18n({ legacy: false, locale: "en", messages })],
-    // The suite-wide teleport stub swallows the reka dialog portal; this
-    // test needs the real content in document.body.
-    stubs: { teleport: false },
-  },
-});
+const renderHost = renderDialogHost;
 
 function resetButton() {
   return screen.getByRole("button", { name: /^reset( \(\d\))?$/i }) as HTMLButtonElement;
@@ -27,14 +18,13 @@ describe("ResetSettingsDialog (summoned)", () => {
   });
 
   afterEach(async () => {
-    dismissAllSummonedDialogs();
-    await new Promise(resolve => setTimeout(resolve, 350));
+    await closeDialogs();
     vi.useRealTimers();
   });
 
   it("disables the reset button while the countdown runs", async () => {
     renderHost();
-    summonComponent<boolean>(ResetSettingsDialog);
+    openForResult<boolean>(ResetSettingsDialog);
     await nextTick();
     await screen.findByRole("button", { name: /reset/i });
 
@@ -44,7 +34,7 @@ describe("ResetSettingsDialog (summoned)", () => {
 
   it("enables the reset button and resolves true after the countdown", async () => {
     renderHost();
-    const promise = summonComponent<boolean>(ResetSettingsDialog);
+    const promise = openForResult<boolean>(ResetSettingsDialog);
     await nextTick();
     await screen.findByRole("button", { name: /reset/i });
 
@@ -58,7 +48,7 @@ describe("ResetSettingsDialog (summoned)", () => {
 
   it("resolves undefined when cancelled during the countdown", async () => {
     renderHost();
-    const promise = summonComponent<boolean>(ResetSettingsDialog);
+    const promise = openForResult<boolean>(ResetSettingsDialog);
     await nextTick();
     await screen.findByRole("button", { name: "Cancel" });
 

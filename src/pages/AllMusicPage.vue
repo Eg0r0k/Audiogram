@@ -1,54 +1,35 @@
 <template>
-  <div class="flex min-h-0 flex-1 flex-col bg-background">
-    <div class="mx-auto w-full max-w-page px-4 pb-2">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div class="flex  w-full  pt-4 gap-3 flex-row sm:items-center">
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            class="rounded-full shrink-0 "
-            @click="goBack()"
-          >
-            <IconArrowLeft class="size-6" />
-          </Button>
-
-          <div class="flex min-w-0 flex-1 items-center gap-2">
-            <InputGroup class="bg-muted! min-w-0 max-h-9 flex-1 rounded-full">
-              <InputGroupAddon tabindex="-1">
-                <IconSearch class="ml-1 size-5 text-muted-foreground" />
-              </InputGroupAddon>
-
-              <InputGroupInput
-                v-model="searchQuery"
-                class="pl-3! text-base!"
-                :placeholder="t('search.mainPlaceholder')"
-                @keydown.stop
-                @keydown.esc="onSearchEscape"
-              />
-
-              <InputGroupAddon
-                v-if="searchQuery.trim()"
-                tabindex="-1"
-                align="inline-end"
-              >
-                <Button
-                  class="rounded-full"
-                  variant="ghost-primary"
-                  size="icon-sm"
-                  @click="searchQuery = ''"
-                >
-                  <IconX class="size-5" />
-                </Button>
-              </InputGroupAddon>
-            </InputGroup>
-
-            <TrackSortMenu
-              v-model:sort-key="sortKey"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="flex min-h-0 flex-1 flex-col bg-card">
+    <AllMusicHeader
+      v-model:search="searchQuery"
+      v-model:sort-key="sortKey"
+      :selecting="isSelectMode"
+      :mobile="isMobileLayout"
+      @back="goBack()"
+      @select="enterSelection()"
+      @search-escape="onSearchEscape"
+    >
+      <template #selection>
+        <TrackSelectionBar
+          :count="selectedCount"
+          :all-selected="isAllSelected"
+          :all-liked="allLiked"
+          :busy="busy"
+          :selecting-all="isSelectingAll"
+          :compact="isMobileLayout"
+          @exit="exitSelection"
+          @select-all="selectAll"
+          @deselect-all="deselectAll"
+          @play="play"
+          @play-next="playNext"
+          @add-to-queue="addToQueue"
+          @toggle-like="toggleLike"
+          @create-playlist="createPlaylist"
+          @add-to-playlist="addToPlaylist"
+          @delete="deleteSelected"
+        />
+      </template>
+    </AllMusicHeader>
 
     <TrackContextMenu context="default">
       <CrossfadeTransition class="flex-1">
@@ -63,14 +44,9 @@
           v-else-if="isError"
           class="flex flex-col items-center justify-center gap-4 px-4 text-center"
         >
-          <div>
-            <h2 class="text-2xl font-bold">
-              {{ t('errors.tracksLoadFailed') }}
-            </h2>
-            <p class="text-muted-foreground">
-              {{ loadErrorText }}
-            </p>
-          </div>
+          <h2 class="text-2xl font-bold">
+            {{ t('errors.tracksLoadFailed') }}
+          </h2>
 
           <Button @click="refetch">
             {{ t('common.retry') }}
@@ -82,47 +58,11 @@
           ref="tracksListRef"
           class="track-list-grid relative flex min-h-0 flex-col"
         >
-          <div class="relative shrink-0 overflow-hidden">
-            <Motion
-              :animate="isSelectMode ? SORT_HIDDEN : SHOWN"
-              :transition="headerTransition"
-              :inert="isSelectMode || undefined"
-            >
-              <LibrarySortHeader
-                v-model:sort-key="sortKey"
-                class="px-4!"
-              />
-            </Motion>
-
-            <AnimatePresence>
-              <Motion
-                v-if="isSelectMode"
-                key="selection-bar"
-                :initial="BAR_HIDDEN"
-                :animate="SHOWN"
-                :exit="BAR_HIDDEN"
-                :transition="headerTransition"
-                class="absolute inset-0 border-b border-border/40"
-              >
-                <TrackSelectionBar
-                  :count="selectedCount"
-                  :all-selected="isAllSelected"
-                  :all-liked="allLiked"
-                  :busy="busy"
-                  :selecting-all="isSelectingAll"
-                  @exit="exitSelection"
-                  @select-all="selectAll"
-                  @deselect-all="deselectAll"
-                  @play="play"
-                  @play-next="playNext"
-                  @add-to-queue="addToQueue"
-                  @toggle-like="toggleLike"
-                  @add-to-playlist="addToPlaylist"
-                  @delete="deleteSelected"
-                />
-              </Motion>
-            </AnimatePresence>
-          </div>
+          <LibrarySortHeader
+            v-if="!isMobileLayout"
+            v-model:sort-key="sortKey"
+            class="px-4! [--sort-header-height:42px]"
+          />
 
           <VirtualScrollable
             ref="scrollableRef"
@@ -154,6 +94,13 @@
               </div>
             </template>
 
+            <template
+              v-if="isFetchNextPageError"
+              #load-more-error
+            >
+              <LoadMoreError @retry="handleLoadMore" />
+            </template>
+
             <template #loader>
               <div class="flex items-center px-2 flex-col w-full">
                 <TrackRowLoading />
@@ -179,7 +126,8 @@
                 <EmptyContent>
                   <Button
                     v-if="normalizedSearchQuery"
-                    variant="outline"
+                    variant="solid"
+                    color="surface"
                     @click="searchQuery = ''"
                   >
                     <IconX class="size-4" />
@@ -187,7 +135,8 @@
                   </Button>
                   <Button
                     v-else
-                    variant="outline"
+                    variant="solid"
+                    color="surface"
                     @click="handleAddMusic"
                   >
                     <IconPlus class="size-4" />
@@ -206,17 +155,12 @@
 </template>
 
 <script setup lang="ts">
-import { errorMessage } from "@/lib/errors";
+import LoadMoreError from "@/components/common/LoadMoreError.vue";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import EmptyLibraryArt from "@/modules/library/components/EmptyLibraryArt.vue";
 import IconSearchOff from "~icons/tabler/search-off";
 import IconPlus from "~icons/tabler/plus";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 import CrossfadeTransition from "@/components/transitions/CrossfadeTransition.vue";
@@ -224,16 +168,14 @@ import CrossfadeTransition from "@/components/transitions/CrossfadeTransition.vu
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
-import IconSearch from "~icons/tabler/search";
 import IconX from "~icons/tabler/x";
-import IconArrowLeft from "~icons/tabler/arrow-left";
 
-import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
-import TrackSortMenu from "@/modules/library/components/TrackSortMenu.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
+import AllMusicHeader from "@/modules/library/components/AllMusicHeader.vue";
+import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
+import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { useI18n } from "vue-i18n";
 import { computed, ref, useTemplateRef } from "vue";
-import { AnimatePresence, Motion } from "motion-v";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { useIndexTracksPage } from "@/modules/tracks/composables/useIndexTracksPage";
 import { getAllTrackIds, getAllTracksForQueue } from "@/queries/track.queries";
@@ -247,7 +189,6 @@ import { getLogger } from "@/lib/logger";
 import TrackSelectionBar from "@/modules/tracks/components/TrackSelectionBar.vue";
 import { useTrackSelectionMode } from "@/modules/tracks/composables/useTrackSelectionMode";
 import { useBulkTrackActions } from "@/modules/tracks/composables/useBulkTrackActions";
-import { provideTrackSelectionEntry } from "@/modules/tracks/components/menu/useTrackSelectionEntry";
 import { useGoBack } from "@/composables/useGoBack";
 const { t } = useI18n();
 const { pickAndImport } = useImport();
@@ -260,11 +201,11 @@ const {
   total,
   isLoading,
   isError,
-  error,
   refetch,
   fetchNextPage,
   hasNextPage,
   isFetchingNextPage,
+  isFetchNextPageError,
 } = useIndexTracksPage(sortKey, searchQuery);
 
 const playerStore = usePlayerStore();
@@ -293,8 +234,7 @@ const {
 });
 
 const goBack = useGoBack();
-
-provideTrackSelectionEntry(enterSelection);
+const { isMobileLayout } = useDeviceLayout();
 
 const joinsSelectedNeighbour = (index: number, offset: -1 | 1) => {
   const list: readonly (Track | undefined)[] = tracks.value;
@@ -317,6 +257,7 @@ const {
   addToQueue,
   toggleLike,
   addToPlaylist,
+  createPlaylist,
   deleteSelected,
 } = useBulkTrackActions({
   selectedIds,
@@ -326,11 +267,6 @@ const {
     if (action === "play" || action === "delete") exitSelection();
   },
 });
-
-const SHOWN = { opacity: 1, y: 0 };
-const SORT_HIDDEN = { opacity: 0, y: -12 };
-const BAR_HIDDEN = { opacity: 0, y: 12 };
-const headerTransition = { duration: 0.2, ease: [0.22, 1, 0.36, 1] as const };
 
 const emptyLabel = computed(() =>
   normalizedSearchQuery.value
@@ -347,8 +283,6 @@ const emptySubLabel = computed(() =>
 const handleAddMusic = async () => {
   await pickAndImport({ title: t("common.import.button") });
 };
-
-const loadErrorText = computed(() => errorMessage(error.value));
 
 function handleLoadMore() {
   if (!hasNextPage.value || isFetchingNextPage.value) return;

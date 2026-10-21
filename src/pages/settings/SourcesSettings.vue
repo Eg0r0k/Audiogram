@@ -1,131 +1,76 @@
 <template>
   <SettingsScreen :title="$t('settings.index.sources')">
-    <section
-      v-for="source in sourceList"
-      :key="source.kind"
-      class="mb-6"
-    >
-      <SettingsGroup>
-        <Item class="gap-8">
-          <ItemMedia>
-            <component
-              :is="source.ui.icon"
-              class="size-6 text-muted-foreground"
-            />
-          </ItemMedia>
-          <ItemContent>
-            <ItemTitle>{{ $t(source.ui.labelKey) }}</ItemTitle>
-            <ItemSubtitle>{{ statusLabel(source.kind) }}</ItemSubtitle>
-          </ItemContent>
-        </Item>
-      </SettingsGroup>
-
-      <component
-        :is="source.settings"
-        v-if="source.settings"
-      />
-      <SettingsGroup
-        v-if="source.canCheck"
-        class="pt-0!"
+    <SettingsGroup>
+      <div class="px-4 py-3">
+        <div class="text-primary font-medium">
+          {{ $t('settings.sourcesPage.sources') }}
+        </div>
+      </div>
+      <SettingsLink
+        v-for="source in sourceList"
+        :key="source.kind"
+        :to="routeLocation.settingsSource(source.kind)"
+        :icon="source.ui.icon"
+        :title="$t(source.ui.labelKey)"
       >
-        <Button
-          class="w-full h-14 justify-start"
-          size="xl"
-          variant="ghost-primary"
-          :disabled="!source.isAvailable || isChecking(source.kind)"
-          @click="check(source.kind)"
-        >
-          <Spinner
-            v-if="isChecking(source.kind)"
-            class="size-6"
-          />
-          <IconPlugConnected
-            v-else
-            class="size-6"
-          />
-          {{ $t("source.status.check") }}
-        </Button>
+        <template #description>
+          <SourceStatusLabel :kind="source.kind" />
+        </template>
+      </SettingsLink>
+    </SettingsGroup>
 
-        <p
-          v-if="failureOf(source.kind)"
-          class="text-sm text-destructive wrap-break-word px-2 font-medium mt-2"
-        >
-          {{ failureOf(source.kind)?.message }}
-        </p>
-        <p
-          v-else-if="health(source.kind).state === 'ok'"
-          class="text-sm text-primary px-2 font-medium mt-2"
-        >
-          {{ $t("source.status.ok") }}
-        </p>
-      </SettingsGroup>
-    </section>
+    <SettingsGroup
+      v-if="platformCaps.hasNativeProxy"
+      class="mt-3"
+    >
+      <SettingsLink
+        :to="routeLocation.settingsProxy()"
+        :icon="IconWorld"
+        :title="$t('settings.index.proxy')"
+        :description="proxyEnabled ? $t('settings.proxy.on') : $t('settings.proxy.off')"
+      />
+    </SettingsGroup>
   </SettingsScreen>
 </template>
 
 <script setup lang="ts">
-import { computed, type Component } from "vue";
-import { useI18n } from "vue-i18n";
-import { Item, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
-import ItemSubtitle from "@/components/ui/item/ItemSubtitle.vue";
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import IconPlugConnected from "~icons/tabler/plug-connected";
+import { computed, onMounted } from "vue";
+import IconWorld from "~icons/tabler/world";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
+import SettingsLink from "@/modules/settings/components/SettingsLink.vue";
 import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
+import { useProxySettings } from "@/modules/settings/store/proxy";
 import { sources } from "@/modules/sources";
-import { sourceUI } from "@/modules/sources/lib/source-ui";
+import SourceStatusLabel from "@/modules/sources/components/SourceStatusLabel.vue";
 import { checkSource } from "@/modules/sources/composables/useSourceHealth";
 import { sourceHealth } from "@/modules/sources/lib/health";
-import NdSettingsSection from "@/modules/sources/components/settings/NdSettingsSection.vue";
-import YmSettingsSection from "@/modules/sources/components/settings/YmSettingsSection.vue";
-import type { SourceKind } from "@/types/track-ref";
+import { sourceUI } from "@/modules/sources/lib/source-ui";
+import { routeLocation } from "@/app/router/route-locations";
+import { platformCaps } from "@/lib/environment/platformCaps";
+import { getLogger } from "@/lib/logger";
 
 //
-// One section per source the build registers — the page asks the registry
-// what exists instead of knowing. Sources are compiled in statically, so the
-// form a source needs is looked up in a static map here rather than carried
-// on the provider: SourceProvider is a data contract and has no business
-// referencing Vue components.
+// One row per source the build registers; the page asks the registry what
+// exists instead of knowing. Each row opens that source's own settings.
 //
-// A source with no form (YouTube: nothing to configure) still gets its row,
-// which is where its status is reported.
-//
-
-const SOURCE_SETTINGS: Partial<Record<SourceKind, Component>> = {
-  nd: NdSettingsSection,
-  ym: YmSettingsSection,
-};
-
-const { t } = useI18n();
 
 const sourceList = computed(() =>
   sources.all().map(provider => ({
     kind: provider.id,
     ui: sourceUI(provider.id),
-    settings: SOURCE_SETTINGS[provider.id],
-    isAvailable: provider.isAvailable,
-    canCheck: !!provider.checkConnection,
   })),
 );
 
-const health = (kind: SourceKind) => sourceHealth(kind);
-const isChecking = (kind: SourceKind) => sourceHealth(kind).state === "checking";
-const failureOf = (kind: SourceKind) => {
-  const current = sourceHealth(kind);
-  return current.state === "failed" ? current.error : null;
-};
+const { enabled: proxyEnabled } = useProxySettings();
 
-const statusLabel = (kind: SourceKind): string => {
-  if (!sources.isAvailable(kind)) return t("source.status.notConfigured");
-
-  switch (sourceHealth(kind).state) {
-    case "checking": return t("source.status.checking");
-    case "ok": return t("source.status.ok");
-    case "failed": return t("source.status.failed");
-    default: return t("source.status.available");
+// A status page that says "configured" for a source nobody has probed yet
+// tells the user nothing; ask the ones that can be asked.
+onMounted(() => {
+  for (const provider of sources.available()) {
+    if (!provider.checkConnection || sourceHealth(provider.id).state !== "unknown") continue;
+    checkSource(provider.id).catch((err: unknown) => {
+      getLogger().warn(`[SourcesSettings] Checking ${provider.id} failed: ${String(err)}`);
+    });
   }
-};
-
-const check = (kind: SourceKind) => checkSource(kind);
+});
 </script>

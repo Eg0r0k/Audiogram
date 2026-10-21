@@ -5,6 +5,7 @@ import { youtubeProvider } from "./provider";
 import { ytMusicTrackToDto } from "./lib/playable";
 import { ytErrorToSource as mapError } from "./lib/errors";
 import { proxiedThumbnail } from "./lib/thumbnail";
+import { formatYoutubeQueryLink } from "./lib/url";
 import { THUMB_SIZE_FULL } from "@/lib/media/cover-sizes";
 import { parseTrackRef, ytAlbumId, ytArtistId, ytPlaylistId } from "@/types/track-ref";
 import { getLogger } from "@/lib/logger";
@@ -196,6 +197,8 @@ export const ytSourceProvider: SourceProvider = {
     const videoId = ytIdOf(id);
     return videoId ? `https://www.youtube.com/watch?v=${videoId}` : null;
   },
+
+  shortLink: formatYoutubeQueryLink,
 
   // No catalog to enumerate: YouTube has no "all albums" to walk, only
   // entities reached by id from a search or a link.

@@ -1,5 +1,5 @@
 import { until, useEventBus } from "@vueuse/core";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { i18n } from "@/app/i18n";
 import { TrackSource } from "@/db/entities";
 import { StorageErrorCode } from "@/db/errors/storage.errors";
@@ -69,17 +69,32 @@ export function initPlayerLifecycle(): void {
       if (isLibraryTrack(track)
         && track.source === TrackSource.LOCAL_EXTERNAL
         && error.cause.code === StorageErrorCode.FILE_NOT_FOUND) {
-        toast.warning(i18n.global.t("watchedFolders.trackPathMissing"));
+        toaster.add({ title: i18n.global.t("watchedFolders.trackPathMissing"), color: "warning" });
       }
       return;
     }
     // One toast that updates its text: a run of unplayable entries would
     // otherwise stack a notification per track.
-    toast.warning(i18n.global.t("queue.trackSkipped", { title: track.title }), { id: "queue-track-skipped" });
+    toaster.add({ title: i18n.global.t("queue.trackSkipped", { title: track.title }), color: "warning", id: "queue-track-skipped" });
   });
 
-  useEventBus(playbackStalledEvent).on(({ failures }) => {
-    toast.error(i18n.global.t("queue.playbackStalled", { count: failures }));
+  // The retry plays the entry the queue gave up on; its queue item is found
+  // by identity, so a queue replaced since then leaves nothing to retry.
+  useEventBus(playbackStalledEvent).on(({ track, failures }) => {
+    toaster.add({
+      title: i18n.global.t("queue.playbackStalled", { count: failures }),
+      color: "destructive",
+      actions: [{
+        label: i18n.global.t("common.retry"),
+        onClick: () => {
+          const queue = useQueueStore();
+          const item = queue.queue.find(entry => entry.track === track);
+          if (!item) return;
+          queue.jumpToId(item.id)
+            .catch(error => getLogger().error(`[Queue] Retrying the stalled track failed: ${String(error)}`));
+        },
+      }],
+    });
   });
 
   // The persisted queue restores asynchronously and no event announces it —

@@ -17,20 +17,30 @@
         <ItemTitle class=" text-base">
           {{ title }}
         </ItemTitle>
+        <ItemDescription v-if="$slots.description || description">
+          <slot name="description">
+            {{ description }}
+          </slot>
+        </ItemDescription>
       </ItemContent>
 
       <ItemActions>
-        <ItemSubtitle class=" capitalize">
+        <ItemDescription
+          v-if="subtitle"
+          class=" capitalize"
+        >
           {{ subtitle }}
-        </ItemSubtitle>
+        </ItemDescription>
+        <IconChevronRight class="size-5 text-muted-foreground" />
       </ItemActions>
     </Link>
   </Item>
 </template>
 
 <script setup lang="ts">
-import { Item, ItemContent, ItemMedia, ItemTitle, ItemActions, ItemSubtitle } from "@/components/ui/item";
+import { Item, ItemContent, ItemMedia, ItemTitle, ItemActions, ItemDescription } from "@/components/ui/item";
 import Link from "@/components/ui/link/Link.vue";
+import IconChevronRight from "~icons/tabler/chevron-right";
 import { type Component } from "vue";
 import type { RouteLocationRaw } from "vue-router";
 
@@ -38,6 +48,9 @@ interface Props {
   to: RouteLocationRaw;
   icon: Component;
   title: string;
+  /** Under the title. */
+  description?: string;
+  /** Muted, on the right: the current value behind the link. */
   subtitle?: string;
 }
 

@@ -14,6 +14,7 @@
         class="rounded-full"
         size="icon-lg"
         variant="ghost"
+        color="muted"
         @click="emit('close')"
       >
         <IconX class="size-6" />

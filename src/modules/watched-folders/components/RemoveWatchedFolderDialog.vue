@@ -1,52 +1,42 @@
 <template>
-  <Dialog
-    :open="open"
-    @update:open="value => emit('update:open', value)"
-  >
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{{ $t('watchedFolders.removeDialogTitle') }}</DialogTitle>
-        <DialogDescription>
-          {{ $t('watchedFolders.removeDialogDescription', { name }) }}
-        </DialogDescription>
-      </DialogHeader>
-      <div class="flex justify-end gap-2 pt-2">
-        <Button
-          variant="ghost-primary"
-          @click="dismiss"
-        >
-          {{ $t('common.cancel') }}
-        </Button>
-        <Button
-          variant="destructive-link"
-          @click="resolve(true)"
-        >
-          {{ $t('common.delete') }}
-        </Button>
-      </div>
-    </DialogContent>
-  </Dialog>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>{{ $t('watchedFolders.removeDialogTitle', { name }) }}</DialogTitle>
+      <DialogDescription>
+        {{ $t('watchedFolders.removeDialogDescription') }}
+      </DialogDescription>
+    </DialogHeader>
+    <div class="flex justify-end gap-2 pt-2">
+      <Button
+        variant="ghost"
+        @click="dismiss"
+      >
+        {{ $t('common.cancel') }}
+      </Button>
+      <Button
+        variant="ghost"
+        color="destructive"
+        @click="close(true)"
+      >
+        {{ $t('common.delete') }}
+      </Button>
+    </div>
+  </DialogContent>
 </template>
 
 <script setup lang="ts">
 import {
-  Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  useDialogContext,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useSummonedDialog } from "@/components/dialogs/summon";
 
 defineProps<{
-  open: boolean;
   name: string;
 }>();
 
-const emit = defineEmits<{
-  "update:open": [open: boolean];
-}>();
-
-const { resolve, dismiss } = useSummonedDialog<true>();
+const { close, dismiss } = useDialogContext<true>();
 </script>

@@ -30,12 +30,15 @@
     </ItemMedia>
     <ItemContent>
       <ItemTitle>{{ folder.name }}</ItemTitle>
-      <ItemSubtitle>
+      <ItemDescription>
         <template v-if="folder.status === 'scanning'">
           {{ $t('watchedFolders.scanning') }}
         </template>
         <template v-else-if="folder.status === 'error'">
           {{ folder.errorMessage }}
+        </template>
+        <template v-else-if="folder.status === 'missing'">
+          {{ $t('watchedFolders.folderMissing') }}
         </template>
         <template v-else>
           {{ folder.fileCount }} {{ $t('watchedFolders.tracks') }}
@@ -43,14 +46,25 @@
             · {{ lastScanLabel }}
           </template>
         </template>
-      </ItemSubtitle>
+      </ItemDescription>
     </ItemContent>
+
+    <Button
+      v-if="folder.status === 'missing'"
+      variant="ghost"
+      color="muted"
+      size="sm"
+      @click="$emit('relink', folder.id)"
+    >
+      {{ $t('watchedFolders.relink') }}
+    </Button>
 
     <ResponsiveMenu>
       <ResponsiveMenuTrigger>
         <Button
-          size="icon"
+          size="icon-md"
           variant="ghost"
+          color="muted"
           class="rounded-full"
         >
           <IconDots class="size-6" />
@@ -76,7 +90,7 @@
           {{ $t('watchedFolders.relink') }}
         </ResponsiveMenuItem>
         <ResponsiveMenuItem
-          variant="destructive"
+          color="destructive"
           @click="$emit('remove', folder.id)"
         >
           <IconTrash class=" size-5" />
@@ -94,7 +108,7 @@ import {
   Item,
   ItemContent,
   ItemMedia,
-  ItemSubtitle,
+  ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
 

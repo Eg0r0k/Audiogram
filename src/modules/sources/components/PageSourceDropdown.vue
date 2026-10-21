@@ -1,29 +1,27 @@
 <template>
-  <DropdownMenu >
-    <DropdownMenuTrigger as-child>
-      <Button
-        variant="ghost"
-        size="icon-lg"
-        class="rounded-full shrink-0"
-        :aria-label="$t(sourceUI(store.currentSource).labelKey)"
-        :title="$t(sourceUI(store.currentSource).labelKey)"
-      >
-        <MorphIcon
-          :icon="currentSourceIcon"
-          spring="snappy"
-          reduced-motion="user"
-          class="size-6"
-        />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent
+  <Button
+    variant="ghost"
+    color="muted"
+    size="icon-lg"
+    class="rounded-full shrink-0"
+    :aria-label="$t(sourceUI(store.currentSource).labelKey)"
+    :title="$t(sourceUI(store.currentSource).labelKey)"
+  >
+    <MorphIcon
+      :icon="currentSourceIcon"
+      spring="snappy"
+      reduced-motion="user"
+      class="size-6"
+    />
+    <Menu
       class="w-52"
-      align="end"
+      anchor="bottom end"
+      self="top end"
     >
-      <DropdownMenuItem
+      <MenuItem
         v-for="ui in sourceOptions"
         :key="ui.kind"
-        @click="store.setSource(ui.kind)"
+        @select="store.setSource(ui.kind)"
       >
         <component
           :is="ui.icon"
@@ -34,19 +32,14 @@
           v-if="store.currentSource === ui.kind"
           class="ml-auto size-4"
         />
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
+      </MenuItem>
+    </Menu>
+  </Button>
 </template>
 
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Menu, MenuItem } from "@/components/ui/menu";
 import { computed } from "vue";
 import { MorphIcon } from "morphicons/vue";
 import { svgToIcon } from "morphicons/adapters";

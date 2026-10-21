@@ -1,4 +1,4 @@
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 import { AlbumId, PlaylistId } from "@/types/ids";
 import { getLogger } from "@/lib/logger";
@@ -67,7 +67,7 @@ export function useLibraryContextActions() {
         return;
     }
 
-    toast.success(t("queue.added"));
+    toaster.add({ title: t("queue.added"), color: "success" });
   };
 
   /**
@@ -87,7 +87,7 @@ export function useLibraryContextActions() {
 
     if (result.isErr()) {
       getLogger().error(`[Library] Queueing catalog ${item.type} ${item.id} failed: ${result.error.message}`);
-      toast.error(t("queue.addFailed"));
+      toaster.add({ title: t("queue.addFailed"), color: "destructive" });
       return;
     }
 
@@ -100,7 +100,7 @@ export function useLibraryContextActions() {
         ? { type: "album", albumId: AlbumId(item.id) }
         : { type: "playlist", playlistId: PlaylistId(item.id) },
     );
-    toast.success(t("queue.added"));
+    toaster.add({ title: t("queue.added"), color: "success" });
   };
 
   /** Batch offline download of a catalog album/playlist. */
@@ -109,11 +109,20 @@ export function useLibraryContextActions() {
       const batchId = item.type === "album"
         ? await enqueueCollectionDownload("album", AlbumId(item.id))
         : await enqueueCollectionDownload("playlist", PlaylistId(item.id));
-      if (!batchId) toast.info(t("media.nothingToDownload"));
+      if (!batchId) toaster.add({ title: t("media.nothingToDownload"), color: "info" });
     }
     catch (error) {
       getLogger().error(`[Library] Batch download of ${item.type} ${item.id} failed: ${String(error)}`);
-      toast.error(t("track.downloadFailed"));
+      toaster.add({
+        title: t("downloads.enqueueFailed"),
+        color: "destructive",
+        actions: [{
+          label: t("common.retry"),
+          onClick: () => {
+            downloadCatalog(item).catch(() => undefined);
+          },
+        }],
+      });
     }
   };
 

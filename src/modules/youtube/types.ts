@@ -113,20 +113,6 @@ export interface YtTrackMeta {
   coverUrl: string | null;
 }
 
-/**
- * Minimal playable shape accepted by play/download flows — the common
- * denominator of {@link YtSearchResult} and {@link YtMusicTrack}.
- */
-export interface YtPlayable {
-  id: string;
-  title: string;
-  artist: string | null;
-  thumbnail: string | null;
-  duration: number | null;
-  /** Present for YTM tracks; improves download tags. */
-  meta?: YtTrackMeta;
-}
-
 export interface YtDownloadResult {
   /** Absolute path to the downloaded audio file, ready for the import pipeline. */
   path: string;

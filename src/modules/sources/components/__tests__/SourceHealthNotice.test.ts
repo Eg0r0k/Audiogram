@@ -35,4 +35,12 @@ describe("SourceHealthNotice", () => {
 
     expect(screen.getByText(/cannot be reached/i)).toBeInTheDocument();
   });
+
+  it("keeps the raw error out of the notice", () => {
+    setSourceHealth("nd", { state: "failed", error: { kind: "NETWORK", message: "ECONNREFUSED 127.0.0.1:4533" } });
+
+    renderWithPlugins(SourceHealthNotice, { props: { kind: "nd" } });
+
+    expect(screen.queryByText(/ECONNREFUSED/)).not.toBeInTheDocument();
+  });
 });

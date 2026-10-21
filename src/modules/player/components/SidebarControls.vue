@@ -4,6 +4,7 @@
       <Button
         v-if="playerStore.currentTrack?.kind === 'library'"
         variant="ghost"
+        color="muted"
         class="mr-1 h-auto w-auto min-w-0 rounded-full py-1 pr-1.5! gap-0.5 text-sm font-medium text-muted-foreground select-none overflow-hidden"
         :aria-label="$t('player.chapters')"
         :title="$t('player.chapters')"
@@ -26,6 +27,7 @@
 
       <Button
         variant="ghost"
+        color="muted"
         class="mr-2 h-auto rounded-full px-2 gap-0.5 py-1 text-sm font-medium text-muted-foreground select-none whitespace-nowrap"
         @click="toggleTimeDisplayMode"
       >
@@ -41,6 +43,7 @@
       <Button
         size="icon-sm"
         variant="ghost"
+        color="muted"
         :class="{ 'text-primary': isQueueOpen }"
         :aria-label="$t('queue.title')"
         :title="$t('queue.title')"
@@ -49,121 +52,121 @@
         <IconPlaylist class="size-4.5" />
       </Button>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger as-child>
-          <Button
-            class=" relative"
-            size="icon-sm"
-            variant="ghost"
-          >
-            <IconCategory class="size-4.5" />
-
-            <AnimatePresence>
-              <motion.div
-                v-if="playerStore.playbackRate !== 1"
-                key="rate-badge"
-                class="absolute top-0 -right-1 border-card border-2 bg-foreground text-card rounded-full h-3.5 flex items-center justify-center border-full"
-                :initial="{ opacity: 0, scale: 0.5 }"
-                :animate="{ opacity: 1, scale: 1 }"
-                :exit="{ opacity: 0, scale: 0.5 }"
-                :transition="{ duration: 0.10 }"
-                layout
-              >
-                <span class="text-[8px] font-bold leading-none px-0.5 whitespace-nowrap">
-                  {{ formatPlaybackRate(playerStore.playbackRate) }}
-                </span>
-              </motion.div>
-            </AnimatePresence>
-          </Button>
-        </DropdownMenuTrigger>
-
-        <DropdownMenuContent
-          align="end"
-          class="w-52"
+      <MenuTrigger as-child>
+        <Button
+          class=" relative"
+          size="icon-sm"
+          variant="ghost"
+          color="muted"
         >
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <IconMoonStars
-                class="size-5"
-              />
-              <span>
-                {{ $t("player.sleepTimer") }}
+          <IconCategory class="size-4.5" />
+
+          <AnimatePresence>
+            <motion.div
+              v-if="playerStore.playbackRate !== 1"
+              key="rate-badge"
+              class="absolute top-0 -right-1 border-card border-2 bg-foreground text-card rounded-full h-3.5 flex items-center justify-center border-full"
+              :initial="{ opacity: 0, scale: 0.5 }"
+              :animate="{ opacity: 1, scale: 1 }"
+              :exit="{ opacity: 0, scale: 0.5 }"
+              :transition="{ duration: 0.10 }"
+              layout
+            >
+              <span class="text-[8px] font-bold leading-none px-0.5 whitespace-nowrap">
+                {{ formatPlaybackRate(playerStore.playbackRate) }}
               </span>
-              <span
-                v-if="isSleepTimerActive"
-                class="ml-auto text-xs text-muted-foreground"
+            </motion.div>
+          </AnimatePresence>
+        </Button>
+      </MenuTrigger>
+
+      <Menu
+        class="w-52"
+        anchor="bottom end"
+        self="top end"
+      >
+        <MenuSub>
+          <MenuSubTrigger>
+            <IconMoonStars
+              class="size-5"
+            />
+            <span>
+              {{ $t("player.sleepTimer") }}
+            </span>
+            <span
+              v-if="isSleepTimerActive"
+              class="ml-auto text-xs text-muted-foreground"
+            >
+              {{ remainingText }}
+            </span>
+          </MenuSubTrigger>
+
+          <MenuSubContent>
+            <MenuLabel class="text-xs text-muted-foreground font-normal">
+              {{ statusText }}
+            </MenuLabel>
+            <MenuSeparator />
+
+            <MenuItem
+              v-for="preset in presets"
+              :key="preset.minutes"
+              @click="setTimer(preset.minutes)"
+            >
+              <IconClockHour4 class="size-5 " />
+              {{ t("common.minutesShort", { count: preset.minutes }) }}
+            </MenuItem>
+
+            <template v-if="isSleepTimerActive">
+              <MenuSeparator />
+              <MenuItem
+                color="destructive"
+                @click="cancelSleepTimer()"
               >
-                {{ remainingText }}
-              </span>
-            </DropdownMenuSubTrigger>
+                <IconPlayerStop class="size-5" />
+                {{ $t("player.cancelSleepTimer") }}
+              </MenuItem>
+            </template>
+          </MenuSubContent>
+        </MenuSub>
+        <MenuSub>
+          <MenuSubTrigger>
+            <IconGauge class="size-5" />
+            <span>
+              {{ $t("player.playbackSpeed") }}
+            </span>
+            <span class="ml-auto text-xs text-muted-foreground">
+              {{ formattedPlaybackRate }}
+            </span>
+          </MenuSubTrigger>
 
-            <DropdownMenuSubContent>
-              <DropdownMenuLabel class="text-xs text-muted-foreground font-normal">
-                {{ statusText }}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem
-                v-for="preset in presets"
-                :key="preset.minutes"
-                @click="setTimer(preset.minutes)"
+          <MenuSubContent>
+            <MenuRadioGroup
+              :model-value="String(playerStore.playbackRate)"
+              @update:model-value="handlePlaybackRateChange"
+            >
+              <MenuRadioItem
+                v-for="rate in playbackRatePresets"
+                :key="rate"
+                :value="String(rate)"
               >
-                <IconClockHour4 class="size-5 " />
-                {{ t("common.minutesShort", { count: preset.minutes }) }}
-              </DropdownMenuItem>
-
-              <template v-if="isSleepTimerActive">
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  @click="cancelSleepTimer()"
-                >
-                  <IconPlayerStop class="size-5" />
-                  {{ $t("player.cancelSleepTimer") }}
-                </DropdownMenuItem>
-              </template>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <IconGauge class="size-5" />
-              <span>
-                {{ $t("player.playbackSpeed") }}
-              </span>
-              <span class="ml-auto text-xs text-muted-foreground">
-                {{ formattedPlaybackRate }}
-              </span>
-            </DropdownMenuSubTrigger>
-
-            <DropdownMenuSubContent>
-              <DropdownMenuRadioGroup
-                :model-value="String(playerStore.playbackRate)"
-                @update:model-value="handlePlaybackRateChange"
-              >
-                <DropdownMenuRadioItem
-                  v-for="rate in playbackRatePresets"
-                  :key="rate"
-                  :value="String(rate)"
-                >
-                  {{ formatPlaybackRate(rate) }}
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuItem @click="router.push(routeLocation.settingsAudio())">
-            <IconEqualizer class="size-5" />
-            {{ $t("player.equalizer") }}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            v-if="pip.PIP_SUPPORTED"
-            :class="{ 'text-primary': pip.isPipOpen.value }"
-            @click="handlePipToggle"
-          >
-            <IconPIP class="size-5" />
-            {{ $t("player.pip") }}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+                {{ formatPlaybackRate(rate) }}
+              </MenuRadioItem>
+            </MenuRadioGroup>
+          </MenuSubContent>
+        </MenuSub>
+        <MenuItem @click="router.push(routeLocation.settingsAudio())">
+          <IconEqualizer class="size-5" />
+          {{ $t("player.equalizer") }}
+        </MenuItem>
+        <MenuItem
+          v-if="pip.PIP_SUPPORTED"
+          :class="{ 'text-primary': pip.isPipOpen.value }"
+          @click="handlePipToggle"
+        >
+          <IconPIP class="size-5" />
+          {{ $t("player.pip") }}
+        </MenuItem>
+      </Menu>
     </div>
   </div>
 </template>
@@ -177,18 +180,17 @@ import { usePlayerStore } from "@/modules/player/store/player.store";
 import { formatDuration } from "@/lib/format/time";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Menu,
+  MenuItem,
+  MenuLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuSeparator,
+  MenuSub,
+  MenuSubContent,
+  MenuSubTrigger,
+  MenuTrigger,
+} from "@/components/ui/menu";
 import IconCategory from "~icons/tabler/category";
 import IconMoonStars from "~icons/tabler/moon-stars";
 import IconClockHour4 from "~icons/tabler/clock-hour-4";
@@ -253,7 +255,7 @@ const handlePipToggle = async () => {
 
 const formatPlaybackRate = (rate: number) => `${rate.toFixed(2).replace(/\.00$/, "").replace(/0$/, "")}x`;
 
-const handlePlaybackRateChange = (value: string) => {
+const handlePlaybackRateChange = (value: unknown) => {
   playerStore.setPlaybackRate(Number(value));
 };
 

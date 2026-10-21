@@ -33,7 +33,7 @@
             :padding-bottom="16"
             sticky-offset="72px"
             :loading="isTracksLoading || isFetchingNextPage"
-            class="h-full"
+            class="h-full bg-card [--sticky-surface:var(--card)]"
             @load-more="handleLoadMore"
           >
             <template #before>
@@ -45,24 +45,20 @@
                 :filterable="!!album"
                 :catalog-route="catalogViewRoute('album', albumId, !!album)"
                 :like="like.state.value"
+                :can-add-tracks="!!album"
                 @play="handlePlayAll"
                 @shuffle="handleShuffle"
                 @edit="openEditDialog"
                 @delete="openDeleteDialog"
                 @add-to-queue="handleAddToQueue"
+                @add-tracks="openAddTracksPanel"
               />
             </template>
 
-            <template #leading>
-              <div class="px-4 mb-2">
-                <AddTrackRow
-                  v-if="album"
-                  @add="openAddTracksPanel"
-                />
-              </div>
-            </template>
-
-            <template #sticky>
+            <template
+              v-if="!isMobileLayout"
+              #sticky
+            >
               <LibrarySortHeader
                 v-model:sort-key="sortKey"
                 :sortable="canSort"
@@ -83,6 +79,13 @@
               </div>
             </template>
 
+            <template
+              v-if="isFetchNextPageError"
+              #load-more-error
+            >
+              <LoadMoreError @retry="handleLoadMore" />
+            </template>
+
             <template #loader>
               <div class="flex items-center px-4 flex-col w-full">
                 <TrackRowLoading />
@@ -101,13 +104,14 @@
 </template>
 
 <script setup lang="ts">
-import { errorMessage } from "@/lib/errors";
+import LoadMoreError from "@/components/common/LoadMoreError.vue";
 import { computed, ref, useTemplateRef } from "vue";
 import { catalogViewRoute } from "@/app/router/route-locations";
 import { sourceKindOf } from "@/modules/sources/lib/display";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
+import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import PageErrorState from "@/components/common/PageErrorState.vue";
@@ -131,7 +135,6 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
-import AddTrackRow from "@/modules/tracks/components/AddTrackRow.vue";
 import { getLogger } from "@/lib/logger";
 
 const { t } = useI18n();
@@ -139,6 +142,7 @@ const playerStore = usePlayerStore();
 const rightPanelStore = useRightPanelStore();
 const { openMenu } = useTrackMenu();
 const route = useRoute();
+const { isMobileLayout } = useDeviceLayout();
 const sortKey = ref<TrackSortKey | null>(null);
 const searchQuery = ref("");
 
@@ -161,6 +165,7 @@ const {
   hasNextPage,
   isTracksLoading,
   isFetchingNextPage,
+  isFetchNextPageError,
 } = useAlbumPage(sortKey, searchQuery);
 
 const albumId = computed(() => route.params.id as string);
@@ -244,10 +249,10 @@ async function openDeleteDialog() {
 async function handleDelete(deleteTracks: boolean) {
   try {
     await deleteAlbum({ deleteTracks });
-    toast.success(t("album.deleted"));
+    toaster.add({ title: t("album.deleted"), color: "success" });
   }
   catch {
-    toast.error(t("album.deleteFailed"));
+    toaster.add({ title: t("album.deleteFailed"), color: "destructive" });
   }
 }
 
@@ -258,7 +263,7 @@ const openEditDialog = () => {
       await updateAlbum(changes);
     }
     catch (e) {
-      toast.error(errorMessage(e, t("album.updateFailed")));
+      getLogger().error(`[AlbumPage] Updating the album failed: ${String(e)}`);
       throw e;
     }
   }).catch(() => undefined);

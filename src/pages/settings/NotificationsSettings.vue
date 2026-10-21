@@ -37,7 +37,7 @@
         </ItemMedia>
         <ItemContent class="ml-4">
           <ItemTitle>{{ $t("settings.notifications.newMusic") }}</ItemTitle>
-          <ItemSubtitle>{{ $t("settings.notifications.newMusicDescription") }}</ItemSubtitle>
+          <ItemDescription>{{ $t("settings.notifications.newMusicDescription") }}</ItemDescription>
         </ItemContent>
       </Item>
 
@@ -56,7 +56,7 @@
         </ItemMedia>
         <ItemContent class="ml-4">
           <ItemTitle>{{ $t("settings.notifications.playlistsUpdates") }}</ItemTitle>
-          <ItemSubtitle>{{ $t("settings.notifications.playlistsUpdatesDescription") }}</ItemSubtitle>
+          <ItemDescription>{{ $t("settings.notifications.playlistsUpdatesDescription") }}</ItemDescription>
         </ItemContent>
       </Item>
 
@@ -75,7 +75,7 @@
         </ItemMedia>
         <ItemContent class="ml-4">
           <ItemTitle>{{ $t("settings.notifications.artistAnnouncements") }}</ItemTitle>
-          <ItemSubtitle>{{ $t("settings.notifications.artistAnnouncementsDescription") }}</ItemSubtitle>
+          <ItemDescription>{{ $t("settings.notifications.artistAnnouncementsDescription") }}</ItemDescription>
         </ItemContent>
       </Item>
 
@@ -94,7 +94,7 @@
         </ItemMedia>
         <ItemContent class="ml-4">
           <ItemTitle>{{ $t("settings.notifications.concertAlerts") }}</ItemTitle>
-          <ItemSubtitle>{{ $t("settings.notifications.concertAlertsDescription") }}</ItemSubtitle>
+          <ItemDescription>{{ $t("settings.notifications.concertAlertsDescription") }}</ItemDescription>
         </ItemContent>
       </Item>
     </SettingsGroup>
@@ -115,7 +115,7 @@
         </ItemMedia>
         <ItemContent class="ml-4">
           <ItemTitle>{{ $t("settings.notifications.productNews") }}</ItemTitle>
-          <ItemSubtitle>{{ $t("settings.notifications.productNewsDescription") }}</ItemSubtitle>
+          <ItemDescription>{{ $t("settings.notifications.productNewsDescription") }}</ItemDescription>
         </ItemContent>
       </Item>
     </SettingsGroup>
@@ -126,7 +126,7 @@
 import { ref } from "vue";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Item, ItemContent, ItemMedia, ItemSubtitle, ItemTitle } from "@/components/ui/item";
+import { Item, ItemContent, ItemMedia, ItemDescription, ItemTitle } from "@/components/ui/item";
 import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsItem from "@/modules/settings/components/SettingsItem.vue";

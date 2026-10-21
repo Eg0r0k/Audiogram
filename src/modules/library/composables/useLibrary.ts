@@ -196,42 +196,25 @@ export const useLibrary = () => {
     ...folderItems.value,
   ]);
 
-  const shouldShowSystemItems = computed(() =>
-    activeFilter.value === "all" || activeFilter.value === "album",
-  );
-
-  const filteredItems = computed(() => {
-    const systemItems = shouldShowSystemItems.value
-      ? rootItems.value.filter(item => item.isSystem)
-      : [];
-
-    let items = rootItems.value.filter(item => !item.isSystem);
-
-    if (activeFilter.value !== "all") {
-      items = items.filter(item => item.type === activeFilter.value);
-    }
-
+  const searchedRootItems = computed(() => {
     const q = searchQuery.value.trim().toLowerCase();
-    if (q) {
-      items = items.filter(item =>
-        item.title.toLowerCase().includes(q)
-        || item.subtitle?.toLowerCase().includes(q)
-        || item.artistName?.toLowerCase().includes(q),
-      );
-    }
-
-    return [...systemItems, ...items];
+    if (!q) return rootItems.value;
+    // System rows stay whatever the query.
+    return rootItems.value.filter(item =>
+      item.isSystem
+      || item.title.toLowerCase().includes(q)
+      || item.subtitle?.toLowerCase().includes(q)
+      || item.artistName?.toLowerCase().includes(q),
+    );
   });
 
-  const sortedItems = computed(() => {
-    const items = [...filteredItems.value];
-
+  const sortedRootItems = computed(() => {
     const pinnedOrder = new Map<string, number>();
     for (const pinned of store.pinnedItems) {
       pinnedOrder.set(`${pinned.type}:${pinned.id}`, pinned.pinnedAt);
     }
 
-    items.sort((a, b) => {
+    const items = [...searchedRootItems.value].sort((a, b) => {
       if (a.isSystem && !b.isSystem) return -1;
       if (!a.isSystem && b.isSystem) return 1;
       if (a.type === "folder" && b.type !== "folder") return -1;
@@ -261,13 +244,27 @@ export const useLibrary = () => {
       }
     });
 
-    return items;
+    // Pinned rows lead the list, ahead of folders too.
+    return [...items.filter(item => item.isPinned), ...items.filter(item => !item.isPinned)];
   });
 
-  const pinnedItems = computed(() => sortedItems.value.filter(item => item.isPinned));
-  const unpinnedItems = computed(() => sortedItems.value.filter(item => !item.isPinned));
+  /**
+   * The sidebar's list for every filter at once, so each keeps a view of its
+   * own: one sort, then one pass that buckets rows in order. System rows
+   * belong to "all" and "album".
+   */
+  const itemsByFilter = computed<Record<LibraryFilter, LibraryItem[]>>(() => {
+    const lists: Record<LibraryFilter, LibraryItem[]> = { all: [], playlist: [], artist: [], album: [] };
+    for (const item of sortedRootItems.value) {
+      lists.all.push(item);
+      if (item.isSystem) lists.album.push(item);
+      else if (item.type === "playlist" || item.type === "artist" || item.type === "album") lists[item.type].push(item);
+    }
+    return lists;
+  });
+
   const isEmpty = computed(() => rootItems.value.length === 0 && !isLoading.value);
-  const hasResults = computed(() => sortedItems.value.length > 0);
+  const hasResults = computed(() => itemsByFilter.value[activeFilter.value].length > 0);
 
   const availableFilters = computed<LibraryFilter[]>(() => {
     return LIBRARY_FILTERS.filter((filter) => {
@@ -408,8 +405,7 @@ export const useLibrary = () => {
     rootItems,
     folders,
     movableItems,
-    pinnedItems,
-    unpinnedItems,
+    itemsByFilter,
     availableFilters,
     isLoading,
     isEmpty,

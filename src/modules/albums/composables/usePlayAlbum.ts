@@ -1,5 +1,5 @@
 import { useI18n } from "vue-i18n";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { getLogger } from "@/lib/logger";
 import type { LibraryItem } from "@/modules/library/types";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
@@ -34,7 +34,7 @@ export const usePlayAlbum = () => {
         : await provider.getAlbum(item.id as AlbumId);
       if (result.isErr()) {
         getLogger().error(`[Library] Queueing catalog ${item.type} ${item.id} failed: ${result.error.message}`);
-        toast.error(t("queue.addFailed"));
+        toaster.add({ title: t("queue.addFailed"), color: "destructive" });
         return;
       }
       const tracks = result.value.tracks.map(sourceTrackToDisplay);

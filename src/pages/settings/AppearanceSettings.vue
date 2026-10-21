@@ -16,7 +16,7 @@
           class="cursor-pointer"
           @click="setTheme(option.value)"
         >
-          <RadioGroupItem
+          <Radio
             :id="`theme-${option.value}`"
             :value="option.value"
           />
@@ -45,7 +45,7 @@
           class="cursor-pointer"
           @click="setContrast(option)"
         >
-          <RadioGroupItem
+          <Radio
             :id="`contrast-${option}`"
             :value="option"
           />
@@ -89,7 +89,7 @@
           class="cursor-pointer"
           @click="setFont(preset.id)"
         >
-          <RadioGroupItem
+          <Radio
             :id="`font-${preset.id}`"
             :value="preset.id"
           />
@@ -117,7 +117,7 @@
               :model-value="String(zoom)"
               @update:model-value="(val) => setZoom(Number(val) as any)"
             >
-              <SelectTrigger
+              <SelectTrigger variant="ghost"
                 class="w-[90px] h-8 font-medium pointer-events-auto"
                 :aria-label="$t('settings.appearance.zoom')"
               >
@@ -148,7 +148,7 @@ import {
   ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroup, Radio } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,

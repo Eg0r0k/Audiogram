@@ -192,6 +192,14 @@ class StatsRepository {
     return runSafe(() => db.listenEvents.delete(eventId));
   }
 
+  eventsForTrack = async (trackId: TrackId): Promise<Result<ListenEventEntity[], Error>> =>
+    runSafe(() => db.listenEvents.where("trackId").equals(trackId).toArray());
+
+  restoreEvents = async (events: readonly ListenEventEntity[]): Promise<Result<void, Error>> =>
+    runSafe(async () => {
+      await db.listenEvents.bulkPut([...events]);
+    });
+
   async deleteEventsForTrack(trackId: TrackId): Promise<Result<void, Error>> {
     return runSafe(async () => {
       await db.listenEvents.where("trackId").equals(trackId).delete();

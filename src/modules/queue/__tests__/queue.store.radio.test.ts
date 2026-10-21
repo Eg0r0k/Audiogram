@@ -6,6 +6,7 @@ import type { PlayerTrack, Track } from "@/modules/player/types";
 import type { SourceTrackDTO } from "@/types/source-dto";
 import { registerPlaybackPort, type PlaybackPort } from "../lib/playback-port";
 import type { RadioSession } from "../lib/queue-radio";
+import { shadowPinRemoteTracks } from "../lib/shadow-pin";
 import { useQueueStore } from "../store/queue.store";
 
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }) }));
@@ -111,6 +112,19 @@ describe("queue.store — radio", () => {
     await vi.waitFor(() => expect(store.size).toBe(7));
 
     expect(store.queue.map(item => item.track.id)).toEqual(["ym:1", "ym:2", "ym:3", "ym:4", "ym:5", "ym:6", "ym:7"]);
+  });
+
+  it("shadow-pins each later chain like the first, so its covers are stored before the tracks play", async () => {
+    const store = useQueueStore();
+    const session = fakeSession([dto(1), dto(2), dto(3), dto(4), dto(5)], [[dto(6), dto(7)]]);
+    await store.startRadio(session);
+    vi.mocked(shadowPinRemoteTracks).mockClear();
+
+    await store.jumpTo(2);
+    await vi.waitFor(() => expect(store.size).toBe(7));
+
+    expect(shadowPinRemoteTracks).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(shadowPinRemoteTracks).mock.calls[0][0].map(track => track.id)).toEqual(["ym:6", "ym:7"]);
   });
 
   it("at the tail the station, not the local recommender, extends the queue", async () => {

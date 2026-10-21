@@ -48,7 +48,8 @@
         <Button
           v-if="row.sourceId"
           size="lg"
-          :variant="row.label === -1 ? 'destructive' : 'outline'"
+          variant="solid"
+          :color="row.label === -1 ? 'destructive' : 'surface'"
           @click="$emit('dislike')"
         >
           <IconThumbDown class="size-5" />
@@ -57,7 +58,8 @@
         <Button
           v-if="row.sourceId"
           size="lg"
-          :variant="row.label === 1 ? 'default' : 'outline'"
+          variant="solid"
+          :color="row.label === 1 ? 'primary' : 'surface'"
           @click="$emit('like')"
         >
           <IconThumbUp class="size-5" />
@@ -66,6 +68,7 @@
         <Button
           size="lg"
           variant="ghost"
+          color="muted"
           @click="$emit('skip')"
         >
           <IconPlayerSkipForward class="size-5" />

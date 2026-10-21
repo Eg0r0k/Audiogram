@@ -46,7 +46,8 @@
         </EmptyHeader>
         <EmptyContent v-if="attachableTrack">
           <Button
-            variant="outline"
+            variant="solid"
+            color="surface"
             :disabled="isAttachingLyrics"
             @click="attachLyrics"
           >
@@ -67,7 +68,8 @@
       >
         <Button
           size="sm"
-          variant="secondary"
+          variant="soft"
+          color="neutral"
           class="pointer-events-auto rounded-full shadow-lg"
           @click="resumeFollow"
         >

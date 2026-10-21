@@ -17,7 +17,7 @@
         <div class="flex items-center justify-between gap-2 px-4 pt-2 mt-2 bg-card font-medium">
           <span class="min-w-0 truncate">{{ t("queue.tabHistory") }}</span>
           <Button
-            variant="ghost-primary"
+            variant="ghost"
             size="sm"
             class="shrink-0"
             @click="clearHistory"

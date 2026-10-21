@@ -9,6 +9,7 @@
       </ResponsiveContextMenuTrigger>
     </div>
     <ResponsiveMenuContent class="w-60 bg-popover/50 backdrop-blur-[50px]">
+      <OpenInCatalogItem />
       <component
         :is="contextComponent"
         v-bind="contextProps"
@@ -27,6 +28,7 @@ import { useEventListener } from "@vueuse/core";
 import { computed, useTemplateRef, type Component } from "vue";
 import { useMediaContext } from "@/modules/media-hero/composables/useMediaContext";
 import AlbumContext from "../contexts/AlbumContext.vue";
+import OpenInCatalogItem from "../OpenInCatalogItem.vue";
 import ArtistContext from "../contexts/ArtistContext.vue";
 import PlaylistContext from "../contexts/PlaylistContext.vue";
 import LikedContext from "../contexts/LikedContext.vue";

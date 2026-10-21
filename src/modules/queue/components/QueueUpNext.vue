@@ -3,35 +3,32 @@
     ref="rootRef"
     class="relative flex flex-1 min-h-0 flex-col overflow-hidden"
   >
-    <VirtualScrollable
-      ref="virtualRef"
-      :items="upcomingQueueItems"
-      :estimate-size="ITEM_HEIGHT"
-      :item-height="ITEM_HEIGHT"
-      :overscan="4"
-      :padding-bottom="8"
-      :get-item-key="getItemKey"
-      :keep-scroll-anchor="!isSettling"
-      class="queue-up-next-list flex-1 bg-card"
-      :class="[isSettling && 'is-settling', drag && 'is-dragging']"
-    >
-      <template #default="{ item, index }">
-        <QueueDraggableRow
-          :id="item.id"
-          :index="index"
-        >
-          <TrackRow
-            menu-target="queue"
-            :track="item.track as Track"
-            :index="toQueueIndex(index) + 1"
-            :menu-index="toQueueIndex(index)"
-            :queue-item-id="item.id"
-            :draggable="true"
-            @play="queueStore.jumpTo(toQueueIndex(index))"
-          />
-        </QueueDraggableRow>
-      </template>
-    </VirtualScrollable>
+    <SwipeRoot class="flex min-h-0 flex-1 flex-col">
+      <VirtualScrollable
+        ref="virtualRef"
+        :items="upcomingQueueItems"
+        :estimate-size="ITEM_HEIGHT"
+        :item-height="ITEM_HEIGHT"
+        :overscan="4"
+        :padding-bottom="8"
+        :get-item-key="getItemKey"
+        :keep-scroll-anchor="!isSettling"
+        class="queue-up-next-list flex-1 bg-card"
+        :class="[isSettling && 'is-settling', drag && 'is-dragging']"
+      >
+        <template #default="{ item, index }">
+          <QueueDraggableRow
+            :id="item.id"
+            :index="index"
+          >
+            <QueueUpNextRow
+              :item="item"
+              :queue-index="toQueueIndex(index)"
+            />
+          </QueueDraggableRow>
+        </template>
+      </VirtualScrollable>
+    </SwipeRoot>
 
     <motion.div
       class="queue-drag-ghost pointer-events-none absolute top-0 left-0 z-20"
@@ -62,10 +59,10 @@ import {
   type QueueDragState,
 } from "../lib/queue-drag";
 import type { QueueItem } from "../types";
-import type { Track } from "@/modules/player/types";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
-import TrackRow from "@/modules/tracks/components/TrackRow.vue";
+import { SwipeRoot } from "@/components/ui/swipe-actions";
 import QueueDraggableRow from "./QueueDraggableRow.vue";
+import QueueUpNextRow from "./QueueUpNextRow.vue";
 
 const ITEM_HEIGHT = 64;
 // Pointer this close to the list's top/bottom edge scrolls it, faster the
