@@ -29,8 +29,7 @@
         >
           <Button
             :id="`${idPrefix}-${tile.key}`"
-            variant="soft"
-            color="neutral"
+            color="accent"
             class="h-16 w-full rounded-control-xl icon-size-6"
             :aria-pressed="tile.pressed"
             :aria-disabled="tile.disabled || undefined"

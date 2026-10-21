@@ -58,8 +58,7 @@
             <Badge
               v-for="name in artistChips"
               :key="name"
-              variant="outline"
-              color="neutral"
+              color="accent"
               class="max-w-full"
             >
               <span class="min-w-0 truncate">{{ name }}</span>

@@ -24,7 +24,7 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
+  --color-popover: var(--accent);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
@@ -822,5 +822,13 @@ video {
 
   .dark [data-slot][data-color="surface"] {
     --tone: var(--muted);
+  }
+
+  [data-slot][data-color="accent"],
+  [data-slot][data-state="on"][data-active-color="accent"],
+  [data-slot][aria-pressed="true"][data-active-color="accent"] {
+    --tone: var(--accent);
+    --tone-foreground: var(--accent-foreground);
+    --tone-text: var(--accent-foreground);
   }
 }
