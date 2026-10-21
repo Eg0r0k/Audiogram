@@ -8,6 +8,7 @@ vi.mock("@/app/tauri-commands", async (importOriginal) => {
 });
 
 import { PlatformUnavailableError } from "@/app/tauri-commands";
+import { AppFailure } from "@/lib/errors";
 import { mapYmError, ymApi, ymRequest } from "../api/client";
 
 describe("ymRequest", () => {
@@ -94,7 +95,7 @@ describe("ymRequest", () => {
   });
 
   it("carries the Rust error kind and Retry-After across one-to-one", async () => {
-    invokeCommand.mockRejectedValue({ kind: "RATE_LIMITED", message: "slow down", retryAfterMs: 3000 });
+    invokeCommand.mockRejectedValue(new AppFailure({ domain: "source", source: "ym", kind: "RATE_LIMITED", message: "slow down", retryAfterMs: 3000 }));
 
     const result = await ymRequest({ path: "/tracks" });
 
@@ -102,10 +103,10 @@ describe("ymRequest", () => {
   });
 
   it("keeps FORBIDDEN and AUTH apart — one needs Plus, the other a sign-in", async () => {
-    invokeCommand.mockRejectedValueOnce({ kind: "FORBIDDEN", message: "premium only" });
+    invokeCommand.mockRejectedValueOnce(new AppFailure({ domain: "source", source: "ym", kind: "FORBIDDEN", message: "premium only" }));
     expect((await ymRequest({ path: "/tracks" }))._unsafeUnwrapErr().kind).toBe("FORBIDDEN");
 
-    invokeCommand.mockRejectedValueOnce({ kind: "AUTH", message: "session expired" });
+    invokeCommand.mockRejectedValueOnce(new AppFailure({ domain: "source", source: "ym", kind: "AUTH", message: "session expired" }));
     expect((await ymRequest({ path: "/tracks" }))._unsafeUnwrapErr().kind).toBe("AUTH");
   });
 });
@@ -118,6 +119,7 @@ describe("mapYmError", () => {
   it("falls back to UNKNOWN for shapes it does not recognise", () => {
     expect(mapYmError(new Error("boom"))).toEqual({ kind: "UNKNOWN", message: "boom" });
     expect(mapYmError("plain")).toEqual({ kind: "UNKNOWN", message: "plain" });
-    expect(mapYmError({ kind: "WEIRD", message: "?" })).toEqual({ kind: "UNKNOWN", message: "?" });
+    expect(mapYmError(new AppFailure({ domain: "native", kind: "UNKNOWN", message: "no proxy client" })))
+      .toEqual({ kind: "UNKNOWN", message: "no proxy client" });
   });
 });

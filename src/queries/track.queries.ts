@@ -462,7 +462,7 @@ export async function addTracksToAlbumAndSync(
 
   for (const trackId of trackIds) {
     if (!trackMap.has(trackId)) {
-      throw new Error(`Track not found: ${trackId}`);
+      throw new DbError("NOT_FOUND", `Track not found: ${trackId}`);
     }
   }
 
@@ -511,7 +511,7 @@ export async function addTracksToArtistAndSync(
 
   for (const trackId of trackIds) {
     if (!trackMap.has(trackId)) {
-      throw new Error(`Track not found: ${trackId}`);
+      throw new DbError("NOT_FOUND", `Track not found: ${trackId}`);
     }
   }
 

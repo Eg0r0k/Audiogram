@@ -1,21 +1,13 @@
 import { ResultAsync } from "neverthrow";
 import type { UpdateError, UpdateErrorKind, UpdateInfo } from "../types";
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
+import { toAppError } from "@/lib/errors";
 import { IS_MOBILE } from "@/lib/environment/userAgent";
 import { checkUpdateAndroid, installUpdateAndroid } from "./androidUpdateApi";
 
-// The Rust commands return a typed { kind, message } error
-// (see src-tauri/src/updater.rs). Pass it through as-is; the fallback only
-// covers transport-level rejections that never reach that mapping.
-const isUpdateError = (raw: unknown): raw is UpdateError =>
-  typeof raw === "object"
-  && raw !== null
-  && "kind" in raw
-  && "message" in raw;
-
-const toUpdateError = (raw: unknown, fallbackKind: UpdateErrorKind): UpdateError => {
-  if (isUpdateError(raw)) return raw;
-  return { kind: fallbackKind, message: typeof raw === "string" ? raw : String(raw) };
+const toUpdateError = (raw: unknown, fallback: UpdateErrorKind): UpdateError => {
+  const error = toAppError(raw);
+  return error.domain === "update" ? { kind: error.kind, message: error.message } : { kind: fallback, message: error.message };
 };
 
 export const installUpdate = (): ResultAsync<void, UpdateError> =>

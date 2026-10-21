@@ -1,7 +1,8 @@
-import { errorMessage } from "@/lib/errors";
+import { toAppError } from "@/lib/errors";
 import { Channel } from "@tauri-apps/api/core";
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { ResultAsync } from "neverthrow";
+import type { SourceErrorKind } from "@/types/source-dto";
 import type {
   YoutubeError,
   YoutubeErrorKind,
@@ -10,23 +11,26 @@ import type {
   YtTrackMeta,
 } from "../types";
 
-/** Backend `YtErrorKind` values that map 1:1 onto frontend kinds. */
-const BACKEND_KIND_MAP: Partial<Record<string, YoutubeErrorKind>> = {
+const SOURCE_KIND_MAP: Partial<Record<SourceErrorKind, YoutubeErrorKind>> = {
+  UNAVAILABLE: "UNAVAILABLE",
   NOT_FOUND: "NOT_FOUND",
   NETWORK: "NETWORK",
   CANCELLED: "CANCELLED",
+  UNKNOWN: "UNKNOWN",
 };
 
-const isStructuredError = (raw: unknown): raw is { kind: string; message: string } =>
-  typeof raw === "object" && raw !== null && "kind" in raw && "message" in raw;
-
 const toYoutubeError = (raw: unknown, fallbackKind: YoutubeErrorKind): YoutubeError => {
-  if (isStructuredError(raw)) {
-    return { kind: BACKEND_KIND_MAP[raw.kind] ?? fallbackKind, message: raw.message };
+  const error = toAppError(raw);
+  switch (error.domain) {
+    case "source":
+      return { kind: SOURCE_KIND_MAP[error.kind] ?? "UNKNOWN", message: error.message };
+    case "platform":
+      return { kind: "UNAVAILABLE", message: error.message };
+    case "cancelled":
+      return { kind: "CANCELLED", message: error.message };
+    default:
+      return { kind: fallbackKind, message: error.message };
   }
-  if (typeof raw === "string") return { kind: fallbackKind, message: raw };
-  const message = errorMessage(raw);
-  return { kind: fallbackKind, message };
 };
 
 /** Hands the engine's resolved googlevideo stream to the Rust `yt/` route, prefetch and download. */

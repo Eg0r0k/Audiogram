@@ -1,7 +1,7 @@
-import { errorMessage } from "@/lib/errors";
 import { ResultAsync } from "neverthrow";
-import { COMMANDS, PlatformUnavailableError, invokeCommand } from "@/app/tauri-commands";
-import type { SourceError, SourceErrorKind } from "@/types/source-dto";
+import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
+import { asSourceError } from "@/modules/sources/lib/errors";
+import type { SourceError } from "@/types/source-dto";
 import type {
   YmAccountStatus,
   YmAlbum,
@@ -25,32 +25,12 @@ import type {
 // `{uid}` is left for Rust to fill in — the frontend never handles the uid.
 //
 
-const KNOWN_KINDS: ReadonlySet<string> = new Set<SourceErrorKind>([
-  "AUTH", "FORBIDDEN", "RATE_LIMITED", "NOT_FOUND", "NETWORK", "UNAVAILABLE", "CANCELLED", "UNKNOWN",
-]);
-
-/** The rejection of `ym_request` (a serialized `YmError`) in the shared vocabulary. */
-export const mapYmError = (raw: unknown): SourceError => {
-  if (raw instanceof PlatformUnavailableError) return { kind: "UNAVAILABLE", message: raw.message };
-  if (typeof raw === "object" && raw !== null && "kind" in raw && "message" in raw) {
-    const error = raw as { kind: unknown; message: unknown; retryAfterMs?: unknown };
-    const kind = typeof error.kind === "string" && KNOWN_KINDS.has(error.kind)
-      ? error.kind as SourceErrorKind
-      : "UNKNOWN";
-    return {
-      kind,
-      message: String(error.message),
-      ...(typeof error.retryAfterMs === "number" ? { retryAfterMs: error.retryAfterMs } : {}),
-    };
-  }
-  const message = errorMessage(raw);
-  return { kind: "UNKNOWN", message };
-};
+export const mapYmError = asSourceError;
 
 export const ymRequest = <T>(req: YmRequestPayload): ResultAsync<T, SourceError> =>
   ResultAsync.fromPromise(
     invokeCommand(COMMANDS.ymRequest, { req }) as Promise<T>,
-    mapYmError,
+    asSourceError,
   );
 
 export const ymApi = {
