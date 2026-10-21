@@ -1,19 +1,28 @@
 <template>
-  <div class="slide-transition-container">
+  <div
+    ref="container"
+    class="slide-transition-container"
+  >
     <Transition
       :name="transitionName"
       @before-enter="onBeforeEnter"
       @enter="onEnter"
       @after-enter="onEnterSettled"
       @enter-cancelled="onEnterSettled"
+      @before-leave="onBeforeLeave"
     >
       <slot />
     </Transition>
+    <div
+      ref="dim"
+      class="slide-dim"
+      aria-hidden="true"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { provide, readonly, ref, watch } from "vue";
+import { provide, readonly, ref, useTemplateRef, watch } from "vue";
 import { useRoute } from "vue-router";
 import { SLIDE_CONTENT_READY_KEY, useSlideContentReady } from "./slideContentReady";
 
@@ -92,16 +101,61 @@ if (!outerReady.value) {
 // Only a page sliding in from off-screen (slide-left) hides its blank frames.
 // A page returning from behind (slide-right) is 80% visible from the first
 // frame, and a page replacing an interrupted enter (quick back mid-slide)
-// takes over from content that is already on screen — both render in full.
+// takes over from content that is already on screen: both render in full.
 const applyTransition = (name: string) => {
   transitionName.value = name;
   enterArmed = false;
   contentReady.value = name !== "slide-left" || enterInFlight;
 };
 
-const onBeforeEnter = () => {
+const container = useTemplateRef<HTMLElement>("container");
+const dim = useTemplateRef<HTMLElement>("dim");
+
+const ACTIVE_CLASSES = ["slide-left-enter-active", "slide-left-leave-active", "slide-right-enter-active", "slide-right-leave-active"];
+
+// Where each page caught mid-slide stood when the next navigation came in.
+// Read before the patch: by the time Vue's hooks run, a cancelled enter has
+// dropped its classes and snapped back to rest, and a leaving page with the
+// incoming key is already gone.
+const midSlide = new Map<Element, { x: number; leaving: boolean }>();
+
+const captureMidSlide = () => {
+  midSlide.clear();
+  const root = container.value;
+  if (!root) return;
+  for (const child of root.children) {
+    const active = ACTIVE_CLASSES.find(name => child.classList.contains(name));
+    if (!active) continue;
+    midSlide.set(child, {
+      x: new DOMMatrix(getComputedStyle(child).transform).m41,
+      leaving: active.endsWith("-leave-active"),
+    });
+  }
+  if (midSlide.size > 0 && dim.value) root.style.setProperty("--slide-dim-from", getComputedStyle(dim.value).opacity);
+  else root.style.removeProperty("--slide-dim-from");
+};
+
+const onBeforeEnter = (el: Element) => {
   enterArmed = true;
   enterInFlight = true;
+  // A page coming back while its previous instance was still leaving (a quick
+  // back mid-slide) takes over from where that instance stood: Vue removed it
+  // right before this hook, so it is the leaving one no longer in the DOM.
+  for (const [node, state] of midSlide) {
+    if (state.leaving && !node.isConnected) {
+      (el as HTMLElement).style.setProperty("--slide-enter-from-x", `${state.x}px`);
+      break;
+    }
+  }
+};
+
+const onBeforeLeave = (el: Element) => {
+  const page = el as HTMLElement;
+  // The page on its way out takes no clicks or focus while it is still on screen.
+  page.inert = true;
+  // A page reversed mid-enter leaves from where it stood, not from rest.
+  const state = midSlide.get(el);
+  if (state && !state.leaving) page.style.setProperty("--slide-leave-from-x", `${state.x}px`);
 };
 
 const onEnter = (el: Element) => {
@@ -112,8 +166,9 @@ const onEnter = (el: Element) => {
   stopListening = () => el.removeEventListener("transitionstart", onTransitionStart);
 };
 
-const onEnterSettled = () => {
+const onEnterSettled = (el: Element) => {
   enterInFlight = false;
+  (el as HTMLElement).style.removeProperty("--slide-enter-from-x");
   releaseContent();
 };
 
@@ -124,19 +179,20 @@ watch(transitionSources, () => {
 }, { flush: "post" });
 
 watch(transitionSources, (next, prev) => {
+  captureMidSlide();
   applyTransition(resolveTransitionName(next, prev));
 });
 </script>
 <style>
 :root {
-  /* tweb navigation slide. Material standard curve: slow start, soft landing.
-     The global --ease-standard is easeOut and covers most of the distance on
-     frame one, which reads as a jump. Back is shorter than forward. */
-  --slide-easing: cubic-bezier(0.4, 0, 0.2, 1);
-  --slide-duration-in: 0.3s;
-  --slide-duration-out: 0.25s;
+  /* tweb navigation slide. Entering motion is ease-out, but this curve starts
+     at rest: a strong ease-out covers a quarter of the page on frame one,
+     which reads as a jump. Back is shorter than forward. */
+  --slide-easing: cubic-bezier(0.2, 0, 0, 1);
+  --slide-duration-in: var(--transition-duration-medium-2, 300ms);
+  --slide-duration-out: var(--transition-duration-medium-1, 250ms);
   --parallax-offset: -25%;
-  --overlay-brightness: 0.8;
+  --slide-dim: 0.2;
 }
 
 .slide-transition-container {
@@ -148,6 +204,8 @@ watch(transitionSources, (next, prev) => {
   overflow: hidden;
 
   position: relative;
+  /* Keeps the pages' z-indexes inside the container. */
+  isolation: isolate;
 }
 
 .slide-transition-container > * {
@@ -158,29 +216,44 @@ watch(transitionSources, (next, prev) => {
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
-  backface-visibility: hidden;
-  transform: translate3d(0,0,0);
+  /* A 2D identity keeps the page the containing block of its fixed children
+     (MediaHeader) without promoting it to a layer at rest. A layer that keeps
+     will-change after the slide keeps the raster it got mid-motion: a return
+     from -25% lands half a pixel off and blurs, and the text loses LCD smoothing. */
+  transform: translate(0, 0);
+  /* Above a page still leaving (z-index 1): Vue can end the enter a frame or
+     two before it removes the old page, which would flash over the new one. */
+  z-index: 2;
+}
+
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
   will-change: transform;
 }
 
-.slide-transition-container > * {
-   box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+/* Only the page on top casts its edge shadow, and only while it moves. */
+.slide-left-enter-active,
+.slide-right-leave-active {
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 /* The grid already stacks both pages in one cell; switching to
    position:absolute here forced a layout on the first frame of motion. */
 .slide-left-enter-active,
 .slide-left-leave-active {
-  transition: transform var(--slide-duration-in) var(--slide-easing),
-              filter var(--slide-duration-in) var(--slide-easing);
+  transition: transform var(--slide-duration-in) var(--slide-easing);
 }
 .slide-right-enter-active,
 .slide-right-leave-active {
-  transition: transform var(--slide-duration-out) var(--slide-easing),
-              filter var(--slide-duration-out) var(--slide-easing);
+  transition: transform var(--slide-duration-out) var(--slide-easing);
 }
+
+/* The -from variables are set by the script when a page is caught mid-slide,
+   so the next slide continues from where it stood. */
 .slide-left-enter-from {
-  transform: translate3d(100%, 0, 0);
+  transform: translate3d(var(--slide-enter-from-x, 100%), 0, 0);
   z-index: 50;
 }
 .slide-left-enter-to {
@@ -189,28 +262,24 @@ watch(transitionSources, (next, prev) => {
 }
 
 .slide-left-leave-from {
-  transform: translate3d(0, 0, 0);
-  filter: brightness(1);
+  transform: translate3d(var(--slide-leave-from-x, 0px), 0, 0);
   z-index: 1;
 }
 .slide-left-leave-to {
   transform: translate3d(var(--parallax-offset), 0, 0);
-  filter: brightness(var(--overlay-brightness));
   z-index: 1;
 }
 .slide-right-enter-from {
-  transform: translate3d(var(--parallax-offset), 0, 0);
-  filter: brightness(var(--overlay-brightness));
+  transform: translate3d(var(--slide-enter-from-x, var(--parallax-offset)), 0, 0);
   z-index: 1;
 }
 .slide-right-enter-to {
   transform: translate3d(0, 0, 0);
-  filter: brightness(1);
   z-index: 1;
 }
 
 .slide-right-leave-from {
-  transform: translate3d(0, 0, 0);
+  transform: translate3d(var(--slide-leave-from-x, 0px), 0, 0);
   z-index: 50;
 }
 .slide-right-leave-to {
@@ -218,4 +287,47 @@ watch(transitionSources, (next, prev) => {
   z-index: 50;
 }
 
+/* The page beneath is darkened by one layer between the two pages, so the
+   slide animates opacity and transform only, never a filter on a whole page.
+   It follows the pages' classes; its rest state snaps without a transition. */
+.slide-transition-container > .slide-dim {
+  overflow: hidden;
+  transform: none;
+  z-index: 25;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.slide-transition-container:has(> .slide-left-leave-from) > .slide-dim {
+  opacity: var(--slide-dim-from, 0);
+}
+.slide-transition-container:has(> .slide-left-leave-to):has(> .slide-left-enter-active) > .slide-dim {
+  opacity: var(--slide-dim);
+  transition: opacity var(--slide-duration-in) var(--slide-easing);
+}
+.slide-transition-container:has(> .slide-right-enter-from) > .slide-dim {
+  opacity: var(--slide-dim-from, var(--slide-dim));
+}
+.slide-transition-container:has(> .slide-right-enter-to):has(> .slide-right-leave-active) > .slide-dim {
+  opacity: 0;
+  transition: opacity var(--slide-duration-out) var(--slide-easing);
+}
+
+/* Reduced motion keeps the change of page, not the travel: the page on top
+   fades over the one beneath. Specific enough to beat the global rule that
+   collapses every transition. */
+@media (prefers-reduced-motion: reduce) {
+  .slide-transition-container > :is(.slide-left-enter-active, .slide-left-leave-active, .slide-right-enter-active, .slide-right-leave-active) {
+    transform: translate(0, 0);
+    box-shadow: none;
+    transition: opacity var(--transition-duration-short-3, 150ms) ease-out !important;
+  }
+  .slide-transition-container > :is(.slide-left-enter-from, .slide-right-leave-to) {
+    opacity: 0;
+  }
+  .slide-transition-container > .slide-dim {
+    display: none;
+  }
+}
 </style>
