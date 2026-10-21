@@ -1,19 +1,15 @@
-<!-- eslint-disable vue/require-default-prop -->
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue";
-import { cn } from "@/lib/utils";
+import { DrawerMenuGroup, type DrawerMenuGroupProps } from "@kappa-ui/core/drawer-menu";
 
-const props = defineProps<{
-  class?: HTMLAttributes["class"];
-}>();
+const props = defineProps<DrawerMenuGroupProps>();
 </script>
 
 <template>
-  <div
-    role="group"
+  <DrawerMenuGroup
+    v-bind="props"
     data-slot="drawer-menu-group"
-    :class="cn(props.class)"
+    class="flex flex-col gap-0.5"
   >
     <slot />
-  </div>
+  </DrawerMenuGroup>
 </template>

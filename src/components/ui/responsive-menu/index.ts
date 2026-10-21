@@ -15,4 +15,5 @@ export {
   ResponsiveMenuSubContent,
   ResponsiveMenuSubTrigger,
 } from "./parts";
+export { injectResponsiveMenu } from "./context";
 export type { MenuPartSet, ResponsiveMenuMode } from "./context";

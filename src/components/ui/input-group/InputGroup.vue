@@ -1,56 +1,32 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue";
-import { cn } from "@/lib/utils";
+import { type HTMLAttributes, computed } from "vue";
 
-const props = defineProps<{
-  class?: HTMLAttributes["class"];
-}>();
+import { cn } from "@/lib/utils";
+import { type InputGroupSize, type InputGroupVariant, inputGroupVariants, provideInputGroupContext } from ".";
+
+const props = withDefaults(
+  defineProps<{
+    variant?: InputGroupVariant;
+    size?: InputGroupSize;
+    class?: HTMLAttributes["class"];
+  }>(),
+  { variant: "outline", size: "md" },
+);
+
+provideInputGroupContext({
+  variant: computed(() => props.variant),
+  size: computed(() => props.size),
+});
 </script>
 
 <template>
   <div
-    data-slot="input-group"
     role="group"
-    :class="
-      cn(
-        'audiogram-input-group',
-        'relative flex w-full items-center rounded-md  outline-none',
-        'h-9 min-w-0 has-[>textarea]:h-auto',
-
-        'has-[>[data-align=inline-start]]:[&>input]:pl-2',
-        'has-[>[data-align=inline-end]]:[&>input]:pr-2',
-        'has-[>[data-align=block-start]]:flex-col',
-        'has-[>[data-align=block-end]]:flex-col',
-
-        props.class
-      )
-    "
+    data-slot="input-group"
+    :data-variant="props.variant"
+    :data-size="props.size"
+    :class="cn(inputGroupVariants({ variant: props.variant, size: props.size }), props.class)"
   >
     <slot />
   </div>
 </template>
-
-<style scoped>
-.audiogram-input-group {
-  border: 1px solid transparent;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.audiogram-input-group:hover:not(:focus-within):not([aria-invalid="true"]) {
-  border-color: var(--primary);
-}
-
-.audiogram-input-group:focus-within {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 1px var(--primary);
-}
-
-.audiogram-input-group[aria-invalid="true"] {
-  border-color: var(--destructive);
-}
-
-.audiogram-input-group[aria-invalid="true"]:focus-within {
-  box-shadow: 0 0 0 1px var(--destructive);
-}
-
-</style>

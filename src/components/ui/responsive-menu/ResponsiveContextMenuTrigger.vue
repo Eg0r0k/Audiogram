@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ContextMenuTrigger } from "@/components/ui/context-menu";
+import { onBeforeUnmount, useTemplateRef, watch, watchEffect } from "vue";
 import { useResponsiveMenu } from "./context";
 
 const props = withDefaults(defineProps<{
@@ -10,8 +10,20 @@ const props = withDefaults(defineProps<{
 
 const menu = useResponsiveMenu();
 
+// The popper menu listens on this wrapper itself, right-click and long press alike.
+const wrapper = useTemplateRef<HTMLElement>("wrapper");
+watch(wrapper, (element) => {
+  menu.trigger.value = element;
+}, { immediate: true, flush: "sync" });
+watchEffect(() => {
+  menu.triggerDisabled.value = props.disabled;
+});
+onBeforeUnmount(() => {
+  menu.trigger.value = null;
+});
+
 const onContextMenu = (event: MouseEvent) => {
-  if (props.disabled) return;
+  if (menu.mode.value === "popper" || props.disabled) return;
   event.preventDefault();
   event.stopPropagation();
   menu.setOpen(true);
@@ -19,15 +31,8 @@ const onContextMenu = (event: MouseEvent) => {
 </script>
 
 <template>
-  <ContextMenuTrigger
-    v-if="menu.mode.value === 'popper'"
-    as-child
-    :disabled="props.disabled"
-  >
-    <slot />
-  </ContextMenuTrigger>
   <div
-    v-else
+    ref="wrapper"
     role="presentation"
     class="contents"
     @contextmenu="onContextMenu"

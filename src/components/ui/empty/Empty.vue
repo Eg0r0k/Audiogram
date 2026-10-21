@@ -1,19 +1,23 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from "vue";
-import { cn } from "@/lib/utils";
 
-const props = defineProps<{
-  class?: HTMLAttributes["class"];
-}>();
+import { cn } from "@/lib/utils";
+import { type EmptySize, emptyVariants } from ".";
+
+const props = withDefaults(
+  defineProps<{
+    size?: EmptySize;
+    class?: HTMLAttributes["class"];
+  }>(),
+  { size: "md" },
+);
 </script>
 
 <template>
   <div
     data-slot="empty"
-    :class="cn(
-      'flex min-w-0 flex-1 flex-col items-center justify-center gap-4 text-balance p-6 text-center md:p-12',
-      props.class,
-    )"
+    :data-size="props.size"
+    :class="cn(emptyVariants({ size: props.size }), props.class)"
   >
     <slot />
   </div>

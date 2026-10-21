@@ -1,35 +1,75 @@
-import type { VariantProps } from "class-variance-authority";
-import { cva } from "class-variance-authority";
+import { type VariantProps, cva } from "class-variance-authority";
 
 export { default as Badge } from "./Badge.vue";
 
+export type BadgeColor = "primary" | "neutral" | "destructive" | "success" | "warning" | "info";
+
 export const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-full border font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
+  `
+    relative inline-flex w-fit shrink-0 items-center justify-center whitespace-nowrap outline-none transition-colors
+    duration-short-3 ease-standard
+    focus-visible:focus-ring
+    [&_svg]:pointer-events-none [&_svg]:shrink-0
+  `,
   {
     variants: {
       variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
-        primary:
-          "border-transparent bg-primary/10 text-primary [a&]:hover:bg-primary/20",
-        secondary:
-          "border-transparent bg-input text-white [a&]:hover:bg-secondary/90",
-        destructive:
-          "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        outline:
-          "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+        solid: "bg-tone text-tone-foreground",
+        soft: "bg-tone-soft text-tone-soft-foreground",
+        subtle: "border border-tone-border-subtle bg-tone-soft text-tone-soft-foreground",
+        outline: "border border-tone-border text-tone-text",
+        ghost: "text-tone-text",
+        link: "text-tone-text underline-offset-4 hover:underline",
       },
       size: {
-        xs: "px-1 py-[2px] text-xs leading-none gap-0.5 [&>svg]:size-2.5",
-        sm: "px-1.5 py-0.5 text-xs gap-1 [&>svg]:size-3",
-        md: "px-2 py-0.5 text-sm gap-1 [&>svg]:size-3",
-        lg: "px-2.5 py-0.5 text-sm gap-1.5 [&>svg]:size-3.5",
+        xs: "h-4 gap-0.5 rounded-full text-label-sm [--touch-h:1rem] icon-size-3",
+        sm: "h-5 gap-1 rounded-full text-label-sm [--touch-h:1.25rem] icon-size-3",
+        md: "h-6 gap-1 rounded-full text-label-md [--touch-h:1.5rem] icon-size-3.5",
+        lg: "h-7 gap-1.5 rounded-full text-label-lg [--touch-h:1.75rem] icon-size-4",
+        xl: "h-8 gap-1.5 rounded-full text-label-lg [--touch-h:2rem] icon-size-4",
+      },
+      square: {
+        true: "",
+        false: "",
+      },
+      touchTarget: {
+        none: "",
+        expand: "touch-target",
+        wrapper: "touch-target-wrapper",
       },
     },
+    compoundVariants: [
+      {
+        square: false,
+        size: "xs",
+        class: "px-1 has-data-[icon=inline-start]:ps-0.5 has-data-[icon=inline-end]:pe-0.5",
+      },
+      { square: false, size: "sm", class: "px-1.5 has-data-[icon=inline-start]:ps-1 has-data-[icon=inline-end]:pe-1" },
+      {
+        square: false,
+        size: "md",
+        class: "px-2 has-data-[icon=inline-start]:ps-1.5 has-data-[icon=inline-end]:pe-1.5",
+      },
+      { square: false, size: "lg", class: "px-2.5 has-data-[icon=inline-start]:ps-2 has-data-[icon=inline-end]:pe-2" },
+      {
+        square: false,
+        size: "xl",
+        class: "px-3 has-data-[icon=inline-start]:ps-2.5 has-data-[icon=inline-end]:pe-2.5",
+      },
+      { square: true, size: "xs", class: "min-w-4 px-0.5 [--touch-w:1rem]" },
+      { square: true, size: "sm", class: "min-w-5 px-0.5 [--touch-w:1.25rem]" },
+      { square: true, size: "md", class: "min-w-6 px-1 [--touch-w:1.5rem]" },
+      { square: true, size: "lg", class: "min-w-7 px-1 [--touch-w:1.75rem]" },
+      { square: true, size: "xl", class: "min-w-8 px-2 [--touch-w:2rem]" },
+    ],
     defaultVariants: {
-      variant: "default",
+      variant: "solid",
       size: "md",
+      square: false,
+      touchTarget: "none",
     },
   },
 );
+
 export type BadgeVariants = VariantProps<typeof badgeVariants>;
+export type BadgeSize = NonNullable<BadgeVariants["size"]>;

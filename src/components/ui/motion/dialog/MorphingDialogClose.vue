@@ -57,6 +57,7 @@ const close = () => {
   >
     <Button
       variant="ghost"
+      color="muted"
       size="icon-lg"
       :class="
         cn(

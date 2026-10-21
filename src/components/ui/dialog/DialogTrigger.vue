@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import type { DialogTriggerProps } from "reka-ui";
-import { DialogTrigger } from "reka-ui";
+import { DialogTrigger, type DialogTriggerProps } from "@kappa-ui/core/dialog";
 
 const props = defineProps<DialogTriggerProps>();
 </script>
 
 <template>
   <DialogTrigger
-    data-slot="dialog-trigger"
     v-bind="props"
+    data-slot="dialog-trigger"
   >
     <slot />
   </DialogTrigger>

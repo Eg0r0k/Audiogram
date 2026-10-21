@@ -3,11 +3,13 @@ import { createPinia } from "pinia";
 import { VueQueryPlugin } from "@tanstack/vue-query";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import router from "./app/router";
-import vRipple from "./directives/ripple";
+import vRipple from "@/lib/ripple";
 import vFrameGrid from "./directives/frame-grid";
 import "./style.css";
 import { i18n } from "@/app/i18n";
 import App from "@/app/App.vue";
+import { toaster } from "@/app/toaster";
+import { createDialogs } from "@/components/ui/dialog";
 import { installReducedMotion } from "@/app/reduced-motion";
 import { platformCaps } from "./lib/environment/platformCaps";
 import { vCopy } from "./directives/copy";
@@ -86,6 +88,8 @@ app.use(router);
 app.use(pinia);
 app.use(i18n);
 app.use(VueQueryPlugin, { queryClient });
+app.use(toaster);
+app.use(createDialogs());
 
 // Cross-store reactions to track lifecycle events (stats, queue advance,
 // sleep-after-track) — registered once, ordered explicitly.

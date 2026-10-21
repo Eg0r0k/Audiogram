@@ -1,14 +1,22 @@
 <script setup lang="ts">
-import type { SelectItemTextProps } from "reka-ui";
-import { SelectItemText } from "reka-ui";
+import { SelectItemText, type SelectItemTextProps } from "reka-ui";
+import { type HTMLAttributes, computed } from "vue";
 
-const props = defineProps<SelectItemTextProps>();
+import { cn } from "@/lib/utils";
+
+const props = defineProps<SelectItemTextProps & { class?: HTMLAttributes["class"] }>();
+
+const delegated = computed(() => {
+  const { class: _, ...rest } = props;
+  return rest;
+});
 </script>
 
 <template>
   <SelectItemText
+    v-bind="delegated"
     data-slot="select-item-text"
-    v-bind="props"
+    :class="cn('flex min-w-0 items-center gap-3 truncate', props.class)"
   >
     <slot />
   </SelectItemText>

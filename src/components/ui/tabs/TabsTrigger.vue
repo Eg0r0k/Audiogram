@@ -1,41 +1,26 @@
 <script setup lang="ts">
-import type { TabsTriggerProps } from "reka-ui";
-import type { HTMLAttributes } from "vue";
-import { reactiveOmit } from "@vueuse/core";
-import { TabsTrigger, useForwardProps } from "reka-ui";
+import { TabsTrigger, type TabsTriggerProps } from "reka-ui";
+import { type HTMLAttributes, computed } from "vue";
+
+import vRipple from "@/lib/ripple";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { tabsTrigger } from ".";
 
-const props = defineProps<
-  TabsTriggerProps & {
-    class?: HTMLAttributes["class"];
-  }
->();
+const props = defineProps<TabsTriggerProps & { class?: HTMLAttributes["class"] }>();
 
-const delegatedProps = reactiveOmit(props, "class");
-const forwardedProps = useForwardProps(delegatedProps);
+const delegated = computed(() => {
+  const { class: _, ...rest } = props;
+  return rest;
+});
 </script>
 
 <template>
   <TabsTrigger
+    v-ripple
+    v-bind="delegated"
     data-slot="tabs-trigger"
-    v-bind="forwardedProps"
-    as-child
+    :class="cn(tabsTrigger, props.class)"
   >
-    <Button
-      variant="ghost"
-      :class="
-        cn(
-          'relative rounded-b-none h-10 px-4',
-          'text-muted-foreground hover:text-foreground',
-          'data-[state=active]:text-primary',
-          'hover:bg-transparent',
-          'transition-colors duration-200',
-          props.class
-        )
-      "
-    >
-      <slot />
-    </Button>
+    <slot />
   </TabsTrigger>
 </template>

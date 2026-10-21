@@ -1,34 +1,29 @@
-<!-- eslint-disable vue/require-default-prop -->
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue";
-import { computed } from "vue";
-import IconChevronDown from "~icons/tabler/chevron-down";
+import IconChevronRight from "~icons/tabler/chevron-right";
+import { DrawerMenuSubTrigger, type DrawerMenuItemProps } from "@kappa-ui/core/drawer-menu";
+import { type HTMLAttributes, computed } from "vue";
+
+import vRipple from "@/lib/ripple";
 import { cn } from "@/lib/utils";
-import { drawerMenuRowVariants } from ".";
-import { useDrawerMenuSub } from "./context";
+import { drawerMenuItem } from ".";
 
-const props = defineProps<{
-  class?: HTMLAttributes["class"];
-}>();
+const props = defineProps<DrawerMenuItemProps & { inset?: boolean; class?: HTMLAttributes["class"] }>();
 
-const sub = useDrawerMenuSub();
-const isOpen = computed(() => sub.open.value);
+const delegated = computed(() => {
+  const { class: _, inset: __, ...rest } = props;
+  return rest;
+});
 </script>
 
 <template>
-  <button
+  <DrawerMenuSubTrigger
     v-ripple
-    type="button"
+    v-bind="delegated"
     data-slot="drawer-menu-sub-trigger"
-    :data-state="isOpen ? 'open' : 'closed'"
-    :aria-expanded="isOpen"
-    :class="cn(drawerMenuRowVariants(), props.class)"
-    @click="sub.setOpen(!isOpen)"
+    :data-inset="props.inset || undefined"
+    :class="cn(drawerMenuItem, props.class)"
   >
     <slot />
-    <IconChevronDown
-      class="ml-auto size-5 transition-transform duration-200 ease-out"
-      :class="isOpen && 'rotate-180'"
-    />
-  </button>
+    <IconChevronRight class="ms-auto text-muted-foreground rtl:rotate-180" />
+  </DrawerMenuSubTrigger>
 </template>

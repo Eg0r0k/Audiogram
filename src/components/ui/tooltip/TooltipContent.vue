@@ -1,48 +1,47 @@
 <script setup lang="ts">
-import type { TooltipContentEmits, TooltipContentProps } from "reka-ui";
-import type { HTMLAttributes } from "vue";
-import { computed } from "vue";
-import { TooltipContent, TooltipPortal, useForwardPropsEmits } from "reka-ui";
+import { injectOverlayPortalTarget } from "@kappa-ui/core/overlay";
+import {
+  TooltipContent,
+  type TooltipContentEmits,
+  type TooltipContentProps,
+  TooltipPortal,
+} from "@kappa-ui/core/tooltip";
+import { useForwardPropsEmits } from "reka-ui";
+import { type HTMLAttributes, computed } from "vue";
+
 import { cn } from "@/lib/utils";
 
-defineOptions({
-  inheritAttrs: false,
-});
+defineOptions({ inheritAttrs: false });
 
-const props = withDefaults(
-  defineProps<TooltipContentProps & { class?: HTMLAttributes["class"] }>(),
-  { sideOffset: 4 },
-);
+const props = withDefaults(defineProps<TooltipContentProps & { class?: HTMLAttributes["class"] }>(), {
+  sideOffset: 4,
+  collisionPadding: 8,
+});
 const emits = defineEmits<TooltipContentEmits>();
 
-// reka marks a tooltip opened inside the provider's `skipDelayDuration`
-// window (right after another one closed) with `data-state="instant-open"`:
-// that one skips the entrance animation too, so hopping between neighbouring
-// triggers reads as one tooltip moving, not a chain of fade-ins.
-
-const delegatedProps = computed(() => {
-  // `class` is applied by this component, not forwarded; dropped by name
-  // rather than by an unused rest-destructuring binding.
-  const delegated = { ...props };
-  delete delegated.class;
-  return delegated;
+const delegated = computed(() => {
+  const { class: _, ...rest } = props;
+  return rest;
 });
-
-const forwarded = useForwardPropsEmits(delegatedProps, emits);
+const forwarded = useForwardPropsEmits(delegated, emits);
+const portalTarget = injectOverlayPortalTarget(null);
 </script>
 
 <template>
-  <TooltipPortal>
+  <TooltipPortal :to="portalTarget ?? undefined">
     <TooltipContent
+      v-bind="{ ...$attrs, ...forwarded }"
       data-slot="tooltip-content"
-      v-bind="{ ...forwarded, ...$attrs }"
-      :class="cn(
-        'z-50 w-fit max-w-64 overflow-hidden rounded-md bg-card px-3 py-1.5 text-xs text-card-foreground shadow-md',
-        'origin-(--reka-tooltip-content-transform-origin) duration-150 ease-standard animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
-        'data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
-        'data-[state=instant-open]:animation-duration-0',
-        props.class,
-      )"
+      :class="
+        cn(
+          `
+            z-50 w-fit max-w-xs origin-(--reka-tooltip-content-transform-origin) rounded-surface-xs bg-foreground px-3
+            py-1.5 text-body-sm shadow-shadow-lg text-balance text-background animate-overlay
+            data-touch:px-4 data-touch:py-2 data-touch:text-body-md
+          `,
+          props.class,
+        )
+      "
     >
       <slot />
     </TooltipContent>

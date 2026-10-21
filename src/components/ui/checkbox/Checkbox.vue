@@ -1,143 +1,102 @@
 <script setup lang="ts">
-import type { CheckboxRootEmits, CheckboxRootProps } from "reka-ui";
-import type { HTMLAttributes } from "vue";
-import { reactiveOmit } from "@vueuse/core";
-import { cva, type VariantProps } from "class-variance-authority";
-import { Check } from "lucide-vue-next";
-import { CheckboxIndicator, CheckboxRoot, useForwardPropsEmits } from "reka-ui";
+import {
+  CheckboxIndicator,
+  CheckboxRoot,
+  type CheckboxRootEmits,
+  type CheckboxRootProps,
+  useForwardPropsEmits,
+} from "reka-ui";
+import { type HTMLAttributes, computed, ref, useAttrs } from "vue";
+
+import { useFieldControl } from "@/lib/field-context";
 import { cn } from "@/lib/utils";
+import {
+  type CheckboxColor,
+  type CheckboxSize,
+  type CheckboxVariants,
+  checkboxVariants,
+  injectCheckboxGroupContext,
+} from ".";
 
-const checkboxVariants = cva(
-  "checkbox-animated peer relative cursor-pointer overflow-hidden border-2 border-input data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive shrink-0 outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
-  {
-    variants: {
-      size: {
-        sm: "size-3.5 rounded-[3px] [&_svg]:!size-2.5",
-        default: "size-4 rounded-[4px] [&_svg]:!size-3",
-        lg: "size-5 rounded-[5px] [&_svg]:!size-3.5",
-      },
-    },
-    defaultVariants: {
-      size: "default",
-    },
-  },
+defineOptions({ inheritAttrs: false });
+
+const props = withDefaults(
+  defineProps<
+    Omit<CheckboxRootProps, "as" | "asChild"> & {
+      /** Defaults to the group's `color`, or `primary` outside a group. */
+      color?: CheckboxColor | (string & {});
+      size?: CheckboxSize;
+      touchTarget?: CheckboxVariants["touchTarget"];
+      class?: HTMLAttributes["class"];
+    }
+  >(),
+  { size: "md" },
 );
-
-type CheckboxVariants = VariantProps<typeof checkboxVariants>;
-
-const props = defineProps<
-  CheckboxRootProps & {
-    class?: HTMLAttributes["class"];
-    size?: CheckboxVariants["size"];
-  }
->();
 const emits = defineEmits<CheckboxRootEmits>();
 
-const delegatedProps = reactiveOmit(props, "class", "size");
-const forwarded = useForwardPropsEmits(delegatedProps, emits);
+const delegated = computed(() => {
+  const { class: _, size: __, touchTarget: ___, color: ____, ...rest } = props;
+  return rest;
+});
+const forwarded = useForwardPropsEmits(delegated, emits);
+
+const attrs = useAttrs();
+const control = useFieldControl(props, attrs);
+
+const group = injectCheckboxGroupContext(null);
+const color = computed(() => props.color ?? group?.color.value ?? "primary");
+
+const hovered = ref(false);
+const onPointerEnter = (event: PointerEvent) => {
+  if (event.pointerType === "mouse") hovered.value = true;
+};
+const onPointerLeave = () => {
+  hovered.value = false;
+};
 </script>
 
 <template>
   <CheckboxRoot
-    v-slot="slotProps"
+    v-bind="{ ...attrs, ...forwarded }"
+    :id="control.id.value"
     data-slot="checkbox"
-    v-bind="forwarded"
-    :class="cn(checkboxVariants({ size }), props.class)"
+    :data-color="color"
+    :data-size="props.size"
+    :data-touch-target="props.touchTarget"
+    :data-hovered="hovered || undefined"
+    :disabled="control.disabled.value"
+    :required="control.required.value"
+    :aria-invalid="control.invalid.value"
+    :aria-describedby="control.describedBy.value"
+    :class="cn(checkboxVariants({ size: props.size, touchTarget: props.touchTarget }), props.class)"
+    @pointerenter="onPointerEnter"
+    @pointerleave="onPointerLeave"
   >
-    <span class="checkbox-bg" />
-
     <CheckboxIndicator
-      as-child
       force-mount
-      data-slot="checkbox-indicator"
+      class="pointer-events-none absolute -inset-0.5"
     >
-      <span class="checkbox-icon">
-        <slot v-bind="slotProps">
-          <Check stroke-width="3" />
-        </slot>
-      </span>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="3"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+        class="size-full"
+      >
+        <path
+          d="M6 12.5l4 4 8-9"
+          pathLength="1"
+          class="[stroke-dasharray:1] [stroke-dashoffset:1] transition-[stroke-dashoffset] duration-short-4 ease-standard group-data-[state=checked]/checkbox:[stroke-dashoffset:0] motion-reduce:transition-none"
+        />
+        <path
+          d="M7 12h10"
+          pathLength="1"
+          class="[stroke-dasharray:1] [stroke-dashoffset:1] transition-[stroke-dashoffset] duration-short-4 ease-standard group-data-[state=indeterminate]/checkbox:[stroke-dashoffset:0] motion-reduce:transition-none"
+        />
+      </svg>
     </CheckboxIndicator>
   </CheckboxRoot>
 </template>
-
-<style>
-.checkbox-bg {
-  position: absolute;
-  inset: -15%;
-  background-color: var(--primary);
-  border-radius: 50%;
-  transform: scale(0);
-  opacity: 0;
-  transition:
-    transform 0.2s var(--ease-standard),
-    opacity 0.15s ease-out;
-  pointer-events: none;
-}
-
-.checkbox-icon {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  display: grid;
-  place-content: center;
-  color: currentColor;
-  opacity: 0;
-  transform: scale(0.5);
-  transition:
-    opacity 0.15s ease-out,
-    transform 0.2s var(--ease-bounce);
-}
-
-@supports (-webkit-touch-callout: none) {
-  .checkbox-animated {
-    -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .checkbox-bg,
-  .checkbox-icon,
-  .checkbox-animated[data-state="checked"] .checkbox-bg,
-  .checkbox-animated[data-state="indeterminate"] .checkbox-bg,
-  .checkbox-animated[data-state="checked"] .checkbox-icon,
-  .checkbox-animated[data-state="indeterminate"] .checkbox-icon,
-  .checkbox-animated[data-state="unchecked"] .checkbox-bg,
-  .checkbox-animated[data-state="unchecked"] .checkbox-icon {
-    transition: none;
-  }
-}
-
-.checkbox-animated[data-state="checked"] .checkbox-bg,
-.checkbox-animated[data-state="indeterminate"] .checkbox-bg {
-  transform: scale(1);
-  opacity: 1;
-  transition:
-    transform 0.25s var(--ease-bounce),
-    opacity 0.1s ease-out;
-}
-
-.checkbox-animated[data-state="checked"] .checkbox-icon,
-.checkbox-animated[data-state="indeterminate"] .checkbox-icon {
-  opacity: 1;
-  transform: scale(1);
-  transition:
-    opacity 0.1s 0.1s ease-out,
-    transform 0.25s 0.05s var(--ease-bounce);
-}
-
-.checkbox-animated[data-state="unchecked"] .checkbox-bg {
-  transform: scale(0);
-  opacity: 0;
-  transition:
-    transform 0.2s 0.05s var(--ease-standard),
-    opacity 0.15s 0.1s ease-out;
-}
-
-.checkbox-animated[data-state="unchecked"] .checkbox-icon {
-  opacity: 0;
-  transform: scale(0.5);
-  transition:
-    opacity 0.1s ease-out,
-    transform 0.15s var(--ease-standard);
-}
-</style>

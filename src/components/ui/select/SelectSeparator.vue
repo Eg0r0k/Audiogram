@@ -1,19 +1,22 @@
 <script setup lang="ts">
-import type { SelectSeparatorProps } from "reka-ui";
-import type { HTMLAttributes } from "vue";
-import { reactiveOmit } from "@vueuse/core";
-import { SelectSeparator } from "reka-ui";
+import { SelectSeparator, type SelectSeparatorProps } from "reka-ui";
+import { type HTMLAttributes, computed } from "vue";
+
 import { cn } from "@/lib/utils";
+import { menuSeparator } from "@/components/ui/menu";
 
 const props = defineProps<SelectSeparatorProps & { class?: HTMLAttributes["class"] }>();
 
-const delegatedProps = reactiveOmit(props, "class");
+const delegated = computed(() => {
+  const { class: _, ...rest } = props;
+  return rest;
+});
 </script>
 
 <template>
   <SelectSeparator
+    v-bind="delegated"
     data-slot="select-separator"
-    v-bind="delegatedProps"
-    :class="cn('bg-border pointer-events-none -mx-1 my-1 h-px', props.class)"
+    :class="cn(menuSeparator, props.class)"
   />
 </template>

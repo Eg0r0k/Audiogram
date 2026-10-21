@@ -1,39 +1,23 @@
 <script setup lang="ts">
-import type { DrawerDirection } from "vaul-vue";
-import { DrawerRoot } from "vaul-vue";
+import { DrawerRoot, type DrawerRootEmits, type DrawerRootProps } from "@kappa-ui/core/drawer";
+import { useForwardPropsEmits } from "reka-ui";
+import { ref, watch } from "vue";
+
 import { registerOverlayBackHandler } from "@/composables/useOverlayBackButton";
 
-// Always controlled: vaul's root props are a union that withDefaults cannot
-// type, and an uncontrolled sheet has no consumer here anyway.
-//
-// The sheet drags from anywhere; DrawerContent keeps the click after a drag
-// away from the row under the pointer, and a nested Scrollable stays usable
-// because vaul refuses the drag while it is scrolled.
-//
-// No overlay scroll lock on purpose: the modal overlay already swallows wheel
-// and touch over the page, and the shared lock would also freeze a Scrollable
-// inside the sheet.
-const props = withDefaults(defineProps<{
-  open: boolean;
-  dismissible?: boolean;
-  modal?: boolean;
-  handleOnly?: boolean;
-  direction?: DrawerDirection;
-}>(), {
-  dismissible: true,
-  modal: true,
-  handleOnly: false,
-  direction: "bottom",
+const props = defineProps<DrawerRootProps>();
+const emits = defineEmits<DrawerRootEmits>();
+
+const forwarded = useForwardPropsEmits(props, emits);
+
+// Android's hardware back dismisses an open drawer through its own Escape
+// path, so focus restoration and the exit animation match a normal close.
+const isOpen = ref(props.open ?? props.defaultOpen ?? false);
+watch(() => props.open, (open) => {
+  if (open !== undefined) isOpen.value = open;
 });
-
-const emits = defineEmits<{
-  "update:open": [open: boolean];
-}>();
-
-// Android's hardware back dismisses through the dialog's Escape path, which
-// keeps focus restoration and the exit animation identical to a normal close.
 registerOverlayBackHandler({
-  depth: () => (props.open ? 1 : 0),
+  depth: () => (isOpen.value ? 1 : 0),
   back: () => {
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   },
@@ -42,15 +26,10 @@ registerOverlayBackHandler({
 
 <template>
   <DrawerRoot
-    data-slot="drawer"
-    :open="open"
-    :dismissible="dismissible"
-    :modal="modal"
-    :handle-only="handleOnly"
-    :direction="direction"
-    :no-body-styles="true"
-    @update:open="emits('update:open', $event)"
+    v-slot="slotProps"
+    v-bind="forwarded"
+    @update:open="isOpen = $event"
   >
-    <slot />
+    <slot v-bind="slotProps" />
   </DrawerRoot>
 </template>

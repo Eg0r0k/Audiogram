@@ -1,17 +1,22 @@
-<!-- eslint-disable vue/require-default-prop -->
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue";
-import { cn } from "@/lib/utils";
+import { DrawerMenuSeparator, type DrawerMenuSeparatorProps } from "@kappa-ui/core/drawer-menu";
+import { type HTMLAttributes, computed } from "vue";
 
-const props = defineProps<{
-  class?: HTMLAttributes["class"];
-}>();
+import { cn } from "@/lib/utils";
+import { drawerMenuSeparator } from ".";
+
+const props = defineProps<DrawerMenuSeparatorProps & { class?: HTMLAttributes["class"] }>();
+
+const delegated = computed(() => {
+  const { class: _, ...rest } = props;
+  return rest;
+});
 </script>
 
 <template>
-  <div
-    role="separator"
+  <DrawerMenuSeparator
+    v-bind="delegated"
     data-slot="drawer-menu-separator"
-    :class="cn('my-1 h-px bg-muted', props.class)"
+    :class="cn(drawerMenuSeparator, props.class)"
   />
 </template>

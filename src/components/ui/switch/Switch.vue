@@ -1,72 +1,109 @@
 <script setup lang="ts">
-import type { SwitchRootEmits, SwitchRootProps } from "reka-ui";
-import type { HTMLAttributes } from "vue";
-import { reactiveOmit } from "@vueuse/core";
-import {
-  SwitchRoot,
-  SwitchThumb,
-  useForwardPropsEmits,
-} from "reka-ui";
+import { SwitchRoot, type SwitchRootEmits, type SwitchRootProps, SwitchThumb, useForwardPropsEmits } from "reka-ui";
+import { type HTMLAttributes, computed, ref, useAttrs, useSlots } from "vue";
+
+import { useFieldControl } from "@/lib/field-context";
 import { cn } from "@/lib/utils";
+import {
+  type SwitchColor,
+  type SwitchSize,
+  type SwitchVariants,
+  switchHandleClass,
+  switchIconClass,
+  switchThumbClass,
+  switchVariants,
+} from ".";
 
-const props = defineProps<SwitchRootProps & { class?: HTMLAttributes["class"] }>();
+defineOptions({ inheritAttrs: false });
 
+const props = withDefaults(
+  defineProps<
+    Omit<SwitchRootProps, "as" | "asChild"> & {
+      color?: SwitchColor | (string & {});
+      size?: SwitchSize;
+      touchTarget?: SwitchVariants["touchTarget"];
+      class?: HTMLAttributes["class"];
+    }
+  >(),
+  { color: "primary", size: "md" },
+);
 const emits = defineEmits<SwitchRootEmits>();
+const slots = useSlots();
 
-const delegatedProps = reactiveOmit(props, "class");
+const delegated = computed(() => {
+  const { class: _, size: __, touchTarget: ___, color: ____, ...rest } = props;
+  return rest;
+});
+const forwarded = useForwardPropsEmits(delegated, emits);
 
-const forwarded = useForwardPropsEmits(delegatedProps, emits);
+const attrs = useAttrs();
+const control = useFieldControl(props, attrs);
+
+const hovered = ref(false);
+const onPointerEnter = (event: PointerEvent) => {
+  if (event.pointerType === "mouse") hovered.value = true;
+};
+const onPointerLeave = () => {
+  hovered.value = false;
+};
 </script>
 
 <template>
   <SwitchRoot
-    v-slot="slotProps"
+    v-bind="{ ...attrs, ...forwarded }"
+    :id="control.id.value"
     data-slot="switch"
-    v-bind="forwarded"
-    :class="cn(
-      'switch-root',
-      'peer cursor-pointer data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:border-ring focus-visible:ring-ring/50 dark:data-[state=unchecked]:bg-input/80 inline-flex h-4 w-8 shrink-0 items-center rounded-full border-none transition-[background-color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
-      props.class,
-    )"
+    :data-color="props.color"
+    :data-size="props.size"
+    :data-touch-target="props.touchTarget"
+    :data-unchecked-icon="slots['unchecked-icon'] ? '' : undefined"
+    :disabled="control.disabled.value"
+    :required="control.required.value"
+    :aria-invalid="control.invalid.value"
+    :aria-describedby="control.describedBy.value"
+    :class="cn(switchVariants({ size: props.size, touchTarget: props.touchTarget }), props.class)"
+    @pointerenter="onPointerEnter"
+    @pointerleave="onPointerLeave"
   >
     <SwitchThumb
       data-slot="switch-thumb"
-      :class="cn(
-        'switch-thumb',
-        'bg-background pointer-events-none block size-4 rounded-full'
-      )"
+      :data-hovered="hovered || undefined"
+      :class="switchThumbClass"
     >
-      <slot
-        name="thumb"
-        v-bind="slotProps"
-      />
+      <span
+        data-slot="switch-handle"
+        :class="switchHandleClass"
+      >
+        <span
+          v-if="slots['checked-icon']"
+          aria-hidden="true"
+          :class="
+            cn(
+              switchIconClass,
+              `
+                text-tone opacity-0
+                group-data-[state=checked]/switch:opacity-100
+                group-disabled/switch:text-foreground/(--disabled-opacity)
+              `,
+              !slots['unchecked-icon'] && '-rotate-45 group-data-[state=checked]/switch:rotate-0',
+            )
+          "
+        >
+          <slot name="checked-icon" />
+        </span>
+        <span
+          v-if="slots['unchecked-icon']"
+          aria-hidden="true"
+          :class="
+            cn(
+              switchIconClass,
+              'text-muted group-data-[state=checked]/switch:opacity-0 group-disabled/switch:text-background',
+            )
+          "
+        >
+          <slot name="unchecked-icon" />
+        </span>
+      </span>
     </SwitchThumb>
   </SwitchRoot>
 </template>
-
-<style scoped>
-.switch-root {
-  position: relative;
-  overflow: visible;
-}
-
-.switch-thumb {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  box-shadow: 0 0 0 2px var(--input);
-  transition:
-    transform 0.2s var(--ease-standard),
-    box-shadow 0.2s var(--ease-standard);
-}
-
-.switch-root[data-state="unchecked"] .switch-thumb {
-  transform: translateX(-2px) translateY(-50%);
-  box-shadow: 0 0 0 2px var(--input);
-}
-
-.switch-root[data-state="checked"] .switch-thumb {
-  transform: translateX(18px) translateY(-50%);
-  box-shadow: 0 0 0 2px var(--primary);
-}
-</style>

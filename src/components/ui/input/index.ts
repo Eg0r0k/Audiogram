@@ -1,49 +1,27 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import { type VariantProps, cva } from "class-variance-authority";
+
+import { textControlBase, textControlRadius, textControlSize, textControlVariant } from "@/lib/text-control";
+
+export { default as Input } from "./Input.vue";
 
 export const inputVariants = cva(
-  [
-    "peer",
-    "flex w-full min-w-0 rounded-md border text-base md:text-sm",
-    "px-3 py-1 h-9",
-    "outline-none transition-[border-color,box-shadow] duration-200",
-
-    "placeholder:font-medium placeholder:text-muted-foreground",
-    "selection:bg-primary selection:text-primary-foreground",
-
-    // Hide the native number spinners (WebKit pseudo-elements + Firefox).
-    "[&::-webkit-inner-spin-button]:appearance-none",
-    "[&::-webkit-outer-spin-button]:appearance-none",
-    "[&[type=number]]:[-moz-appearance:textfield]",
-
-    "border-border bg-transparent",
-    "disabled:cursor-not-allowed disabled:opacity-50",
-
-    "hover:border-primary",
-
-    "focus:border-primary focus:shadow-[0_0_0_1px_var(--primary)]",
-
-    "aria-invalid:border-destructive",
-    "aria-invalid:focus:shadow-[0_0_0_1px_var(--destructive)]",
-  ],
+  `${textControlBase} file:me-3 file:inline-flex file:h-full file:border-0 file:bg-transparent file:text-label-lg file:text-foreground`,
   {
     variants: {
-      surface: {
-        background: "bg-background",
-        card: "bg-card",
-        popover: "bg-popover",
-        muted: "bg-muted",
-      },
-      hasLabel: {
-        true: "placeholder:opacity-0 focus:placeholder:opacity-100",
-        false: "",
+      variant: textControlVariant,
+      size: {
+        xs: `h-(--control-height-xs) ${textControlSize.xs} ${textControlRadius.xs}`,
+        sm: `h-(--control-height-sm) ${textControlSize.sm} ${textControlRadius.sm}`,
+        md: `h-(--control-height-md) ${textControlSize.md} ${textControlRadius.md}`,
+        lg: `h-(--control-height-lg) ${textControlSize.lg} ${textControlRadius.lg}`,
+        xl: `h-(--control-height-xl) ${textControlSize.xl} ${textControlRadius.xl}`,
       },
     },
     defaultVariants: {
-      surface: "background",
-      hasLabel: false,
+      variant: "outline",
+      size: "md",
     },
   },
 );
 
 export type InputVariants = VariantProps<typeof inputVariants>;
-export { default as Input } from "./Input.vue";

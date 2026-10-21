@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import type { TooltipTriggerProps } from "reka-ui";
-import { TooltipTrigger } from "reka-ui";
+import { TooltipTrigger, type TooltipTriggerProps } from "@kappa-ui/core/tooltip";
 
 const props = defineProps<TooltipTriggerProps>();
 </script>
 
 <template>
   <TooltipTrigger
-    data-slot="tooltip-trigger"
     v-bind="props"
+    data-slot="tooltip-trigger"
   >
     <slot />
   </TooltipTrigger>

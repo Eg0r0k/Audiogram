@@ -1,121 +1,52 @@
 <script setup lang="ts">
-import { computed, ref, useId } from "vue";
-import type { HTMLAttributes } from "vue";
-import { useVModel } from "@vueuse/core";
+import { useForwardExpose } from "reka-ui";
+import { type HTMLAttributes, computed, useAttrs } from "vue";
+
+import { useFieldControl } from "@/lib/field-context";
+import type { TextControlSize } from "@/lib/text-control";
 import { cn } from "@/lib/utils";
-import { inputVariants } from "./index";
+import { type InputVariants, inputVariants } from ".";
 
-type Surface = "background" | "card" | "popover" | "muted";
+defineOptions({ inheritAttrs: false });
 
-const props = withDefaults(defineProps<{
-  label?: string;
-  surface?: Surface;
-  placeholder?: string;
-  ariaLabel?: string;
-  id?: string;
-  modelValue?: string | number;
+const props = withDefaults(
+  defineProps<{
+    id?: string;
+    defaultValue?: string | number;
+    variant?: InputVariants["variant"];
+    size?: TextControlSize;
+    disabled?: boolean;
+    required?: boolean;
+    class?: HTMLAttributes["class"];
+  }>(),
+  { size: "md" },
+);
 
-  type?:
-    | "text"
-    | "email"
-    | "tel"
-    | "url"
-    | "number"
-    | "password"
-    | "search"
-    | "date"
-    | "time"
-    | "datetime-local"
-    | "month"
-    | "week"
-    | "color";
+const model = defineModel<string | number>();
+if (model.value === undefined && props.defaultValue !== undefined) model.value = props.defaultValue;
 
-  name?: string;
-  autocomplete?: string;
-  disabled?: boolean;
-  spellcheck?: boolean | "true" | "false";
+const attrs = useAttrs();
+const control = useFieldControl(props, attrs);
+const { forwardRef } = useForwardExpose();
 
-  inputmode?:
-    | "none"
-    | "text"
-    | "tel"
-    | "url"
-    | "email"
-    | "numeric"
-    | "decimal"
-    | "search";
-
-  class?: HTMLAttributes["class"];
-}>(), {
-  type: "text",
-  surface: "background",
-});
-const emits = defineEmits<{
-  (e: "update:modelValue", payload: string | number): void;
-}>();
-
-const generatedId = useId();
-const inputId = computed(() => props.id ?? generatedId);
-
-const modelValue = useVModel(props, "modelValue", emits, { passive: true });
-
-const isFocused = ref(false);
-
-const isActive = computed(() => {
-  if (!props.label) return false;
-  return isFocused.value || !!modelValue.value;
-});
+const inputBindings = computed(() => ({
+  ...attrs,
+  "id": control.id.value,
+  "disabled": control.disabled.value,
+  "required": control.required.value,
+  "aria-invalid": control.invalid.value,
+  "aria-describedby": control.describedBy.value,
+}));
 </script>
 
 <template>
-  <div class="relative w-full">
-    <input
-      :id="inputId"
-      v-model="modelValue"
-      :type="type"
-      :name="name"
-      :autocomplete="autocomplete"
-      :disabled="disabled"
-      :spellcheck="spellcheck"
-      :inputmode="inputmode"
-      :placeholder="placeholder"
-      :aria-label="!label ? ariaLabel : undefined"
-      :class="
-        cn(
-          inputVariants({
-            surface,
-            hasLabel: !!label,
-          }),
-          props.class
-        )
-      "
-      @focus="isFocused = true"
-      @blur="isFocused = false"
-    >
-    <!-- eslint-disable vuejs-accessibility/label-has-for -->
-    <label
-      v-if="label"
-      :for="inputId"
-      :class="
-        cn(
-          'absolute left-3 top-1/2 -translate-y-1/2 px-1 text-sm font-medium pointer-events-none transition-[top,translate,font-size,color] duration-200',
-          {
-            'bg-background': surface === 'background',
-            'bg-card': surface === 'card',
-            'bg-popover': surface === 'popover',
-            'bg-muted': surface === 'muted',
-          },
-          'text-muted-foreground',
-
-          'peer-hover:text-primary',
-          'peer-focus:text-primary',
-          'peer-aria-invalid:text-destructive',
-
-          isActive && 'top-0 -translate-y-1/2 text-xs'
-        )
-      "
-    >
-      {{ label }}
-    </label>
-  </div>
+  <input
+    v-bind="inputBindings"
+    :ref="forwardRef"
+    v-model="model"
+    data-slot="input"
+    :data-variant="props.variant ?? 'outline'"
+    :data-size="props.size"
+    :class="cn(inputVariants({ variant: props.variant, size: props.size }), props.class)"
+  >
 </template>

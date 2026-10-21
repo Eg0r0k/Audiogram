@@ -78,6 +78,12 @@
       </div>
 
       <div
+        v-if="$slots['load-more-error'] && !loading"
+      >
+        <slot name="load-more-error" />
+      </div>
+
+      <div
         v-if="!loading && items.length === 0"
       >
         <slot name="empty" />
@@ -636,13 +642,13 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
 .virtual-scrollable-sticky {
   position: sticky;
   z-index: 10;
-  background: var(--background);
+  background: var(--sticky-surface, var(--background));
   backdrop-filter: blur(16px);
 }
 
 @supports (color: color-mix(in oklab, red, red)) {
   .virtual-scrollable-sticky {
-    background: color-mix(in oklab, var(--background) 92%, transparent);
+    background: color-mix(in oklab, var(--sticky-surface, var(--background)) 92%, transparent);
   }
 }
 

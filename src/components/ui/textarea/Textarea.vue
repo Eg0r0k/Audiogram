@@ -1,54 +1,113 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue";
-import { useVModel } from "@vueuse/core";
+import { type HTMLAttributes, nextTick, onBeforeUnmount, onMounted, useAttrs, useTemplateRef, watch } from "vue";
+
+import { useFieldControl } from "@/lib/field-context";
 import { cn } from "@/lib/utils";
+import { type TextareaSize, type TextareaVariants, textareaVariants } from ".";
 
-const props = defineProps<{
-  class?: HTMLAttributes["class"];
-  modelValue?: string | number;
-}>();
+defineOptions({ inheritAttrs: false });
 
-const emits = defineEmits<{
-  (e: "update:modelValue", payload: string | number): void;
-}>();
+const props = withDefaults(
+  defineProps<{
+    id?: string;
+    defaultValue?: string;
+    variant?: TextareaVariants["variant"];
+    size?: TextareaSize;
+    rows?: number;
+    maxrows?: number;
+    autoresize?: boolean;
+    disabled?: boolean;
+    required?: boolean;
+    class?: HTMLAttributes["class"];
+  }>(),
+  { rows: 3, size: "md" },
+);
 
-const modelValue = useVModel(props, "modelValue", emits, { passive: true });
+const model = defineModel<string>();
+if (model.value === undefined && props.defaultValue !== undefined) model.value = props.defaultValue;
+
+const attrs = useAttrs();
+const control = useFieldControl(props, attrs);
+const textarea = useTemplateRef<HTMLTextAreaElement>("textarea");
+
+const measure = (element: HTMLTextAreaElement, width: string) => {
+  const shadow = element.cloneNode() as HTMLTextAreaElement;
+  shadow.removeAttribute("id");
+  shadow.removeAttribute("name");
+  shadow.setAttribute("aria-hidden", "true");
+  shadow.tabIndex = -1;
+  shadow.value = element.value;
+  Object.assign(shadow.style, {
+    position: "absolute",
+    top: "0",
+    left: "0",
+    width,
+    height: "",
+    minHeight: "0",
+    maxHeight: "none",
+    overflow: "hidden",
+    visibility: "hidden",
+    pointerEvents: "none",
+  });
+  element.after(shadow);
+  const height = shadow.scrollHeight;
+  shadow.remove();
+  return height;
+};
+
+const resize = () => {
+  const element = textarea.value;
+  if (!element) return;
+  if (!props.autoresize) {
+    element.style.height = "";
+    element.style.overflowY = "";
+    return;
+  }
+  if (!element.getClientRects().length) return;
+
+  const style = getComputedStyle(element);
+  const frame = Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth);
+  const padding = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
+  const limit = props.maxrows ? props.maxrows * Number.parseFloat(style.lineHeight) + padding + frame : Infinity;
+  const height = measure(element, style.width) + frame;
+
+  element.style.height = `${Math.min(height, limit)}px`;
+  element.style.overflowY = height <= limit ? "hidden" : "";
+};
+
+let observer: ResizeObserver | undefined;
+let width = 0;
+onMounted(() => {
+  resize();
+  observer = new ResizeObserver(([entry]) => {
+    if (!entry || entry.contentRect.width === width) return;
+    width = entry.contentRect.width;
+    requestAnimationFrame(resize);
+  });
+  if (textarea.value) observer.observe(textarea.value);
+});
+onBeforeUnmount(() => observer?.disconnect());
+watch([model, () => props.autoresize, () => props.rows, () => props.maxrows], () => nextTick(resize));
+
+defineExpose({ resize });
 </script>
-<!-- eslint-disable vuejs-accessibility/form-control-has-label -->
+
 <template>
   <textarea
-    v-model="modelValue"
+    v-bind="attrs"
+    :id="control.id.value"
+    ref="textarea"
+    v-model="model"
     data-slot="textarea"
+    :data-variant="props.variant ?? 'outline'"
+    :data-size="props.size"
+    :rows="props.rows"
+    :disabled="control.disabled.value"
+    :required="control.required.value"
+    :aria-invalid="control.invalid.value"
+    :aria-describedby="control.describedBy.value"
     :class="
-      cn(
-        'audiogram-textarea',
-        'placeholder:text-muted-foreground placeholder:font-semibold selection:bg-primary caret-primary selection:text-primary-foreground dark:bg-background flex field-sizing-content min-h-16 w-full rounded-md bg-transparent px-3 py-2 text-base outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
-        props.class
-      )
+      cn(textareaVariants({ variant: props.variant, size: props.size }), props.autoresize && 'resize-none', props.class)
     "
   />
 </template>
-
-<style scoped>
-.audiogram-textarea {
-  border: 1px solid var(--border);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.audiogram-textarea:hover:not(:focus):not(:disabled):not([aria-invalid="true"]) {
-  border-color: var(--primary);
-}
-
-.audiogram-textarea:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 1px var(--primary);
-}
-
-.audiogram-textarea[aria-invalid="true"] {
-  border-color: var(--destructive);
-}
-
-.audiogram-textarea[aria-invalid="true"]:focus {
-  box-shadow: 0 0 0 1px var(--destructive);
-}
-</style>

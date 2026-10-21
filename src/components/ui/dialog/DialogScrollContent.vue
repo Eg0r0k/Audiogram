@@ -1,60 +1,74 @@
 <script setup lang="ts">
-import type { DialogContentEmits, DialogContentProps } from "reka-ui";
-import type { HTMLAttributes } from "vue";
-import { useI18n } from "vue-i18n";
-import { reactiveOmit } from "@vueuse/core";
-import { X } from "lucide-vue-next";
 import {
   DialogClose,
   DialogContent,
-  DialogOverlay,
+  type DialogContentEmits,
+  type DialogContentProps,
   DialogPortal,
-  useForwardPropsEmits,
-} from "reka-ui";
+} from "@kappa-ui/core/dialog";
+import { injectOverlayPortalTarget } from "@kappa-ui/core/overlay";
+import IconX from "~icons/tabler/x";
+import { useForwardPropsEmits } from "reka-ui";
+import { type HTMLAttributes, computed } from "vue";
+
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { dialogSurface } from ".";
+import DialogOverlay from "./DialogOverlay.vue";
 
-const { t } = useI18n();
+defineOptions({ inheritAttrs: false });
 
-defineOptions({
-  inheritAttrs: false,
-});
-
-const props = defineProps<DialogContentProps & { class?: HTMLAttributes["class"] }>();
+const props = withDefaults(
+  defineProps<DialogContentProps & { class?: HTMLAttributes["class"]; showCloseButton?: boolean }>(),
+  { showCloseButton: true },
+);
 const emits = defineEmits<DialogContentEmits>();
 
-const delegatedProps = reactiveOmit(props, "class");
+const delegated = computed(() => {
+  const { class: _, showCloseButton: __, ...rest } = props;
+  return rest;
+});
+const forwarded = useForwardPropsEmits(delegated, emits);
 
-const forwarded = useForwardPropsEmits(delegatedProps, emits);
+const portalTarget = injectOverlayPortalTarget(null);
+
+const onPointerDownOutside = (event: CustomEvent<{ originalEvent: PointerEvent }>) => {
+  const { originalEvent } = event.detail;
+  const target = originalEvent.target as HTMLElement;
+  if (target.dataset.slot !== "dialog-overlay") return;
+  if (
+    originalEvent.offsetX < 0
+    || originalEvent.offsetX > target.clientWidth
+    || originalEvent.offsetY > target.clientHeight
+  )
+    event.preventDefault();
+};
 </script>
 
 <template>
-  <DialogPortal>
-    <DialogOverlay
-      class="fixed inset-0 z-(--z-dialog) grid place-items-center overflow-y-auto bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-    >
+  <DialogPortal :to="portalTarget ?? undefined">
+    <DialogOverlay class="grid place-items-center overflow-y-auto p-4 sm:p-8">
       <DialogContent
-        :class="
-          cn(
-            'relative z-(--z-dialog) flex flex-col w-full max-w-lg border border-border bg-background shadow-lg duration-200 sm:rounded-lg md:w-full overscroll-behavior-contain',
-            props.class,
-          )
-        "
         v-bind="{ ...$attrs, ...forwarded }"
-        @pointer-down-outside="(event) => {
-          const originalEvent = event.detail.originalEvent;
-          const target = originalEvent.target as HTMLElement;
-          if (originalEvent.offsetX > target.clientWidth || originalEvent.offsetY > target.clientHeight) {
-            event.preventDefault();
-          }
-        }"
+        data-slot="dialog-content"
+        :class="cn('relative w-full max-w-lg', dialogSurface, props.class)"
+        @pointer-down-outside="onPointerDownOutside"
       >
         <slot />
-
         <DialogClose
-          class="absolute top-4 right-4 p-0.5 transition-colors rounded-md hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          v-if="props.showCloseButton"
+          as-child
         >
-          <X class="w-4 h-4" />
-          <span class="sr-only">{{ t("common.close") }}</span>
+          <Button
+            variant="ghost"
+            color="muted"
+            size="icon-sm"
+            aria-label="Close"
+            data-slot="dialog-close"
+            class="absolute end-2 top-2 rounded-full opacity-80 icon-size-5 hover:opacity-100"
+          >
+            <IconX />
+          </Button>
         </DialogClose>
       </DialogContent>
     </DialogOverlay>

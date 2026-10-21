@@ -1,18 +1,25 @@
-<!-- eslint-disable vue/require-default-prop -->
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue";
-import { cn } from "@/lib/utils";
+import { DrawerMenuLabel, type DrawerMenuLabelProps } from "@kappa-ui/core/drawer-menu";
+import { type HTMLAttributes, computed } from "vue";
 
-const props = defineProps<{
-  class?: HTMLAttributes["class"];
-}>();
+import { cn } from "@/lib/utils";
+import { drawerMenuLabel } from ".";
+
+const props = defineProps<DrawerMenuLabelProps & { inset?: boolean; class?: HTMLAttributes["class"] }>();
+
+const delegated = computed(() => {
+  const { class: _, inset: __, ...rest } = props;
+  return rest;
+});
 </script>
 
 <template>
-  <div
+  <DrawerMenuLabel
+    v-bind="delegated"
     data-slot="drawer-menu-label"
-    :class="cn('px-3 py-2 text-sm font-medium text-muted-foreground', props.class)"
+    :data-inset="props.inset || undefined"
+    :class="cn(drawerMenuLabel, props.class)"
   >
     <slot />
-  </div>
+  </DrawerMenuLabel>
 </template>

@@ -1,36 +1,65 @@
-import { computed, ref, toValue, type MaybeRefOrGetter } from "vue";
+import { computed, ref, shallowRef, toValue, watch, type MaybeRefOrGetter } from "vue";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
-import { provideDrawerMenuClose } from "@/components/ui/drawer-menu/context";
-import { provideResponsiveMenu, type MenuPartSet, type ResponsiveMenuKind } from "./context";
-import { sheetParts } from "./sets";
+import { provideResponsiveMenu, type ResponsiveMenuKind } from "./context";
+import { popperParts, sheetParts } from "./sets";
 
 interface RootOptions {
   kind: ResponsiveMenuKind;
-  popperParts: MenuPartSet;
   /** Controlled open state; `undefined` keeps the menu uncontrolled. */
   open: MaybeRefOrGetter<boolean | undefined>;
+  modal: MaybeRefOrGetter<boolean>;
   onUpdateOpen: (open: boolean) => void;
 }
 
 /**
  * Shared root logic: the popper on desktop widths, a bottom sheet on mobile,
  * with one open state either way so consumers can stay uncontrolled.
+ *
+ * A popper context menu opens itself at the pointer, so its consumer can only
+ * close it: consumers set their own open flag from the row's contextmenu
+ * handler, before the menu sees the event, and would otherwise make Menu take
+ * the right-click for one on an already open menu.
  */
 export const useResponsiveMenuRoot = (options: RootOptions) => {
   const { isMobileLayout } = useDeviceLayout();
   const mode = computed(() => (isMobileLayout.value ? "sheet" as const : "popper" as const));
+  const selfOpening = computed(() => options.kind === "context" && mode.value === "popper");
 
   const internalOpen = ref(false);
-  const isOpen = computed(() => toValue(options.open) ?? internalOpen.value);
+  const controlledOpen = computed(() => toValue(options.open));
+  const isOpen = computed(() => (selfOpening.value ? internalOpen.value : controlledOpen.value ?? internalOpen.value));
+
+  watch(controlledOpen, (open) => {
+    if (open === false) internalOpen.value = false;
+  });
+
+  // A right-click elsewhere in the target hides the menu and reopens it on the
+  // next tick; only a close that stays closed reaches the consumer.
+  let closeTimer: ReturnType<typeof setTimeout> | undefined;
   const setOpen = (open: boolean) => {
     internalOpen.value = open;
-    options.onUpdateOpen(open);
+    clearTimeout(closeTimer);
+    if (open || !selfOpening.value) {
+      options.onUpdateOpen(open);
+      return;
+    }
+    closeTimer = setTimeout(() => {
+      if (!internalOpen.value) options.onUpdateOpen(false);
+    });
   };
 
-  const parts = computed(() => (mode.value === "sheet" ? sheetParts : options.popperParts));
+  const parts = computed(() => (mode.value === "sheet" ? sheetParts : popperParts));
 
-  provideResponsiveMenu({ kind: options.kind, mode, parts, isOpen, setOpen });
-  provideDrawerMenuClose(() => setOpen(false));
+  provideResponsiveMenu({
+    kind: options.kind,
+    mode,
+    parts,
+    isOpen,
+    setOpen,
+    modal: computed(() => toValue(options.modal)),
+    trigger: shallowRef(null),
+    triggerDisabled: shallowRef(false),
+  });
 
   return { mode, isOpen, setOpen };
 };

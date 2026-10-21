@@ -1,25 +1,52 @@
 <script setup lang="ts">
-import type { RadioGroupRootEmits, RadioGroupRootProps } from "reka-ui";
-import type { HTMLAttributes } from "vue";
-import { reactiveOmit } from "@vueuse/core";
-import { RadioGroupRoot, useForwardPropsEmits } from "reka-ui";
-import { cn } from "@/lib/utils";
+import { RadioGroupRoot, type RadioGroupRootEmits, type RadioGroupRootProps, useForwardPropsEmits } from "reka-ui";
+import { type HTMLAttributes, computed, useAttrs } from "vue";
 
-const props = defineProps<RadioGroupRootProps & { class?: HTMLAttributes["class"] }>();
+import { useFieldControl } from "@/lib/field-context";
+import { ChoiceGroup, type ChoiceGroupVariants } from "@/components/ui/choice-group";
+import { type RadioColor, provideRadioGroupContext } from ".";
+
+const props = withDefaults(
+  defineProps<
+    RadioGroupRootProps & {
+      variant?: ChoiceGroupVariants["variant"];
+      /** The tone of every radio in the group that doesn't set its own. */
+      color?: RadioColor | (string & {});
+      class?: HTMLAttributes["class"];
+    }
+  >(),
+  { color: "primary" },
+);
 const emits = defineEmits<RadioGroupRootEmits>();
 
-const delegatedProps = reactiveOmit(props, "class");
+const delegated = computed(() => {
+  const { class: _, variant: __, color: ___, ...rest } = props;
+  return rest;
+});
+const forwarded = useForwardPropsEmits(delegated, emits);
 
-const forwarded = useForwardPropsEmits(delegatedProps, emits);
+const control = useFieldControl(props, useAttrs());
+
+provideRadioGroupContext({ color: computed(() => props.color) });
 </script>
 
 <template>
-  <RadioGroupRoot
-    v-slot="slotProps"
-    data-slot="radio-group"
-    :class="cn('grid gap-3', props.class)"
-    v-bind="forwarded"
+  <ChoiceGroup
+    as-child
+    :variant="props.variant"
+    :orientation="props.orientation"
+    :color="props.color"
+    :class="props.class"
   >
-    <slot v-bind="slotProps" />
-  </RadioGroupRoot>
+    <RadioGroupRoot
+      v-bind="forwarded"
+      data-slot="radio-group"
+      :disabled="control.disabled.value"
+      :required="control.required.value"
+      :aria-invalid="control.invalid.value"
+      :aria-describedby="control.describedBy.value"
+    >
+      <slot />
+    </RadioGroupRoot>
+  </ChoiceGroup>
 </template>

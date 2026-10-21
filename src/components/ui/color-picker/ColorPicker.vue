@@ -1,114 +1,91 @@
-<script lang="ts" setup>
-import { computed, shallowRef } from "vue";
-import { useForwardPropsEmits } from "reka-ui";
-import {
-  ColorPickerRoot,
-  ColorPickerCanvas,
-  ColorPickerEyeDropper,
-  ColorPickerSliderHue,
-  ColorPickerSliderAlpha,
-  ColorPickerInputHex,
-  ColorPickerInputHSL,
-  ColorPickerInputRGB,
-  ColorPickerInputHSB,
-  type ColorPickerRootProps,
-  type ColorPickerRootEmits,
-} from "@vuelor/picker";
-import IconColorPicker from "~icons/tabler/color-picker";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+<script setup lang="ts">
+import { type Color, colorToString, convertToHsb, isValidColor, parseColor } from "reka-ui";
+import { type HTMLAttributes, computed, nextTick, ref, toRef, useAttrs, watch } from "vue";
 
-const INPUTS = {
-  Hex: ColorPickerInputHex,
-  RGB: ColorPickerInputRGB,
-  HSL: ColorPickerInputHSL,
-  HSB: ColorPickerInputHSB,
+import { useFieldControl } from "@/lib/field-context";
+import { cn } from "@/lib/utils";
+import { type ColorPickerFormat, type ColorPickerSize, colorPickerVariants, provideColorPickerContext } from ".";
+
+defineOptions({ inheritAttrs: false });
+
+const props = withDefaults(
+  defineProps<{
+    id?: string;
+    defaultValue?: string;
+    format?: ColorPickerFormat;
+    size?: ColorPickerSize;
+    disabled?: boolean;
+    required?: boolean;
+    name?: string;
+    class?: HTMLAttributes["class"];
+  }>(),
+  { format: "hex", size: "md" },
+);
+
+const model = defineModel<string>();
+
+const attrs = useAttrs();
+const control = useFieldControl(props, attrs);
+
+const parse = (value: string | undefined) =>
+  value !== undefined && isValidColor(value) ? convertToHsb(parseColor(value)) : undefined;
+
+const color = ref<Color>(parse(model.value) ?? parse(props.defaultValue) ?? parse("#ffffff")!);
+const sync = (next: string | undefined) => {
+  if (next === undefined || next === colorToString(color.value, props.format)) return;
+  const parsed = parse(next);
+  if (parsed) color.value = parsed;
 };
 
-type Format = keyof typeof INPUTS;
+const setColor = (next: Color) => {
+  color.value = convertToHsb(next);
+  model.value = colorToString(next, props.format);
+  nextTick(() => sync(model.value));
+};
+if (model.value === undefined) setColor(color.value);
 
-type ColorPickerProps = Omit<ColorPickerRootProps, "styling" | "ui">;
+watch(model, sync);
+watch(
+  () => props.format,
+  () => setColor(color.value),
+);
 
-const props = defineProps<ColorPickerProps>();
-const emits = defineEmits<ColorPickerRootEmits>();
+const isDisabled = computed(() => Boolean(control.disabled.value));
 
-const forwarded = useForwardPropsEmits(props, emits);
-
-const inputFormat = shallowRef<Format>("Hex");
-const formatOptions = Object.keys(INPUTS) as Format[];
-const canvasType = computed<"HSL" | "HSV">(() => {
-  return inputFormat.value === "HSL" ? "HSL" : "HSV";
+provideColorPickerContext({
+  color,
+  hex: computed(() => colorToString(color.value, "hex")),
+  opaque: computed(() => colorToString({ ...color.value, alpha: 1 }, "hex")),
+  setColor,
+  size: toRef(() => props.size),
+  disabled: isDisabled,
+  invalid: control.invalid,
+  describedBy: control.describedBy,
 });
 
-function onFormatChange(value: unknown) {
-  if (typeof value === "string" && value in INPUTS) inputFormat.value = value as Format;
-}
-
-const ui = {
-  picker: {
-    root: "bg-transparent text-foreground shadow-none rounded-none p-0 gap-3",
-  },
-  canvas: { root: "rounded-md" },
-  dropper: {
-    root: "rounded-md enabled:hover:bg-accent enabled:hover:text-accent-foreground",
-  },
-  input: {
-    group: "rounded-md",
-    item: "first:rounded-l-md last:rounded-r-md",
-    label: "hidden",
-    field: "h-8 text-xs",
-  },
-};
+const partOwned = ["aria-invalid", "aria-describedby"];
+const rootAttrs = computed(() => Object.fromEntries(Object.entries(attrs).filter(([key]) => !partOwned.includes(key))));
 </script>
 
 <template>
-  <ColorPickerRoot
-    :ui="ui"
-    v-bind="forwarded"
+  <div
+    v-bind="rootAttrs"
+    :id="control.id.value"
+    data-slot="color-picker"
+    role="group"
+    :data-size="props.size"
+    :data-disabled="isDisabled ? '' : undefined"
+    :aria-labelledby="control.labelledBy.value"
+    :aria-required="control.required.value || undefined"
+    :class="cn(colorPickerVariants({ size: props.size }), props.class)"
   >
-    <ColorPickerCanvas :type="canvasType" />
-    <div class="flex items-center gap-2">
-      <ColorPickerEyeDropper
-        type="button"
-        aria-label="Pick color from screen"
-      >
-        <IconColorPicker class="size-5" />
-      </ColorPickerEyeDropper>
-      <div class="flex flex-1 flex-col gap-2">
-        <ColorPickerSliderHue />
-        <ColorPickerSliderAlpha />
-      </div>
-    </div>
-    <div class="flex items-center gap-2">
-      <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -- renderless reka root, the trigger below carries the label -->
-      <Select
-        :model-value="inputFormat"
-        :disabled="props.disabled"
-        @update:model-value="onFormatChange"
-      >
-        <SelectTrigger
-          size="sm"
-          class="px-2"
-          aria-label="Color format"
-        >
-          <SelectValue placeholder="Format" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem
-            v-for="option in formatOptions"
-            :key="option"
-            :value="option"
-          >
-            {{ option }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
-      <component :is="INPUTS[inputFormat]" />
-    </div>
-  </ColorPickerRoot>
+    <slot />
+    <input
+      v-if="props.name"
+      type="hidden"
+      :name="props.name"
+      :value="model"
+      :disabled="isDisabled"
+    >
+  </div>
 </template>

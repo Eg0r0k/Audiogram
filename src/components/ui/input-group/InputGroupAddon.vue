@@ -1,36 +1,35 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from "vue";
-import type { InputGroupVariants } from ".";
+
 import { cn } from "@/lib/utils";
-import { inputGroupAddonVariants } from ".";
+import { type InputGroupAddonVariants, inputGroupAddonVariants } from ".";
 
-const props = withDefaults(defineProps<{
-  align?: InputGroupVariants["align"];
-  class?: HTMLAttributes["class"];
-}>(), {
-  align: "inline-start",
-});
+const props = withDefaults(
+  defineProps<{
+    align?: NonNullable<InputGroupAddonVariants["align"]>;
+    class?: HTMLAttributes["class"];
+  }>(),
+  { align: "inline-start" },
+);
 
-function handleInputGroupAddonClick(e: MouseEvent) {
-  const currentTarget = e.currentTarget as HTMLElement | null;
-  const target = e.target as HTMLElement | null;
-  if (target && target.closest("button")) {
-    return;
-  }
-  if (currentTarget && currentTarget.parentElement) {
-    currentTarget.parentElement.querySelector("input")?.focus();
-  }
-}
+const focusControl = (event: MouseEvent) => {
+  if (event.target instanceof Element && event.target.closest("button, a, input, textarea, select")) return;
+  const group = (event.currentTarget as HTMLElement).closest("[data-slot=input-group]");
+  group
+    ?.querySelector<HTMLElement>(
+      "[data-slot=input-group-control]:is(input, textarea), [data-slot=input-group-control] [role=spinbutton]",
+    )
+    ?.focus();
+};
 </script>
 
 <template>
-  <button
-    type="button"
+  <div
     data-slot="input-group-addon"
     :data-align="props.align"
     :class="cn(inputGroupAddonVariants({ align: props.align }), props.class)"
-    @click="handleInputGroupAddonClick"
+    @click="focusControl"
   >
     <slot />
-  </button>
+  </div>
 </template>

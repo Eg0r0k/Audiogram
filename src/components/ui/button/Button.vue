@@ -1,20 +1,26 @@
-<!-- eslint-disable vue/require-default-prop -->
 <script setup lang="ts">
-import type { PrimitiveProps } from "reka-ui";
+import { Primitive, type PrimitiveProps } from "reka-ui";
 import type { HTMLAttributes } from "vue";
-import type { ButtonVariants } from ".";
-import { Primitive } from "reka-ui";
+
+import vRipple from "@/lib/ripple";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from ".";
+import { type ButtonColor, type ButtonSize, type ButtonVariants, buttonVariants, swallowWhenDisabled } from ".";
 
 interface Props extends PrimitiveProps {
   variant?: ButtonVariants["variant"];
-  size?: ButtonVariants["size"];
+  color?: ButtonColor | (string & {});
+  size?: ButtonSize;
+  touchTarget?: ButtonVariants["touchTarget"];
+  /** `inward` draws the focus ring inside, for hosts that clip overflow. */
+  focusRing?: ButtonVariants["focusRing"];
   class?: HTMLAttributes["class"];
 }
 
 const props = withDefaults(defineProps<Props>(), {
   as: "button",
+  variant: "solid",
+  color: "primary",
+  size: "md",
 });
 </script>
 
@@ -22,20 +28,24 @@ const props = withDefaults(defineProps<Props>(), {
   <Primitive
     v-ripple
     data-slot="button"
+    :data-variant="props.variant"
+    :data-color="props.color"
+    :data-size="props.size"
     :as="as"
     :as-child="asChild"
-    :class="cn(buttonVariants({ variant, size }), props.class)"
+    :class="
+      cn(
+        buttonVariants({
+          variant: props.variant,
+          size: props.size,
+          touchTarget: props.touchTarget,
+          focusRing: props.focusRing,
+        }),
+        props.class,
+      )
+    "
+    @click.capture="swallowWhenDisabled"
   >
     <slot />
   </Primitive>
 </template>
-
-<style scoped>
-[data-slot="button"] {
-  transition: transform 160ms var(--ease-out);
-}
-
-[data-slot="button"]:active {
-  transform: scale(0.97);
-}
-</style>

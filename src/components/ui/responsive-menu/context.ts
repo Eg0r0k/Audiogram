@@ -1,4 +1,4 @@
-import type { Component, ComputedRef, InjectionKey } from "vue";
+import type { Component, ComputedRef, InjectionKey, ShallowRef } from "vue";
 import { inject, provide } from "vue";
 
 export type ResponsiveMenuMode = "popper" | "sheet";
@@ -24,6 +24,10 @@ export interface ResponsiveMenuContext {
   parts: ComputedRef<MenuPartSet>;
   isOpen: ComputedRef<boolean>;
   setOpen: (open: boolean) => void;
+  modal: ComputedRef<boolean>;
+  /** The element the popper menu attaches to, registered by the trigger. */
+  trigger: ShallowRef<HTMLElement | null>;
+  triggerDisabled: ShallowRef<boolean>;
 }
 
 const ResponsiveMenuKey: InjectionKey<ResponsiveMenuContext> = Symbol("ResponsiveMenu");
@@ -31,6 +35,9 @@ const ResponsiveMenuKey: InjectionKey<ResponsiveMenuContext> = Symbol("Responsiv
 export const provideResponsiveMenu = (context: ResponsiveMenuContext): void => {
   provide(ResponsiveMenuKey, context);
 };
+
+/** The enclosing responsive menu, or null outside one. */
+export const injectResponsiveMenu = (): ResponsiveMenuContext | null => inject(ResponsiveMenuKey, null);
 
 export const useResponsiveMenu = (): ResponsiveMenuContext => {
   const context = inject(ResponsiveMenuKey);

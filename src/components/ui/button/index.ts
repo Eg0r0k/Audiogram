@@ -1,42 +1,124 @@
-import type { VariantProps } from "class-variance-authority";
-import { cva } from "class-variance-authority";
+import { type VariantProps, cva } from "class-variance-authority";
 
 export { default as Button } from "./Button.vue";
 
+export type ButtonColor = "primary" | "neutral" | "destructive" | "success" | "warning" | "info";
+
+export const swallowWhenDisabled = (event: MouseEvent) => {
+  if ((event.currentTarget as HTMLElement).getAttribute("aria-disabled") !== "true") return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+};
+
 export const buttonVariants = cva(
-  "cursor-pointer select-none inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  `
+    relative cursor-pointer inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control-md
+    text-label-lg transition duration-short-3 ease-standard outline-none
+    forced-colors:border
+    disabled:pointer-events-none disabled:text-foreground/(--disabled-opacity)
+    [&_svg]:pointer-events-none [&_svg]:shrink-0
+    aria-disabled:cursor-default aria-disabled:text-foreground/(--disabled-opacity)
+  `,
   {
     variants: {
       variant: {
-        "default": "bg-primary text-primary-foreground hover:bg-primary/90",
-        "destructive":
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        "outline":
-          "bg-background hover:bg-accent hover:text-accent-foreground dark:bg-muted  dark:hover:bg-input/50",
-        "secondary":
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        "ghost":
-          "hover:bg-accent text-muted-foreground hover:text-accent-foreground dark:hover:bg-accent/50",
-        "ghost-primary": " text-primary hover:bg-primary/10",
-        "link": "text-primary  hover:bg-primary/10",
-        "destructive-link":
-          "text-destructive hover:text-destructive/80 focus-visible:ring-destructive/20 hover:bg-destructive/10 dark:focus-visible:ring-destructive/40",
+        solid: `
+          state-layer bg-tone text-tone-foreground
+          disabled:bg-foreground/(--disabled-container-opacity)
+          aria-disabled:bg-foreground/(--disabled-container-opacity)
+        `,
+        soft: `
+          state-layer bg-tone-soft text-tone-soft-foreground
+          disabled:bg-foreground/(--disabled-container-opacity)
+          aria-disabled:bg-foreground/(--disabled-container-opacity)
+        `,
+        subtle: `
+          state-layer bg-tone-soft text-tone-soft-foreground inset-ring inset-ring-tone-border-subtle
+          disabled:bg-foreground/(--disabled-container-opacity)
+          disabled:inset-ring-foreground/(--disabled-container-opacity)
+          aria-disabled:bg-foreground/(--disabled-container-opacity)
+          aria-disabled:inset-ring-foreground/(--disabled-container-opacity)
+        `,
+        outline: `
+          state-layer text-tone-text inset-ring inset-ring-tone-border
+          disabled:inset-ring-foreground/(--disabled-container-opacity)
+          aria-disabled:inset-ring-foreground/(--disabled-container-opacity)
+        `,
+        ghost: "state-layer text-tone-text",
+        link: "text-tone-text underline-offset-4 hover:underline aria-disabled:hover:no-underline",
       },
       size: {
-        "default": "h-9 px-4 py-2 has-[>svg]:px-3",
-        "sm": "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
-        "lg": "h-10 rounded-md px-6 has-[>svg]:px-4",
-        "xl": "h-12 gap-8 text-base rounded-md px-6 has-[>svg]:px-4 ",
-        "icon": "size-9",
-        "icon-xs": "size-5 rounded-full",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10",
+        "xs": `
+          h-(--control-height-xs) gap-(--control-gap-xs) rounded-control-xs px-2.5 text-label-sm
+          [--touch-h:var(--control-height-xs)]
+          has-data-[icon=inline-start]:ps-2
+          has-data-[icon=inline-end]:pe-2
+          icon-size-(--control-icon-xs)
+        `,
+        "sm": `
+          h-(--control-height-sm) gap-1.5 px-3 text-label-lg [--touch-h:var(--control-height-sm)] has-[>svg]:px-2.5
+          has-data-[icon=inline-start]:ps-2.5
+          has-data-[icon=inline-end]:pe-2.5
+          icon-size-(--control-icon-sm)
+        `,
+        "md": `
+          h-(--control-height-md) gap-(--control-gap-md) px-4 py-2 [--touch-h:var(--control-height-md)] has-[>svg]:px-3
+          has-data-[icon=inline-start]:ps-3
+          has-data-[icon=inline-end]:pe-3
+          icon-size-(--control-icon-md)
+        `,
+        "lg": `
+          h-(--control-height-lg) gap-(--control-gap-lg) px-6 [--touch-h:var(--control-height-lg)] has-[>svg]:px-4
+          has-data-[icon=inline-start]:ps-4
+          has-data-[icon=inline-end]:pe-4
+          icon-size-(--control-icon-lg)
+        `,
+        "xl": `
+          h-(--control-height-xl) gap-8 rounded-control-md px-6 text-title-md has-[>svg]:px-4
+          [--touch-h:var(--control-height-xl)]
+          has-data-[icon=inline-start]:ps-6
+          has-data-[icon=inline-end]:pe-6
+          icon-size-(--control-icon-xl)
+        `,
+        "icon-xs": `
+          size-(--control-height-xs) rounded-control-xs [--touch-w:var(--control-height-xs)]
+          [--touch-h:var(--control-height-xs)] icon-size-(--control-icon-xs)
+        `,
+        "icon-sm": `
+          size-(--control-height-sm) [--touch-w:var(--control-height-sm)] [--touch-h:var(--control-height-sm)]
+          icon-size-(--control-icon-sm)
+        `,
+        "icon-md": `
+          size-(--control-height-md) [--touch-w:var(--control-height-md)] [--touch-h:var(--control-height-md)]
+          icon-size-(--control-icon-md)
+        `,
+        "icon-lg": `
+          size-(--control-height-lg) [--touch-w:var(--control-height-lg)] [--touch-h:var(--control-height-lg)]
+          icon-size-(--control-icon-lg)
+        `,
+        "icon-xl": `
+          size-(--control-height-xl) rounded-control-xl [--touch-w:var(--control-height-xl)]
+          [--touch-h:var(--control-height-xl)] icon-size-(--control-icon-xl)
+        `,
+      },
+      focusRing: {
+        outward: "focus-visible:focus-ring",
+        inward: "focus-visible:focus-ring-inset",
+      },
+      touchTarget: {
+        none: "",
+        expand: "touch-target",
+        wrapper: "touch-target-wrapper",
       },
     },
     defaultVariants: {
-      variant: "default",
-      size: "default",
+      variant: "solid",
+      size: "md",
+      touchTarget: "none",
+      focusRing: "outward",
     },
   },
 );
+
 export type ButtonVariants = VariantProps<typeof buttonVariants>;
+export type ButtonSize = NonNullable<ButtonVariants["size"]>;

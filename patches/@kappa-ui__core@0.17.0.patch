@@ -1,0 +1,16 @@
+diff --git a/dist/ripple/directive.js b/dist/ripple/directive.js
+index 9ae532ba3e6769c2cdc4070fb02ea8fdcdc7c081..3d98a7682166bad9bf158eca7124fdb7536a0c33 100644
+--- a/dist/ripple/directive.js
++++ b/dist/ripple/directive.js
+@@ -182,7 +182,10 @@ const setupRipple = (el, binding) => {
+ 		releaseWave(state, wave);
+ 	};
+ 	const onPointerdown = (event) => {
+-		if (event.button !== 0) return;
++		// A right click presses with the mouse too. A long press on touch is not
++		// a right click: its contextmenu event spawns no second wave.
++		const secondary = event.button === 2 && event.pointerType === "mouse";
++		if (event.button !== 0 && !secondary) return;
+ 		if (!event.isPrimary) return;
+ 		const state = activeState();
+ 		if (!state) return;

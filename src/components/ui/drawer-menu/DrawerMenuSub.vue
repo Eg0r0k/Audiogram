@@ -1,29 +1,17 @@
 <script setup lang="ts">
-import { provide, ref } from "vue";
-import { DrawerMenuSubKey } from "./context";
+import { DrawerMenuSub, type DrawerMenuSubEmits, type DrawerMenuSubProps } from "@kappa-ui/core/drawer-menu";
+import { useForwardPropsEmits } from "reka-ui";
 
-// A submenu inside a sheet unfolds in place; the trigger toggles, the content
-// expands below it. `update:open` mirrors the popper subs so lazy consumers
-// (playlist list) still load on first open.
-const emit = defineEmits<{
-  "update:open": [open: boolean];
-}>();
-
-const open = ref(false);
-
-const setOpen = (value: boolean) => {
-  open.value = value;
-  emit("update:open", value);
-};
-
-provide(DrawerMenuSubKey, { open, setOpen });
+const props = defineProps<DrawerMenuSubProps>();
+const emits = defineEmits<DrawerMenuSubEmits>();
+const forwarded = useForwardPropsEmits(props, emits);
 </script>
 
 <template>
-  <div
-    data-slot="drawer-menu-sub"
-    :data-state="open ? 'open' : 'closed'"
+  <DrawerMenuSub
+    v-slot="slotProps"
+    v-bind="forwarded"
   >
-    <slot />
-  </div>
+    <slot v-bind="slotProps" />
+  </DrawerMenuSub>
 </template>

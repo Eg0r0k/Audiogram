@@ -1,8 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-/* Registers the vuelor picker's classes with Tailwind v4 — without this the
-   canvas/slider styles get purged from the production build. */
-@import "@vuelor/picker/tailwind.css";
+@import "@kappa-ui/core/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 @custom-variant contrast (&:is(.contrast *));
@@ -53,18 +51,188 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --vuelor-primary: var(--primary);
-  --vuelor-surface: var(--popover);
-  --vuelor-border: var(--border);
-  --vuelor-input: var(--muted);
-  --shadow-vuelor-card: 0 2px 5px 0 #00000026, 0 10px 16px 0 #0000001f, 0 0 .5px 0 #0000001f;
-  --shadow-vuelor-thumb: 0px 0px .5px #0000002e, 0px 3px 8px #0000001a, 0px 1px 3px #0000001a;
-  --shadow-vuelor-inner: inset 0 0 0 1px #0000001a;
-  --drop-shadow-vuelor-thumb: 0px 0px .5px #00000054, 0px 1px 3px #00000026;
-  --color-vuelor-input: var(--vuelor-input);
-  --color-vuelor-border: var(--vuelor-border);
-  --color-vuelor-surface: var(--vuelor-surface);
-  --color-vuelor-primary: var(--vuelor-primary);
+  --radius-control-3xs: calc(var(--control-radius, var(--radius)) * 0.2);
+  --radius-control-2xs: calc(var(--control-radius, var(--radius)) * 0.6);
+  --radius-control-xs: calc(var(--control-radius, var(--radius)) * 0.8);
+  --radius-control-sm: var(--control-radius, var(--radius));
+  --radius-control-md: var(--control-radius, var(--radius));
+  --radius-control-lg: var(--control-radius, var(--radius));
+  --radius-control-xl: calc(var(--control-radius, var(--radius)) * 1.4);
+  --radius-surface-xs: calc(var(--surface-radius, var(--radius)) * 0.8);
+  --radius-surface-sm: var(--surface-radius, var(--radius));
+  --radius-surface-md: calc(var(--surface-radius, var(--radius)) * 1.4);
+  --radius-surface-lg: calc(var(--surface-radius, var(--radius)) * 1.8);
+  --radius-surface-xl: calc(var(--surface-radius, var(--radius)) * 2.2);
+  --radius-item-xs: calc(var(--item-radius, var(--radius)) * 0.8);
+  --radius-item-sm: var(--item-radius, var(--radius));
+  --radius-item-md: var(--item-radius, var(--radius));
+  --radius-item-lg: var(--item-radius, var(--radius));
+  --radius-item-xl: calc(var(--item-radius, var(--radius)) * 1.4);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-text: var(--success-text);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-text: var(--warning-text);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-text: var(--info-text);
+  --ease-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --ease-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --transition-duration-short-1: 50ms;
+  --transition-duration-short-2: 100ms;
+  --transition-duration-short-3: 150ms;
+  --transition-duration-short-4: 200ms;
+  --transition-duration-medium-1: 250ms;
+  --transition-duration-medium-2: 300ms;
+  --transition-duration-medium-3: 350ms;
+  --transition-duration-medium-4: 400ms;
+  --transition-duration-long-1: 450ms;
+  --transition-duration-long-2: 500ms;
+  --transition-duration-long-3: 550ms;
+  --transition-duration-long-4: 600ms;
+  --transition-duration-extra-long-1: 700ms;
+  --transition-duration-extra-long-2: 800ms;
+  --transition-duration-extra-long-3: 900ms;
+  --transition-duration-extra-long-4: 1000ms;
+  --text-display-lg: var(--typescale-display-lg-size);
+  --text-display-lg--line-height: var(--typescale-display-lg-line-height);
+  --text-display-lg--font-weight: var(--typescale-display-lg-weight);
+  --text-display-md: var(--typescale-display-md-size);
+  --text-display-md--line-height: var(--typescale-display-md-line-height);
+  --text-display-md--font-weight: var(--typescale-display-md-weight);
+  --text-display-sm: var(--typescale-display-sm-size);
+  --text-display-sm--line-height: var(--typescale-display-sm-line-height);
+  --text-display-sm--font-weight: var(--typescale-display-sm-weight);
+  --text-headline-lg: var(--typescale-headline-lg-size);
+  --text-headline-lg--line-height: var(--typescale-headline-lg-line-height);
+  --text-headline-lg--font-weight: var(--typescale-headline-lg-weight);
+  --text-headline-md: var(--typescale-headline-md-size);
+  --text-headline-md--line-height: var(--typescale-headline-md-line-height);
+  --text-headline-md--font-weight: var(--typescale-headline-md-weight);
+  --text-headline-sm: var(--typescale-headline-sm-size);
+  --text-headline-sm--line-height: var(--typescale-headline-sm-line-height);
+  --text-headline-sm--font-weight: var(--typescale-headline-sm-weight);
+  --text-title-lg: var(--typescale-title-lg-size);
+  --text-title-lg--line-height: var(--typescale-title-lg-line-height);
+  --text-title-lg--font-weight: var(--typescale-title-lg-weight);
+  --text-title-md: var(--typescale-title-md-size);
+  --text-title-md--line-height: var(--typescale-title-md-line-height);
+  --text-title-md--font-weight: var(--typescale-title-md-weight);
+  --text-title-sm: var(--typescale-title-sm-size);
+  --text-title-sm--line-height: var(--typescale-title-sm-line-height);
+  --text-title-sm--font-weight: var(--typescale-title-sm-weight);
+  --text-body-lg: var(--typescale-body-lg-size);
+  --text-body-lg--line-height: var(--typescale-body-lg-line-height);
+  --text-body-lg--font-weight: var(--typescale-body-lg-weight);
+  --text-body-md: var(--typescale-body-md-size);
+  --text-body-md--line-height: var(--typescale-body-md-line-height);
+  --text-body-md--font-weight: var(--typescale-body-md-weight);
+  --text-body-sm: var(--typescale-body-sm-size);
+  --text-body-sm--line-height: var(--typescale-body-sm-line-height);
+  --text-body-sm--font-weight: var(--typescale-body-sm-weight);
+  --text-label-lg: var(--typescale-label-lg-size);
+  --text-label-lg--line-height: var(--typescale-label-lg-line-height);
+  --text-label-lg--font-weight: var(--typescale-label-lg-weight);
+  --text-label-md: var(--typescale-label-md-size);
+  --text-label-md--line-height: var(--typescale-label-md-line-height);
+  --text-label-md--font-weight: var(--typescale-label-md-weight);
+  --text-label-sm: var(--typescale-label-sm-size);
+  --text-label-sm--line-height: var(--typescale-label-sm-line-height);
+  --text-label-sm--font-weight: var(--typescale-label-sm-weight);
+  --color-surface-border: var(--surface-border, var(--border));
+  --color-dialog: var(--dialog, var(--popover));
+  --color-dialog-foreground: var(--dialog-foreground, var(--popover-foreground));
+  --color-scrim: var(--scrim);
+  --shadow-shadow-xs: var(--shadow-xs);
+  --shadow-shadow-sm: var(--shadow-sm);
+  --shadow-shadow-md: var(--shadow-md);
+  --shadow-shadow-lg: var(--shadow-lg);
+  --shadow-shadow-xl: var(--shadow-xl);
+  --shadow-shadow-popover: var(--shadow-popover, var(--shadow-lg));
+  --shadow-shadow-dialog: var(--shadow-dialog, var(--shadow-xl));
+  --color-shimmer-color: var(--shimmer-color);
+  --tabs-pill: var(--tabs-pill);
+  --control-gap-xl: var(--control-gap-xl);
+  --control-gap-lg: var(--control-gap-lg);
+  --control-gap-md: var(--control-gap-md);
+  --control-gap-sm: var(--control-gap-sm);
+  --control-gap-xs: var(--control-gap-xs);
+  --control-icon-xl: var(--control-icon-xl);
+  --control-icon-lg: var(--control-icon-lg);
+  --control-icon-md: var(--control-icon-md);
+  --control-icon-sm: var(--control-icon-sm);
+  --control-icon-xs: var(--control-icon-xs);
+  --control-padding-xl: var(--control-padding-xl);
+  --control-padding-lg: var(--control-padding-lg);
+  --control-padding-md: var(--control-padding-md);
+  --control-padding-sm: var(--control-padding-sm);
+  --control-padding-xs: var(--control-padding-xs);
+  --control-height-xl: var(--control-height-xl);
+  --control-height-lg: var(--control-height-lg);
+  --control-height-md: var(--control-height-md);
+  --control-height-sm: var(--control-height-sm);
+  --control-height-xs: var(--control-height-xs);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-md: var(--shadow-md);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-xs: var(--shadow-xs);
+  --press-duration: var(--press-duration);
+  --press-scale: var(--press-scale);
+  --state-selected: var(--state-selected);
+  --typescale-label-sm-weight: var(--typescale-label-sm-weight);
+  --typescale-label-sm-line-height: var(--typescale-label-sm-line-height);
+  --typescale-label-sm-size: var(--typescale-label-sm-size);
+  --typescale-label-md-weight: var(--typescale-label-md-weight);
+  --typescale-label-md-line-height: var(--typescale-label-md-line-height);
+  --typescale-label-md-size: var(--typescale-label-md-size);
+  --typescale-label-lg-weight: var(--typescale-label-lg-weight);
+  --typescale-label-lg-line-height: var(--typescale-label-lg-line-height);
+  --typescale-label-lg-size: var(--typescale-label-lg-size);
+  --typescale-body-sm-weight: var(--typescale-body-sm-weight);
+  --typescale-body-sm-line-height: var(--typescale-body-sm-line-height);
+  --typescale-body-sm-size: var(--typescale-body-sm-size);
+  --typescale-body-md-weight: var(--typescale-body-md-weight);
+  --typescale-body-md-line-height: var(--typescale-body-md-line-height);
+  --typescale-body-md-size: var(--typescale-body-md-size);
+  --typescale-body-lg-weight: var(--typescale-body-lg-weight);
+  --typescale-body-lg-line-height: var(--typescale-body-lg-line-height);
+  --typescale-body-lg-size: var(--typescale-body-lg-size);
+  --typescale-title-sm-weight: var(--typescale-title-sm-weight);
+  --typescale-title-sm-line-height: var(--typescale-title-sm-line-height);
+  --typescale-title-sm-size: var(--typescale-title-sm-size);
+  --typescale-title-md-weight: var(--typescale-title-md-weight);
+  --typescale-title-md-line-height: var(--typescale-title-md-line-height);
+  --typescale-title-md-size: var(--typescale-title-md-size);
+  --typescale-title-lg-weight: var(--typescale-title-lg-weight);
+  --typescale-title-lg-line-height: var(--typescale-title-lg-line-height);
+  --typescale-title-lg-size: var(--typescale-title-lg-size);
+  --typescale-headline-sm-weight: var(--typescale-headline-sm-weight);
+  --typescale-headline-sm-line-height: var(--typescale-headline-sm-line-height);
+  --typescale-headline-sm-size: var(--typescale-headline-sm-size);
+  --typescale-headline-md-weight: var(--typescale-headline-md-weight);
+  --typescale-headline-md-line-height: var(--typescale-headline-md-line-height);
+  --typescale-headline-md-size: var(--typescale-headline-md-size);
+  --typescale-headline-lg-weight: var(--typescale-headline-lg-weight);
+  --typescale-headline-lg-line-height: var(--typescale-headline-lg-line-height);
+  --typescale-headline-lg-size: var(--typescale-headline-lg-size);
+  --typescale-display-sm-weight: var(--typescale-display-sm-weight);
+  --typescale-display-sm-line-height: var(--typescale-display-sm-line-height);
+  --typescale-display-sm-size: var(--typescale-display-sm-size);
+  --typescale-display-md-weight: var(--typescale-display-md-weight);
+  --typescale-display-md-line-height: var(--typescale-display-md-line-height);
+  --typescale-display-md-size: var(--typescale-display-md-size);
+  --typescale-display-lg-weight: var(--typescale-display-lg-weight);
+  --typescale-display-lg-line-height: var(--typescale-display-lg-line-height);
+  --typescale-display-lg-size: var(--typescale-display-lg-size);
+  --disabled-container-opacity: var(--disabled-container-opacity);
+  --disabled-opacity: var(--disabled-opacity);
+  --state-pressed: var(--state-pressed);
+  --state-hover: var(--state-hover);
 }
 
 :root {
@@ -108,6 +276,95 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.9094 0.0058 264.53);
   --sidebar-ring: oklch(0.708 0 0);
+  --state-hover: 8%;
+  --state-pressed: 12%;
+  --disabled-opacity: 38%;
+  --disabled-container-opacity: 12%;
+  --success: oklch(0.72 0.17 150);
+  --success-foreground: oklch(0.25 0.07 150);
+  --success-text: oklch(0.5 0.13 152);
+  --warning: oklch(0.8 0.16 78);
+  --warning-foreground: oklch(0.3 0.07 60);
+  --warning-text: oklch(0.54 0.14 58);
+  --info: oklch(0.79 0.17 256);
+  --info-foreground: oklch(0.26 0.065 261);
+  --info-text: oklch(0.52 0.144 266);
+  --typescale-display-lg-size: 3.5625rem;
+  --typescale-display-lg-line-height: 4rem;
+  --typescale-display-lg-weight: 400;
+  --typescale-display-md-size: 2.8125rem;
+  --typescale-display-md-line-height: 3.25rem;
+  --typescale-display-md-weight: 400;
+  --typescale-display-sm-size: 2.25rem;
+  --typescale-display-sm-line-height: 2.75rem;
+  --typescale-display-sm-weight: 400;
+  --typescale-headline-lg-size: 2rem;
+  --typescale-headline-lg-line-height: 2.5rem;
+  --typescale-headline-lg-weight: 400;
+  --typescale-headline-md-size: 1.75rem;
+  --typescale-headline-md-line-height: 2.25rem;
+  --typescale-headline-md-weight: 400;
+  --typescale-headline-sm-size: 1.5rem;
+  --typescale-headline-sm-line-height: 2rem;
+  --typescale-headline-sm-weight: 400;
+  --typescale-title-lg-size: 1.375rem;
+  --typescale-title-lg-line-height: 1.75rem;
+  --typescale-title-lg-weight: 400;
+  --typescale-title-md-size: 1rem;
+  --typescale-title-md-line-height: 1.5rem;
+  --typescale-title-md-weight: 500;
+  --typescale-title-sm-size: 0.875rem;
+  --typescale-title-sm-line-height: 1.25rem;
+  --typescale-title-sm-weight: 500;
+  --typescale-body-lg-size: 1rem;
+  --typescale-body-lg-line-height: 1.5rem;
+  --typescale-body-lg-weight: 400;
+  --typescale-body-md-size: 0.875rem;
+  --typescale-body-md-line-height: 1.25rem;
+  --typescale-body-md-weight: 400;
+  --typescale-body-sm-size: 0.75rem;
+  --typescale-body-sm-line-height: 1rem;
+  --typescale-body-sm-weight: 400;
+  --typescale-label-lg-size: 0.875rem;
+  --typescale-label-lg-line-height: 1.25rem;
+  --typescale-label-lg-weight: 500;
+  --typescale-label-md-size: 0.75rem;
+  --typescale-label-md-line-height: 1rem;
+  --typescale-label-md-weight: 500;
+  --typescale-label-sm-size: 0.6875rem;
+  --typescale-label-sm-line-height: 1rem;
+  --typescale-label-sm-weight: 500;
+  --state-selected: 8%;
+  --scrim: #0000004d;
+  --press-scale: 0.97;
+  --press-duration: 120ms;
+  --shadow-xs: 0 1px 2px 0 oklch(0 0 0 / 5%);
+  --shadow-sm: 0 1px 3px 0 oklch(0 0 0 / 10%), 0 1px 2px -1px oklch(0 0 0 / 10%);
+  --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 10%), 0 2px 4px -2px oklch(0 0 0 / 10%);
+  --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 10%), 0 4px 6px -4px oklch(0 0 0 / 10%);
+  --shadow-xl: 0 20px 25px -5px oklch(0 0 0 / 10%), 0 8px 10px -6px oklch(0 0 0 / 10%);
+  --control-height-xs: calc(var(--spacing) * 7);
+  --control-height-sm: calc(var(--spacing) * 8);
+  --control-height-md: calc(var(--spacing) * 9);
+  --control-height-lg: calc(var(--spacing) * 10);
+  --control-height-xl: calc(var(--spacing) * 12);
+  --control-padding-xs: calc(var(--spacing) * 2);
+  --control-padding-sm: calc(var(--spacing) * 2.5);
+  --control-padding-md: calc(var(--spacing) * 3);
+  --control-padding-lg: calc(var(--spacing) * 3);
+  --control-padding-xl: calc(var(--spacing) * 4);
+  --control-icon-xs: calc(var(--spacing) * 3.5);
+  --control-icon-sm: calc(var(--spacing) * 4);
+  --control-icon-md: calc(var(--spacing) * 4);
+  --control-icon-lg: calc(var(--spacing) * 5);
+  --control-icon-xl: calc(var(--spacing) * 5);
+  --control-gap-xs: calc(var(--spacing) * 1.5);
+  --control-gap-sm: calc(var(--spacing) * 2);
+  --control-gap-md: calc(var(--spacing) * 2);
+  --control-gap-lg: calc(var(--spacing) * 2.5);
+  --control-gap-xl: calc(var(--spacing) * 3);
+  --tabs-pill: var(--background);
+  --shimmer-color: oklch(from currentColor l c h / calc(alpha * 0.2));
 }
 
 .dark {
@@ -145,6 +402,18 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.3052 0 0);
   --sidebar-ring: oklch(0.556 0 0);
+  --success: oklch(0.78 0.13 155);
+  --success-foreground: oklch(0.25 0.06 155);
+  --success-text: oklch(0.78 0.13 155);
+  --warning: oklch(0.82 0.14 80);
+  --warning-foreground: oklch(0.27 0.06 70);
+  --warning-text: oklch(0.82 0.14 80);
+  --info: oklch(0.87 0.144 256);
+  --info-foreground: oklch(0.25 0.065 261);
+  --info-text: oklch(0.8 0.144 256);
+  --scrim: #0000004d;
+  --tabs-pill: color-mix(in oklab, var(--input) 30%, transparent);
+  --shimmer-color: oklch(from currentColor max(0.8, calc(l + 0.4)) c h / calc(alpha + 0.4));
 }
 
 /* High contrast: tokens only. Secondary text moves next to the foreground,
@@ -201,6 +470,12 @@
   a {
     text-decoration: none;
     -webkit-tap-highlight-color: transparent;
+  }
+  :root {
+    --kappa-ripple-easing: var(--ease-standard, cubic-bezier(0.2, 0, 0, 1));
+  }
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
   }
 }
 
@@ -475,12 +750,6 @@ video {
   --z-mobile-dock: 30;
   --z-mobile-player: 40;
   --z-mobile-right-panel: 50;
-  /* Menus and dialogs shared z-50, so which one covered the other came
-     down to portal order. A dialog opened from a menu item ended up under
-     the menu's full-screen scrim: its buttons stayed reachable by keyboard,
-     but every tap landed on the scrim and merely dismissed the dialog. */
-  --z-menu: 50;
-  --z-dialog: 60;
 }
 
 .is-tauri:not(.is-mobile) {
@@ -519,3 +788,39 @@ video {
   opacity: 0.5 !important;
 }
 
+/* kappa-ui tokens tuned to the look Audiogram had before it. */
+:root {
+  --control-radius: calc(var(--radius) - 2px);
+  --item-radius: calc(var(--radius) - 4px);
+  /* Surfaces scale it by 1.4 (menus, selects) and 1.8 (dialogs). */
+  --surface-radius: calc((var(--radius) - 2px) / 1.4);
+  --shadow-popover: var(--shadow-md);
+  --shadow-dialog: none;
+  --surface-border: transparent;
+  --dialog: var(--card);
+  --dialog-foreground: var(--card-foreground);
+}
+
+@layer base {
+  /* The pre-kappa ghost button: muted text that darkens under the pointer. */
+  [data-slot][data-color="muted"] {
+    --tone: var(--muted-foreground);
+    --tone-foreground: var(--background);
+    --tone-text: var(--muted-foreground);
+  }
+
+  [data-slot="button"][data-color="muted"]:hover:not(:disabled) {
+    --tone-text: var(--foreground);
+  }
+
+  /* The pre-kappa outline button: the page's own fill, muted in the dark. */
+  [data-slot][data-color="surface"] {
+    --tone: var(--background);
+    --tone-foreground: var(--foreground);
+    --tone-text: var(--foreground);
+  }
+
+  .dark [data-slot][data-color="surface"] {
+    --tone: var(--muted);
+  }
+}

@@ -1,24 +1,23 @@
-<!-- eslint-disable vue/require-default-prop -->
 <script setup lang="ts">
-import type { DrawerTitleProps } from "vaul-vue";
-import type { HTMLAttributes } from "vue";
-import { reactiveOmit } from "@vueuse/core";
-import { DrawerTitle } from "vaul-vue";
+import { DialogTitle, type DialogTitleProps } from "@kappa-ui/core/dialog";
+import { type HTMLAttributes, computed } from "vue";
+
 import { cn } from "@/lib/utils";
 
-const props = defineProps<DrawerTitleProps & {
-  class?: HTMLAttributes["class"];
-}>();
+const props = defineProps<DialogTitleProps & { class?: HTMLAttributes["class"] }>();
 
-const delegatedProps = reactiveOmit(props, "class");
+const delegated = computed(() => {
+  const { class: _, ...rest } = props;
+  return rest;
+});
 </script>
 
 <template>
-  <DrawerTitle
+  <DialogTitle
+    v-bind="delegated"
     data-slot="drawer-title"
-    v-bind="delegatedProps"
     :class="cn('text-base font-semibold', props.class)"
   >
     <slot />
-  </DrawerTitle>
+  </DialogTitle>
 </template>

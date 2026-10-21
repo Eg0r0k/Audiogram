@@ -1,16 +1,24 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from "vue";
+
 import { cn } from "@/lib/utils";
 
-const props = defineProps<{
-  class?: HTMLAttributes["class"];
-}>();
+const props = defineProps<{ class?: HTMLAttributes["class"] }>();
 </script>
 
 <template>
   <div
     data-slot="alert-description"
-    :class="cn('text-muted-foreground col-start-2 grid justify-items-start gap-1 text-sm [&_p]:leading-relaxed', props.class)"
+    :class="
+      cn(
+        `
+          col-start-2 mt-(--alert-description-gap,0px) min-w-0 text-body-md opacity-90
+          group-data-[orientation=horizontal]/alert:row-start-3
+          [[data-slot=alert-title]+&]:[--alert-description-gap:--spacing(1)]
+        `,
+        props.class,
+      )
+    "
   >
     <slot />
   </div>

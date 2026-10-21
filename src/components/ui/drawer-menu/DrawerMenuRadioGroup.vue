@@ -1,31 +1,22 @@
-<!-- eslint-disable vue/require-default-prop -->
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue";
-import { provide } from "vue";
-import { cn } from "@/lib/utils";
-import { DrawerMenuRadioGroupKey } from "./context";
+import {
+  DrawerMenuRadioGroup,
+  type DrawerMenuRadioGroupEmits,
+  type DrawerMenuRadioGroupProps,
+} from "@kappa-ui/core/drawer-menu";
+import { useForwardPropsEmits } from "reka-ui";
 
-const props = defineProps<{
-  modelValue?: string;
-  class?: HTMLAttributes["class"];
-}>();
-
-const emit = defineEmits<{
-  "update:modelValue": [value: string];
-}>();
-
-provide(DrawerMenuRadioGroupKey, {
-  value: () => props.modelValue,
-  select: value => emit("update:modelValue", value),
-});
+const props = defineProps<DrawerMenuRadioGroupProps>();
+const emits = defineEmits<DrawerMenuRadioGroupEmits>();
+const forwarded = useForwardPropsEmits(props, emits);
 </script>
 
 <template>
-  <div
-    role="radiogroup"
+  <DrawerMenuRadioGroup
+    v-bind="forwarded"
     data-slot="drawer-menu-radio-group"
-    :class="cn(props.class)"
+    class="flex flex-col gap-0.5"
   >
     <slot />
-  </div>
+  </DrawerMenuRadioGroup>
 </template>

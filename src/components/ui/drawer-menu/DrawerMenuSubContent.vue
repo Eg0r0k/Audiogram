@@ -1,36 +1,27 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import { useDrawerMenuSub } from "./context";
+import IconChevronLeft from "~icons/tabler/chevron-left";
+import { DrawerMenuBack, DrawerMenuSeparator, DrawerMenuSubContent } from "@kappa-ui/core/drawer-menu";
+import type { HTMLAttributes } from "vue";
 
-// Popper sub-contents carry width classes (`w-56`) that must not constrain
-// a full-width sheet, so attributes are dropped on purpose.
-defineOptions({ inheritAttrs: false });
+import { drawerMenuBack, drawerMenuSeparator } from ".";
 
-const sub = useDrawerMenuSub();
-const isOpen = computed(() => sub.open.value);
-
-// Content mounts on first expand only, so lazy queries behind `update:open`
-// are not started by a sheet that merely rendered the trigger.
-const hasOpened = ref(false);
-watch(isOpen, (open) => {
-  if (open) hasOpened.value = true;
-}, { immediate: true });
+const props = defineProps<{ class?: HTMLAttributes["class"] }>();
 </script>
 
 <template>
-  <div
+  <DrawerMenuSubContent
     data-slot="drawer-menu-sub-content"
-    :data-state="isOpen ? 'open' : 'closed'"
-    class="grid transition-[grid-template-rows] duration-200 ease-out"
-    :style="{ gridTemplateRows: isOpen ? '1fr' : '0fr' }"
+    :class="props.class"
   >
-    <div class="min-h-0 overflow-hidden">
-      <div
-        v-if="hasOpened"
-        class="pb-1 pl-3"
-      >
-        <slot />
-      </div>
-    </div>
-  </div>
+    <DrawerMenuBack
+      v-slot="{ label }"
+      data-slot="drawer-menu-back"
+      :class="drawerMenuBack"
+    >
+      <IconChevronLeft class="rtl:rotate-180" />
+      {{ label }}
+    </DrawerMenuBack>
+    <DrawerMenuSeparator :class="drawerMenuSeparator" />
+    <slot />
+  </DrawerMenuSubContent>
 </template>

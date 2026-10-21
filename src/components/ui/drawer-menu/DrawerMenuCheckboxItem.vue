@@ -1,46 +1,45 @@
-<!-- eslint-disable vue/require-default-prop -->
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue";
 import IconCheck from "~icons/tabler/check";
+import {
+  DrawerMenuCheckboxItem,
+  type DrawerMenuCheckboxItemEmits,
+  type DrawerMenuCheckboxItemProps,
+  DrawerMenuItemIndicator,
+} from "@kappa-ui/core/drawer-menu";
+import { useForwardPropsEmits } from "reka-ui";
+import { type HTMLAttributes, computed } from "vue";
+
+import vRipple from "@/lib/ripple";
 import { cn } from "@/lib/utils";
-import { drawerMenuRowVariants } from ".";
-import { useDrawerMenuClose } from "./context";
+import { drawerMenuIndicator, drawerMenuIndicatorItem } from ".";
 
-const props = defineProps<{
-  checked?: boolean;
-  disabled?: boolean;
-  class?: HTMLAttributes["class"];
-}>();
+const props = defineProps<DrawerMenuCheckboxItemProps & { class?: HTMLAttributes["class"] }>();
+const emits = defineEmits<DrawerMenuCheckboxItemEmits>();
 
-const emit = defineEmits<{
-  "update:checked": [checked: boolean];
-}>();
-
-const close = useDrawerMenuClose();
-
-const onClick = () => {
-  if (props.disabled) return;
-  emit("update:checked", !props.checked);
-  close();
-};
+const delegated = computed(() => {
+  const { class: _, ...rest } = props;
+  return rest;
+});
+const forwarded = useForwardPropsEmits(delegated, emits);
 </script>
 
 <template>
-  <button
+  <DrawerMenuCheckboxItem
     v-ripple
-    type="button"
-    role="menuitemcheckbox"
+    v-bind="forwarded"
     data-slot="drawer-menu-checkbox-item"
-    :aria-checked="checked === true"
-    :data-state="checked ? 'checked' : 'unchecked'"
-    :disabled="disabled || undefined"
-    :class="cn(drawerMenuRowVariants(), props.class)"
-    @click="onClick"
+    :class="cn(drawerMenuIndicatorItem, props.class)"
   >
+    <span :class="drawerMenuIndicator">
+      <DrawerMenuItemIndicator
+        data-slot="drawer-menu-item-indicator"
+        class="flex items-center justify-center"
+      >
+        <slot name="indicator-icon">
+          <IconCheck stroke-width="2.5" />
+        </slot>
+      </DrawerMenuItemIndicator>
+    </span>
     <slot />
-    <IconCheck
-      v-if="checked"
-      class="ml-auto size-5 text-primary"
-    />
-  </button>
+  </DrawerMenuCheckboxItem>
 </template>

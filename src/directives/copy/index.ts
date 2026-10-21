@@ -27,20 +27,32 @@ async function copy(text: string, binding: DirectiveBinding<CopyValue>) {
     opts.onCopy?.(text);
   }
   catch (err) {
-    fallbackCopy(text);
-    opts.onCopy?.(text);
+    if (fallbackCopy(text)) {
+      opts.onCopy?.(text);
+      return;
+    }
+    getLogger().warn(`[vCopy] Copy failed: ${String(err)}`);
     opts.onError?.(err);
   }
 }
-function fallbackCopy(text: string) {
+
+/** The pre-Clipboard-API copy; false when the browser refused it too. */
+function fallbackCopy(text: string): boolean {
   const ta = document.createElement("textarea");
   ta.value = text;
   ta.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0";
   document.body.appendChild(ta);
   ta.focus();
   ta.select();
-  document.execCommand("copy");
-  document.body.removeChild(ta);
+  try {
+    return document.execCommand("copy");
+  }
+  catch {
+    return false;
+  }
+  finally {
+    document.body.removeChild(ta);
+  }
 }
 
 function resolveOptions(value: CopyValue): CopyOptions {

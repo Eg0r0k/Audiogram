@@ -1,43 +1,123 @@
 <script setup lang="ts">
-import type { SliderRootEmits, SliderRootProps } from "reka-ui";
-import type { HTMLAttributes } from "vue";
-import { reactiveOmit } from "@vueuse/core";
-import { SliderRange, SliderRoot, SliderThumb, SliderTrack, useForwardPropsEmits } from "reka-ui";
+import { SliderRoot, type SliderRootProps, useForwardProps } from "reka-ui";
+import { type HTMLAttributes, computed, useAttrs } from "vue";
+
+import { useFieldControl } from "@/lib/field-context";
 import { cn } from "@/lib/utils";
+import { type SliderColor, type SliderSize, type SliderVariants, provideSliderContext, sliderVariants } from ".";
+import SliderRange from "./SliderRange.vue";
+import SliderThumb from "./SliderThumb.vue";
+import SliderTrack from "./SliderTrack.vue";
 
-const props = defineProps<SliderRootProps & { class?: HTMLAttributes["class"] }>();
-const emits = defineEmits<SliderRootEmits>();
+defineOptions({ inheritAttrs: false });
 
-const delegatedProps = reactiveOmit(props, "class");
+const props = withDefaults(
+  defineProps<
+    Omit<SliderRootProps, "modelValue" | "defaultValue" | "as" | "asChild"> & {
+      id?: string;
+      defaultValue?: number | number[];
+      variant?: SliderVariants["variant"];
+      color?: SliderColor | (string & {});
+      size?: SliderSize;
+      touchTarget?: SliderVariants["touchTarget"];
+      class?: HTMLAttributes["class"];
+    }
+  >(),
+  { color: "primary", size: "md" },
+);
+const emits = defineEmits<{ valueCommit: [value: number | number[]] }>();
+defineSlots<{ default?: (props: { thumbs: number; values: number[] }) => unknown }>();
 
-const forwarded = useForwardPropsEmits(delegatedProps, emits);
+const model = defineModel<number | number[]>();
+if (model.value === undefined) model.value = props.defaultValue ?? props.min ?? 0;
+
+const delegated = computed(() => {
+  const {
+    class: _,
+    size: __,
+    touchTarget: ___,
+    defaultValue: ____,
+    id: _____,
+    variant: ______,
+    color: _______,
+    ...rest
+  } = props;
+  return rest;
+});
+const forwarded = useForwardProps(delegated);
+
+const attrs = useAttrs();
+const control = useFieldControl(props, attrs);
+
+const values = computed(() => (Array.isArray(model.value) ? model.value : [model.value ?? 0]));
+const shape = (next: number[]) => (Array.isArray(model.value) ? next : (next[0] ?? 0));
+const onUpdate = (next: number[] | undefined) => {
+  if (next) model.value = shape(next);
+};
+
+const thumbOwned = ["aria-label", "aria-labelledby", "aria-valuetext", "aria-invalid", "aria-describedby"];
+const rootAttrs = computed(() => {
+  const rest = Object.fromEntries(Object.entries(attrs).filter(([key]) => !thumbOwned.includes(key)));
+  if (values.value.length === 1) return rest;
+  return { ...rest, "role": "group", "aria-label": attrs["aria-label"], "aria-labelledby": control.labelledBy.value };
+});
+const thumbAttrs = computed(() => ({
+  "aria-invalid": control.invalid.value,
+  "aria-describedby": control.describedBy.value,
+  ...(values.value.length === 1 && {
+    "aria-label": attrs["aria-label"],
+    "aria-labelledby": control.labelledBy.value,
+    "aria-valuetext": attrs["aria-valuetext"],
+  }),
+}));
+
+provideSliderContext({
+  variant: computed(() => props.variant),
+  touchTarget: computed(() => props.touchTarget),
+  thumbAttrs,
+});
+
+const onPointerDown = (event: PointerEvent) => {
+  const root = event.currentTarget as HTMLElement;
+  queueMicrotask(() => {
+    const thumb = document.activeElement;
+    if (!(thumb instanceof HTMLElement) || !root.contains(thumb) || !thumb.matches(":focus-visible")) return;
+    thumb.blur();
+    thumb.focus({ focusVisible: false });
+  });
+};
 </script>
 
 <template>
   <SliderRoot
-    v-slot="{ modelValue }"
+    v-bind="{ ...rootAttrs, ...forwarded }"
+    :id="control.id.value"
     data-slot="slider"
-    :class="cn(
-      'relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col',
-      props.class,
-    )"
-    v-bind="forwarded"
+    :data-variant="props.variant ?? 'default'"
+    :data-color="props.color"
+    :data-size="props.size"
+    :data-touch-target="props.touchTarget"
+    :model-value="values"
+    :disabled="control.disabled.value"
+    :required="control.required.value"
+    :class="
+      cn(sliderVariants({ variant: props.variant, size: props.size, touchTarget: props.touchTarget }), props.class)
+    "
+    @pointerdown="onPointerDown"
+    @update:model-value="onUpdate"
+    @value-commit="emits('valueCommit', shape($event))"
   >
-    <SliderTrack
-      data-slot="slider-track"
-      class="bg-muted relative grow overflow-hidden rounded-full data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5"
+    <slot
+      :thumbs="values.length"
+      :values="values"
     >
-      <SliderRange
-        data-slot="slider-range"
-        class="bg-primary absolute data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full"
+      <SliderTrack>
+        <SliderRange />
+      </SliderTrack>
+      <SliderThumb
+        v-for="(_, index) in values"
+        :key="index"
       />
-    </SliderTrack>
-
-    <SliderThumb
-      v-for="(_, key) in modelValue"
-      :key="key"
-      data-slot="slider-thumb"
-      class="bg-background border-primary ring-ring/50 block size-4 shrink-0 rounded-full border-2 transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
-    />
+    </slot>
   </SliderRoot>
 </template>

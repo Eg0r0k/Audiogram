@@ -1,71 +1,69 @@
 <script setup lang="ts">
-import type { DialogContentEmits, DialogContentProps } from "reka-ui";
-import IconClose from "~icons/tabler/x";
-import type { HTMLAttributes } from "vue";
-import { reactiveOmit } from "@vueuse/core";
-import { Button } from "@/components/ui/button";
 import {
   DialogClose,
   DialogContent,
+  type DialogContentEmits,
+  type DialogContentProps,
   DialogPortal,
-  useForwardPropsEmits,
-} from "reka-ui";
+} from "@kappa-ui/core/dialog";
+import { injectOverlayPortalTarget } from "@kappa-ui/core/overlay";
+import IconX from "~icons/tabler/x";
+import { useForwardPropsEmits } from "reka-ui";
+import { type HTMLAttributes, computed } from "vue";
+
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { dialogSurface } from ".";
 import DialogOverlay from "./DialogOverlay.vue";
 
-defineOptions({
-  inheritAttrs: false,
-});
+defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
-  defineProps<
-    DialogContentProps & {
-      class?: HTMLAttributes["class"];
-      showCloseButton?: boolean;
-    }
-  >(),
-  {
-    showCloseButton: true,
-  },
+  defineProps<DialogContentProps & { class?: HTMLAttributes["class"]; showCloseButton?: boolean }>(),
+  { showCloseButton: true },
 );
 const emits = defineEmits<DialogContentEmits>();
 
-const delegatedProps = reactiveOmit(props, "class");
+const delegated = computed(() => {
+  const { class: _, showCloseButton: __, ...rest } = props;
+  return rest;
+});
+const forwarded = useForwardPropsEmits(delegated, emits);
 
-const forwarded = useForwardPropsEmits(delegatedProps, emits);
+const portalTarget = injectOverlayPortalTarget(null);
 </script>
 
 <template>
-  <DialogPortal>
+  <DialogPortal :to="portalTarget ?? undefined">
     <DialogOverlay />
     <DialogContent
+      v-bind="{ ...$attrs, ...forwarded }"
       data-slot="dialog-content"
-      v-bind="forwarded"
       :class="
         cn(
-          'bg-card fixed top-[50%] left-[50%] z-(--z-dialog) grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg px-6 pt-5 pb-3 sm:max-w-lg overscroll-behavior-contain',
-          'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-4 ',
-          'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
-          'duration-125',
-          props.class
+          `
+            fixed top-1/2 left-1/2 z-50 max-h-[calc(100vh-2rem)] supports-[height:100dvh]:max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2
+            -translate-y-1/2
+          `,
+          dialogSurface,
+          props.class,
         )
       "
     >
       <slot />
-
       <DialogClose
-        v-if="showCloseButton"
+        v-if="props.showCloseButton"
         as-child
       >
         <Button
           variant="ghost"
-          size="icon-lg"
-          class="absolute rounded-full top-2 right-2 size-8 opacity-80 hover:opacity-100"
+          color="muted"
+          size="icon-sm"
+          aria-label="Close"
+          data-slot="dialog-close"
+          class="absolute end-2 top-2 rounded-full opacity-80 icon-size-5 hover:opacity-100"
         >
-          <IconClose class="size-5" />
-          <span class="sr-only">
-            {{ $t("common.close") }}
-          </span>
+          <IconX />
         </Button>
       </DialogClose>
     </DialogContent>

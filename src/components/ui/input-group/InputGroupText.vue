@@ -1,19 +1,28 @@
 <script setup lang="ts">
+import { Primitive, type PrimitiveProps } from "reka-ui";
 import type { HTMLAttributes } from "vue";
+
 import { cn } from "@/lib/utils";
 
-const props = defineProps<{
-  class?: HTMLAttributes["class"];
-}>();
+const props = withDefaults(defineProps<PrimitiveProps & { class?: HTMLAttributes["class"] }>(), { as: "span" });
 </script>
 
 <template>
-  <span
-    :class="cn(
-      'text-muted-foreground flex items-center gap-2 text-sm [&_svg]:pointer-events-none [&_svg:not([class*=\'size-\'])]:size-4',
-      props.class,
-    )"
+  <Primitive
+    data-slot="input-group-text"
+    :as="props.as"
+    :as-child="props.asChild"
+    :class="
+      cn(
+        `
+          flex items-center gap-2 text-body-md text-muted-foreground
+          [&_svg]:pointer-events-none
+          icon-size-(--input-group-icon)
+        `,
+        props.class,
+      )
+    "
   >
     <slot />
-  </span>
+  </Primitive>
 </template>

@@ -17,6 +17,6 @@
     "composables": "@/composables"
   },
   "registries": {
-    "@vuelor": "https://vuelor.dev/r/{name}.json"
+    "@kappa-ui": "https://kappa-ui.pages.dev/r/{name}.json"
   }
 }

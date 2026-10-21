@@ -16,10 +16,15 @@ const FEATURE_MODULES = ["albums", "artists", "playlist", "favorite", "media-her
 // Files that still break M1/M2. This list only shrinks.
 const KNOWN_LAYER_VIOLATIONS = [];
 
+// kappa-ui registry items as `shadcn-vue add` writes them. They stay as shipped,
+// so `add --overwrite` updates them cleanly, and kappa lints them under its own rules.
+const KAPPA_UI = ["alert", "badge", "button", "button-group", "checkbox", "choice-group", "color-picker", "dialog", "drawer", "drawer-menu", "editable", "empty", "input", "input-floating", "input-group", "input-number", "item", "swipe-actions", "swipe-views", "kbd", "label", "menu", "popover", "radio-group", "select", "separator", "skeleton", "slider", "spinner", "switch", "tabs", "textarea", "toast", "tooltip"];
+const KAPPA_FILES = [`src/components/ui/{${KAPPA_UI.join(",")}}/**`, "src/lib/{utils,field-context,text-control}.ts", "src/lib/ripple/**"];
+
 // Composed into `no-restricted-imports` below. Type imports stay free.
 const BAN_INVOKE = { name: "@tauri-apps/api/core", importNames: ["invoke"], message: "M3: use invokeCommand(COMMANDS.x) from @/app/tauri-commands." };
 const BAN_LISTEN = { name: "@tauri-apps/api/event", importNames: ["listen"], message: "M3: use listenEvent(EVENTS.x) from @/app/tauri-commands." };
-const BAN_SUMMON_COMPONENT = { name: "@/components/dialogs/summon", importNames: ["summonComponent"], message: "Summon by key: summonDialog(key, props) from @/components/dialogs/summonDialog." };
+const BAN_SUMMON_COMPONENT = { name: "@/components/ui/dialog", importNames: ["openDialog", "defineDialog"], message: "Summon by key: summonDialog(key, props) from @/components/dialogs/summonDialog." };
 const BAN_IS_TAURI = { group: ["**/environment/userAgent"], importNames: ["IS_TAURI"], message: "Gate on platformCaps.hasX (src/lib/environment/platformCaps.ts), not on IS_TAURI." };
 const restrictImports = (paths, patterns) => ({ "no-restricted-imports": ["error", { paths, patterns }] });
 
@@ -180,7 +185,7 @@ export default withVueTs(
   },
   // The keyed dialog wrapper is the one caller of the raw primitive (§6).
   {
-    files: ["src/components/dialogs/summonDialog.ts"],
+    files: ["src/components/dialogs/summonDialog.ts", "src/test/**"],
     rules: restrictImports([BAN_INVOKE, BAN_LISTEN], [BAN_IS_TAURI]),
   },
 
@@ -241,6 +246,8 @@ export default withVueTs(
       // Accessibility
       "vuejs-accessibility/alt-text": "warn",
       "vuejs-accessibility/iframe-has-title": "warn",
+      // Either association is valid HTML; the plugin's default demands both.
+      "vuejs-accessibility/label-has-for": ["error", { required: { some: ["nesting", "id"] } }],
       "sonarjs/no-duplicate-string": ["warn", { threshold: 5 }],
       "sonarjs/cognitive-complexity": ["warn", 20],
       "sonarjs/todo-tag": "off",
@@ -250,6 +257,27 @@ export default withVueTs(
       "sonarjs/no-selector-parameter": "off",
 
       "sonarjs/deprecation": "warn",
+    },
+  },
+
+  {
+    files: KAPPA_FILES,
+    rules: {
+      "@typescript-eslint/no-unused-vars": "off",
+      "sonarjs/no-unused-vars": "off",
+      "vue/require-default-prop": "off",
+      "sonarjs/no-useless-intersection": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
+      "sonarjs/no-nested-conditional": "off",
+      "sonarjs/different-types-comparison": "off",
+      "sonarjs/cognitive-complexity": "off",
+      "vue/no-ref-object-reactivity-loss": "off",
+      "vue/no-setup-props-reactivity-loss": "off",
+      "@typescript-eslint/no-floating-promises": "off",
+      "vuejs-accessibility/click-events-have-key-events": "off",
+      "vuejs-accessibility/no-static-element-interactions": "off",
+      "vuejs-accessibility/form-control-has-label": "off",
+      "vuejs-accessibility/label-has-for": "off",
     },
   },
 );

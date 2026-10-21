@@ -1,43 +1,57 @@
 <script setup lang="ts">
-import type { SelectItemProps } from "reka-ui";
-import type { HTMLAttributes } from "vue";
-import { reactiveOmit } from "@vueuse/core";
-import CheckIcon from "~icons/tabler/check";
+import IconCheck from "~icons/tabler/check";
 import {
   SelectItem,
+  type SelectItemEmits,
   SelectItemIndicator,
-  SelectItemText,
-  useForwardProps,
+  type SelectItemProps,
+  useForwardPropsEmits,
 } from "reka-ui";
+import { type HTMLAttributes, computed } from "vue";
+
+import vRipple from "@/lib/ripple";
 import { cn } from "@/lib/utils";
+import { menuItem } from "@/components/ui/menu";
+import SelectItemText from "./SelectItemText.vue";
 
 const props = defineProps<SelectItemProps & { class?: HTMLAttributes["class"] }>();
+const emits = defineEmits<SelectItemEmits>();
 
-const delegatedProps = reactiveOmit(props, "class");
-
-const forwardedProps = useForwardProps(delegatedProps);
+const delegated = computed(() => {
+  const { class: _, ...rest } = props;
+  return rest;
+});
+const forwarded = useForwardPropsEmits(delegated, emits);
 </script>
 
 <template>
   <SelectItem
     v-ripple
+    v-bind="forwarded"
     data-slot="select-item"
-    v-bind="forwardedProps"
     :class="
       cn(
-        'focus:bg-accent press-scale cursor-pointer focus:text-accent-foreground [&_svg:not([class*=\'text-\'])]:text-muted-foreground relative flex w-full items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=\'size-\'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2',
+        menuItem,
+        `
+          w-full font-normal pe-[calc(var(--menu-item-px)+var(--menu-icon)+var(--menu-item-gap))]
+          data-[state=checked]:bg-primary/(--state-selected)
+        `,
         props.class,
       )
     "
   >
-    <span class="absolute right-2 flex size-3.5 items-center justify-center">
-      <SelectItemIndicator>
+    <span
+      class="pointer-events-none absolute end-(--menu-item-px) flex size-(--menu-icon) items-center justify-center text-primary group-data-disabled/menu-item:text-foreground/(--disabled-opacity)"
+    >
+      <SelectItemIndicator
+        data-slot="select-item-indicator"
+        class="flex items-center justify-center"
+      >
         <slot name="indicator-icon">
-          <CheckIcon class="size-4" />
+          <IconCheck stroke-width="2.5" />
         </slot>
       </SelectItemIndicator>
     </span>
-
     <SelectItemText>
       <slot />
     </SelectItemText>

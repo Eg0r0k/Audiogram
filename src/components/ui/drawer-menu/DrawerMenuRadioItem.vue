@@ -1,47 +1,44 @@
-<!-- eslint-disable vue/require-default-prop -->
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue";
-import { computed, inject } from "vue";
-import IconCheck from "~icons/tabler/check";
+import {
+  DrawerMenuItemIndicator,
+  DrawerMenuRadioItem,
+  type DrawerMenuRadioItemEmits,
+  type DrawerMenuRadioItemProps,
+} from "@kappa-ui/core/drawer-menu";
+import { useForwardPropsEmits } from "reka-ui";
+import { type HTMLAttributes, computed } from "vue";
+
+import vRipple from "@/lib/ripple";
 import { cn } from "@/lib/utils";
-import { drawerMenuRowVariants } from ".";
-import { DrawerMenuRadioGroupKey, useDrawerMenuClose } from "./context";
+import { drawerMenuIndicator, drawerMenuIndicatorItem, drawerMenuRadioDot } from ".";
 
-const props = defineProps<{
-  value: string;
-  disabled?: boolean;
-  class?: HTMLAttributes["class"];
-}>();
+const props = defineProps<DrawerMenuRadioItemProps & { class?: HTMLAttributes["class"] }>();
+const emits = defineEmits<DrawerMenuRadioItemEmits>();
 
-const group = inject(DrawerMenuRadioGroupKey);
-if (!group) throw new Error("DrawerMenuRadioItem must be rendered inside DrawerMenuRadioGroup");
-
-const close = useDrawerMenuClose();
-const checked = computed(() => group.value() === props.value);
-
-const onClick = () => {
-  if (props.disabled) return;
-  group.select(props.value);
-  close();
-};
+const delegated = computed(() => {
+  const { class: _, ...rest } = props;
+  return rest;
+});
+const forwarded = useForwardPropsEmits(delegated, emits);
 </script>
 
 <template>
-  <button
+  <DrawerMenuRadioItem
     v-ripple
-    type="button"
-    role="menuitemradio"
+    v-bind="forwarded"
     data-slot="drawer-menu-radio-item"
-    :aria-checked="checked"
-    :data-state="checked ? 'checked' : 'unchecked'"
-    :disabled="disabled || undefined"
-    :class="cn(drawerMenuRowVariants(), props.class)"
-    @click="onClick"
+    :class="cn(drawerMenuIndicatorItem, props.class)"
   >
+    <span :class="drawerMenuIndicator">
+      <DrawerMenuItemIndicator
+        data-slot="drawer-menu-item-indicator"
+        class="flex items-center justify-center"
+      >
+        <slot name="indicator-icon">
+          <span :class="drawerMenuRadioDot" />
+        </slot>
+      </DrawerMenuItemIndicator>
+    </span>
     <slot />
-    <IconCheck
-      v-if="checked"
-      class="ml-auto size-5 text-primary"
-    />
-  </button>
+  </DrawerMenuRadioItem>
 </template>
