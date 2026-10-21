@@ -10,7 +10,7 @@
 
     <template v-else-if="isError">
       <PageErrorState
-        :message="loadErrorText"
+        :message="errorMessage"
         @retry="refetch"
       />
     </template>
@@ -109,6 +109,7 @@ import { computed, ref, useTemplateRef } from "vue";
 import { catalogViewRoute } from "@/app/router/route-locations";
 import { sourceKindOf } from "@/modules/sources/lib/display";
 import { toaster } from "@/app/toaster";
+import { loadErrorText } from "@/app/error-feedback";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
@@ -174,11 +175,7 @@ const like = useEntityLike(remoteKind, "album", albumId);
 const editAlbum = useEditAlbumDialog();
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
 
-const loadErrorText = computed(() => {
-  if (!error.value) return t("errors.unknown");
-  if (error.value.message === "Album not found") return t("errors.notFound");
-  return t("errors.loadFailed");
-});
+const errorMessage = computed(() => error.value ? loadErrorText(error.value) : t("errors.unknown"));
 
 function getTrackKey(index: number) {
   return tracks.value[index]?.id ?? index;

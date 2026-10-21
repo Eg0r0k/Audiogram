@@ -108,6 +108,7 @@ import { Spinner } from "@/components/ui/spinner";
 import IconArrowLeft from "~icons/tabler/arrow-left";
 import IconVinyl from "~icons/tabler/vinyl";
 import { routeLocation, wantsCatalogView } from "@/app/router/route-locations";
+import { loadErrorText } from "@/app/error-feedback";
 import { useGoBack } from "@/composables/useGoBack";
 import AlbumItem from "@/modules/albums/components/AlbumItem.vue";
 import { usePlayAlbum } from "@/modules/albums/composables/usePlayAlbum";
@@ -166,11 +167,7 @@ const albumItems = computed<LibraryItem[]>(() => albums.value.map(album => ({
   isCatalog: !artist.value,
 })));
 
-const errorMessage = computed(() => {
-  if (!error.value) return t("errors.unknown");
-  if (error.value.message === "Artist not found") return t("errors.notFound");
-  return t("errors.loadFailed");
-});
+const errorMessage = computed(() => error.value ? loadErrorText(error.value) : t("errors.unknown"));
 
 const loadMore = () => {
   if (!hasNextAlbumPage.value || isFetchingNextAlbumPage.value) return;

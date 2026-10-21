@@ -9,6 +9,7 @@ import "./style.css";
 import { i18n } from "@/app/i18n";
 import App from "@/app/App.vue";
 import { toaster } from "@/app/toaster";
+import { installGlobalErrorHandlers } from "@/app/error-feedback";
 import { createDialogs } from "@/components/ui/dialog";
 import { installReducedMotion } from "@/app/reduced-motion";
 import { platformCaps } from "./lib/environment/platformCaps";
@@ -77,6 +78,7 @@ pinia.use(piniaPluginPersistedstate);
 installReducedMotion();
 
 const app = createApp(App);
+installGlobalErrorHandlers(app);
 
 if (!import.meta.env.DEV) {
   document.addEventListener("contextmenu", (event) => {

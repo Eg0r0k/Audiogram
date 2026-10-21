@@ -10,7 +10,7 @@
 
     <template v-else-if="isError">
       <PageErrorState
-        :message="loadErrorText"
+        :message="errorMessage"
         @retry="refetch"
       />
     </template>
@@ -158,6 +158,7 @@
 import LoadMoreError from "@/components/common/LoadMoreError.vue";
 import { computed, ref, useTemplateRef } from "vue";
 import { toaster } from "@/app/toaster";
+import { loadErrorText } from "@/app/error-feedback";
 import { useI18n } from "vue-i18n";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import PageErrorState from "@/components/common/PageErrorState.vue";
@@ -285,12 +286,7 @@ function handleContextMenu(track: Track, index: number) {
   openMenu(track, index, { target: "artist" });
 }
 
-const loadErrorText = computed(() => {
-  if (!error.value) return t("errors.unknown");
-  const message = error.value.message;
-  if (message === "Artist not found") return t("errors.notFound");
-  return t("errors.loadFailed");
-});
+const errorMessage = computed(() => error.value ? loadErrorText(error.value) : t("errors.unknown"));
 
 const queueSource = computed<QueueSource | null>(() => {
   const vm = artistData.value;

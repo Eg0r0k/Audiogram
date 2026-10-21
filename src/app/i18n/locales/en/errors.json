@@ -4,5 +4,18 @@
     "loadFailed": "Failed to load data",
     "tracksLoadFailed": "Failed to load tracks",
     "loadMoreFailed": "Couldn't load more",
-    "unknown": "An unexpected error occurred"
+    "unknown": "An unexpected error occurred",
+    "hint": {
+        "network": "No connection to the server.",
+        "unavailable": "The service is not available right now.",
+        "signIn": "Sign in again.",
+        "noAccess": "Your account is not allowed to do this.",
+        "notFound": "Not found.",
+        "slowDown": "Too many requests, try again in a moment.",
+        "badResponse": "The server answered in an unexpected way.",
+        "storageFull": "The device is out of storage space.",
+        "fileMissing": "The file is missing.",
+        "filePermission": "No permission to access the file.",
+        "desktopOnly": "Available only in the desktop and mobile app."
+    }
 }
