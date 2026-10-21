@@ -3,6 +3,8 @@ use tauri::{AppHandle, Emitter, Runtime};
 use tauri_plugin_updater::UpdaterExt;
 use time::format_description::well_known::Rfc3339;
 
+use crate::app_error::AppError;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateInfo {
@@ -12,20 +14,19 @@ pub struct UpdateInfo {
     pub date: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum UpdateErrorKind {
+pub(crate) enum UpdateErrorKind {
     Network,
     NoUpdateAvailable,
     InstallFailed,
     Unknown,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug)]
 pub struct UpdateError {
-    kind: UpdateErrorKind,
-    message: String,
+    pub(crate) kind: UpdateErrorKind,
+    pub(crate) message: String,
 }
 
 impl UpdateError {
@@ -69,12 +70,10 @@ fn build_updater<R: Runtime>(
 }
 
 #[tauri::command]
-pub async fn check_update<R: Runtime>(
-    app: AppHandle<R>,
-) -> Result<Option<UpdateInfo>, UpdateError> {
+pub async fn check_update<R: Runtime>(app: AppHandle<R>) -> Result<Option<UpdateInfo>, AppError> {
     let updater = build_updater(&app)?;
 
-    let update = updater.check().await?;
+    let update = updater.check().await.map_err(UpdateError::from)?;
     Ok(update.map(|update| {
         log::info!(
             "update available: {} (running {})",
@@ -91,12 +90,16 @@ pub async fn check_update<R: Runtime>(
 }
 
 #[tauri::command]
-pub async fn install_update<R: Runtime>(app: AppHandle<R>) -> Result<(), UpdateError> {
+pub async fn install_update<R: Runtime>(app: AppHandle<R>) -> Result<(), AppError> {
     let updater = build_updater(&app)?;
 
-    let update = updater.check().await?.ok_or_else(|| {
-        UpdateError::new(UpdateErrorKind::NoUpdateAvailable, "no update available")
-    })?;
+    let update = updater
+        .check()
+        .await
+        .map_err(UpdateError::from)?
+        .ok_or_else(|| {
+            UpdateError::new(UpdateErrorKind::NoUpdateAvailable, "no update available")
+        })?;
     log::info!("installing update {}", update.version);
 
     let app_handle = app.clone();
@@ -119,7 +122,8 @@ pub async fn install_update<R: Runtime>(app: AppHandle<R>) -> Result<(), UpdateE
         .await
         // The frontend gets the structured error; the log keeps the full
         // text of a failed install, which is the one case worth a report.
-        .inspect_err(|e| log::warn!("update install failed: {e}"))?;
+        .inspect_err(|e| log::warn!("update install failed: {e}"))
+        .map_err(UpdateError::from)?;
 
     log::info!("update installed, restarting");
     app.restart();

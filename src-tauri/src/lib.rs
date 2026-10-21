@@ -5,6 +5,8 @@ use tauri::Manager;
 #[cfg(desktop)]
 use tauri::Emitter;
 
+use app_error::AppError;
+
 #[cfg(desktop)]
 mod updater;
 
@@ -22,6 +24,8 @@ mod discord;
 mod discord_utils;
 
 mod youtube;
+
+mod app_error;
 
 mod audio_cache;
 
@@ -98,21 +102,17 @@ fn dir_size(path: &Path) -> u64 {
 }
 
 #[tauri::command]
-async fn app_data_folder_size(app: tauri::AppHandle, folder: String) -> Result<u64, String> {
+async fn app_data_folder_size(app: tauri::AppHandle, folder: String) -> Result<u64, AppError> {
     match folder.as_str() {
         "tracks" | "lyrics" | "offline" | "offline/nd" | "offline/yt" | "offline/ym" => {}
-        _ => return Err("unsupported app data folder".into()),
+        _ => return Err(AppError::invalid_input("unsupported app data folder")),
     }
 
-    let target = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join(folder);
+    let target = app.path().app_data_dir()?.join(folder);
 
     tauri::async_runtime::spawn_blocking(move || dir_size(&target))
         .await
-        .map_err(|e| e.to_string())
+        .map_err(AppError::from)
 }
 
 /// True when `rel` can be safely joined under app-data: relative, and made of
@@ -134,37 +134,30 @@ async fn import_local_file(
     app: tauri::AppHandle,
     source: String,
     target_rel: String,
-) -> Result<u64, String> {
+) -> Result<u64, AppError> {
     use std::str::FromStr;
     use tauri_plugin_fs::{FilePath, FsExt, OpenOptions};
 
     let rel = std::path::PathBuf::from(&target_rel);
     if !is_safe_import_target(&rel) {
-        return Err("invalid target path".into());
+        return Err(AppError::invalid_input("invalid target path"));
     }
 
-    let target = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join(rel);
-    let source_path = FilePath::from_str(&source).map_err(|e| e.to_string())?;
+    let target = app.path().app_data_dir()?.join(rel);
+    let source_path =
+        FilePath::from_str(&source).map_err(|e| AppError::invalid_input(e.to_string()))?;
 
-    tauri::async_runtime::spawn_blocking(move || {
+    tauri::async_runtime::spawn_blocking(move || -> Result<u64, AppError> {
         if let Some(parent) = target.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            std::fs::create_dir_all(parent)?;
         }
         let mut options = OpenOptions::new();
         options.read(true);
-        let mut src = app
-            .fs()
-            .open(source_path, options)
-            .map_err(|e| e.to_string())?;
-        let mut dst = std::fs::File::create(&target).map_err(|e| e.to_string())?;
-        std::io::copy(&mut src, &mut dst).map_err(|e| e.to_string())
+        let mut src = app.fs().open(source_path, options)?;
+        let mut dst = std::fs::File::create(&target)?;
+        Ok(std::io::copy(&mut src, &mut dst)?)
     })
-    .await
-    .map_err(|e| e.to_string())?
+    .await?
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

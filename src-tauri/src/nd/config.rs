@@ -6,6 +6,8 @@ use std::sync::RwLock;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use serde::Deserialize;
 
+use crate::app_error::AppError;
+
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NdConfig {
@@ -49,11 +51,11 @@ impl NdState {
 pub fn nd_set_config(
     state: tauri::State<'_, NdState>,
     config: Option<NdConfig>,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let mut guard = state
         .0
         .write()
-        .map_err(|_| "nd config lock poisoned".to_string())?;
+        .map_err(|_| AppError::unknown("nd config lock poisoned"))?;
     match &config {
         // base_url only — the auth token never reaches a log line.
         Some(c) => log::info!("nd source configured: {}", c.base_url.trim_end_matches('/')),

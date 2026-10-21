@@ -10,6 +10,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use bytes::Bytes;
 use tauri::{AppHandle, Manager, Runtime};
 
+use crate::app_error::AppError;
 use crate::audio_cache::{AudioCache, CachedAudio};
 use crate::media_server::{forward_stream, memory_range_response, status_response};
 use crate::remote_download::{content_range_total, get_range};
@@ -164,7 +165,7 @@ pub fn yt_register_stream<R: Runtime>(
     url: String,
     headers: Vec<(String, String)>,
     expires_at: Option<u64>,
-) -> Result<(), YtError> {
+) -> Result<(), AppError> {
     let id = validate_id(&id).map_err(YtError::invalid_input)?;
     let url = validate_stream_url(&url).map_err(YtError::invalid_input)?;
     let entry = StreamEntry {
@@ -193,7 +194,7 @@ fn not_registered() -> YtError {
 /// Called by the frontend for the next queue entry while the current track
 /// still plays; the entry must have been registered.
 #[tauri::command]
-pub async fn yt_prefetch<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), YtError> {
+pub async fn yt_prefetch<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), AppError> {
     let id = validate_id(&id).map_err(YtError::invalid_input)?;
     if app.state::<YtAudioCache>().contains(&id) {
         return Ok(());
@@ -209,20 +210,19 @@ pub async fn yt_prefetch<R: Runtime>(app: AppHandle<R>, id: String) -> Result<()
                 // googlevideo refused the registered URL: stale, drop it so
                 // the next play re-resolves.
                 streams.remove(&id);
-                return Err(YtError::new(
-                    YtErrorKind::Network,
-                    format!("prefetch failed: {e}"),
-                ));
+                return Err(
+                    YtError::new(YtErrorKind::Network, format!("prefetch failed: {e}")).into(),
+                );
             }
-            return Err(YtError::from(e));
+            return Err(YtError::from(e).into());
         }
     };
     log::debug!("yt_prefetch {id}: {} bytes", bytes.len());
 
     if !app.state::<YtAudioCache>().insert(id, content_type, bytes) {
-        return Err(YtError::from(
-            "prefetch skipped: track exceeds the cache cap".to_owned(),
-        ));
+        return Err(
+            YtError::from("prefetch skipped: track exceeds the cache cap".to_owned()).into(),
+        );
     }
     Ok(())
 }

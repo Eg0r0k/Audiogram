@@ -14,6 +14,8 @@ use std::time::Duration;
 
 use tauri::{AppHandle, Manager, Runtime};
 
+use crate::app_error::AppError;
+
 /// Reaching the server at all.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 /// Gap between two reads of the body. NOT a total request timeout: a whole
@@ -113,16 +115,18 @@ pub fn set_proxy<R: Runtime>(app: AppHandle<R>, url: Option<String>) {
 /// Verifies the proxy actually connects by fetching a lightweight endpoint
 /// through it. Returns the round-trip latency in milliseconds on success.
 #[tauri::command]
-pub async fn proxy_check(url: String) -> Result<u64, String> {
+pub async fn proxy_check(url: String) -> Result<u64, AppError> {
     let url = url.trim().to_owned();
     if url.is_empty() {
-        return Err("empty proxy url".into());
+        return Err(AppError::invalid_input("empty proxy url"));
     }
 
-    let client = client_builder(Some(&url))?
+    // Proxy::all fails only on an unparsable URL or unknown scheme: the user's input.
+    let client = client_builder(Some(&url))
+        .map_err(AppError::invalid_input)?
         .timeout(Duration::from_secs(10))
         .build()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::network(e.to_string()))?;
 
     let started = std::time::Instant::now();
     let response = client
@@ -130,11 +134,13 @@ pub async fn proxy_check(url: String) -> Result<u64, String> {
         .header(reqwest::header::USER_AGENT, "Mozilla/5.0")
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::network(e.to_string()))?;
 
     let status = response.status().as_u16();
     if !(200..=399).contains(&status) {
-        return Err(format!("proxy responded with status {status}"));
+        return Err(AppError::network(format!(
+            "proxy responded with status {status}"
+        )));
     }
 
     Ok(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX))

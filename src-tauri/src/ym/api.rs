@@ -8,11 +8,10 @@ use tauri::{AppHandle, Manager, Runtime};
 
 use super::auth::{drop_session, expires_at_from, persist_session, refresh_access_token};
 use super::state::{YmSession, YmState, CLIENT_HEADER_NAME, CLIENT_HEADER_VALUE};
+use crate::app_error::AppError;
 
-/// Failure class, serialized SCREAMING_SNAKE_CASE — one-to-one with the
-/// frontend's `SourceErrorKind`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+/// Failure class; maps one-to-one onto the envelope's `SourceErrorKind`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YmErrorKind {
     /// Not signed in, or the token stopped working and could not be refreshed.
     Auth,
@@ -28,12 +27,10 @@ pub enum YmErrorKind {
     Unknown,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct YmError {
     pub kind: YmErrorKind,
     pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub retry_after_ms: Option<u64>,
 }
 
@@ -341,7 +338,7 @@ pub async fn call(state: &YmState, client: &reqwest::Client, req: &YmRequest) ->
 pub async fn ym_request<R: Runtime>(
     app: AppHandle<R>,
     req: YmRequest,
-) -> Result<serde_json::Value, YmError> {
+) -> Result<serde_json::Value, AppError> {
     super::state::load_session_if_needed(&app);
     let client = crate::proxy::http_client(&app)?;
     let state = app.state::<YmState>();
@@ -351,7 +348,7 @@ pub async fn ym_request<R: Runtime>(
         SessionChange::Refreshed(session) => persist_session(&app, &session),
         SessionChange::Lost => drop_session(&app),
     }
-    outcome.result
+    outcome.result.map_err(AppError::from)
 }
 
 #[cfg(test)]
@@ -711,12 +708,14 @@ mod tests {
     #[test]
     fn the_error_serializes_in_the_frontend_vocabulary() {
         let error = YmError::from_status(429, "", Some(1500));
-        let json = serde_json::to_value(&error).expect("json");
+        let json = serde_json::to_value(AppError::from(error)).expect("json");
 
+        assert_eq!(json["domain"], "source");
+        assert_eq!(json["source"], "ym");
         assert_eq!(json["kind"], "RATE_LIMITED");
         assert_eq!(json["retryAfterMs"], 1500);
 
-        let plain = serde_json::to_value(YmError::auth("nope")).expect("json");
+        let plain = serde_json::to_value(AppError::from(YmError::auth("nope"))).expect("json");
         assert_eq!(plain["kind"], "AUTH");
         assert!(plain.get("retryAfterMs").is_none());
     }

@@ -12,6 +12,7 @@ use lofty::picture::{MimeType, Picture, PictureType};
 use lofty::prelude::*;
 use lofty::tag::{Tag, TagType};
 
+use crate::app_error::AppError;
 use crate::remote_download::{
     fetch_to_tmp_ranged, tmp_dir, DownloadEvent, DownloadRegistry, DownloadRequest, DownloadResult,
 };
@@ -48,7 +49,7 @@ pub async fn yt_download<R: Runtime>(
     id: String,
     meta: Option<YtTrackMeta>,
     on_progress: Channel<DownloadEvent>,
-) -> Result<DownloadResult, YtError> {
+) -> Result<DownloadResult, AppError> {
     let id = validate_id(&id).map_err(YtError::invalid_input)?;
     let streams = app.state::<YtStreamCache>();
     let entry = streams.get(&id).ok_or_else(|| {
@@ -82,7 +83,7 @@ pub async fn yt_download<R: Runtime>(
 
     let done = match result {
         Ok(done) => done,
-        Err(e) if e == "cancelled" => return Err(YtError::cancelled("download cancelled")),
+        Err(e) if e == "cancelled" => return Err(YtError::cancelled("download cancelled").into()),
         Err(e) => {
             if e.starts_with("upstream status") {
                 // googlevideo refused the registered URL — stale; the next
@@ -90,7 +91,7 @@ pub async fn yt_download<R: Runtime>(
                 streams.remove(&id);
             }
             log::warn!("yt_download {id}: {e}");
-            return Err(YtError::unknown(e));
+            return Err(YtError::unknown(e).into());
         }
     };
 
@@ -113,7 +114,7 @@ pub async fn yt_download<R: Runtime>(
 /// Flags the in-flight download as cancelled; the copy loop notices between
 /// chunks. Idempotent — cancelling a finished download is a routine race.
 #[tauri::command]
-pub fn yt_download_cancel<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), YtError> {
+pub fn yt_download_cancel<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), AppError> {
     let id = validate_id(&id).map_err(YtError::invalid_input)?;
     app.state::<DownloadRegistry>().cancel(&registry_key(&id));
     Ok(())

@@ -10,6 +10,7 @@ use super::api::{YmError, YmErrorKind};
 use super::resolve::YmLinkCache;
 use super::state::YmState;
 use super::stream::{is_track_id, resolve_cached};
+use crate::app_error::AppError;
 use crate::remote_download::{
     fetch_to_tmp, tmp_dir, DownloadEvent, DownloadRegistry, DownloadRequest, DownloadResult,
 };
@@ -78,9 +79,9 @@ pub async fn ym_download<R: Runtime>(
     app: AppHandle<R>,
     track_id: String,
     on_progress: Channel<DownloadEvent>,
-) -> Result<DownloadResult, YmError> {
+) -> Result<DownloadResult, AppError> {
     if !is_track_id(&track_id) {
-        return Err(YmError::new(YmErrorKind::Unknown, "invalid track id"));
+        return Err(YmError::new(YmErrorKind::Unknown, "invalid track id").into());
     }
     super::state::load_session_if_needed(&app);
     let client = crate::proxy::http_client(&app)?;
@@ -102,7 +103,7 @@ pub async fn ym_download<R: Runtime>(
         Err(e) if e.kind == YmErrorKind::Cancelled => {}
         Err(e) => log::warn!("ym_download {track_id}: {e}"),
     }
-    result
+    result.map_err(AppError::from)
 }
 
 /// Flags the in-flight download as cancelled; the download loop notices
