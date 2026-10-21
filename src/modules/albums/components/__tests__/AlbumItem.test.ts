@@ -11,9 +11,9 @@ const togglePinMock = vi.hoisted(() => vi.fn());
 vi.mock("@/modules/library/composables/useLibrary", () => ({
   useLibrary: () => ({ togglePin: togglePinMock }),
 }));
+const libraryMenu = vi.hoisted(() => ({ openMenu: vi.fn(), isMenuOpenFor: vi.fn(() => false) }));
 vi.mock("@/modules/library/composables/useLibraryMenu", () => ({
-  canOpenLibraryMenu: () => true,
-  useLibraryMenu: () => ({ openMenu: vi.fn(), activeItem: { value: null }, isContextMenuOpen: { value: false } }),
+  useLibraryMenu: () => libraryMenu,
 }));
 vi.mock("@/modules/player/composables/usePlaybackState", () => ({
   usePlaybackState: () => ({ isActiveSource: ref(false), isPlaying: ref(false), isLoading: ref(false) }),
@@ -81,5 +81,33 @@ describe("AlbumItem pin button", () => {
     await renderItem(createItem({ isCatalog: true }));
 
     expect(screen.queryByRole("button", { name: /pin album/i })).toBeNull();
+  });
+});
+
+describe("AlbumItem context menu", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    libraryMenu.isMenuOpenFor.mockReturnValue(false);
+    router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/:pathMatch(.*)*", component: { template: "<div />" } }],
+    });
+    await router.push("/");
+  });
+
+  it("hands its item and the right-click to the enclosing library menu", async () => {
+    const item = createItem();
+    const { container } = await renderItem(item);
+
+    await fireEvent.contextMenu(container.querySelector("[role=button]")!);
+
+    expect(libraryMenu.openMenu).toHaveBeenCalledWith(item, expect.any(MouseEvent));
+  });
+
+  it("keeps the hover look while the menu is up for it", async () => {
+    libraryMenu.isMenuOpenFor.mockReturnValue(true);
+    const { container } = await renderItem(createItem());
+
+    expect(container.querySelector("[role=button]")!.hasAttribute("data-menu-open")).toBe(true);
   });
 });

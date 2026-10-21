@@ -1,13 +1,8 @@
 <template>
   <ResponsiveContextMenu>
-    <div
-      ref="triggerGuardRef"
-      class="contents"
-    >
-      <ResponsiveContextMenuTrigger :disabled="disabled">
-        <slot />
-      </ResponsiveContextMenuTrigger>
-    </div>
+    <ResponsiveContextMenuTrigger :disabled="disabled">
+      <slot />
+    </ResponsiveContextMenuTrigger>
     <ResponsiveMenuContent class="w-60 bg-popover/50 backdrop-blur-[50px]">
       <OpenInCatalogItem />
       <component
@@ -24,8 +19,7 @@ import {
   ResponsiveContextMenuTrigger,
   ResponsiveMenuContent,
 } from "@/components/ui/responsive-menu";
-import { useEventListener } from "@vueuse/core";
-import { computed, useTemplateRef, type Component } from "vue";
+import { computed, type Component } from "vue";
 import { useMediaContext } from "@/modules/media-hero/composables/useMediaContext";
 import AlbumContext from "../contexts/AlbumContext.vue";
 import OpenInCatalogItem from "../OpenInCatalogItem.vue";
@@ -41,7 +35,7 @@ provideMenuComponents(responsiveMenuComponents);
 const props = withDefaults(defineProps<{
   context?: MediaContext;
   isPlaylistOwner?: boolean;
-  /** The context would render no items (e.g. a catalog artist) — don't open. */
+  /** The context would render no items (e.g. a catalog artist): don't open. */
   disabled?: boolean;
 }>(), {
   context: "album",
@@ -54,16 +48,6 @@ const contexts: Record<MediaContext, Component> = {
   "liked": LikedContext,
   "playlist": PlaylistContext,
 };
-
-// A disabled menu must swallow the right-click entirely: with the reka
-// trigger inert, the event reaches the surrounding TrackContextMenu and an
-// empty track menu opens instead.
-const triggerGuardRef = useTemplateRef<HTMLElement>("triggerGuardRef");
-useEventListener(triggerGuardRef, "contextmenu", (event: MouseEvent) => {
-  if (!props.disabled) return;
-  event.preventDefault();
-  event.stopPropagation();
-}, { capture: true });
 
 const actions = useMediaContext();
 const contextComponent = computed(() => contexts[props.context]);

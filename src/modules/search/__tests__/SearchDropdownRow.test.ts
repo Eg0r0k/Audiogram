@@ -25,7 +25,7 @@ const stubs = {
     },
   },
   TrackRow: true,
-  TrackContextMenu: { template: "<div data-track-menu-scope><slot /></div>" },
+  TrackContextMenu: { template: "<div data-testid=\"track-menu\"><slot /></div>" },
   TrackDropdown: true,
 };
 
@@ -58,15 +58,15 @@ describe("SearchDropdownRow", () => {
     expect(row.to).not.toHaveProperty("query");
   });
 
-  it("renders the best-result track inside its own track-menu scope", () => {
+  it("renders the best-result track inside its own track menu shell", () => {
     const track = { id: "local-t1", title: "T", artistName: "A", duration: 1 } as never;
     const { container } = render(SearchDropdownRow, {
       props: { item: entity("track", "local-t1"), track },
       global: { stubs },
     });
 
-    const scope = container.querySelector("[data-track-menu-scope]");
-    expect(scope).not.toBeNull();
-    expect(scope!.querySelector("track-row-stub")).not.toBeNull();
+    const shell = container.querySelector("[data-testid=track-menu]");
+    expect(shell).not.toBeNull();
+    expect(shell!.querySelector("track-row-stub")).not.toBeNull();
   });
 });

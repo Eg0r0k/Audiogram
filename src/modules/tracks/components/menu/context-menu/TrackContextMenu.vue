@@ -1,13 +1,9 @@
 <template>
-  <ResponsiveContextMenu v-model:open="localOpen">
-    <div
-      ref="guardRef"
-      class="contents"
-    >
-      <ResponsiveContextMenuTrigger>
-        <slot />
-      </ResponsiveContextMenuTrigger>
-    </div>
+  <ResponsiveContextMenu
+    ref="menu"
+    v-model:open="localOpen"
+  >
+    <slot />
 
     <ResponsiveMenuContent class="w-65">
       <template #header>
@@ -29,10 +25,8 @@
 
 <script setup lang="ts">
 import { computed, useTemplateRef } from "vue";
-import { useEventListener } from "@vueuse/core";
 import {
   ResponsiveContextMenu,
-  ResponsiveContextMenuTrigger,
   ResponsiveMenuContent,
 } from "@/components/ui/responsive-menu";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
@@ -41,6 +35,7 @@ import { provideTrackMenuComponents, responsiveTrackComponents } from "../useTra
 import type { TrackContext } from "../type";
 import { useTrackMenuAutoClose } from "../composables/useTrackMenuAutoClose";
 import { useTrackMenuContent } from "../composables/useTrackMenuContent";
+import { provideTrackContextMenu, type TrackContextMenuHandle } from "./useTrackContextMenu";
 import TrackMenuSheetHeader from "../TrackMenuSheetHeader.vue";
 
 provideTrackMenuComponents(responsiveTrackComponents);
@@ -62,6 +57,7 @@ const props = withDefaults(defineProps<Props>(), {
 const {
   isContextMenuOpen,
   activeContextMenuTarget,
+  openMenu,
 } = useTrackMenu();
 
 const localOpen = computed({
@@ -84,19 +80,16 @@ const { activeTrack, contextComponent, contextProps, actions, caps } = useTrackM
   isPlaylistOwner: () => props.isPlaylistOwner,
 });
 
-const guardRef = useTemplateRef<HTMLElement>("guardRef");
+const menu = useTemplateRef<InstanceType<typeof ResponsiveContextMenu>>("menu");
 
-// Rows open the menu from their own contextmenu handlers; off the rows
-// nothing should open at all.
-useEventListener(guardRef, "contextmenu", (e: MouseEvent) => {
-  const target = e.target as HTMLElement;
-  if (target.closest("[data-media-context]")) {
-    return;
-  }
-
-  if (!target.closest("[data-track-row], [data-track-menu-trigger]")) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-}, { capture: true });
+// The context is this shell's, not the caller's: a row can only ever open
+// the menu of the list it sits in.
+const handle: TrackContextMenuHandle = {
+  open: (subject, index, event, options) => {
+    openMenu(subject, index, { queueItemId: options?.queueItemId, target: props.context });
+    menu.value?.show(event);
+  },
+};
+provideTrackContextMenu(handle);
+defineExpose(handle);
 </script>

@@ -18,6 +18,12 @@ export interface MenuPartSet {
   CheckboxItem: Component;
 }
 
+/** The popper surface's imperative API, registered by the content in popper mode. */
+export interface PopperMenuHandle {
+  show: (event?: Event) => void;
+  hide: () => void;
+}
+
 export interface ResponsiveMenuContext {
   kind: ResponsiveMenuKind;
   mode: ComputedRef<ResponsiveMenuMode>;
@@ -28,6 +34,7 @@ export interface ResponsiveMenuContext {
   /** The element the popper menu attaches to, registered by the trigger. */
   trigger: ShallowRef<HTMLElement | null>;
   triggerDisabled: ShallowRef<boolean>;
+  popper: ShallowRef<PopperMenuHandle | null>;
 }
 
 const ResponsiveMenuKey: InjectionKey<ResponsiveMenuContext> = Symbol("ResponsiveMenu");

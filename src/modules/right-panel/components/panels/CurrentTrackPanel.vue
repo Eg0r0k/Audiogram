@@ -18,7 +18,10 @@
       <div
         class="grid gap-4 py-4 px-5 pt-0.5"
       >
-        <TrackContextMenu context="current-track">
+        <TrackContextMenu
+          ref="coverMenu"
+          context="current-track"
+        >
           <div>
             <MorphingDialog
               :transition="{
@@ -28,7 +31,6 @@
               }"
             >
               <MorphingDialogTrigger
-                :data-track-menu-trigger="currentTrack ? true : undefined"
                 class="block w-full select-none  rounded-lg overflow-hidden "
                 @contextmenu="onCoverContextMenu"
               >
@@ -231,7 +233,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import { Scrollable } from "@/components/ui/scrollable";
 import { Button } from "@/components/ui/button";
@@ -274,16 +276,17 @@ const rightPanel = useRightPanelStore();
 const router = useRouter();
 const { toggleTrackLike } = useToggleTrackLike();
 
-const { openDropdown, openMenu } = useTrackMenu();
+const { openDropdown } = useTrackMenu();
+const coverMenu = useTemplateRef<InstanceType<typeof TrackContextMenu>>("coverMenu");
 
 function onDotsClick(event: MouseEvent): void {
   if (!currentTrack.value) return;
   openDropdown(currentTrack.value, 0, event, { target: "current-track" });
 }
 
-function onCoverContextMenu(): void {
+function onCoverContextMenu(event: MouseEvent): void {
   if (!currentTrack.value) return;
-  openMenu(currentTrack.value, 0, { target: "current-track" });
+  coverMenu.value?.open(currentTrack.value, 0, event);
 }
 
 const { track: currentTrack, libraryTrack, coverUrl } = useCurrentTrackCover();

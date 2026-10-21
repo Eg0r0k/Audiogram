@@ -4,9 +4,9 @@ import { TrackSource, TrackState } from "@/db/entities";
 import type { Track } from "@/modules/player/types";
 import TrackRowsList from "../TrackRowsList.vue";
 
-// Регрессия: контекстное меню reka открывается только с содержимого своего
-// слота-триггера. Если TrackContextMenu отрендерен пустым соседом списка,
-// правый клик по строкам никогда его не откроет (локальный поиск).
+// Регрессия: строка достаёт меню оболочки через inject, то есть только изнутри
+// её слота. Если TrackContextMenu отрендерен пустым соседом списка, правый
+// клик по строкам никогда его не откроет (локальный поиск).
 
 const makeTrack = (id: string): Track => ({
   kind: "library",
@@ -24,7 +24,7 @@ const makeTrack = (id: string): Track => ({
 });
 
 const stubs = {
-  TrackRow: { template: "<div data-track-row />" },
+  TrackRow: { template: "<div data-track-id />" },
   TrackContextMenu: { template: "<div data-testid='ctx-menu'><slot /></div>" },
   TrackDropdown: true,
 };
@@ -38,6 +38,6 @@ describe("TrackRowsList", () => {
 
     const menu = container.querySelector("[data-testid='ctx-menu']");
     expect(menu).not.toBeNull();
-    expect(menu!.querySelectorAll("[data-track-row]")).toHaveLength(2);
+    expect(menu!.querySelectorAll("[data-track-id]")).toHaveLength(2);
   });
 });

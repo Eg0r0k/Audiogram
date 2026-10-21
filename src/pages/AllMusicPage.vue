@@ -89,7 +89,6 @@
                   selectable
                   @play="handlePlayTrack(index)"
                   @select="handleTrackSelect"
-                  @contextmenu="handleContextMenu(item, index)"
                 />
               </div>
             </template>
@@ -179,7 +178,6 @@ import { computed, ref, useTemplateRef } from "vue";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { useIndexTracksPage } from "@/modules/tracks/composables/useIndexTracksPage";
 import { getAllTrackIds, getAllTracksForQueue } from "@/queries/track.queries";
-import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback";
 import type { QueueSource } from "@/modules/queue/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
@@ -209,7 +207,6 @@ const {
 } = useIndexTracksPage(sortKey, searchQuery);
 
 const playerStore = usePlayerStore();
-const { openMenu } = useTrackMenu();
 
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
 
@@ -295,10 +292,6 @@ function handleLoadMore() {
 
 function getTrackKey(index: number) {
   return tracks.value[index]?.id ?? index;
-}
-
-function handleContextMenu(track: Track, index: number) {
-  openMenu(track, index, { target: "default" });
 }
 
 const queueSource = computed<QueueSource>(() =>

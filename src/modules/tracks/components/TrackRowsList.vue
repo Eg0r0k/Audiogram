@@ -1,10 +1,7 @@
 <template>
   <div class="flex flex-col">
     <TrackContextMenu :context="menuTarget">
-      <div
-        class="flex flex-col"
-        data-track-menu-scope
-      >
+      <div class="flex flex-col">
         <TrackRow
           v-for="(track, index) in tracks"
           :key="track.id"

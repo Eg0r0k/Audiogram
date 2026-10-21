@@ -129,7 +129,6 @@
                 :is-active="currentTrackId === item.id"
                 menu-target="artist"
                 @play="handlePlayTrack(index)"
-                @contextmenu="handleContextMenu(item, index)"
               />
             </div>
           </template>
@@ -178,8 +177,6 @@ import { summonDialog } from "@/components/dialogs/summonDialog";
 import { useEditArtistDialog } from "@/modules/artists/composables/useEditArtistDialog";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
-import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
 import AlbumItem from "@/modules/albums/components/AlbumItem.vue";
@@ -204,7 +201,6 @@ const rightPanelStore = useRightPanelStore();
 const route = useRoute();
 const { isMobileLayout } = useDeviceLayout();
 const router = useRouter();
-const { openMenu } = useTrackMenu();
 const { isPinned, deleteItem: deleteLibraryItem } = useLibrary();
 const { playAlbum } = usePlayAlbum();
 const sortKey = ref<TrackSortKey | null>(null);
@@ -279,10 +275,6 @@ function handleTrackLoadMore() {
   fetchNextTrackPage().catch((err: unknown) => {
     getLogger().warn(`[ArtistPage] Loading the next artist tracks page failed: ${String(err)}`);
   });
-}
-
-function handleContextMenu(track: Track, index: number) {
-  openMenu(track, index, { target: "artist" });
 }
 
 const loadErrorText = computed(() => {

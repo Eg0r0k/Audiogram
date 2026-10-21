@@ -4,7 +4,6 @@
       v-ripple
       role="button"
       tabindex="0"
-      data-track-row
       :data-track-id="track.id"
       :data-track-index="index - 1"
       :data-disabled="isDisabled || undefined"
@@ -14,7 +13,7 @@
       :class="styles.root({ state: rowState })"
       @click="handleClick"
       @keypress.enter="handleClick"
-      @contextmenu="emit('contextmenu', track)"
+      @contextmenu="onContextMenu"
     >
       <div :class="styles.indexCol">
         <Transition name="index-swap">
@@ -248,6 +247,7 @@ import type { Track } from "@/modules/player/types";
 import type { TrackContext } from "@/modules/tracks/components/menu/type";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
+import { useTrackContextMenu } from "@/modules/tracks/components/menu/context-menu/useTrackContextMenu";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import SourceDownloadButton from "@/modules/downloads/components/SourceDownloadButton.vue";
 import { localCopyQueries } from "@/queries/localCopy.queries";
@@ -347,7 +347,6 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   play: [track: Track];
   select: [track: Track, event: MouseEvent];
-  contextmenu: [track: Track];
 }>();
 
 const playerStore = usePlayerStore();
@@ -357,6 +356,7 @@ const router = useRouter();
 const { isMobileLayout } = useDeviceLayout();
 const { locale } = useI18n();
 const { openDropdown, isMenuOpenFor } = useTrackMenu();
+const contextMenu = useTrackContextMenu();
 const { toggleTrackLike } = useToggleTrackLike();
 const isMenuSelected = computed(() => isMenuOpenFor(props.track, { target: props.menuTarget }));
 
@@ -425,6 +425,11 @@ function onCheckboxClick(event: MouseEvent) {
 
 function onDotsClick(event: MouseEvent) {
   openDropdown(props.track, props.index, event, { target: props.menuTarget });
+}
+
+// `index` is the 1-based display number; the menu counts from zero.
+function onContextMenu(event: MouseEvent) {
+  contextMenu.open(props.track, props.index - 1, event);
 }
 
 async function toggle() {

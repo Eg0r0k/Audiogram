@@ -5,7 +5,7 @@ import type { LibraryItem } from "@/modules/library/types";
 import { Item } from "@/components/ui/item";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import Link from "@/components/ui/link/Link.vue";
-import { canOpenLibraryMenu, useLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
+import { useLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
 import LibraryItemCover from "./LibraryItemCover.vue";
 import LibraryItemInfo from "./LibraryItemInfo.vue";
 import { useLibraryItemView } from "./useLibraryItemView";
@@ -25,15 +25,11 @@ const emit = defineEmits<{
 // neither takes the route highlight.
 const isPageRow = computed(() => props.item.type !== "folder" && props.item.type !== "radio");
 
-const { openMenu, activeItem, isContextMenuOpen } = useLibraryMenu();
+const { openMenu, isMenuOpenFor } = useLibraryMenu();
 const router = useRouter();
 
 // The row keeps its hover look while its own context menu is up.
-const isMenuSelected = computed(() =>
-  isContextMenuOpen.value
-  && activeItem.value?.id === props.item.id
-  && activeItem.value.type === props.item.type,
-);
+const isMenuSelected = computed(() => isMenuOpenFor(props.item));
 
 const { subtitle, coverOwnerType, coverOwnerId, isCurrentPlaybackSource }
   = useLibraryItemView(() => props.item);
@@ -59,15 +55,13 @@ const handleClick = () => {
       <div
         v-ripple
         class="group/row block rounded-sm focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none focus-visible:border-ring cursor-pointer"
-        data-library-item
-        :data-library-menu="canOpenLibraryMenu(item) ? undefined : 'none'"
         :data-menu-open="isMenuSelected || undefined"
         role="button"
         :class="compact ? '' : 'mx-2'"
         tabindex="0"
         @click="handleClick"
         @keydown.enter="handleClick"
-        @contextmenu="openMenu(item)"
+        @contextmenu="openMenu(item, $event)"
       >
         <Link
           v-slot="{ isExactActive }"

@@ -4,7 +4,6 @@
     v-ripple
     role="button"
     tabindex="0"
-    data-track-row
     :data-compact="compact"
     :data-menu-open="isMenuSelected || undefined"
     :class="[
@@ -158,6 +157,7 @@
 <script setup lang="ts">
 import { cva } from "class-variance-authority";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
+import { useTrackContextMenu } from "@/modules/tracks/components/menu/context-menu/useTrackContextMenu";
 import { computed, useTemplateRef } from "vue";
 import { useElementHover } from "@vueuse/core";
 import { Spinner } from "@/components/ui/spinner";
@@ -317,7 +317,8 @@ const styles = {
   dots: "absolute rounded-full transition-opacity opacity-0 [@media(hover:none)]:opacity-100 group-hover:opacity-100 group-data-[menu-open]:opacity-100",
 };
 
-const { openMenu, openDropdown, isMenuOpenFor } = useTrackMenu();
+const { openDropdown, isMenuOpenFor } = useTrackMenu();
+const contextMenu = useTrackContextMenu();
 
 const resolvedMenuIndex = computed(() => props.menuIndex ?? props.index);
 
@@ -348,11 +349,8 @@ const toggle = async () => {
   await toggleTrackLike(props.track);
 };
 
-const onContextMenu = () => {
-  openMenu(props.track, resolvedMenuIndex.value, {
-    queueItemId: props.queueItemId,
-    target: props.menuTarget,
-  });
+const onContextMenu = (event: MouseEvent) => {
+  contextMenu.open(props.track, resolvedMenuIndex.value, event, { queueItemId: props.queueItemId });
 };
 
 const onDotsClick = (event: MouseEvent) => {

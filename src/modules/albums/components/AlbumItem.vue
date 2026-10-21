@@ -3,15 +3,12 @@
     v-ripple
     class="group select-none cursor-pointer rounded-lg p-2 outline-none transition-colors hover:bg-accent/60 data-[menu-open]:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50"
     :class="fluid ? 'w-full min-w-0' : 'w-40 shrink-0 sm:w-44'"
-    data-library-item
-    :data-library-menu="canOpenLibraryMenu(item) ? undefined : 'none'"
     :data-menu-open="isMenuSelected || undefined"
-    data-media-context
     role="button"
     tabindex="0"
     @click="handleClick"
     @keydown.enter="handleClick"
-    @contextmenu="handleContextMenu"
+    @contextmenu="openMenu(item, $event)"
   >
     <div class="relative aspect-square z-1 overflow-hidden rounded-md bg-muted shadow-sm">
       <EntityCoverImage
@@ -92,7 +89,7 @@ import { Button } from "@/components/ui/button";
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";
 import { usePlaybackState } from "@/modules/player/composables/usePlaybackState";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import { canOpenLibraryMenu, useLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
+import { useLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
 import type { LibraryItem } from "@/modules/library/types";
 import type { QueueSource } from "@/modules/queue/types";
@@ -117,14 +114,10 @@ const emit = defineEmits<{
 const router = useRouter();
 const { t } = useI18n();
 const playerStore = usePlayerStore();
-const { openMenu, activeItem, isContextMenuOpen } = useLibraryMenu();
+const { openMenu, isMenuOpenFor } = useLibraryMenu();
 const { togglePin } = useLibrary();
 
-const isMenuSelected = computed(() =>
-  isContextMenuOpen.value
-  && activeItem.value?.id === props.item.id
-  && activeItem.value.type === props.item.type,
-);
+const isMenuSelected = computed(() => isMenuOpenFor(props.item));
 
 // Pins live in the local library store, so a catalog card has nothing to pin.
 const canPin = computed(() => !props.item.isCatalog);
@@ -155,10 +148,6 @@ const showPauseIcon = computed(() => isPlaying.value || isLoading.value);
 function handleClick() {
   router.push(props.item.to)
     .catch(error => getLogger().error(`[Library] Opening ${props.item.type} ${props.item.id} failed: ${String(error)}`));
-}
-
-function handleContextMenu() {
-  openMenu(props.item);
 }
 
 function handlePlay() {

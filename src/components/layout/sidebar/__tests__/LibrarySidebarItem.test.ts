@@ -7,10 +7,9 @@ import { i18n } from "@/app/i18n";
 import type { LibraryItem } from "@/modules/library/types";
 import LibrarySidebarItem from "../library-item/LibrarySidebarItem.vue";
 
-const openMenuMock = vi.hoisted(() => vi.fn());
+const libraryMenu = vi.hoisted(() => ({ openMenu: vi.fn(), isMenuOpenFor: vi.fn(() => false) }));
 vi.mock("@/modules/library/composables/useLibraryMenu", () => ({
-  canOpenLibraryMenu: () => true,
-  useLibraryMenu: () => ({ openMenu: openMenuMock, activeItem: { value: null }, isContextMenuOpen: { value: false } }),
+  useLibraryMenu: () => libraryMenu,
 }));
 
 vi.mock("@/db/repositories", () => ({
@@ -57,6 +56,7 @@ const renderItem = async (item: LibraryItem, compact = false) => {
 describe("LibrarySidebarItem", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    libraryMenu.isMenuOpenFor.mockReturnValue(false);
     router = createRouter({
       history: createMemoryHistory(),
       routes: [{ path: "/:pathMatch(.*)*", component: { template: "<div />" } }],
@@ -155,6 +155,22 @@ describe("LibrarySidebarItem", () => {
 
     const title = container.querySelector("[data-slot=item-title]");
     expect(title?.className).toContain("text-primary-foreground");
+  });
+
+  it("hands its item and the right-click to the enclosing library menu", async () => {
+    const item = createItem();
+    await renderItem(item);
+
+    await fireEvent.contextMenu(screen.getByRole("button"));
+
+    expect(libraryMenu.openMenu).toHaveBeenCalledWith(item, expect.any(MouseEvent));
+  });
+
+  it("keeps the hover look while the menu is up for it", async () => {
+    libraryMenu.isMenuOpenFor.mockReturnValue(true);
+    await renderItem(createItem());
+
+    expect(screen.getByRole("button").hasAttribute("data-menu-open")).toBe(true);
   });
 
   it("renders no text content in compact mode", async () => {

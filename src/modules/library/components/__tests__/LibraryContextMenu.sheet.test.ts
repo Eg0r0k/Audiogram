@@ -3,7 +3,9 @@ import { render, screen } from "@testing-library/vue";
 import { createPinia } from "pinia";
 import { createI18n } from "vue-i18n";
 import { VueQueryPlugin } from "@tanstack/vue-query";
-import { nextTick } from "vue";
+import { defineComponent, nextTick, type PropType } from "vue";
+import type { LibraryItem } from "@/modules/library/types";
+import { useLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
 import LibraryContextMenu from "../LibraryContextMenu.vue";
 
 //
@@ -37,6 +39,27 @@ const DrawerStub = {
   template: "<div data-sheet :data-open=\"open\"><slot /></div>",
 };
 
+const Row = defineComponent({
+  props: {
+    item: { type: Object as PropType<LibraryItem>, required: true },
+    testid: { type: String, required: true },
+  },
+  setup() {
+    return { menu: useLibraryMenu() };
+  },
+  template: "<div :data-testid=\"testid\" @contextmenu=\"menu.openMenu(item, $event)\">row</div>",
+});
+
+const album = (id: string): LibraryItem => ({
+  id,
+  type: "album",
+  title: "Row",
+  isPinned: false,
+  addedAt: 0,
+  to: "/",
+  rounded: false,
+});
+
 const mountTwoShells = () => {
   const i18n = createI18n({
     legacy: false,
@@ -47,25 +70,27 @@ const mountTwoShells = () => {
   });
 
   render({
-    components: { LibraryContextMenu },
+    components: { LibraryContextMenu, Row },
+    setup: () => ({ sidebarAlbum: album("a1"), searchAlbum: album("a2") }),
     template: `
       <LibraryContextMenu>
-        <div data-library-item data-testid="sidebar-row">sidebar</div>
+        <Row :item="sidebarAlbum" testid="sidebar-row" />
       </LibraryContextMenu>
       <LibraryContextMenu :folder-actions="false">
-        <div data-library-item data-testid="search-row">search</div>
+        <Row :item="searchAlbum" testid="search-row" />
       </LibraryContextMenu>
     `,
   }, {
     global: {
       plugins: [createPinia(), VueQueryPlugin, i18n],
-      stubs: { Drawer: DrawerStub, DrawerContent: true, ContextMenuCloseBridge: true },
+      stubs: { Drawer: DrawerStub, DrawerContent: true },
     },
   });
 };
 
 const openSheets = () => document.querySelectorAll("[data-sheet][data-open=\"true\"]").length;
 
+// Android reports a touch long-press as a native contextmenu event.
 const longPress = (el: HTMLElement) => {
   el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
 };

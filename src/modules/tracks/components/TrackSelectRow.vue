@@ -3,7 +3,6 @@
     v-ripple
     role="button"
     tabindex="0"
-    data-track-row
     :data-track-id="track.id"
     :data-track-index="index"
     :class="[

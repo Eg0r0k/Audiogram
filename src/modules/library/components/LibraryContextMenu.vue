@@ -1,15 +1,9 @@
 <template>
-  <ResponsiveContextMenu v-model:open="isOpen">
-    <div
-      class="contents"
-      role="presentation"
-      @contextmenu.capture="guardContextMenu"
-      @pointerdown.capture="guardLongPress"
-    >
-      <ResponsiveContextMenuTrigger>
-        <slot />
-      </ResponsiveContextMenuTrigger>
-    </div>
+  <ResponsiveContextMenu
+    ref="menu"
+    v-model:open="isOpen"
+  >
+    <slot />
 
     <ResponsiveMenuContent
       class="w-50 bg-popover/50 backdrop-blur-[50px]"
@@ -25,13 +19,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, type Component } from "vue";
+import { computed, useTemplateRef, type Component } from "vue";
 import {
   ResponsiveContextMenu,
-  ResponsiveContextMenuTrigger,
   ResponsiveMenuContent,
 } from "@/components/ui/responsive-menu";
-import { useLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
+import { createLibraryMenu, provideLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
 import { useLibrary } from "@/modules/library/composables/useLibrary";
 import type { LibraryItem } from "@/modules/library/types";
 import ArtistContext from "./contexts/ArtistContext.vue";
@@ -49,15 +42,12 @@ const props = withDefaults(defineProps<{
   folderActions: true,
 });
 
-const { activeItem, menuFlavor, isContextMenuOpen } = useLibraryMenu();
+const menu = useTemplateRef<InstanceType<typeof ResponsiveContextMenu>>("menu");
 
-const isOpen = ref(false);
-watch(isOpen, (open) => {
-  isContextMenuOpen.value = open;
-});
-watch(isContextMenuOpen, (open) => {
-  if (!open) isOpen.value = false;
-});
+// Only rows in the slot open the menu, through the handle they inject.
+const libraryMenu = createLibraryMenu(event => menu.value?.show(event));
+provideLibraryMenu(libraryMenu);
+const { activeItem, menuFlavor, isOpen } = libraryMenu;
 
 const { togglePin, createPlaylist, moveToFolder } = useLibrary();
 const { addToQueue, addCatalogToQueue, downloadCatalog } = useLibraryContextActions();
@@ -69,7 +59,8 @@ const contexts: Record<LibraryItem["type"], Component> = {
   liked: FavoriteContext,
   allMedia: FavoriteContext,
   folder: FolderContext,
-  // Never shown: a station row refuses the menu (canOpenLibraryMenu).
+  // Never shown: stations are catalog rows, and only albums and playlists
+  // get a catalog menu (useLibraryMenu).
   radio: FavoriteContext,
 };
 
@@ -128,24 +119,6 @@ const contextProps = computed(() => {
       };
   }
 });
-
-const canFillMenuFrom = (target: HTMLElement): boolean => {
-  const row = target.closest("[data-library-item]");
-  if (row) return !row.matches("[data-library-menu=\"none\"]");
-  return !!target.closest("[data-track-row]")?.closest("[data-track-menu-scope]");
-};
-
-function guardContextMenu(event: MouseEvent) {
-  if (canFillMenuFrom(event.target as HTMLElement)) return;
-  event.preventDefault();
-  event.stopPropagation();
-}
-
-const guardLongPress = (event: PointerEvent) => {
-  if (event.pointerType !== "touch" && event.pointerType !== "pen") return;
-  if (canFillMenuFrom(event.target as HTMLElement)) return;
-  event.preventDefault();
-};
 
 const handleTogglePin = () => {
   if (!activeItem.value || activeItem.value.type === "liked" || activeItem.value.type === "allMedia" || activeItem.value.type === "folder" || activeItem.value.type === "radio") return;

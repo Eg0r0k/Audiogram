@@ -98,7 +98,7 @@ describe("TrackExpanded in select mode", () => {
   it("ctrl-click plays on a page that did not opt into selection", async () => {
     const { container, emitted } = renderRow(false);
 
-    await fireEvent.click(container.querySelector("[data-track-row]")!, { ctrlKey: true });
+    await fireEvent.click(container.querySelector("[data-track-id]")!, { ctrlKey: true });
 
     expect(emitted().play).toHaveLength(1);
     expect(emitted().select).toBeUndefined();
@@ -107,7 +107,7 @@ describe("TrackExpanded in select mode", () => {
   it("ctrl-click selects on a selectable page", async () => {
     const { container, emitted } = renderRow(false, { selectable: true });
 
-    await fireEvent.click(container.querySelector("[data-track-row]")!, { ctrlKey: true });
+    await fireEvent.click(container.querySelector("[data-track-id]")!, { ctrlKey: true });
 
     expect(emitted().select).toHaveLength(1);
     expect(emitted().play).toBeUndefined();
@@ -141,7 +141,7 @@ describe("TrackExpanded in select mode", () => {
 
   it("marks joined corners so adjacent selected rows merge", () => {
     const { container } = renderRow(true, { isSelected: true, joinTop: true, joinBottom: false });
-    const row = container.querySelector("[data-track-row]")!;
+    const row = container.querySelector("[data-track-id]")!;
 
     expect(row.hasAttribute("data-join-top")).toBe(true);
     expect(row.hasAttribute("data-join-bottom")).toBe(false);

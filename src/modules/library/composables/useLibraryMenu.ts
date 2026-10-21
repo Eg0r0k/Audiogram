@@ -1,4 +1,4 @@
-import { ref, watch } from "vue";
+import { inject, provide, ref, shallowRef, type InjectionKey, type Ref, type ShallowRef } from "vue";
 import type { LibraryItem } from "@/modules/library/types";
 import { getAlbumLibraryRow } from "@/queries/album.queries";
 import { getArtistLibraryRow } from "@/queries/artist.queries";
@@ -13,33 +13,35 @@ import type { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
  */
 export type LibraryMenuFlavor = "library" | "catalog";
 
-const activeItem = ref<LibraryItem | null>(null);
-const menuFlavor = ref<LibraryMenuFlavor>("library");
-const isContextMenuOpen = ref(false);
-let resetTimer: ReturnType<typeof setTimeout> | null = null;
-
-function cancelPendingReset() {
-  if (!resetTimer) return;
-  clearTimeout(resetTimer);
-  resetTimer = null;
+/** What a row gets from the LibraryContextMenu it sits in. */
+export interface LibraryMenuHandle {
+  /**
+   * Asks for the menu on `event`. The event is taken at once (default
+   * prevented, propagation stopped) even when the row turns out to have no
+   * menu; the open itself may follow a Dexie lookup.
+   */
+  openMenu: (item: LibraryItem, event: Event) => void;
+  /** Whether the menu is up for exactly this row. */
+  isMenuOpenFor: (item: Pick<LibraryItem, "id" | "type">) => boolean;
 }
 
-function scheduleReset() {
-  cancelPendingReset();
-  resetTimer = setTimeout(() => {
-    if (isContextMenuOpen.value) return;
-    activeItem.value = null;
-  }, 120);
+export interface LibraryMenu extends LibraryMenuHandle {
+  activeItem: ShallowRef<LibraryItem | null>;
+  menuFlavor: Ref<LibraryMenuFlavor>;
+  /** The shell's open state; the shell writes it through v-model, rows read it. */
+  isOpen: Ref<boolean>;
 }
 
-watch(isContextMenuOpen, (isOpen) => {
-  if (!isOpen) {
-    scheduleReset();
-  }
-});
+const LibraryMenuKey: InjectionKey<LibraryMenuHandle> = Symbol("LibraryMenu");
+
+/** A row outside any shell has no menu; its right-click stays the browser's. */
+const noMenu: LibraryMenuHandle = {
+  openMenu: () => undefined,
+  isMenuOpenFor: () => false,
+};
 
 /** Whether the item is backed by a real library row (shadow rows included). */
-async function hasLibraryRow(item: LibraryItem): Promise<boolean> {
+const hasLibraryRow = async (item: LibraryItem): Promise<boolean> => {
   switch (item.type) {
     case "album":
       return (await getAlbumLibraryRow(item.id as AlbumId)) !== null;
@@ -50,48 +52,40 @@ async function hasLibraryRow(item: LibraryItem): Promise<boolean> {
     default:
       return true;
   }
-}
+};
 
-/** Catalog rows with something actionable — the rest never open a menu. */
-function hasCatalogMenu(item: LibraryItem): boolean {
-  return item.type === "album" || item.type === "playlist";
-}
+/** Catalog rows with something actionable; the rest never open a menu. */
+const hasCatalogMenu = (item: LibraryItem): boolean => item.type === "album" || item.type === "playlist";
 
 /**
- * Whether right-clicking the row may open a menu at all. Rows must mark
- * themselves in the DOM with this: the reka trigger sits on an ancestor and
- * opens the shell AFTER the row's own handler runs, so closing the menu from
- * `openMenu` is too late — the event has to be stopped before it gets there
- * (see the capture-phase guard in LibraryContextMenu).
+ * One menu state per LibraryContextMenu. `show` places the shell's menu at
+ * the event once the row is known to have one.
  */
-export function canOpenLibraryMenu(item: LibraryItem): boolean {
-  if (!item.isCatalog) return true;
-  return hasCatalogMenu(item);
-}
+export const createLibraryMenu = (show: (event: Event) => void): LibraryMenu => {
+  const activeItem = shallowRef<LibraryItem | null>(null);
+  const menuFlavor = ref<LibraryMenuFlavor>("library");
+  const isOpen = ref(false);
 
-export function useLibraryMenu() {
-  const show = (item: LibraryItem, flavor: LibraryMenuFlavor) => {
-    cancelPendingReset();
+  const open = (item: LibraryItem, flavor: LibraryMenuFlavor, event: Event) => {
     activeItem.value = item;
     menuFlavor.value = flavor;
-    isContextMenuOpen.value = true;
+    show(event);
   };
 
-  /** The shell opens itself on right-click; with no items it must close. */
-  const closeEmpty = () => {
-    isContextMenuOpen.value = false;
-  };
+  const openMenu = (item: LibraryItem, event: Event) => {
+    // Taken before deciding: the shadow-row check below is async, and by then
+    // the event has reached the page's track menu, which would open on it.
+    event.preventDefault();
+    event.stopPropagation();
 
-  const openMenu = (item: LibraryItem) => {
     if (item.isCatalog) {
       // Live catalog row: no DB lookup to make, only source actions apply.
-      if (hasCatalogMenu(item)) show(item, "catalog");
-      else closeEmpty();
+      if (hasCatalogMenu(item)) open(item, "catalog", event);
       return;
     }
 
     if (sourceKindOf(item.id) === "local") {
-      show(item, "library");
+      open(item, "library", event);
       return;
     }
 
@@ -99,27 +93,27 @@ export function useLibraryMenu() {
     // SHADOW row: a library entity with the full action set (M5).
     hasLibraryRow(item).then(
       (exists) => {
-        if (exists) show(item, "library");
-        else closeEmpty();
+        if (exists) open(item, "library", event);
       },
       (error: unknown) => {
-        // The menu closes — say why, otherwise a broken read looks exactly
+        // Nothing opens; say why, otherwise a broken read looks exactly
         // like "this row is a catalog row".
         getLogger().error(`[Library] Menu lookup failed for ${item.type} ${item.id}: ${String(error)}`);
-        closeEmpty();
       },
     );
   };
 
-  const closeMenu = () => {
-    isContextMenuOpen.value = false;
-  };
+  // The active row survives a close on purpose: the content must stay
+  // rendered through the exit animation, and every open overwrites it.
+  const isMenuOpenFor = (item: Pick<LibraryItem, "id" | "type">): boolean =>
+    isOpen.value && activeItem.value?.id === item.id && activeItem.value.type === item.type;
 
-  return {
-    activeItem,
-    menuFlavor,
-    isContextMenuOpen,
-    openMenu,
-    closeMenu,
-  };
-}
+  return { activeItem, menuFlavor, isOpen, openMenu, isMenuOpenFor };
+};
+
+export const provideLibraryMenu = (menu: LibraryMenuHandle): void => {
+  provide(LibraryMenuKey, menu);
+};
+
+/** The enclosing shell's menu, or an inert one outside any shell. */
+export const useLibraryMenu = (): LibraryMenuHandle => inject(LibraryMenuKey, noMenu);

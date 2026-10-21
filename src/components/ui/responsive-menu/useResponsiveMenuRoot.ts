@@ -1,6 +1,6 @@
-import { computed, ref, shallowRef, toValue, watch, type MaybeRefOrGetter } from "vue";
+import { computed, nextTick, ref, shallowRef, toValue, watch, type MaybeRefOrGetter } from "vue";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
-import { provideResponsiveMenu, type ResponsiveMenuKind } from "./context";
+import { provideResponsiveMenu, type PopperMenuHandle, type ResponsiveMenuKind } from "./context";
 import { popperParts, sheetParts } from "./sets";
 
 interface RootOptions {
@@ -15,10 +15,11 @@ interface RootOptions {
  * Shared root logic: the popper on desktop widths, a bottom sheet on mobile,
  * with one open state either way so consumers can stay uncontrolled.
  *
- * A popper context menu opens itself at the pointer, so its consumer can only
- * close it: consumers set their own open flag from the row's contextmenu
- * handler, before the menu sees the event, and would otherwise make Menu take
- * the right-click for one on an already open menu.
+ * A popper context menu under a trigger opens itself at the pointer, so its
+ * consumer can only close it: consumers set their own open flag from the
+ * row's contextmenu handler, before the menu sees the event, and would
+ * otherwise make Menu take the right-click for one on an already open menu.
+ * Without a trigger nothing self-opens and the consumer calls `show`.
  */
 export const useResponsiveMenuRoot = (options: RootOptions) => {
   const { isMobileLayout } = useDeviceLayout();
@@ -48,6 +49,31 @@ export const useResponsiveMenuRoot = (options: RootOptions) => {
     });
   };
 
+  const popper = shallowRef<PopperMenuHandle | null>(null);
+
+  /**
+   * Opens the menu for an event a row reported and takes the event: default
+   * and propagation stop here, so neither the browser nor an enclosing menu
+   * acts on it. An open popper is re-placed at the new event.
+   */
+  const show = (event?: Event) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (mode.value === "sheet") {
+      setOpen(true);
+      return;
+    }
+    const surface = popper.value;
+    if (!surface) return;
+    if (!internalOpen.value) {
+      surface.show(event);
+      return;
+    }
+    // The anchor is read on open only, so a move is a close and a reopen.
+    surface.hide();
+    nextTick(() => surface.show(event)).catch(() => {});
+  };
+
   const parts = computed(() => (mode.value === "sheet" ? sheetParts : popperParts));
 
   provideResponsiveMenu({
@@ -59,7 +85,8 @@ export const useResponsiveMenuRoot = (options: RootOptions) => {
     modal: computed(() => toValue(options.modal)),
     trigger: shallowRef(null),
     triggerDisabled: shallowRef(false),
+    popper,
   });
 
-  return { mode, isOpen, setOpen };
+  return { mode, isOpen, setOpen, show };
 };

@@ -24,7 +24,6 @@
             :track="entry.track"
             :index="index + 1"
             @play="handlePlayTrack(index)"
-            @contextmenu="handleContextMenu(entry.track, index)"
           />
         </div>
       </TrackContextMenu>
@@ -40,7 +39,6 @@ import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import { useTopTracks } from "@/composables/useStatsQueries";
-import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { Track } from "@/modules/player/types";
@@ -53,7 +51,6 @@ const { topTracks, isLoading } = useTopTracks(TOP_LIMIT, () => props.since);
 
 const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
-const { openMenu } = useTrackMenu();
 
 async function handlePlayTrack(index: number) {
   const tracks = topTracks.value.map(entry => entry.track);
@@ -66,9 +63,5 @@ async function handlePlayTrack(index: number) {
   }
 
   await queueStore.setQueue(tracks, index, { type: "manual" });
-}
-
-function handleContextMenu(track: Track, index: number) {
-  openMenu(track, index);
 }
 </script>

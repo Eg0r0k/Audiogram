@@ -1,7 +1,7 @@
 <!-- eslint-disable vue/require-default-prop -->
 <script setup lang="ts">
 import type { HTMLAttributes } from "vue";
-import { computed } from "vue";
+import { computed, onBeforeUnmount, useTemplateRef, watch } from "vue";
 import { DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { DrawerMenu } from "@/components/ui/drawer-menu";
 import { Menu, type MenuPosition } from "@/components/ui/menu";
@@ -23,6 +23,14 @@ const menu = useResponsiveMenu();
 const open = computed({
   get: () => menu.isOpen.value,
   set: menu.setOpen,
+});
+
+const popper = useTemplateRef<InstanceType<typeof Menu>>("popper");
+watch(popper, (surface) => {
+  menu.popper.value = surface ?? null;
+}, { immediate: true, flush: "sync" });
+onBeforeUnmount(() => {
+  menu.popper.value = null;
 });
 
 const horizontal = { start: "start", center: "middle", end: "end" } as const;
@@ -54,6 +62,7 @@ const placement = computed((): { anchor: MenuPosition; self: MenuPosition; offse
 <template>
   <Menu
     v-if="menu.mode.value === 'popper'"
+    ref="popper"
     v-model="open"
     :target="menu.trigger.value ?? false"
     :context-menu="menu.kind === 'context'"

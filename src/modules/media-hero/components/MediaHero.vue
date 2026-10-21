@@ -4,10 +4,7 @@
     :is-playlist-owner="isPlaylist(data) ? data.isOwner : undefined"
     :disabled="!hasMenuItems"
   >
-    <div
-      class="relative @container"
-      data-media-context
-    >
+    <div class="relative @container">
       <div
         class="media-hero-gradient absolute inset-0 transition-opacity duration-400 ease-standard pointer-events-none"
         :class="colorReady ? 'opacity-100' : 'opacity-0'"

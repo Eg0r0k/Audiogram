@@ -72,7 +72,6 @@
                 :is-active="currentTrackId === item.id"
                 menu-target="playlist"
                 @play="handlePlayTrack(index)"
-                @contextmenu="handleContextMenu(item, index)"
               />
             </div>
           </template>
@@ -126,8 +125,6 @@ import { useEditPlaylistDialog } from "@/modules/playlist/composables/useEditPla
 import { Spinner } from "@/components/ui/spinner";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
-import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
 import { getLogger } from "@/lib/logger";
@@ -135,7 +132,6 @@ import { getLogger } from "@/lib/logger";
 const { t } = useI18n();
 const playerStore = usePlayerStore();
 const rightPanelStore = useRightPanelStore();
-const { openMenu } = useTrackMenu();
 const route = useRoute();
 const { isMobileLayout } = useDeviceLayout();
 const sortKey = ref<TrackSortKey | null>(null);
@@ -201,10 +197,6 @@ function handleLoadMore() {
   fetchNextPage().catch((err: unknown) => {
     getLogger().warn(`[PlaylistPage] Loading the next playlist tracks page failed: ${String(err)}`);
   });
-}
-
-function handleContextMenu(track: Track, index: number) {
-  openMenu(track, index, { target: "playlist" });
 }
 
 const loadErrorText = computed(() => {

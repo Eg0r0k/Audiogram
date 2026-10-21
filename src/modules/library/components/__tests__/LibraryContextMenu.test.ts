@@ -1,22 +1,29 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/vue";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mount } from "@vue/test-utils";
 import { createPinia } from "pinia";
 import { createI18n } from "vue-i18n";
 import { VueQueryPlugin } from "@tanstack/vue-query";
+import { defineComponent, h, nextTick, type PropType } from "vue";
 import type { LibraryItem } from "@/modules/library/types";
-import { canOpenLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
+import { useLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
 import LibraryContextMenu from "../LibraryContextMenu.vue";
 
 //
-// The reka trigger opens the shell on right-click on its own; when the menu
-// cannot be filled (off-row, or a catalog artist that has no actions) the
-// event has to be stopped in the capture phase, or an empty popup shows up.
-// The guard lives in the template on purpose — bound through the composable
-// it silently never attached, which is what left the popup empty.
+// The shell opens only when a row inside it asks: the row hands over its item
+// and the right-click, the shell decides and places the popper. A row with
+// nothing to show never opens anything and still swallows the click, so no
+// enclosing menu (the page's track menu) opens on it instead.
 //
 
+vi.mock("@/composables/useDeviceLayout", () => ({
+  useDeviceLayout: () => ({
+    isMobileLayout: { value: false },
+    isDesktopLayout: { value: true },
+    layoutType: { value: "desktop" },
+  }),
+}));
 vi.mock("@/modules/library/composables/useLibrary", () => ({
-  useLibrary: () => ({ togglePin: vi.fn(), createPlaylist: vi.fn() }),
+  useLibrary: () => ({ togglePin: vi.fn(), createPlaylist: vi.fn(), moveToFolder: vi.fn() }),
 }));
 vi.mock("@/modules/library/composables/useLibraryContextActions", () => ({
   useLibraryContextActions: () => ({
@@ -27,7 +34,73 @@ vi.mock("@/modules/library/composables/useLibraryContextActions", () => ({
 }));
 vi.mock("@/lib/environment/userAgent", () => ({ IS_TAURI: true, IS_MOBILE: false, IS_WINDOWS: false, IS_CHROMIUM: true, IS_SAFARI: false, IS_MOBILE_SAFARI: false }));
 
-function mountMenu() {
+const popper = vi.hoisted(() => ({ show: vi.fn() }));
+vi.mock("@/components/ui/menu", async (importOriginal) => {
+  const { defineComponent: define } = await import("vue");
+  // The real parts need a reka MenuRoot the stubbed surface does not provide.
+  const Part = define({ inheritAttrs: false, template: "<div><slot /></div>" });
+  return {
+    ...(await importOriginal<typeof import("@/components/ui/menu")>()),
+    MenuItem: Part,
+    MenuSeparator: Part,
+    MenuLabel: Part,
+    MenuGroup: Part,
+    MenuSub: Part,
+    MenuSubTrigger: Part,
+    MenuSubContent: Part,
+    MenuRadioGroup: Part,
+    MenuRadioItem: Part,
+    MenuCheckboxItem: Part,
+    Menu: define({
+      name: "MenuStub",
+      props: { modelValue: { type: Boolean, default: false } },
+      emits: ["update:modelValue"],
+      setup(_props, { emit, expose }) {
+        expose({
+          show: (event?: Event) => {
+            popper.show(event);
+            emit("update:modelValue", true);
+          },
+          hide: () => emit("update:modelValue", false),
+        });
+      },
+      template: "<div data-menu :data-open=\"modelValue\"><slot /></div>",
+    }),
+  };
+});
+
+const Row = defineComponent({
+  props: {
+    item: { type: Object as PropType<LibraryItem>, required: true },
+    testid: { type: String, required: true },
+  },
+  setup() {
+    return { menu: useLibraryMenu() };
+  },
+  template: `
+    <div
+      :data-testid="testid"
+      :data-menu-open="menu.isMenuOpenFor(item) || undefined"
+      @contextmenu="menu.openMenu(item, $event)"
+    >row</div>
+  `,
+});
+
+const item = (overrides: Partial<LibraryItem>): LibraryItem => ({
+  id: "a1",
+  type: "album",
+  title: "Row",
+  isPinned: false,
+  addedAt: 0,
+  to: "/",
+  rounded: false,
+  ...overrides,
+});
+
+const album = item({ id: "a1", type: "album" });
+const catalogArtist = item({ id: "nd:artist1", type: "artist", isCatalog: true });
+
+const mountShell = () => {
   const i18n = createI18n({
     legacy: false,
     locale: "en",
@@ -36,86 +109,81 @@ function mountMenu() {
     fallbackWarn: false,
   });
 
-  render(LibraryContextMenu, {
-    global: {
-      plugins: [createPinia(), VueQueryPlugin, i18n],
-      stubs: { ContextMenuCloseBridge: true },
-    },
+  return mount(LibraryContextMenu, {
+    global: { plugins: [createPinia(), VueQueryPlugin, i18n] },
     slots: {
-      default: "<div><div data-library-item data-testid=\"row\">row</div>"
-        + "<div data-library-item data-library-menu=\"none\" data-testid=\"blocked\">blocked</div>"
-        + "<div data-testid=\"offrow\">off</div></div>",
+      default: () => [
+        h(Row, { item: album, testid: "album" }),
+        h(Row, { item: catalogArtist, testid: "catalog-artist" }),
+      ],
     },
   });
-}
+};
 
-function rightClick(el: HTMLElement) {
+const rightClick = (el: Element) => {
   const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
-  el.dispatchEvent(event);
-  return event;
-}
-
-// reka's touch long-press timer starts from pointerdown and never sees the
-// contextmenu guard — the guard must cancel the pointerdown itself. jsdom has
-// no PointerEvent constructor, so fake the pointerType on a MouseEvent.
-const pressWith = (el: HTMLElement, pointerType: string) => {
-  const event = new MouseEvent("pointerdown", { bubbles: true, cancelable: true });
-  Object.defineProperty(event, "pointerType", { value: pointerType });
   el.dispatchEvent(event);
   return event;
 };
 
-function item(type: LibraryItem["type"], isCatalog: boolean): LibraryItem {
-  return {
-    id: `nd:${type}1`,
-    type,
-    title: "Catalog row",
-    isPinned: false,
-    isCatalog,
-    addedAt: 0,
-    to: "/",
-    rounded: false,
-  };
-}
-
 describe("LibraryContextMenu", () => {
-  it("stops right-clicks that cannot fill the menu", () => {
-    mountMenu();
-
-    expect(rightClick(screen.getByTestId("blocked")).defaultPrevented).toBe(true);
-    expect(rightClick(screen.getByTestId("offrow")).defaultPrevented).toBe(true);
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("lets a row with a menu through", () => {
-    mountMenu();
+  it("opens the popper at the row's right-click and marks the row", async () => {
+    const wrapper = mountShell();
+    const row = wrapper.get("[data-testid=album]");
 
-    expect(rightClick(screen.getByTestId("row")).defaultPrevented).toBe(false);
+    const event = rightClick(row.element);
+    await nextTick();
+
+    expect(popper.show).toHaveBeenCalledWith(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(row.attributes("data-menu-open")).toBe("true");
   });
 
-  it("cancels touch long-presses that cannot fill the menu", () => {
-    mountMenu();
+  it("renders the actions of the row that opened it", async () => {
+    const wrapper = mountShell();
 
-    expect(pressWith(screen.getByTestId("offrow"), "touch").defaultPrevented).toBe(true);
-    expect(pressWith(screen.getByTestId("blocked"), "touch").defaultPrevented).toBe(true);
-    expect(pressWith(screen.getByTestId("blocked"), "pen").defaultPrevented).toBe(true);
+    rightClick(wrapper.get("[data-testid=album]").element);
+    await nextTick();
+
+    expect(wrapper.get("[data-menu]").text()).toContain("track.contextMenu.addToQueue");
   });
 
-  it("keeps touch long-press alive on rows and never touches mouse presses", () => {
-    mountMenu();
+  it("swallows the right-click of a row with nothing to show", async () => {
+    const wrapper = mountShell();
 
-    expect(pressWith(screen.getByTestId("row"), "touch").defaultPrevented).toBe(false);
-    expect(pressWith(screen.getByTestId("offrow"), "mouse").defaultPrevented).toBe(false);
-  });
-});
+    const event = rightClick(wrapper.get("[data-testid=catalog-artist]").element);
+    await nextTick();
 
-describe("canOpenLibraryMenu", () => {
-  it("refuses catalog artists and allows catalog albums/playlists", () => {
-    expect(canOpenLibraryMenu(item("artist", true))).toBe(false);
-    expect(canOpenLibraryMenu(item("album", true))).toBe(true);
-    expect(canOpenLibraryMenu(item("playlist", true))).toBe(true);
+    expect(popper.show).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+    expect(wrapper.get("[data-testid=catalog-artist]").attributes("data-menu-open")).toBeUndefined();
   });
 
-  it("allows every library row", () => {
-    expect(canOpenLibraryMenu(item("artist", false))).toBe(true);
+  it("unmarks the row once the popper closes", async () => {
+    const wrapper = mountShell();
+    const row = wrapper.get("[data-testid=album]");
+    rightClick(row.element);
+    await nextTick();
+
+    wrapper.findComponent({ name: "MenuStub" }).vm.$emit("update:modelValue", false);
+    // A popper close reaches the consumer one macrotask later (see useResponsiveMenuRoot).
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await nextTick();
+
+    expect(row.attributes("data-menu-open")).toBeUndefined();
+  });
+
+  it("ignores a right-click that no row reported", async () => {
+    const wrapper = mountShell();
+
+    const event = rightClick(wrapper.element);
+    await nextTick();
+
+    expect(popper.show).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
   });
 });

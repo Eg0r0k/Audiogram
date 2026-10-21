@@ -63,7 +63,6 @@
                 :is-active="currentTrackId === item.id"
                 menu-target="liked"
                 @play="playTrack(index)"
-                @contextmenu="handleContextMenu(item, index)"
               />
             </div>
           </template>
@@ -105,8 +104,6 @@ import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/Trac
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
-import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
 import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback";
@@ -115,7 +112,6 @@ import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 
 const playerStore = usePlayerStore();
 const rightPanelStore = useRightPanelStore();
-const { openMenu } = useTrackMenu();
 const route = useRoute();
 const { isMobileLayout } = useDeviceLayout();
 const sortKey = ref<TrackSortKey | null>(null);
@@ -172,10 +168,6 @@ function handleLoadMore() {
   fetchNextPage().catch((error: unknown) => {
     getLogger().warn(`[FavoritePage] Loading the next liked tracks page failed: ${String(error)}`);
   });
-}
-
-function handleContextMenu(track: Track, index: number) {
-  openMenu(track, index, { target: "liked" });
 }
 
 const scrollableRef = useTemplateRef("scrollableRef");

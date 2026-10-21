@@ -50,7 +50,7 @@ const renderRow = (track: Track) =>
     },
   });
 
-const rowOf = () => screen.getByText("Locked Song").closest("[data-track-row]") as HTMLElement;
+const rowOf = () => screen.getByText("Locked Song").closest("[role=button]") as HTMLElement;
 
 describe("TrackRow — catalog availability", () => {
   it("renders an unavailable row disabled and swallows the click", async () => {

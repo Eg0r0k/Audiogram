@@ -50,15 +50,13 @@ const libraryItem = computed<LibraryItem>(() => ({
 <template>
   <template v-if="item.type === 'track' && track">
     <TrackContextMenu context="search-top">
-      <div data-track-menu-scope>
-        <TrackRow
-          :track="track"
-          :cover-url="item.coverPath"
-          hide-index
-          menu-target="search-top"
-          @play="emit('click')"
-        />
-      </div>
+      <TrackRow
+        :track="track"
+        :cover-url="item.coverPath"
+        hide-index
+        menu-target="search-top"
+        @play="emit('click')"
+      />
     </TrackContextMenu>
     <TrackDropdown context="search-top" />
   </template>
