@@ -410,7 +410,8 @@ mod tests {
         };
         assert_eq!(ym(DownloadError::Cancelled), "CANCELLED");
         assert_eq!(ym(DownloadError::Network("m".into())), "NETWORK");
-        assert_eq!(ym(DownloadError::Upstream(403)), "AUTH");
+        assert_eq!(ym(DownloadError::Upstream(401)), "AUTH");
+        assert_eq!(ym(DownloadError::Upstream(403)), "FORBIDDEN");
         assert_eq!(ym(DownloadError::Upstream(404)), "NOT_FOUND");
         assert_eq!(ym(DownloadError::Upstream(429)), "RATE_LIMITED");
         assert_eq!(ym(DownloadError::Upstream(502)), "UNAVAILABLE");

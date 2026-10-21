@@ -8,7 +8,7 @@ use tauri::{AppHandle, Manager, Runtime};
 
 use super::auth::{drop_session, expires_at_from, persist_session, refresh_access_token};
 use super::state::{YmSession, YmState, CLIENT_HEADER_NAME, CLIENT_HEADER_VALUE};
-use crate::app_error::{kind_for_status, AppError, SourceErrorKind};
+use crate::app_error::AppError;
 use crate::remote_download::DownloadError;
 
 /// Failure class; maps one-to-one onto the envelope's `SourceErrorKind`.
@@ -66,18 +66,25 @@ impl YmError {
     pub fn from_status(status: u16, body: &str, retry_after_ms: Option<u64>) -> Self {
         let message =
             api_error_message(body).unwrap_or_else(|| format!("upstream status {status}"));
-        let kind = match status {
-            401 => YmErrorKind::Auth,
-            403 => YmErrorKind::Forbidden,
-            404 => YmErrorKind::NotFound,
-            429 => YmErrorKind::RateLimited,
-            500..=599 => YmErrorKind::Unavailable,
-            _ => YmErrorKind::Unknown,
-        };
         Self {
-            kind,
+            kind: YmErrorKind::from_status(status),
             message,
             retry_after_ms: if status == 429 { retry_after_ms } else { None },
+        }
+    }
+}
+
+impl YmErrorKind {
+    /// Yandex answers 403 to an account without the right (no Plus), so it
+    /// is FORBIDDEN here, unlike the shared `kind_for_status`.
+    fn from_status(status: u16) -> Self {
+        match status {
+            401 => Self::Auth,
+            403 => Self::Forbidden,
+            404 => Self::NotFound,
+            429 => Self::RateLimited,
+            500..=599 => Self::Unavailable,
+            _ => Self::Unknown,
         }
     }
 }
@@ -100,13 +107,7 @@ impl From<DownloadError> for YmError {
         let kind = match &error {
             DownloadError::Cancelled => YmErrorKind::Cancelled,
             DownloadError::Network(_) => YmErrorKind::Network,
-            DownloadError::Upstream(status) => match kind_for_status(*status) {
-                SourceErrorKind::Auth => YmErrorKind::Auth,
-                SourceErrorKind::NotFound => YmErrorKind::NotFound,
-                SourceErrorKind::RateLimited => YmErrorKind::RateLimited,
-                SourceErrorKind::Unavailable => YmErrorKind::Unavailable,
-                _ => YmErrorKind::Unknown,
-            },
+            DownloadError::Upstream(status) => YmErrorKind::from_status(*status),
             DownloadError::Io(_) | DownloadError::Other(_) => YmErrorKind::Unknown,
         };
         Self::new(kind, error.to_string())
@@ -737,5 +738,29 @@ mod tests {
         let plain = serde_json::to_value(AppError::from(YmError::auth("nope"))).expect("json");
         assert_eq!(plain["kind"], "AUTH");
         assert!(plain.get("retryAfterMs").is_none());
+    }
+
+    #[test]
+    fn a_forbidden_download_keeps_the_forbidden_kind() {
+        let error = YmError::from(DownloadError::Upstream(403));
+        assert_eq!(error.kind, YmErrorKind::Forbidden);
+        assert_eq!(error.message, "upstream status 403");
+
+        let json = serde_json::to_value(AppError::from(error)).expect("json");
+        assert_eq!(json["kind"], "FORBIDDEN");
+
+        for (status, kind) in [
+            (401, YmErrorKind::Auth),
+            (404, YmErrorKind::NotFound),
+            (429, YmErrorKind::RateLimited),
+            (503, YmErrorKind::Unavailable),
+            (418, YmErrorKind::Unknown),
+        ] {
+            assert_eq!(
+                YmError::from(DownloadError::Upstream(status)).kind,
+                kind,
+                "status {status}"
+            );
+        }
     }
 }
