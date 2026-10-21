@@ -48,6 +48,7 @@ import { getLogger } from "@/lib/logger";
 import type { SourceKind } from "@/types/track-ref";
 import type { SourceError } from "../types";
 import { useSourceHealth, checkSource } from "../composables/useSourceHealth";
+import { formatError } from "@/lib/errors";
 
 //
 // A source that cannot answer says so once, here, instead of leaving every
@@ -96,12 +97,12 @@ const retry = () => {
   // threw outright leaves nothing behind, so that is what gets logged.
   if (props.kind) {
     checkSource(props.kind)
-      .catch(error => getLogger().error(`[Sources] Re-probing ${String(props.kind)} failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[Sources] Re-probing ${String(props.kind)} failed: ${formatError(error)}`));
   }
 };
 
 const openSettings = () => {
   router.push({ name: ROUTE_NAMES.SETTINGS_SOURCES })
-    .catch(error => getLogger().error(`[Sources] Navigation to the sources settings failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[Sources] Navigation to the sources settings failed: ${formatError(error)}`));
 };
 </script>

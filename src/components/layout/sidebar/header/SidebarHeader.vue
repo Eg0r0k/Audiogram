@@ -262,6 +262,7 @@ import { sourceUI } from "@/modules/sources/lib/source-ui";
 import { useDownloadsStore } from "@/modules/downloads/store/downloads.store";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 defineProps<{ compact?: boolean }>();
 
@@ -336,22 +337,22 @@ const themeIcon = computed(() => (theme.isDark.value ? IconSun : IconMoon));
 
 function handleThemeToggle(event: MouseEvent) {
   theme.toggleTheme(event)
-    .catch(error => getLogger().error(`[SidebarHeader] Theme toggle failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[SidebarHeader] Theme toggle failed: ${formatError(error)}`));
 }
 
 function goFavorite() {
   router.push(routeLocation.liked())
-    .catch(error => getLogger().error(`[SidebarHeader] Navigation to liked failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[SidebarHeader] Navigation to liked failed: ${formatError(error)}`));
 }
 
 function goSettings() {
   router.push(routeLocation.settings())
-    .catch(error => getLogger().error(`[SidebarHeader] Navigation to settings failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[SidebarHeader] Navigation to settings failed: ${formatError(error)}`));
 }
 
 function goStats() {
   router.push(routeLocation.settingsStats())
-    .catch(error => getLogger().error(`[SidebarHeader] Navigation to stats failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[SidebarHeader] Navigation to stats failed: ${formatError(error)}`));
 }
 
 function handleClose() {

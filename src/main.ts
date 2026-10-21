@@ -37,6 +37,7 @@ import { registerAutoplaySource } from "@/modules/queue/lib/queue-autoplay";
 import { getRecommendations } from "@/modules/recommendations/service/recommender.service";
 import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import { invalidateWeightsCache } from "@/modules/recommendations/service/recommender-model.service";
+import { formatError } from "@/lib/errors";
 
 await initLogging();
 
@@ -51,7 +52,7 @@ initFont();
 // No-op outside Tauri. The Rust server binds before the webview, so this
 // cannot race server readiness.
 await initMediaServerBase().catch(error =>
-  getLogger().error(`[MediaServer] base init failed: ${String(error)}`),
+  getLogger().error(`[MediaServer] base init failed: ${formatError(error)}`),
 );
 
 // Open IndexedDB once, up front, so an upgrade/quota failure is classified
@@ -101,7 +102,7 @@ initPlayerLifecycle();
 // are wired here.
 statsService.onChange(() => {
   invalidateStatsQueries(queryClient).catch(error =>
-    getLogger().error(`[Stats] Refreshing stats queries failed: ${String(error)}`),
+    getLogger().error(`[Stats] Refreshing stats queries failed: ${formatError(error)}`),
   );
 });
 onAllDataCleared(resetSearchIndex);
@@ -113,19 +114,19 @@ onAllDataCleared(invalidateWeightsCache);
 // Download queue: requeue interrupted jobs, sweep temp orphans, resume.
 // No-op outside Tauri. Failures must not block app startup.
 initDownloadManager().catch(error =>
-  getLogger().error(`[Downloads] Init failed: ${String(error)}`),
+  getLogger().error(`[Downloads] Init failed: ${formatError(error)}`),
 );
 
 // Post-open half of the v16 upgrade: pre-v16 offline copies become local
 // tracks (no-op once the table is empty) — see migrate-offline-copies.ts.
 migrateOfflineCopies().catch(error =>
-  getLogger().error(`[Migration] download-is-import failed: ${String(error)}`),
+  getLogger().error(`[Migration] download-is-import failed: ${formatError(error)}`),
 );
 
 // One-off per launch: drop album/artist rows that lost their last track
 // before the deletion cascade existed. Failures must not block startup.
 sweepOrphanedEntities().catch(error =>
-  getLogger().error(`[LibraryGC] Sweep failed: ${String(error)}`),
+  getLogger().error(`[LibraryGC] Sweep failed: ${formatError(error)}`),
 );
 
 // Re-apply the persisted zoom; previously it only kicked in once the user
@@ -149,4 +150,4 @@ router.isReady()
   .then(() => {
     requestAnimationFrame(() => requestAnimationFrame(hideAndroidSplash));
   })
-  .catch(error => getLogger().error(`[Boot] Hiding the splash screen failed: ${String(error)}`));
+  .catch(error => getLogger().error(`[Boot] Hiding the splash screen failed: ${formatError(error)}`));

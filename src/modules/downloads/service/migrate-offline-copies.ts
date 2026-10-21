@@ -4,6 +4,7 @@ import { hasNativeSupport } from "@/db/storage/IFileStorage";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { getLogger } from "@/lib/logger";
 import { importDownloadedFile } from "./finalize";
+import { formatError } from "@/lib/errors";
 
 //
 // Post-open half of the v16 upgrade (spec §5): the files behind the legacy
@@ -40,7 +41,7 @@ const importCopies = async (): Promise<boolean> => {
       }
       catch (error) {
         allHandled = false;
-        getLogger().warn(`[Migration] Importing the offline copy of ${copy.trackId} failed: ${String(error)}`);
+        getLogger().warn(`[Migration] Importing the offline copy of ${copy.trackId} failed: ${formatError(error)}`);
       }
     }
     else {

@@ -15,7 +15,7 @@
 // staging under a guessed version was silently lossy. Resolving it after
 // reload from __APP_VERSION__ is always correct.
 
-import { errorMessage } from "@/lib/errors";
+import { errorMessage, formatError } from "@/lib/errors";
 import { watch, onUnmounted, toValue, type MaybeRefOrGetter } from "vue";
 import { useRegisterSW } from "virtual:pwa-register/vue";
 import { useQueryClient } from "@tanstack/vue-query";
@@ -50,7 +50,7 @@ export const usePwaUpdate = (
   // interval, so the interval callback stays synchronous.
   const poll = () => {
     registration?.update()
-      .catch(error => getLogger().warn(`[Update] Service worker poll failed: ${String(error)}`));
+      .catch(error => getLogger().warn(`[Update] Service worker poll failed: ${formatError(error)}`));
   };
 
   const startPolling = () => {

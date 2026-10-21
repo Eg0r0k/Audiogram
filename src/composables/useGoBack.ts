@@ -2,6 +2,7 @@ import { useRouter } from "vue-router";
 import type { RouteLocationRaw } from "vue-router";
 import { routeLocation } from "@/app/router/route-locations";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 /**
  * Back button for a page that can be the first one opened (deep link,
@@ -18,7 +19,7 @@ export const useGoBack = (fallback: RouteLocationRaw = routeLocation.home()) => 
       router.back();
     }
     else {
-      router.push(fallback).catch(error => getLogger().error(`[useGoBack] Fallback navigation failed: ${String(error)}`));
+      router.push(fallback).catch(error => getLogger().error(`[useGoBack] Fallback navigation failed: ${formatError(error)}`));
     }
   };
 };

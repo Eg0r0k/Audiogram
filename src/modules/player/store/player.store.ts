@@ -36,6 +36,7 @@ import {
   fromPlayerState,
   assertPlaybackInvariant,
 } from "../lib/playback-status";
+import { formatError } from "@/lib/errors";
 
 export const usePlayerStore = defineStore("player", () => {
   const engine = shallowRef<PlaybackEngine | null>(null);
@@ -217,7 +218,7 @@ export const usePlayerStore = defineStore("player", () => {
     // source that never throttles.
     if (engine.value) listenSession.sample(engine.value.currentTime);
     statsService.stopListening(listenSession.seconds(), options)
-      .catch(err => getLogger().error(`[Stats] ${String(err)}`));
+      .catch(err => getLogger().error(`[Stats] ${formatError(err)}`));
     const ended = _listenOpenFor;
     if (ended) {
       _listenOpenFor = null;
@@ -516,7 +517,7 @@ export const usePlayerStore = defineStore("player", () => {
       await loadAndPlay(track, { resumeAt: currentTime.value });
     }
     catch (err) {
-      getLogger().error(`[Player] Cannot start "${track.title}": ${String(err)}`);
+      getLogger().error(`[Player] Cannot start "${track.title}": ${formatError(err)}`);
     }
   };
 

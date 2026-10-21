@@ -1,6 +1,7 @@
 import { onUnmounted, toValue, watch, type MaybeRefOrGetter } from "vue";
 import { useUpdateStore } from "../store/update.store";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 const STARTUP_DELAY_MS = 5000;
 const DEFAULT_INTERVAL_MS = 4 * 60 * 60 * 1000;
@@ -37,7 +38,7 @@ export const useUpdateScheduler = (options: UpdateSchedulerOptions = {}) => {
   };
 
   const runCheck = () => {
-    store.check().catch((error: unknown) => getLogger().error(`[Update] Scheduled check failed: ${String(error)}`));
+    store.check().catch((error: unknown) => getLogger().error(`[Update] Scheduled check failed: ${formatError(error)}`));
   };
 
   const start = () => {

@@ -25,6 +25,7 @@ import { sourceArtistToArtistData, sourceCoverUrl, sourceTrackToDisplay } from "
 import type { SourceAlbumDTO } from "@/modules/sources/types";
 import type { AlbumEntity } from "@/db/entities";
 import type { LibraryItem } from "@/modules/library/types";
+import { formatError } from "@/lib/errors";
 
 export type { ArtistChanges } from "@/queries/artist.queries";
 
@@ -193,7 +194,7 @@ export function useArtistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Re
       deleteArtistAndSync(queryClient, artistData.value ?? null, options),
     onSuccess: () => {
       router.push(routeLocation.home())
-        .catch(error => getLogger().error(`[Artist] Navigation home after delete failed: ${String(error)}`));
+        .catch(error => getLogger().error(`[Artist] Navigation home after delete failed: ${formatError(error)}`));
     },
   });
 

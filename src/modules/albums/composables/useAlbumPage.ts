@@ -22,6 +22,7 @@ import { useSourceAlbum } from "@/modules/sources/composables/useSourceCatalog";
 import { useCatalogEntity } from "@/modules/sources/composables/useCatalogEntity";
 import { sourceAlbumToAlbumData, sourceTrackToDisplay } from "@/modules/sources/lib/display";
 import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
+import { formatError } from "@/lib/errors";
 
 export type { AlbumChanges } from "@/queries/album.queries";
 
@@ -153,7 +154,7 @@ export function useAlbumPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
       deleteAlbumAndSync(queryClient, albumData.value ?? null, options),
     onSuccess: () => {
       router.push(routeLocation.home())
-        .catch(error => getLogger().error(`[Album] Navigation home after delete failed: ${String(error)}`));
+        .catch(error => getLogger().error(`[Album] Navigation home after delete failed: ${formatError(error)}`));
     },
   });
 

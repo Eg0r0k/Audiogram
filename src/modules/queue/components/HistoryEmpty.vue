@@ -31,12 +31,13 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import IconHistory from "~icons/tabler/history";
 import { routeLocation } from "@/app/router/route-locations";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 const { t } = useI18n();
 const router = useRouter();
 
 const goToAllMusic = (): void => {
   router.push(routeLocation.allMusic())
-    .catch(error => getLogger().error(`[Queue] Navigation to all music failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[Queue] Navigation to all music failed: ${formatError(error)}`));
 };
 </script>

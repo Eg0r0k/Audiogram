@@ -4,6 +4,7 @@ import { summonDialog } from "@/components/dialogs/summonDialog";
 import { getLogger } from "@/lib/logger";
 import { clearModel } from "@/modules/recommendations/service/recommender-model.service";
 import { statsService } from "@/services/stats.service";
+import { formatError } from "@/lib/errors";
 
 export const useClearHistory = () => {
   const { t } = useI18n();
@@ -21,7 +22,7 @@ export const useClearHistory = () => {
           await clearModel();
         }
         catch (error) {
-          getLogger().error(`[Stats] Clearing listening history failed: ${String(error)}`);
+          getLogger().error(`[Stats] Clearing listening history failed: ${formatError(error)}`);
           throw error;
         }
       },

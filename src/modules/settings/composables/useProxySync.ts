@@ -6,6 +6,7 @@ import { getLogger } from "@/lib/logger";
 import { queryClient } from "@/queries/client";
 import { invalidateRemoteSources } from "@/queries/source.queries";
 import { checkAvailableSources } from "@/modules/sources/composables/useSourceHealth";
+import { formatError } from "@/lib/errors";
 
 /**
  * The settings page writes on every keystroke, so a typed host arrives one
@@ -39,9 +40,9 @@ export const useProxySync = () => {
     proxyUrl,
     () => {
       invalidateRemoteSources(queryClient)
-        .catch(error => getLogger().error(`[Settings] Dropping the cached remote data failed: ${String(error)}`));
+        .catch(error => getLogger().error(`[Settings] Dropping the cached remote data failed: ${formatError(error)}`));
       checkAvailableSources()
-        .catch(error => getLogger().error(`[Settings] Re-probing the configured sources failed: ${String(error)}`));
+        .catch(error => getLogger().error(`[Settings] Re-probing the configured sources failed: ${formatError(error)}`));
     },
     { debounce: INVALIDATE_DEBOUNCE_MS },
   );

@@ -264,6 +264,7 @@ import {
   MorphingDialogContent,
   MorphingDialogClose,
 } from "@/components/ui/motion/dialog";
+import { formatError } from "@/lib/errors";
 
 // The colour lands ~400 ms after a track change (useMobilePlayerColor delays
 // extraction past the cover slide); the block crossfades to it in 900 ms,
@@ -314,13 +315,13 @@ const { importPath, isRunning: isImportRunning, importCurrent } = useEphemeralIm
 
 const goToAllMusic = (): void => {
   router.push(routeLocation.allMusic())
-    .catch(error => getLogger().error(`[RightPanel] Navigation to all music failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[RightPanel] Navigation to all music failed: ${formatError(error)}`));
 };
 
 function goToArtist(index: number): void {
   const artistId = libraryTrack.value?.artistIds[index];
   if (!artistId) return;
   router.push(routeLocation.artist(artistId))
-    .catch(error => getLogger().error(`[RightPanel] Navigation to the artist page failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[RightPanel] Navigation to the artist page failed: ${formatError(error)}`));
 }
 </script>

@@ -184,6 +184,7 @@ import SourceDownloadButton from "@/modules/downloads/components/SourceDownloadB
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { routeLocation } from "@/app/router/route-locations";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 interface Props {
   track: Track;
@@ -288,13 +289,13 @@ const artists = computed(() => {
 const handleArtistClick = (index: number) => {
   if (props.artistRoutes) {
     const to = props.artistRoutes[index] ?? props.artistRoutes[0];
-    if (to) route.push(to).catch(error => getLogger().error(`[Tracks] Navigation to the artist page failed: ${String(error)}`));
+    if (to) route.push(to).catch(error => getLogger().error(`[Tracks] Navigation to the artist page failed: ${formatError(error)}`));
     return;
   }
   const artistId = (props.track.artistIds[index] as ArtistId | undefined)
     ?? props.track.artistIds[0];
   if (artistId) {
-    route.push(routeLocation.artist(artistId)).catch(error => getLogger().error(`[Tracks] Navigation to the artist page failed: ${String(error)}`));
+    route.push(routeLocation.artist(artistId)).catch(error => getLogger().error(`[Tracks] Navigation to the artist page failed: ${formatError(error)}`));
   }
 };
 
@@ -337,7 +338,7 @@ const handleClick = () => {
   if (isUnavailable.value) return;
   if (isCurrentTrack.value) {
     playerStore.togglePlay()
-      .catch(error => getLogger().error(`[Player] Toggling playback failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[Player] Toggling playback failed: ${formatError(error)}`));
   }
   else {
     emit("play", props.track);

@@ -1,6 +1,7 @@
 import { getLogger } from "@/lib/logger";
 import type { PlaybackEngine } from "./playback-engine";
 import { type PlaybackStatus, isAudible } from "./playback-status";
+import { formatError } from "@/lib/errors";
 
 export interface FadeSettings {
   enabled: boolean;
@@ -77,7 +78,7 @@ export const createFadeController = (deps: FadeControllerDeps): FadeController =
     })
       // A fade that cannot finish leaves the deferred pause/stop undone —
       // exactly what happens today, minus the unhandled rejection.
-      .catch(error => getLogger().warn(`[Player] Fade-out to ${then} failed: ${String(error)}`));
+      .catch(error => getLogger().warn(`[Player] Fade-out to ${then} failed: ${formatError(error)}`));
   };
 
   const start = async () => {
@@ -187,7 +188,7 @@ export const createFadeController = (deps: FadeControllerDeps): FadeController =
       .then(() => {
         if (stillSwitching()) deps.engine()?.pause();
       })
-      .catch(error => getLogger().warn(`[Player] Fade-out before a switch failed: ${String(error)}`));
+      .catch(error => getLogger().warn(`[Player] Fade-out before a switch failed: ${formatError(error)}`));
   };
 
   return { start, pause, stop, interrupt, settleBeforeSeek, silenceForSwitch };

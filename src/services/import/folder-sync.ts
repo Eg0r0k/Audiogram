@@ -28,6 +28,7 @@ import type { MetadataParser } from "./metadata-parser";
 import { persistTracks } from "./track-persister";
 import { chunk } from "@/lib/math";
 import { normalizePath } from "@/lib/files/filterFiles";
+import { formatError } from "@/lib/errors";
 
 export interface FolderSyncDeps {
   metadataParser: MetadataParser;
@@ -117,7 +118,7 @@ export class FolderSyncService {
       return true;
     }
     catch (e) {
-      getLogger().warn(`[FolderSync] Import of ${file.absolutePath} failed: ${String(e)}`);
+      getLogger().warn(`[FolderSync] Import of ${file.absolutePath} failed: ${formatError(e)}`);
       return false;
     }
   }
@@ -196,7 +197,7 @@ export class FolderSyncService {
             return { file, fp: await computeFileFingerprint(file.absolutePath, file.size) };
           }
           catch (e) {
-            getLogger().warn(`[FolderSync] Fingerprint failed for ${file.absolutePath}: ${String(e)}`);
+            getLogger().warn(`[FolderSync] Fingerprint failed for ${file.absolutePath}: ${formatError(e)}`);
             return { file, fp: null };
           }
           finally {
@@ -266,7 +267,7 @@ export class FolderSyncService {
       catch (e) {
         result.failed += batch.length;
         result.errors.push({ path: folderPath, message: `DB batch failed: ${String(e)}` });
-        getLogger().error(`[FolderSync] DB batch of ${batch.length} tracks failed: ${String(e)}`);
+        getLogger().error(`[FolderSync] DB batch of ${batch.length} tracks failed: ${formatError(e)}`);
 
         if (e instanceof DbError && e.code === "QUOTA") {
           const remaining = batches.slice(index + 1).flat().length;

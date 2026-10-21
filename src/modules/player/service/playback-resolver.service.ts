@@ -18,6 +18,7 @@ import {
   isEphemeralTrack,
   isLibraryTrack,
 } from "../types";
+import { formatError } from "@/lib/errors";
 
 /**
  * Why playback could not start, as data. The store turns this into a
@@ -168,7 +169,7 @@ const resolveRemote = (track: Track): ResultAsync<PlaybackSource, PlaybackError>
   // playback must not wait for the cascade.
   if (track.sourceDto) {
     ensurePinned({ kind: "remote", dto: track.sourceDto }, { pinned: 0 }).catch((error) => {
-      getLogger().warn(`[Player] Shadow-pin failed for ${track.id}: ${String(error)}`);
+      getLogger().warn(`[Player] Shadow-pin failed for ${track.id}: ${formatError(error)}`);
     });
   }
 

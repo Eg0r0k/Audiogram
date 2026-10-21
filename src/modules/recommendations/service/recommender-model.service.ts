@@ -6,6 +6,7 @@ import { blendWeights, dot, extractAutoplayRuns, buildExamples, trainWeights, ty
 import { DEFAULT_WEIGHTS, type ComponentWeights } from "../lib/scoring";
 import { getRecommenderContext, type RecommenderContext } from "./recommender-context.service";
 import { buildContextAtFactory, sampleCandidatesFactory } from "./recommender-training-context";
+import { formatError } from "@/lib/errors";
 
 const FRESH_MS = 24 * 3_600_000;
 const RUN_CHUNK_SIZE = 20;
@@ -157,7 +158,7 @@ export const ensureModelFresh = async (): Promise<void> => {
   if (!trainingPromise) {
     trainingPromise = runEnsureModelFresh()
       .catch((error) => {
-        getLogger().error(`[Recommendations] Retraining the model failed: ${String(error)}`);
+        getLogger().error(`[Recommendations] Retraining the model failed: ${formatError(error)}`);
       })
       .finally(() => {
         trainingPromise = null;

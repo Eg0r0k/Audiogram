@@ -39,6 +39,7 @@ import { getLogger } from "@/lib/logger";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import playSvg from "@/assets/icons/play-rounded.svg?raw";
 import pauseSvg from "@/assets/icons/pause-rounded.svg?raw";
+import { formatError } from "@/lib/errors";
 
 interface Props {
   class?: HTMLAttributes["class"];
@@ -58,7 +59,7 @@ const canInteract = computed(() => !playerStore.showLoadingIndicator);
 const toggle = () => {
   if (isLoading.value) return;
   playerStore.togglePlay()
-    .catch(error => getLogger().error(`[Player] Toggling playback failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[Player] Toggling playback failed: ${formatError(error)}`));
 };
 </script>
 

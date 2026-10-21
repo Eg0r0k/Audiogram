@@ -10,6 +10,7 @@ import { THUMB_SIZE_LQ, THUMB_SIZE_ROW } from "@/lib/media/cover-sizes";
 import { sourceCoverUrl } from "../lib/display";
 import { MY_WAVE_STATION } from "../yandex/radio/radio-session";
 import { useSourceAlbumsInfinite, useSourceArtists, useSourcePlaylists } from "./useSourceCatalog";
+import { formatError } from "@/lib/errors";
 
 //
 // A remote catalog as sidebar LibraryItem VMs — the same list component
@@ -131,7 +132,7 @@ export function useCatalogLibraryItems(kind: MaybeRefOrGetter<SourceKind | null>
     // The query keeps its own error state for the UI; the log is what tells
     // us WHY a scroll stopped loading more albums.
     albumsQuery.fetchNextPage().catch((error: unknown) => {
-      getLogger().warn(`[Sources] Loading the next album page failed: ${String(error)}`);
+      getLogger().warn(`[Sources] Loading the next album page failed: ${formatError(error)}`);
     });
   };
 

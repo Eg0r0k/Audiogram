@@ -4,6 +4,7 @@ import { statsRepository } from "@/db/repositories/stats.repository";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { createEventHook } from "@vueuse/core";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 const MIN_LISTEN_SECONDS = 10;
 const COMPLETE_THRESHOLD = 0.8;
@@ -33,7 +34,7 @@ class StatsService {
     if (this._notifyTimer) clearTimeout(this._notifyTimer);
     this._notifyTimer = setTimeout(() => {
       this._notifyTimer = null;
-      this._changed.trigger().catch(error => getLogger().error(`[Stats] Change hook failed: ${String(error)}`));
+      this._changed.trigger().catch(error => getLogger().error(`[Stats] Change hook failed: ${formatError(error)}`));
     }, STATS_NOTIFY_DELAY_MS);
   }
 
@@ -70,7 +71,7 @@ class StatsService {
     // a skip — mirroring scrobbling conventions.
     const isSkipped = skipped && !isCompleted;
 
-    this._listenRecorded.trigger().catch(error => getLogger().error(`[Stats] Listen hook failed: ${String(error)}`));
+    this._listenRecorded.trigger().catch(error => getLogger().error(`[Stats] Listen hook failed: ${formatError(error)}`));
     await db.listenEvents.update(pending.eventId, {
       secondsListened,
       completed: isCompleted,
@@ -87,7 +88,7 @@ class StatsService {
           track.playCount += 1;
           track.lastPlayedAt = pending.startedAt;
         })
-        .catch(error => getLogger().error(`[Stats] Play count update failed for ${pending.trackId}: ${String(error)}`));
+        .catch(error => getLogger().error(`[Stats] Play count update failed for ${pending.trackId}: ${formatError(error)}`));
     }
 
     this._notifyLater();
@@ -102,7 +103,7 @@ class StatsService {
     pick?: ListenPick,
   ): void {
     if (this._pendingEvent) {
-      this._finalizePending(0, true).catch(error => getLogger().error(`[Stats] Finalizing pending event failed: ${String(error)}`));
+      this._finalizePending(0, true).catch(error => getLogger().error(`[Stats] Finalizing pending event failed: ${formatError(error)}`));
     }
 
     const eventId = crypto.randomUUID();
@@ -120,7 +121,7 @@ class StatsService {
       skipped: false,
       origin,
       ...(pick ? { pick } : {}),
-    }).then(() => this._notifyLater()).catch(error => getLogger().error(`[Stats] Recording listen event for ${trackId} failed: ${String(error)}`));
+    }).then(() => this._notifyLater()).catch(error => getLogger().error(`[Stats] Recording listen event for ${trackId} failed: ${formatError(error)}`));
 
     this._pendingEvent = {
       eventId,

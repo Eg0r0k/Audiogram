@@ -15,6 +15,7 @@ import {
 import { getLogger } from "@/lib/logger";
 import { sources } from "@/modules/sources/registry";
 import type { SourceKind } from "@/types/track-ref";
+import { formatError } from "@/lib/errors";
 
 const DEBOUNCE_MS = 150;
 /** A submit-mode source pays for every request — pause longer before committing. */
@@ -72,7 +73,7 @@ const debouncedSearch = useDebounceFn(async (q: string, filter: SearchFilter) =>
     results.value = groupResults(response.results);
   }
   catch (err) {
-    getLogger().error(`[Search] Query failed: ${String(err)}`);
+    getLogger().error(`[Search] Query failed: ${formatError(err)}`);
     results.value = createEmptyResults();
   }
   finally {

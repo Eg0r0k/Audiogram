@@ -6,6 +6,7 @@ import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackL
 import { getLogger } from "@/lib/logger";
 import { useCurrentPlayerTrack } from "./useCurrentPlayerTrack";
 import { isLibraryTrack } from "../types";
+import { formatError } from "@/lib/errors";
 
 const POSITION_UPDATE_INTERVAL = 1000;
 // Both the browser's media session and Android's extrapolate the position
@@ -284,7 +285,7 @@ export const useMediaSession = () => {
     const detail = (event as CustomEvent<AndroidMediaActionDetail | null>).detail;
     switch (detail?.action) {
       case "play":
-        player.play().catch(error => getLogger().error(`[Player] Play from the media session failed: ${String(error)}`));
+        player.play().catch(error => getLogger().error(`[Player] Play from the media session failed: ${formatError(error)}`));
         break;
       case "pause":
         player.pause();
@@ -294,12 +295,12 @@ export const useMediaSession = () => {
         break;
       case "next":
         if (queue.hasNext) {
-          queue.next().catch(error => getLogger().error(`[Queue] Next from the media session failed: ${String(error)}`));
+          queue.next().catch(error => getLogger().error(`[Queue] Next from the media session failed: ${formatError(error)}`));
         }
         break;
       case "previous":
         if (queue.hasPrevious) {
-          queue.previous().catch(error => getLogger().error(`[Queue] Previous from the media session failed: ${String(error)}`));
+          queue.previous().catch(error => getLogger().error(`[Queue] Previous from the media session failed: ${formatError(error)}`));
         }
         break;
       case "seekto":
@@ -319,7 +320,7 @@ export const useMediaSession = () => {
         const track = player.currentTrack;
         // mutateAsync rethrows; the user already sees the toast from onError.
         if (track && isLibraryTrack(track)) {
-          toggleTrackLike(track).catch(error => getLogger().error(`[Player] Toggling like from the media session failed: ${String(error)}`));
+          toggleTrackLike(track).catch(error => getLogger().error(`[Player] Toggling like from the media session failed: ${formatError(error)}`));
         }
         break;
       }
@@ -391,7 +392,7 @@ export const useMediaSession = () => {
       "nexttrack",
       queue.hasNext
         ? () => {
-            queue.next().catch(error => getLogger().error(`[Queue] Next from the media session failed: ${String(error)}`));
+            queue.next().catch(error => getLogger().error(`[Queue] Next from the media session failed: ${formatError(error)}`));
           }
         : null,
     );
@@ -400,7 +401,7 @@ export const useMediaSession = () => {
       "previoustrack",
       queue.hasPrevious
         ? () => {
-            queue.previous().catch(error => getLogger().error(`[Queue] Previous from the media session failed: ${String(error)}`));
+            queue.previous().catch(error => getLogger().error(`[Queue] Previous from the media session failed: ${formatError(error)}`));
           }
         : null,
     );
@@ -451,7 +452,7 @@ export const useMediaSession = () => {
 
   onMounted(() => {
     setActionHandler("play", () => {
-      player.play().catch(error => getLogger().error(`[Player] Play from the media session failed: ${String(error)}`));
+      player.play().catch(error => getLogger().error(`[Player] Play from the media session failed: ${formatError(error)}`));
     });
     setActionHandler("pause", () => player.pause());
     setActionHandler("stop", () => player.stop());

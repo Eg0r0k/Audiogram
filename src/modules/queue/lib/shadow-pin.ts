@@ -2,6 +2,7 @@ import type { PlayerTrack } from "@/modules/player/types";
 import { ensurePinnedMany } from "@/modules/tracks/service/ensurePinned";
 import type { TrackMenuSubject } from "@/modules/tracks/components/menu/type";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 /**
  * Tracks queued straight from live browsing (a remote page's DTO) shadow-pin
@@ -23,6 +24,6 @@ export const shadowPinRemoteTracks = (tracks: readonly PlayerTrack[]): void => {
   if (subjects.length === 0) return;
 
   ensurePinnedMany(subjects, { pinned: 0 }).catch((error) => {
-    getLogger().warn(`[Queue] Shadow-pin failed for ${subjects.length} track(s): ${String(error)}`);
+    getLogger().warn(`[Queue] Shadow-pin failed for ${subjects.length} track(s): ${formatError(error)}`);
   });
 };

@@ -11,6 +11,7 @@ import { onYmAuthEvent, ymAuthStatus } from "../api/auth";
 import { loadYmLikes } from "../likes";
 import { useYmAuthStore } from "../store/ym-auth.store";
 import type { YmAuthEvent } from "../api/types";
+import { formatError } from "@/lib/errors";
 
 const INVALIDATE_DEBOUNCE_MS = 400;
 
@@ -20,16 +21,16 @@ export const useYmSourceSync = () => {
 
   const dropAnswers = (): void => {
     invalidateSource(queryClient, "ym")
-      .catch(error => getLogger().error(`[YM] Dropping the cached data failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[YM] Dropping the cached data failed: ${formatError(error)}`));
   };
 
   const probe = (): void => {
     checkSource("ym")
-      .catch(error => getLogger().error(`[YM] Probing the source failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[YM] Probing the source failed: ${formatError(error)}`));
   };
 
   const pullLikes = (): void => {
-    loadYmLikes().catch(error => getLogger().error(`[YM] Loading the likes failed: ${String(error)}`));
+    loadYmLikes().catch(error => getLogger().error(`[YM] Loading the likes failed: ${formatError(error)}`));
   };
 
   ymAuthStatus()
@@ -37,7 +38,7 @@ export const useYmSourceSync = () => {
       store.applyStatus(status);
       if (status.loggedIn) pullLikes();
     })
-    .catch(error => getLogger().error(`[YM] Reading the stored sign-in failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[YM] Reading the stored sign-in failed: ${formatError(error)}`));
 
   const onEvent = (event: YmAuthEvent) => {
     store.applyEvent(event);
@@ -61,7 +62,7 @@ export const useYmSourceSync = () => {
       if (disposed) stop();
       else unlisten = stop;
     })
-    .catch(error => getLogger().error(`[YM] Subscribing to sign-in events failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[YM] Subscribing to sign-in events failed: ${formatError(error)}`));
 
   onScopeDispose(() => {
     disposed = true;

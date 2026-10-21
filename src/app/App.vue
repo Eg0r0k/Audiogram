@@ -77,6 +77,7 @@ import NetworkStatusToast from "@/components/NetworkStatusToast.vue";
 import { useAnalysisQueueLifecycle } from "@/modules/recommendations/composables/useAnalysisQueueLifecycle";
 import { getLogger } from "@/lib/logger";
 import { applyStartupWindow } from "@/modules/settings/services/startup-window";
+import { formatError } from "@/lib/errors";
 
 const log = getLogger();
 log.info(` \n
@@ -126,10 +127,10 @@ const { init: initGeneral, launchMinimized, closeToTray } = useGeneralSettings()
 onMounted(async () => {
   if (platformCaps.hasNativeWindow) {
     applyStartupWindow({ launchMinimized: launchMinimized.value, closeToTray: closeToTray.value })
-      .catch(error => log.error(`[App] Startup window failed: ${String(error)}`));
+      .catch(error => log.error(`[App] Startup window failed: ${formatError(error)}`));
   }
 
-  initGeneral().catch(error => log.error(`[App] General settings init failed: ${String(error)}`));
+  initGeneral().catch(error => log.error(`[App] General settings init failed: ${formatError(error)}`));
 
   if (platformCaps.hasGlobalShortcuts) {
     const [{ useTauriGlobalShortcuts }] = await Promise.all([
@@ -148,10 +149,10 @@ onMounted(async () => {
       }),
     );
     queueStore.setQueue(tracks, 0, { type: "external" })
-      .catch(error => log.error(`[App] Queueing opened files failed: ${String(error)}`));
+      .catch(error => log.error(`[App] Queueing opened files failed: ${formatError(error)}`));
   });
 
-  init().catch(error => log.error(`[App] Watched folders init failed: ${String(error)}`));
+  init().catch(error => log.error(`[App] Watched folders init failed: ${formatError(error)}`));
 });
 onUnmounted(() => {
   unlisten?.();
@@ -185,7 +186,7 @@ watch(() => currentRoute.fullPath, (fullPath) => {
 });
 
 const stop = useEventListener(document, "click", () => {
-  playerStore.unlockAudio().catch(error => log.error(`[App] Audio unlock on first click failed: ${String(error)}`));
+  playerStore.unlockAudio().catch(error => log.error(`[App] Audio unlock on first click failed: ${formatError(error)}`));
   stop();
 });
 

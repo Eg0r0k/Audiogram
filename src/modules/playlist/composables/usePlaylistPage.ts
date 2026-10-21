@@ -28,6 +28,7 @@ import { pagedPlaylistKindOf } from "@/modules/sources/lib/catalog-kind";
 import { sourcePlaylistToPlaylistData, sourceTrackToDisplay } from "@/modules/sources/lib/display";
 import type { SourcePlaylistDTO } from "@/modules/sources/types";
 import { sources } from "@/modules/sources";
+import { formatError } from "@/lib/errors";
 
 export type { PlaylistChanges } from "@/queries/playlist.queries";
 
@@ -227,7 +228,7 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
       deletePlaylistAndSync(queryClient, playlist.value, options),
     onSuccess: () => {
       router.push(routeLocation.home())
-        .catch(error => getLogger().error(`[Playlist] Navigation home after delete failed: ${String(error)}`));
+        .catch(error => getLogger().error(`[Playlist] Navigation home after delete failed: ${formatError(error)}`));
     },
   });
 
@@ -249,7 +250,7 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
     }
     await queryClient.invalidateQueries({ queryKey: queryKeys.source.playlists(kind) });
     router.push(routeLocation.home())
-      .catch(error => getLogger().error(`[Playlist] Navigation home after delete failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[Playlist] Navigation home after delete failed: ${formatError(error)}`));
     return true;
   };
 

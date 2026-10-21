@@ -88,6 +88,7 @@ import { useSourceSearchPages } from "@/modules/sources/composables/useSourceCat
 import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
 import { youtubeErrorMessage } from "../../lib/errors";
 import YtEntitySection from "./YtEntitySection.vue";
+import { formatError } from "@/lib/errors";
 
 //
 // The "all" chip: YouTube's own mixed shelf, cut into sections. The rows are
@@ -155,6 +156,6 @@ const artistRoutes = (row: Track) =>
 
 const play = (index: number) => {
   queueStore.setQueue(trackRows.value, index, { type: "search" })
-    .catch(error => getLogger().error(`[YouTube] Playing a search result failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[YouTube] Playing a search result failed: ${formatError(error)}`));
 };
 </script>

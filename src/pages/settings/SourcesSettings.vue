@@ -48,6 +48,7 @@ import { sourceUI } from "@/modules/sources/lib/source-ui";
 import { routeLocation } from "@/app/router/route-locations";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 //
 // One row per source the build registers; the page asks the registry what
@@ -69,7 +70,7 @@ onMounted(() => {
   for (const provider of sources.available()) {
     if (!provider.checkConnection || sourceHealth(provider.id).state !== "unknown") continue;
     checkSource(provider.id).catch((err: unknown) => {
-      getLogger().warn(`[SourcesSettings] Checking ${provider.id} failed: ${String(err)}`);
+      getLogger().warn(`[SourcesSettings] Checking ${provider.id} failed: ${formatError(err)}`);
     });
   }
 });

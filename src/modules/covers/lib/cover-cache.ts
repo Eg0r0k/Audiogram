@@ -2,6 +2,7 @@ import { shallowReactive } from "vue";
 import type { CoverOwnerType } from "@/db/entities";
 import { getCoversByOwners, type CoverRow } from "@/queries/cover.queries";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 //
 // The one place Dexie-stored covers live in memory. Every consumer — a list
@@ -132,7 +133,7 @@ export const createCoverCache = (options: { maxIdle?: number } = {}) => {
         rows = await getCoversByOwners(ownerType, ids);
       }
       catch (error) {
-        getLogger().warn(`[Covers] Batch lookup failed: ${String(error)}`);
+        getLogger().warn(`[Covers] Batch lookup failed: ${formatError(error)}`);
         for (const id of ids) {
           const key = `${ownerType}:${id}`;
           settle(key, started.get(key)!, undefined);
@@ -153,7 +154,7 @@ export const createCoverCache = (options: { maxIdle?: number } = {}) => {
     if (!flushScheduled) {
       flushScheduled = true;
       queueMicrotask(() => {
-        flush().catch(error => getLogger().warn(`[Covers] Batch lookup failed: ${String(error)}`));
+        flush().catch(error => getLogger().warn(`[Covers] Batch lookup failed: ${formatError(error)}`));
       });
     }
   };

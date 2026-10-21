@@ -24,6 +24,7 @@ import {
   treeUriToPath,
 } from "@/lib/android/folderPicker";
 import { invalidateLibraryData } from "@/queries/library.queries";
+import { formatError } from "@/lib/errors";
 
 const activeWatchers = new Map<string, StopWatchFn>();
 
@@ -90,7 +91,7 @@ export function useWatchedFolders() {
       return await addPickedFolder();
     }
     catch (error) {
-      getLogger().error(`[WatchedFolders] Adding a folder failed: ${String(error)}`);
+      getLogger().error(`[WatchedFolders] Adding a folder failed: ${formatError(error)}`);
       return t("watchedFolders.addFailed");
     }
   };
@@ -153,7 +154,7 @@ export function useWatchedFolders() {
       }
     }
     catch (e) {
-      getLogger().error(`[WatchedFolders] Scanning ${folder.path} failed: ${String(e)}`);
+      getLogger().error(`[WatchedFolders] Scanning ${folder.path} failed: ${formatError(e)}`);
       store.updateFolderStatus(folder.id, "error", { errorMessage: t("watchedFolders.scanFailed") });
     }
   }
@@ -215,14 +216,14 @@ export function useWatchedFolders() {
 
       const stop = await startWatching(folder.path, (changedPaths) => {
         handleChangedPaths(changedPaths)
-          .catch(error => getLogger().error(`[WatchedFolders] Processing changed paths failed: ${String(error)}`));
+          .catch(error => getLogger().error(`[WatchedFolders] Processing changed paths failed: ${formatError(error)}`));
       }, () => handleFolderMissing(folder.id), excludedPaths);
 
       activeWatchers.set(folder.id, stop);
       store.updateFolderStatus(folder.id, "watching");
     }
     catch (e) {
-      getLogger().error(`[WatchedFolders] Watching ${folder.path} failed: ${String(e)}`);
+      getLogger().error(`[WatchedFolders] Watching ${folder.path} failed: ${formatError(e)}`);
       store.updateFolderStatus(folder.id, "error", { errorMessage: t("watchedFolders.watchFailed") });
     }
   }
@@ -288,7 +289,7 @@ export function useWatchedFolders() {
 
   function invalidateLibrary() {
     invalidateLibraryData(queryClient)
-      .catch(error => getLogger().error(`[WatchedFolders] Library refresh failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[WatchedFolders] Library refresh failed: ${formatError(error)}`));
   }
 
   async function relinkFolder(folderId: string) {
@@ -321,7 +322,7 @@ export function useWatchedFolders() {
       invalidateLibrary();
     }
     catch (e) {
-      getLogger().error(`[WatchedFolders] Relinking ${oldPath} to ${newPath} failed: ${String(e)}`);
+      getLogger().error(`[WatchedFolders] Relinking ${oldPath} to ${newPath} failed: ${formatError(e)}`);
       store.updateFolderStatus(folderId, "error", { errorMessage: t("watchedFolders.relinkFailed") });
     }
   }

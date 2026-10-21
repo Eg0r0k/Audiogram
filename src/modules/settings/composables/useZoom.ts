@@ -2,6 +2,7 @@ import { watch } from "vue";
 import { useLocalStorage } from "@vueuse/core";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 export const ZOOM_LEVELS = [75, 90, 100, 110, 125, 150] as const;
 export type ZoomLevel = (typeof ZOOM_LEVELS)[number];
@@ -25,7 +26,7 @@ async function applyZoom(level: ZoomLevel): Promise<void> {
       await getCurrentWebview().setZoom(level / 100);
     }
     catch (err) {
-      getLogger().error(`[Zoom] failed to set webview zoom: ${String(err)}`);
+      getLogger().error(`[Zoom] failed to set webview zoom: ${formatError(err)}`);
     }
     return;
   }

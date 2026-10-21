@@ -9,6 +9,7 @@ import {
   loadFont,
   resolveFontStack,
 } from "../fonts";
+import { formatError } from "@/lib/errors";
 
 const font = useStorage<FontId>("app-font", DEFAULT_FONT_ID);
 
@@ -33,7 +34,7 @@ const applyFont = (id: FontId): void => {
 const requestFont = (id: FontId): void => {
   applyFont(id);
   loadFont(id).catch(err =>
-    getLogger().error(`[Font] failed to load "${id}": ${String(err)}`),
+    getLogger().error(`[Font] failed to load "${id}": ${formatError(err)}`),
   );
 };
 
@@ -62,7 +63,7 @@ export const initFont = (): void => {
 export const preloadAllFonts = (): void => {
   for (const preset of FONT_PRESETS) {
     preset.load().catch(err =>
-      getLogger().error(`[Font] failed to preload "${preset.id}": ${String(err)}`),
+      getLogger().error(`[Font] failed to preload "${preset.id}": ${formatError(err)}`),
     );
   }
 };

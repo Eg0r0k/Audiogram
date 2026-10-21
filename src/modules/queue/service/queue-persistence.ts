@@ -10,6 +10,7 @@ import { migrateProxyUrl } from "@/lib/stream-url";
 import { ndPlaylistId, parseTrackRef } from "@/types/track-ref";
 import type { QueueItem, QueueSource, QueueState } from "../types";
 import { getItemsByOrder } from "../lib/queue-order";
+import { formatError } from "@/lib/errors";
 
 export const QUEUE_STORAGE_KEY = QUEUE_CURSOR_STORAGE_KEY;
 const LEGACY_PLAYER_STORAGE_KEY = "lyra-player";
@@ -273,7 +274,7 @@ const ndPlaylistSourceRewrites = async (
       if (!found) rewrites.set(id, ndPlaylistId(id));
     }
     catch (error) {
-      getLogger().warn(`[Queue] Playlist source migration skipped for ${id}: ${String(error)}`);
+      getLogger().warn(`[Queue] Playlist source migration skipped for ${id}: ${formatError(error)}`);
     }
   }
 

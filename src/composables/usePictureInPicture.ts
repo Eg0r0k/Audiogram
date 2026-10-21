@@ -3,6 +3,7 @@ import { platformCaps } from "@/lib/environment/platformCaps";
 import type { App, Component } from "vue";
 import { createApp, ref, shallowRef } from "vue";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 export interface PipOptions {
   width?: number;
@@ -98,7 +99,7 @@ export const usePictureInPicture = () => {
       return true;
     }
     catch (e) {
-      getLogger().error(`[PIP] Failed to open: ${String(e)}`);
+      getLogger().error(`[PIP] Failed to open: ${formatError(e)}`);
       return false;
     }
   };
@@ -123,7 +124,7 @@ export const usePictureInPicture = () => {
       }
     }
     catch (e) {
-      getLogger().error(`[PIP] Restore failed: ${String(e)}`);
+      getLogger().error(`[PIP] Restore failed: ${formatError(e)}`);
     }
   };
   const close = (): void => {
@@ -149,7 +150,7 @@ export const usePictureInPicture = () => {
       currentOptions = null;
     }
     catch (e) {
-      getLogger().error(`[PIP] Failed to close: ${String(e)}`);
+      getLogger().error(`[PIP] Failed to close: ${formatError(e)}`);
     }
   };
 

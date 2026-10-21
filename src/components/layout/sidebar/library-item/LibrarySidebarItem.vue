@@ -10,6 +10,7 @@ import LibraryItemCover from "./LibraryItemCover.vue";
 import LibraryItemInfo from "./LibraryItemInfo.vue";
 import { useLibraryItemView } from "./useLibraryItemView";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 const props = defineProps<{
   item: LibraryItem;
@@ -49,7 +50,7 @@ const handleClick = () => {
   }
 
   router.push(props.item.to)
-    .catch(error => getLogger().error(`[LibrarySidebarItem] Navigation failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[LibrarySidebarItem] Navigation failed: ${formatError(error)}`));
 };
 </script>
 

@@ -118,6 +118,7 @@ import { useLibrary } from "@/modules/library/composables/useLibrary";
 import type { LibraryItem } from "@/modules/library/types";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 const { t } = useI18n();
 const route = useRoute();
@@ -174,7 +175,7 @@ const loadMore = () => {
   // The query keeps its own error state for the UI; the log is what tells us
   // WHY a scroll stopped loading more albums.
   fetchNextAlbumPage().catch((err: unknown) => {
-    getLogger().warn(`[ArtistAlbumsPage] Loading the next album page failed: ${String(err)}`);
+    getLogger().warn(`[ArtistAlbumsPage] Loading the next album page failed: ${formatError(err)}`);
   });
 };
 

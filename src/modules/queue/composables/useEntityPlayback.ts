@@ -5,6 +5,7 @@ import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useQueueShuffle } from "@/modules/queue/composables/useQueueShuffle";
 import type { QueueSource } from "@/modules/queue/types";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 //
 // Play / play-one / shuffle for an entity page (album, artist, playlist).
@@ -55,7 +56,7 @@ export const useEntityPlayback = (options: EntityPlaybackOptions) => {
 
     if (currentTrackId.value === selected.id) {
       playerStore.togglePlay()
-        .catch(error => getLogger().error(`[Player] Toggling playback failed: ${String(error)}`));
+        .catch(error => getLogger().error(`[Player] Toggling playback failed: ${formatError(error)}`));
       return;
     }
 

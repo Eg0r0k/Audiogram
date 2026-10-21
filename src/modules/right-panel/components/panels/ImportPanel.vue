@@ -172,6 +172,7 @@ import IconMinus from "~icons/tabler/minus";
 import IconAlertCircle from "~icons/tabler/alert-circle";
 import IconPlay from "~icons/audiogram/play-rounded";
 import IconPause from "~icons/audiogram/pause-rounded";
+import { formatError } from "@/lib/errors";
 
 type FilterKey = "all" | "error" | "skipped";
 
@@ -278,6 +279,6 @@ const confirmCancelImport = () => {
 const goToLibrary = () => {
   finish();
   router.push(routeLocation.allMusic())
-    .catch(error => getLogger().error(`[ImportPanel] Navigation to library failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[ImportPanel] Navigation to library failed: ${formatError(error)}`));
 };
 </script>

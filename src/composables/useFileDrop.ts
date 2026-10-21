@@ -4,6 +4,7 @@ import { getFilesFromEvent } from "@/lib/files/getFilesFromEvent";
 import { ref, onMounted } from "vue";
 import { useTauriDragDrop } from "./tauri/useTauriDragDrop";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 export interface UseFileDropOptions {
   acceptedExtensions?: string[];
@@ -41,7 +42,7 @@ const collectFiles = async (
     }
   }
   catch (e) {
-    getLogger().error(`[FileDrop] Reading directory ${dirPath} failed: ${String(e)}`);
+    getLogger().error(`[FileDrop] Reading directory ${dirPath} failed: ${formatError(e)}`);
   }
   return files;
 };
@@ -64,7 +65,7 @@ const collectDroppedPaths = async (
       }
     }
     catch (e) {
-      getLogger().error(`[FileDrop] Processing path ${path} failed: ${String(e)}`);
+      getLogger().error(`[FileDrop] Processing path ${path} failed: ${formatError(e)}`);
     }
   }
   return result;
@@ -108,7 +109,7 @@ export function useFileDrop(options?: UseFileDropOptions) {
       else {
         isDragging.value = false;
         processDroppedPaths(payload.paths)
-          .catch(error => getLogger().error(`[FileDrop] Processing dropped paths failed: ${String(error)}`));
+          .catch(error => getLogger().error(`[FileDrop] Processing dropped paths failed: ${formatError(error)}`));
       }
     });
   };
@@ -157,7 +158,7 @@ export function useFileDrop(options?: UseFileDropOptions) {
       isDragging.value = false;
       dragCounter = 0;
       processBrowserDrop(e)
-        .catch(error => getLogger().error(`[FileDrop] Processing dropped files failed: ${String(error)}`));
+        .catch(error => getLogger().error(`[FileDrop] Processing dropped files failed: ${formatError(error)}`));
     };
     const { useEventListener } = await import("@vueuse/core");
 

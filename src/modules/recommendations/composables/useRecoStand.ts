@@ -23,6 +23,7 @@ import { pickFeedBatch, splitFeed, type FeedEntry, type FeedSplit } from "../ser
 import { loadFeedback, pairKey, saveFeedback, writeSnapshot, type FeedbackEntry, type FeedbackLabel } from "../service/stand-feedback.store";
 import { hitRate, pairAgreement, reach, sampleTransitions, type AgreementCase, type TransitionCase } from "../service/stand-metrics";
 import { createTuner } from "../service/stand-tuner";
+import { formatError } from "@/lib/errors";
 
 export interface StandParams {
   limit: number;
@@ -280,7 +281,7 @@ export const useRecoStand = () => {
       timings.value = { contextMs: now() - t0, batchMs: 0 };
       ctx.value = c;
       feedback.value = fb;
-      buildTransitionCases(c, gen).catch(error => getLogger().error(`[RecoStand] Building transition cases failed: ${String(error)}`));
+      buildTransitionCases(c, gen).catch(error => getLogger().error(`[RecoStand] Building transition cases failed: ${formatError(error)}`));
     }
     finally {
       isLoading.value = false;

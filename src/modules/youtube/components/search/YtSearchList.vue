@@ -84,6 +84,7 @@ import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
 import { useYtSearchResults } from "../../composables/useYtSearchResults";
 import { youtubeErrorMessage } from "../../lib/errors";
 import { Spinner } from "@/components/ui/spinner";
+import { formatError } from "@/lib/errors";
 
 const CATALOG = { catalog: true } as const;
 
@@ -143,6 +144,6 @@ const play = (track: Track) => {
   const tracks = rows.value.flatMap(row => (row.track ? [row.track] : []));
   const index = tracks.findIndex(candidate => candidate.id === track.id);
   queueStore.setQueue(tracks, Math.max(index, 0), { type: "search" })
-    .catch(error => getLogger().error(`[YouTube] Playing a search result failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[YouTube] Playing a search result failed: ${formatError(error)}`));
 };
 </script>
