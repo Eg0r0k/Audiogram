@@ -17,6 +17,12 @@ export interface SearchDocument {
   description?: string;
 }
 
+/** Why a hit matched, both lists normalized: the indexed words it matched and the query words that reached them. */
+export interface SearchMatch {
+  terms: string[];
+  queryTerms: string[];
+}
+
 export interface SearchResultItem {
   id: string;
   type: SearchEntityType;
@@ -27,6 +33,7 @@ export interface SearchResultItem {
   score: number;
   coverPath?: string;
   duration?: number;
+  matched?: SearchMatch;
 }
 
 export interface GroupedResults {

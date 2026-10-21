@@ -63,6 +63,7 @@ const toResultItem = (hit: SearchResult): SearchResultItem => ({
   coverPath: hit.coverPath as string | undefined,
   score: hit.score,
   duration: hit.duration as number | undefined,
+  matched: { terms: hit.terms, queryTerms: hit.queryTerms },
 });
 
 export interface SearchEngine {

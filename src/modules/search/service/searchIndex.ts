@@ -4,6 +4,7 @@ import type { SearchDocument, SearchFilter, SearchOptions, SearchResponse } from
 import { db } from "@/db";
 import { albumRepository, artistRepository, trackRepository } from "@/db/repositories";
 import { countTrackDocuments, trackProjectionMismatch } from "../projectionCheck";
+import { matchesByEntity } from "../lib/highlight";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { Track } from "@/modules/player/types";
 import type { TrackId } from "@/types/ids";
@@ -105,6 +106,7 @@ export async function searchTracks(
     tracks,
     total: response.total,
     totalDuration: response.totalDuration,
+    matches: matchesByEntity(response.results),
   };
 }
 

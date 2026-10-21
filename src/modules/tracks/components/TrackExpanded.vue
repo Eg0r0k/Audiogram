@@ -114,7 +114,10 @@
               isActivePlayback ? 'text-primary' : 'text-foreground',
             ]"
           >
-            {{ track.title }}
+            <HighlightedText
+              :text="track.title"
+              :match="match"
+            />
           </div>
           <div :class="styles.artist">
             <span
@@ -130,7 +133,10 @@
             <span
               v-if="isMobileLayout"
               class="truncate"
-            >{{ track.artist }}</span>
+            ><HighlightedText
+              :text="track.artist"
+              :match="match"
+            /></span>
             <template v-else>
               <template
                 v-for="(artist, artistIndex) in artists"
@@ -141,7 +147,10 @@
                   class="cursor-pointer truncate underline-offset-2 hover:text-foreground hover:underline"
                   @click.stop="handleArtistClick(artistIndex, $event)"
                 >
-                  {{ artist }}
+                  <HighlightedText
+                    :text="artist"
+                    :match="match"
+                  />
                 </button>
                 <span v-if="artistIndex < artists.length - 1">,&nbsp;</span>
               </template>
@@ -159,7 +168,10 @@
           class="block w-full min-w-0 cursor-pointer truncate text-left underline-offset-2 hover:text-foreground hover:underline"
           @click.stop="handleAlbumClick($event)"
         >
-          {{ track.albumName }}
+          <HighlightedText
+            :text="track.albumName"
+            :match="match"
+          />
         </button>
       </div>
 
@@ -250,6 +262,8 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import { useTrackContextMenu } from "@/modules/tracks/components/menu/context-menu/useTrackContextMenu";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import SourceDownloadButton from "@/modules/downloads/components/SourceDownloadButton.vue";
+import HighlightedText from "@/modules/search/components/HighlightedText";
+import type { SearchMatch } from "@/modules/search/types";
 import { localCopyQueries } from "@/queries/localCopy.queries";
 import { useQuery } from "@tanstack/vue-query";
 import type { ArtistId, TrackId } from "@/types/ids";
@@ -327,6 +341,8 @@ interface Props {
    * sourceDto (YT display rows) — drives the check mark by the title.
    */
   downloadId?: TrackId | null;
+  /** Why the row came up in a search: its matched words are marked in the title, artists and album. */
+  match?: SearchMatch | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -343,6 +359,7 @@ const props = withDefaults(defineProps<Props>(), {
   artistRoutes: undefined,
   albumRoute: undefined,
   downloadId: null,
+  match: null,
 });
 
 const emit = defineEmits<{

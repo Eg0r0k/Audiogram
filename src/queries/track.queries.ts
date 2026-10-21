@@ -16,7 +16,8 @@ import {
 } from "@/modules/search/service/searchIndex";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { DEFAULT_TRACK_SORT_KEY } from "@/types/track-sort";
-import type { SearchDocument } from "@/modules/search/types";
+import type { SearchDocument, SearchMatch } from "@/modules/search/types";
+import { matchesByEntity } from "@/modules/search/lib/highlight";
 import { queryKeys } from "@/queries/query-keys";
 import { mapTracks } from "@/modules/tracks/lib/mappers";
 import type { Track } from "@/modules/player/types";
@@ -226,10 +227,16 @@ export async function getAllTracksPaginated(
 // Search hits come back in score order; a chosen sort reorders the whole hit
 // set, so a page of it needs every id first. No sort = relevance, which is
 // why `null` is meaningful here and must not be defaulted away.
-async function searchedTracksSorted(query: string, sortKey: TrackSortKey): Promise<TrackEntity[]> {
+async function searchedTracksSorted(
+  query: string,
+  sortKey: TrackSortKey,
+): Promise<{ tracks: TrackEntity[]; matches: Record<string, SearchMatch> }> {
   const response = await searchDocuments(query, "track", { offset: 0 });
   const ids = response.results.map(item => item.entityId as TrackId);
-  return unwrapResult(trackRepository.findSortedByIds(ids, sortKey));
+  return {
+    tracks: await unwrapResult(trackRepository.findSortedByIds(ids, sortKey)),
+    matches: matchesByEntity(response.results),
+  };
 }
 
 export async function searchTracksPaginated(
@@ -239,22 +246,26 @@ export async function searchTracksPaginated(
   sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> {
   if (sortKey) {
-    const sorted = await searchedTracksSorted(query, sortKey);
+    const { tracks: sorted, matches } = await searchedTracksSorted(query, sortKey);
     const total = sorted.length;
+    const page = sorted.slice(offset, offset + limit);
     return {
-      tracks: await loadTrackRelations(sorted.slice(offset, offset + limit)),
+      tracks: await loadTrackRelations(page),
       nextOffset: offset + limit < total ? offset + limit : null,
       total,
+      // Only this page's share: the full hit set would be copied into every page.
+      matches: Object.fromEntries(page.filter(track => track.id in matches).map(track => [track.id, matches[track.id]])),
     };
   }
 
-  const { tracks, total } = await searchIndexedTracks(query, offset, limit);
+  const { tracks, total, matches } = await searchIndexedTracks(query, offset, limit);
   const nextOffset = offset + limit < total ? offset + limit : null;
 
   return {
     tracks,
     nextOffset,
     total,
+    matches,
   };
 }
 
@@ -355,7 +366,7 @@ export async function getAllTracksForQueue(sortKey: TrackSortKey | null, searchQ
     if (!sortKey) {
       return (await searchIndexedTracks(q, 0, undefined)).tracks;
     }
-    return loadTrackRelations(await searchedTracksSorted(q, sortKey));
+    return loadTrackRelations((await searchedTracksSorted(q, sortKey)).tracks);
   }
   const rawTracks = await unwrapResult(trackRepository.findAllSorted(sortKey ?? DEFAULT_TRACK_SORT_KEY));
   return loadTrackRelations(rawTracks);

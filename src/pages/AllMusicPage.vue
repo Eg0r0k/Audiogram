@@ -81,6 +81,7 @@
                 <TrackExpanded
                   :track="item"
                   :index="index + 1"
+                  :match="matches[item.id]"
                   :is-active="currentTrackId === item.id"
                   :is-selected="isSelected(item.id)"
                   :is-selecting="isSelectMode"
@@ -198,6 +199,7 @@ const {
   resolvedSortKey,
   tracks,
   total,
+  matches,
   isLoading,
   isError,
   refetch,

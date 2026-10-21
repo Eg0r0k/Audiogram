@@ -3,6 +3,7 @@ import { computed, type Ref } from "vue";
 import { queryKeys } from "@/queries/query-keys";
 import { getTracksPaginated } from "@/queries/track.queries";
 import type { TrackSortKey } from "@/modules/tracks/types";
+import type { SearchMatch } from "@/modules/search/types";
 import { DEFAULT_TRACK_SORT_KEY } from "@/types/track-sort";
 
 export function useIndexTracksPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) {
@@ -23,6 +24,10 @@ export function useIndexTracksPage(sortKey: Ref<TrackSortKey | null>, searchQuer
 
   const tracks = computed(() => queryState.data.value?.pages.flatMap(page => page.tracks) ?? []);
   const total = computed(() => queryState.data.value?.pages[0]?.total ?? 0);
+  // Arrives with the pages it describes, so the highlight changes in the same
+  // render as the rows and never on a keystroke of its own.
+  const matches = computed<Record<string, SearchMatch>>(() =>
+    Object.assign({}, ...(queryState.data.value?.pages.map(page => page.matches) ?? [])));
   // A failed next page is shown at the end of the list it failed to extend.
   const isError = computed(() => queryState.isError.value && !queryState.isFetchNextPageError.value);
 
@@ -33,5 +38,6 @@ export function useIndexTracksPage(sortKey: Ref<TrackSortKey | null>, searchQuer
     normalizedSearchQuery,
     tracks,
     total,
+    matches,
   };
 }

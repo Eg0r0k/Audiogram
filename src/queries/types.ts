@@ -5,6 +5,7 @@ import type {
   SidebarFolderEntity,
 } from "@/db/entities";
 import type { Track } from "@/modules/player/types";
+import type { SearchMatch } from "@/modules/search/types";
 
 export interface LibrarySummaryData {
   artists: ArtistEntity[];
@@ -41,6 +42,8 @@ export interface PaginatedTracksResult {
   total: number;
   /** Seconds across every match; only a search inside a collection knows it up front. */
   totalDuration?: number;
+  /** Why each track of this page matched, keyed by track id; a search page only. */
+  matches?: Record<string, SearchMatch>;
 }
 
 export interface PaginatedAlbumsResult {

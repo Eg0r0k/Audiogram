@@ -29,6 +29,9 @@ export function termProcessor(term: string): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+/** The alias terms a normalized token is indexed under (transliterations and the like). */
+export const relatedSearchTerms = (token: string): readonly string[] => SEARCH_ASSOCIATIONS.get(token) ?? [];
+
 export function buildSearchAliases(...values: Array<string | undefined>): string {
   const aliases = new Set<string>();
 
