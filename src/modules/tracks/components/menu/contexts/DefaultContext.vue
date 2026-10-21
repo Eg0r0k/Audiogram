@@ -1,13 +1,8 @@
-﻿<template>
+<template>
   <PlayItems
     @play="actions.play"
     @play-next="actions.playNext"
     @add-to-queue="actions.addToQueue"
-  />
-
-  <SelectItem
-    v-if="enterSelection"
-    @select="enterSelection(track.id)"
   />
 
   <component :is="Separator" />
@@ -21,7 +16,6 @@
 
   <OfflineItem
     :caps="caps"
-    :track-id="track.id"
     @download="actions.downloadOffline"
     @cancel-download="actions.cancelOfflineDownload"
     @remove-download="actions.removeDownload"
@@ -37,28 +31,24 @@
     @open-external="actions.openExternal"
   />
 
-  <component :is="Separator" />
-
-  <NavigationItems
+  <TrackInfoSection
     :artist-ids="track.artistIds"
     :album-id="track.albumId"
+    :caps="caps"
     @go-to-artist="actions.goToArtist"
     @go-to-album="actions.goToAlbum"
+    @show-details="actions.showDetails"
   />
-  <DetailsItem @show="actions.showDetails" />
 </template>
 
 <script setup lang="ts">
 import PlayItems from "../items/PlayItems.vue";
-import NavigationItems from "../items/NavigationItems.vue";
 import AddToPlaylistSub from "../items/AddToPlaylistSub.vue";
-import DetailsItem from "../items/DetailsItem.vue";
 import LikeItem from "../items/LikeItem.vue";
 import MoreSub from "../items/MoreSub.vue";
 import OfflineItem from "../items/OfflineItem.vue";
-import SelectItem from "../items/SelectItem.vue";
+import TrackInfoSection from "../items/TrackInfoSection.vue";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
-import { useTrackSelectionEntry } from "../useTrackSelectionEntry";
 import { trackHasLyrics } from "@/modules/tracks/lib/trackPredicates";
 import type { ContextActions } from "../type";
 import type { TrackMenuCaps } from "@/modules/tracks/composables/useTrackMenuCaps";
@@ -71,5 +61,4 @@ defineProps<{
 }>();
 
 const { Separator } = useTrackMenuComponents();
-const enterSelection = useTrackSelectionEntry();
 </script>

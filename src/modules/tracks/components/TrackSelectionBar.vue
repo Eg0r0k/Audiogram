@@ -3,142 +3,79 @@
     :delay-duration="300"
     disable-hoverable-content
   >
-    <div
-      ref="rootRef"
-      class="track-selection-bar bg-canvas px-5"
-    >
-      <div class="flex min-w-0 items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          class="shrink-0 rounded-full"
-          :aria-label="t('library.selection.exit')"
-          :disabled="busy"
-          @click="emit('exit')"
-        >
-          <IconX class="size-5" />
-        </Button>
-        <Badge
-          class="mx-2"
-          :aria-label="t('library.selection.count', count)"
-        >
-          {{ count }}
-        </Badge>
+    <div class="flex h-full min-w-0 items-center gap-2 pt-2 bg-card">
+      <Button
+        variant="ghost"
+        color="muted"
+        size="icon-lg"
+        class="shrink-0 rounded-full"
+        :aria-label="t('library.selection.exit')"
+        :disabled="busy"
+        @click="emit('exit')"
+      >
+        <IconX class="size-6" />
+      </Button>
 
-        <Button
-          v-if="!isNarrow"
-          variant="ghost"
-          size="sm"
-          class="shrink-0 text-muted-foreground"
-          :disabled="busy || selectingAll"
-          @click="toggleSelectAll"
-        >
-          <Spinner
-            v-if="selectingAll"
-            class="size-4"
-          />
-          {{ t(allSelected ? 'library.selection.deselectAll' : 'library.selection.selectAll') }}
-        </Button>
-      </div>
+      <h2
+        class="shrink-0 font-bold tabular-nums"
+        :class="compact ? 'text-xl' : 'text-2xl'"
+        :aria-label="t('library.selection.count', count)"
+      >
+        {{ count }}
+      </h2>
 
-      <div class="flex shrink-0 items-center gap-0.5">
-        <template
-          v-for="action in visibleActions"
+      <Button
+        variant="ghost"
+        color="muted"
+        size="sm"
+        class="shrink-0"
+        :disabled="busy || selectingAll"
+        @click="toggleSelectAll"
+      >
+        <Spinner
+          v-if="selectingAll"
+          class="size-4"
+        />
+        {{ t(allSelected ? 'library.selection.deselectAll' : 'library.selection.selectAll') }}
+      </Button>
+
+      <div
+        ref="actionsRef"
+        class="flex min-w-0 flex-1 items-center justify-end gap-0.5 overflow-hidden"
+      >
+        <Tooltip
+          v-for="action in inlineActions"
           :key="action.key"
         >
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                class="rounded-full"
-                :aria-label="action.label"
-                :disabled="actionsDisabled"
-                @click="action.run"
-              >
-                <component
-                  :is="action.icon"
-                  class="size-5"
-                />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {{ action.label }}
-            </TooltipContent>
-          </Tooltip>
-        </template>
-
-        <ResponsiveMenu
-          v-if="!isNarrow"
-          @update:open="onPlaylistMenuOpen"
-        >
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <ResponsiveMenuTrigger>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  class="rounded-full"
-                  :aria-label="t('track.contextMenu.addToPlaylist')"
-                  :disabled="actionsDisabled"
-                >
-                  <IconPlaylistAdd class="size-5" />
-                </Button>
-              </ResponsiveMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {{ t('track.contextMenu.addToPlaylist') }}
-            </TooltipContent>
-          </Tooltip>
-          <ResponsiveMenuContent
-            align="end"
-            class="min-w-52"
-          >
-            <ResponsiveMenuLabel>{{ t('track.contextMenu.addToPlaylist') }}</ResponsiveMenuLabel>
-            <ResponsiveMenuSeparator />
-            <ResponsiveMenuItem @select="handleCreatePlaylist">
-              <IconPlus class="size-4" />
-              {{ t('track.contextMenu.createPlaylist') }}
-            </ResponsiveMenuItem>
-            <ResponsiveMenuSeparator v-if="playlists.length" />
-            <ResponsiveMenuItem
-              v-for="playlist in playlists"
-              :key="playlist.id"
-              @select="emit('addToPlaylist', playlist.id)"
-            >
-              <IconPlaylist class="size-4" />
-              <span class="truncate">{{ playlist.name }}</span>
-            </ResponsiveMenuItem>
-          </ResponsiveMenuContent>
-        </ResponsiveMenu>
-
-        <Tooltip>
           <TooltipTrigger as-child>
             <Button
               variant="ghost"
-              size="icon-sm"
-              class="rounded-full text-destructive hover:text-destructive"
-              :aria-label="t('common.delete')"
+              color="muted"
+              size="icon-lg"
+              class="shrink-0 rounded-full"
+              :class="{ 'text-destructive hover:text-destructive': action.destructive }"
+              :aria-label="action.label"
               :disabled="actionsDisabled"
-              @click="emit('delete')"
+              @click="action.run"
             >
-              <IconTrash class="size-5" />
+              <component
+                :is="action.icon"
+                class="size-5"
+              />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            {{ t('common.delete') }}
+            {{ action.label }}
           </TooltipContent>
         </Tooltip>
 
-        <ResponsiveMenu
-          v-if="isNarrow"
-          @update:open="onPlaylistMenuOpen"
-        >
+        <ResponsiveMenu v-if="overflowActions.length > 0 || playlists.length > 0">
           <ResponsiveMenuTrigger>
             <Button
               variant="ghost"
-              size="icon-sm"
-              class="rounded-full"
+              color="muted"
+              size="icon-lg"
+              class="shrink-0 rounded-full"
               :aria-label="t('library.selection.more')"
               :disabled="actionsDisabled"
             >
@@ -150,41 +87,30 @@
             class="min-w-52"
           >
             <ResponsiveMenuItem
-              :disabled="selectingAll"
-              @select="toggleSelectAll"
+              v-for="action in overflowActions"
+              :key="action.key"
+              :color="action.destructive ? 'destructive' : undefined"
+              @select="action.run"
             >
               <component
-                :is="allSelected ? IconDeselect : IconSelectAll"
+                :is="action.icon"
                 class="size-4"
               />
-              {{ t(allSelected ? 'library.selection.deselectAll' : 'library.selection.selectAll') }}
+              {{ action.label }}
             </ResponsiveMenuItem>
-            <ResponsiveMenuSeparator />
-            <ResponsiveMenuItem @select="emit('playNext')">
-              <IconPlayerTrackNext class="size-4" />
-              {{ t('track.contextMenu.playNext') }}
-            </ResponsiveMenuItem>
-            <ResponsiveMenuItem @select="emit('toggleLike')">
-              <component
-                :is="allLiked ? IconHeartFilled : IconHeart"
-                class="size-4"
-              />
-              {{ likeLabel }}
-            </ResponsiveMenuItem>
-            <ResponsiveMenuSeparator />
-            <ResponsiveMenuLabel>{{ t('track.contextMenu.addToPlaylist') }}</ResponsiveMenuLabel>
-            <ResponsiveMenuItem @select="handleCreatePlaylist">
-              <IconPlus class="size-4" />
-              {{ t('track.contextMenu.createPlaylist') }}
-            </ResponsiveMenuItem>
-            <ResponsiveMenuItem
-              v-for="playlist in playlists"
-              :key="playlist.id"
-              @select="emit('addToPlaylist', playlist.id)"
-            >
-              <IconPlaylist class="size-4" />
-              <span class="truncate">{{ playlist.name }}</span>
-            </ResponsiveMenuItem>
+
+            <template v-if="playlists.length > 0">
+              <ResponsiveMenuSeparator v-if="overflowActions.length > 0" />
+              <ResponsiveMenuLabel>{{ t('track.contextMenu.addToPlaylist') }}</ResponsiveMenuLabel>
+              <ResponsiveMenuItem
+                v-for="playlist in playlists"
+                :key="playlist.id"
+                @select="emit('addToPlaylist', playlist.id)"
+              >
+                <IconPlaylist class="size-4" />
+                <span class="truncate">{{ playlist.name }}</span>
+              </ResponsiveMenuItem>
+            </template>
           </ResponsiveMenuContent>
         </ResponsiveMenu>
       </div>
@@ -193,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, shallowRef, useTemplateRef } from "vue";
+import { computed, useTemplateRef } from "vue";
 import type { Component } from "vue";
 import { useElementSize } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
@@ -208,22 +134,18 @@ import {
 } from "@/components/ui/responsive-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Spinner } from "@/components/ui/spinner";
-import IconDeselect from "~icons/tabler/deselect";
 import IconDots from "~icons/tabler/dots";
 import IconHeart from "~icons/tabler/heart";
 import IconHeartFilled from "~icons/tabler/heart-filled";
 import IconListNumbers from "~icons/tabler/list-numbers";
-import IconPlay from "~icons/tabler/player-play";
+import IconPlay from "~icons/audiogram/play-rounded";
 import IconPlayerTrackNext from "~icons/tabler/player-track-next";
 import IconPlaylist from "~icons/tabler/playlist";
 import IconPlaylistAdd from "~icons/tabler/playlist-add";
-import IconPlus from "~icons/tabler/plus";
-import IconSelectAll from "~icons/tabler/select-all";
 import IconTrash from "~icons/tabler/trash";
 import IconX from "~icons/tabler/x";
 import type { PlaylistId } from "@/types/ids";
 import { usePlaylistMenu } from "./menu/composables/usePlaylistMenu";
-import Badge from "@/components/ui/badge/Badge.vue";
 
 const props = defineProps<{
   count: number;
@@ -231,6 +153,8 @@ const props = defineProps<{
   allLiked: boolean;
   busy: boolean;
   selectingAll: boolean;
+  /** Phone header: the count title is a size smaller. */
+  compact?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -241,18 +165,19 @@ const emit = defineEmits<{
   playNext: [];
   addToQueue: [];
   toggleLike: [];
+  createPlaylist: [];
   addToPlaylist: [playlistId: PlaylistId];
   delete: [];
 }>();
 
-// A 1280px window with both side panels open leaves a ~610px column, so a
-// higher threshold made the wide bar unreachable on a normal desktop.
-const NARROW_PX = 540;
+// An icon-lg button plus the gap between buttons.
+const ACTION_PX = 42;
 
 const { t } = useI18n();
-const rootRef = useTemplateRef<HTMLElement>("rootRef");
-const { width } = useElementSize(rootRef);
-const isNarrow = computed(() => width.value > 0 && width.value < NARROW_PX);
+const actionsRef = useTemplateRef<HTMLElement>("actionsRef");
+// The actions area takes whatever the title and select-all leave over, so its
+// width alone decides how many buttons fit next to the more button.
+const { width } = useElementSize(actionsRef);
 const actionsDisabled = computed(() => props.busy || props.count === 0);
 
 const toggleSelectAll = () => {
@@ -269,45 +194,29 @@ interface BarAction {
   label: string;
   icon: Component;
   run: () => void;
-  wideOnly?: boolean;
-  dividerBefore?: boolean;
+  destructive?: boolean;
 }
 
-// Same icon vocabulary as the track context menu (PlayItems, LikeItem,
-// AddToPlaylistSub), all tabler outline so the glyphs share one optical size.
-// Groups: playback, then library (like + playlist menu), then delete on its own.
+// Same icon vocabulary as the track context menu, all tabler outline so the
+// glyphs share one optical size.
 const actions = computed<BarAction[]>(() => [
   { key: "play", label: t("track.contextMenu.play"), icon: IconPlay, run: () => emit("play") },
-  { key: "playNext", label: t("track.contextMenu.playNext"), icon: IconPlayerTrackNext, run: () => emit("playNext"), wideOnly: true },
+  { key: "playNext", label: t("track.contextMenu.playNext"), icon: IconPlayerTrackNext, run: () => emit("playNext") },
   { key: "queue", label: t("track.contextMenu.addToQueue"), icon: IconListNumbers, run: () => emit("addToQueue") },
-  {
-    key: "like",
-    label: likeLabel.value,
-    icon: props.allLiked ? IconHeartFilled : IconHeart,
-    run: () => emit("toggleLike"),
-    wideOnly: true,
-    dividerBefore: true,
-  },
+  { key: "like", label: likeLabel.value, icon: props.allLiked ? IconHeartFilled : IconHeart, run: () => emit("toggleLike") },
+  { key: "createPlaylist", label: t("track.contextMenu.createPlaylist"), icon: IconPlaylistAdd, run: () => emit("createPlaylist") },
+  { key: "delete", label: t("common.delete"), icon: IconTrash, run: () => emit("delete"), destructive: true },
 ]);
 
-const visibleActions = computed(() =>
-  actions.value.filter(action => !action.wideOnly || !isNarrow.value),
-);
+const fitCount = computed(() => {
+  if (width.value <= 0) return actions.value.length;
+  const slots = Math.floor(width.value / ACTION_PX);
+  // Everything fits only if no more button is needed for overflow.
+  return slots >= actions.value.length ? actions.value.length : Math.max(0, slots - 1);
+});
 
-const hasOpenedPlaylists = shallowRef(false);
-const onPlaylistMenuOpen = (open: boolean) => {
-  if (open) hasOpenedPlaylists.value = true;
-};
-const { playlists, handleCreatePlaylist } = usePlaylistMenu({ enabled: hasOpenedPlaylists });
+const inlineActions = computed(() => actions.value.slice(0, fitCount.value));
+const overflowActions = computed(() => actions.value.slice(fitCount.value));
+
+const { playlists } = usePlaylistMenu();
 </script>
-
-<style scoped>
-.track-selection-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  height: 48px;
-  color: var(--muted-foreground);
-}
-</style>

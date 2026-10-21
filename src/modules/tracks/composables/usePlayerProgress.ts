@@ -1,14 +1,17 @@
 import { ref, computed, watch, effectScope, onScopeDispose, type Ref, type EffectScope } from "vue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
+import { FRAME_GRID_MS, snapToGrid } from "@/lib/frame-grid";
 
-// Smallest change of the bar worth a render, in percent: 0.05 % is a fifth
-// of a pixel on a phone-wide bar. The loop wakes once per that step instead
-// of every display frame: a rAF loop kept the page producing frames at the
-// display rate (144 Hz here) with a style recalc in each, 55 ms/s of main
-// thread for movement no one can see.
-const PROGRESS_EPSILON = 0.05;
-const MIN_TICK_MS = 16;
+// Smallest move of the fill worth a render: half a pixel of the widest bar,
+// the footer's, which spans the window. A fixed percentage instead jumped
+// 2-2.5 px at a time on a wide window. The loop wakes once per that step
+// instead of every display frame: a rAF loop kept the page producing frames
+// at the display rate (144 Hz here) with a style recalc in each, 55 ms/s of
+// main thread for movement no one can see.
+const STEP_PX = 0.5;
 const MAX_TICK_MS = 250;
+
+const stepPercent = () => (STEP_PX / Math.max(1, window.innerWidth)) * 100;
 
 interface ProgressTicker {
   scope: EffectScope;
@@ -41,8 +44,15 @@ const createTicker = (): ProgressTicker => {
     const tickInterval = () => {
       const duration = playerStore.player?.duration;
       if (!duration || !isFinite(duration)) return MAX_TICK_MS;
-      const ms = duration * 1000 * (PROGRESS_EPSILON / 100);
-      return Math.min(MAX_TICK_MS, Math.max(MIN_TICK_MS, ms));
+      const ms = duration * 1000 * (stepPercent() / 100);
+      return Math.min(MAX_TICK_MS, Math.max(FRAME_GRID_MS, ms));
+    };
+
+    // On a point of the shared 60 Hz frame grid (see frame-grid.ts), so the
+    // bar repaints in frames the stepped animations draw anyway.
+    const schedule = (run: () => void) => {
+      const now = performance.now();
+      return setTimeout(run, snapToGrid(now + tickInterval()) - now);
     };
 
     const stop = () => {
@@ -54,10 +64,12 @@ const createTicker = (): ProgressTicker => {
       if (timerId !== null) return;
       const update = () => {
         const next = readProgress();
-        if (next !== null && Math.abs(next - progress.value) >= PROGRESS_EPSILON) progress.value = next;
-        timerId = playerStore.isPlaying ? setTimeout(update, tickInterval()) : null;
+        // Half a step: a tick sized to one step sees a hair less whenever its
+        // timer runs early, and a full-step bar dropped every other tick.
+        if (next !== null && Math.abs(next - progress.value) >= stepPercent() / 2) progress.value = next;
+        timerId = playerStore.isPlaying ? schedule(update) : null;
       };
-      timerId = setTimeout(update, tickInterval());
+      timerId = schedule(update);
     };
 
     const sync = () => {
@@ -95,6 +107,12 @@ const createTicker = (): ProgressTicker => {
 
     watch(() => playerStore.status, (status) => {
       if (status === "playing") start();
+    });
+
+    // Paused, the loop is off and only a seek moves the position: its
+    // timeupdate is the one signal that the bar is behind.
+    watch(() => playerStore.currentTime, () => {
+      if (!playerStore.isPlaying) sync();
     });
 
     sync();

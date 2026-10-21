@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <PlayItems
     @play="actions.play"
     @play-next="actions.playNext"
@@ -12,13 +12,10 @@
     @toggle="actions.toggleLike"
   />
 
-  <DetailsItem @show="actions.showDetails" />
-
   <AddToPlaylistSub @add="actions.addToPlaylist" />
 
   <OfflineItem
     :caps="caps"
-    :track-id="track.id"
     @download="actions.downloadOffline"
     @cancel-download="actions.cancelOfflineDownload"
     @remove-download="actions.removeDownload"
@@ -34,20 +31,20 @@
     @open-external="actions.openExternal"
   />
 
-  <component :is="Separator" />
-
-  <NavigationItems
+  <TrackInfoSection
     :artist-ids="track.artistIds"
     :album-id="track.albumId"
+    :caps="caps"
     @go-to-artist="actions.goToArtist"
     @go-to-album="actions.goToAlbum"
+    @show-details="actions.showDetails"
   />
 
   <component :is="Separator" />
 
   <component
     :is="Item"
-    variant="destructive"
+    color="destructive"
     @click="actions.removeFromHistory?.()"
   >
     <IconTrash class="size-5.5" />
@@ -59,10 +56,9 @@
 import PlayItems from "../items/PlayItems.vue";
 import LikeItem from "../items/LikeItem.vue";
 import AddToPlaylistSub from "../items/AddToPlaylistSub.vue";
-import DetailsItem from "../items/DetailsItem.vue";
-import NavigationItems from "../items/NavigationItems.vue";
 import MoreSub from "../items/MoreSub.vue";
 import OfflineItem from "../items/OfflineItem.vue";
+import TrackInfoSection from "../items/TrackInfoSection.vue";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
 import { trackHasLyrics } from "@/modules/tracks/lib/trackPredicates";
 import type { ContextActions } from "../type";

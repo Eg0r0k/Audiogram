@@ -13,11 +13,11 @@
     </ItemMedia>
     <ItemContent>
       <ItemTitle>{{ title }}</ItemTitle>
-      <ItemSubtitle
+      <ItemDescription
         v-if="displayValue"
       >
         {{ displayValue }}
-      </ItemSubtitle>
+      </ItemDescription>
     </ItemContent>
 
     <ItemActions>
@@ -33,7 +33,7 @@ import {
   ItemActions,
   ItemContent,
   ItemMedia,
-  ItemSubtitle,
+  ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
 

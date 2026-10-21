@@ -1,6 +1,6 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { useMutation, useQueryClient } from "@tanstack/vue-query";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
@@ -112,12 +112,12 @@ export function useAttachTrackLyrics() {
       // The now-playing UI reads the queue's copy of the current track.
       queueStore.syncTrackMetadata(nextTrack);
 
-      toast.success(t("player.lyricsAttached"));
+      toaster.add({ title: t("player.lyricsAttached"), color: "success" });
 
       return nextTrack;
     },
     onError: () => {
-      toast.error(t("player.lyricsAttachFailed"));
+      toaster.add({ title: t("player.lyricsAttachFailed"), color: "destructive" });
     },
   });
 

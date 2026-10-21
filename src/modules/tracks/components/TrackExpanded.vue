@@ -198,6 +198,7 @@
             <Button
               v-if="isLibraryRow"
               variant="ghost"
+              color="muted"
               size="icon-sm"
               :class="[
                 'rounded-full transition-opacity',
@@ -219,6 +220,7 @@
 
             <Button
               variant="ghost"
+              color="muted"
               size="icon-sm"
               class="rounded-full opacity-0 group-hover:opacity-100 group-data-[menu-open]:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
               @click.stop="onDotsClick"

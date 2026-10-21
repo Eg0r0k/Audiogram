@@ -23,9 +23,12 @@ export function useIndexTracksPage(sortKey: Ref<TrackSortKey | null>, searchQuer
 
   const tracks = computed(() => queryState.data.value?.pages.flatMap(page => page.tracks) ?? []);
   const total = computed(() => queryState.data.value?.pages[0]?.total ?? 0);
+  // A failed next page is shown at the end of the list it failed to extend.
+  const isError = computed(() => queryState.isError.value && !queryState.isFetchNextPageError.value);
 
   return {
     ...queryState,
+    isError,
     resolvedSortKey,
     normalizedSearchQuery,
     tracks,

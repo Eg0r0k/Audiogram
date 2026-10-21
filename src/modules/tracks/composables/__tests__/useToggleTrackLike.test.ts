@@ -7,17 +7,17 @@ import { createApp } from "vue";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { Track } from "@/modules/player/types";
 import type { SourceProvider } from "@/modules/sources/types";
+import { shownToasts } from "@/test/toasts";
 
 const toggleTrackLikeAndSync = vi.hoisted(() => vi.fn());
 const ensurePinned = vi.hoisted(() => vi.fn());
 const invalidateLibraryData = vi.hoisted(() => vi.fn(async () => {}));
-const toast = vi.hoisted(() => ({ error: vi.fn() }));
 const provider = vi.hoisted(() => ({ setTrackLiked: vi.fn() }));
 
 vi.mock("@/queries/track.queries", () => ({ toggleTrackLikeAndSync }));
 vi.mock("@/queries/library.queries", () => ({ invalidateLibraryData }));
 vi.mock("@/modules/tracks/service/ensurePinned", () => ({ ensurePinned }));
-vi.mock("vue-sonner", () => ({ toast }));
+vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock("@/modules/sources", () => ({
   sources: { find: (kind: string) => (kind === "ym" ? provider as unknown as SourceProvider : undefined) },
@@ -97,7 +97,21 @@ describe("useToggleTrackLike", () => {
     await expect(toggleTrackLike(remoteRow("ym:40144"))).rejects.toThrow();
 
     expect(toggleTrackLikeAndSync).not.toHaveBeenCalled();
-    expect(toast.error).toHaveBeenCalledWith("track.likeToggleFailed");
+    expect(shownToasts("destructive")).toContainEqual(expect.objectContaining({ title: "track.likeToggleFailed" }));
+  });
+
+  it("a refused like offers a retry that sends the same like again", async () => {
+    provider.setTrackLiked.mockReturnValueOnce(errAsync({ kind: "NETWORK", message: "offline" }));
+    const { toggleTrackLike } = setup();
+    await expect(toggleTrackLike(remoteRow("ym:40144"))).rejects.toThrow();
+
+    const [failure] = shownToasts("destructive");
+    expect(failure.actions?.[0]?.label).toBe("common.retry");
+    failure.actions?.[0]?.onClick?.(new MouseEvent("click"));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(provider.setTrackLiked).toHaveBeenLastCalledWith("ym:40144", true);
+    expect(toggleTrackLikeAndSync).toHaveBeenCalledTimes(1);
   });
 
   it("a local track is liked without any source or pin involved", async () => {

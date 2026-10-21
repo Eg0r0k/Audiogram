@@ -1,13 +1,13 @@
 import { computed, ref } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import { useQueryClient } from "@tanstack/vue-query";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 import { getLogger } from "@/lib/logger";
 import type { Track } from "@/modules/player/types";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { TrackSortKey } from "@/modules/tracks/types";
-import { addTracksToPlaylistAndSync } from "@/queries/playlist.queries";
+import { addTracksToPlaylistAndSync, createPlaylistAndSync } from "@/queries/playlist.queries";
 import {
   getTracksByIdsSorted,
   setTracksLikedAndSync,
@@ -16,6 +16,15 @@ import { useTrackDeletion } from "@/modules/tracks/composables/useTrackDeletion"
 import type { PlaylistId, TrackId } from "@/types/ids";
 
 export type BulkTrackAction = "play" | "playNext" | "addToQueue" | "toggleLike" | "addToPlaylist" | "delete";
+
+const FAILED_TITLE_KEYS: Record<BulkTrackAction, string> = {
+  play: "library.selection.playFailed",
+  playNext: "queue.addFailed",
+  addToQueue: "queue.addFailed",
+  toggleLike: "track.likeToggleFailed",
+  addToPlaylist: "library.selection.addToPlaylistFailed",
+  delete: "library.selection.deleteFailed",
+};
 
 export interface UseBulkTrackActionsOptions {
   selectedIds: ComputedRef<ReadonlySet<string>>;
@@ -29,7 +38,7 @@ export const useBulkTrackActions = (options: UseBulkTrackActionsOptions) => {
   const queryClient = useQueryClient();
   const queueStore = useQueueStore();
   const { t } = useI18n();
-  const { confirmDeletion, deleteWithUndo } = useTrackDeletion();
+  const { deleteWithUndo } = useTrackDeletion();
 
   const busy = ref(false);
 
@@ -55,7 +64,7 @@ export const useBulkTrackActions = (options: UseBulkTrackActionsOptions) => {
     }
     catch (err) {
       getLogger().warn(`[useBulkTrackActions] ${action} failed: ${String(err)}`);
-      toast.error(t("library.selection.actionFailed"));
+      toaster.add({ title: t(FAILED_TITLE_KEYS[action]), color: "destructive" });
     }
     finally {
       busy.value = false;
@@ -73,13 +82,13 @@ export const useBulkTrackActions = (options: UseBulkTrackActionsOptions) => {
   const playNext = () => run("playNext", async () => {
     const tracks = await fetchSelected();
     queueStore.insertMultipleNext(tracks, { type: "manual" });
-    toast.success(t("library.selection.addedToQueue", tracks.length));
+    toaster.add({ title: t("library.selection.addedToQueue", tracks.length), color: "success" });
   });
 
   const addToQueue = () => run("addToQueue", async () => {
     const tracks = await fetchSelected();
     queueStore.addMultipleToQueue(tracks, { type: "manual" });
-    toast.success(t("library.selection.addedToQueue", tracks.length));
+    toaster.add({ title: t("library.selection.addedToQueue", tracks.length), color: "success" });
   });
 
   const toggleLike = () => run("toggleLike", async () => {
@@ -93,19 +102,24 @@ export const useBulkTrackActions = (options: UseBulkTrackActionsOptions) => {
         .filter(item => item.track.kind === "library" && idSet.has(item.track.id))
         .map(item => ({ ...item.track, isLiked: liked })),
     );
-    toast.success(t(liked ? "library.selection.liked" : "library.selection.unliked", changed));
+    toaster.add({ title: t(liked ? "library.selection.liked" : "library.selection.unliked", changed), color: "success" });
   });
 
   const addToPlaylist = (playlistId: PlaylistId) => run("addToPlaylist", async () => {
     const tracks = await fetchSelected();
     await addTracksToPlaylistAndSync(queryClient, playlistId, tracks);
-    toast.success(t("library.selection.addedToPlaylist", tracks.length));
+    toaster.add({ title: t("library.selection.addedToPlaylist", tracks.length), color: "success" });
+  });
+
+  const createPlaylist = () => run("addToPlaylist", async () => {
+    const tracks = await fetchSelected();
+    const playlist = await createPlaylistAndSync(queryClient);
+    await addTracksToPlaylistAndSync(queryClient, playlist.id, tracks);
+    toaster.add({ title: t("library.selection.addedToPlaylist", tracks.length), color: "success" });
   });
 
   const deleteSelected = async () => {
-    const count = options.selectedIds.value.size;
-    if (busy.value || count === 0) return;
-    if (!(await confirmDeletion(ids()))) return;
+    if (busy.value || options.selectedIds.value.size === 0) return;
 
     await run("delete", async () => {
       await deleteWithUndo(ids(), deleted => t("library.selection.deleted", deleted));
@@ -120,6 +134,7 @@ export const useBulkTrackActions = (options: UseBulkTrackActionsOptions) => {
     addToQueue,
     toggleLike,
     addToPlaylist,
+    createPlaylist,
     deleteSelected,
   };
 };

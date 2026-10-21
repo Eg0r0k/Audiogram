@@ -78,13 +78,14 @@ describe("useTrackMenuCaps", () => {
     const caps = mountCaps(subject);
 
     expect(caps.value).toEqual({
+      kind: "library",
       source: "local",
+      trackId: "local-1",
       isInLibrary: true,
       isPinned: true,
       hasLocalCopy: false,
       canExportFile: true,
       canDownload: false,
-      canAttachLyrics: true,
       canOpenExternal: false,
     });
     expect(copyMock.findBySourceRef).not.toHaveBeenCalled();
@@ -139,12 +140,13 @@ describe("useTrackMenuCaps", () => {
     const caps = mountCaps(subject);
 
     expect(caps.value).toMatchObject({
+      kind: "remote",
       source: "yt",
+      trackId: "yt:abc",
       isInLibrary: false,
       isPinned: false,
       canExportFile: false,
       canDownload: true,
-      canAttachLyrics: false,
       canOpenExternal: true,
     });
   });
@@ -164,6 +166,27 @@ describe("useTrackMenuCaps", () => {
     expect(caps.value.canOpenExternal).toBe(true);
   });
 
+  it("looks up a playing stream's offline copy under its stream identity", async () => {
+    copyMock.findBySourceRef.mockResolvedValue(ok(undefined));
+    registryMock.providers = { yt: { capabilities: { download: true } }, nd: { capabilities: { download: true } } };
+    const ytSubject = shallowRef<TrackMenuSubject | null>({
+      kind: "ephemeral",
+      track: { kind: "ephemeral", id: "e1", title: "S", source: { type: "url", url: "http://127.0.0.1:60123/deadbeef/yt/abc" } },
+    });
+    const ndSubject = shallowRef<TrackMenuSubject | null>({
+      kind: "ephemeral",
+      track: { kind: "ephemeral", id: "e2", title: "N", source: { type: "url", url: "http://127.0.0.1:60123/deadbeef/nd/song/42" } },
+    });
+
+    const ytCaps = mountCaps(ytSubject);
+    const ndCaps = mountCaps(ndSubject);
+    await flushQueries();
+
+    expect(copyMock.findBySourceRef).toHaveBeenCalledWith("yt:abc");
+    expect(ytCaps.value).toMatchObject({ kind: "ephemeral", source: "yt", trackId: "yt:abc", canDownload: true, canOpenExternal: true });
+    expect(ndCaps.value).toMatchObject({ kind: "ephemeral", source: "nd", trackId: "nd:42" });
+  });
+
   it("classifies a YT ephemeral stream as yt and a path ephemeral as local", () => {
     const ytSubject = shallowRef<TrackMenuSubject | null>({
       kind: "ephemeral",
@@ -176,10 +199,12 @@ describe("useTrackMenuCaps", () => {
 
     expect(mountCaps(ytSubject).value.source).toBe("yt");
     expect(mountCaps(pathSubject).value).toMatchObject({
+      kind: "ephemeral",
       source: "local",
+      trackId: null,
       isPinned: false,
-      canAttachLyrics: false,
       canExportFile: false,
+      canDownload: false,
     });
   });
 });

@@ -1,20 +1,22 @@
-import { defineComponent, h, nextTick } from "vue";
+import { defineComponent, h, nextTick, reactive } from "vue";
 import { mount } from "@vue/test-utils";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockPlayer = { currentTime: 0, duration: 200 };
-const mockStore = {
+const mockStore = reactive({
   player: mockPlayer as { currentTime: number; duration: number } | null,
+  currentTime: 0,
   isPlaying: false,
   status: "paused",
   currentTrack: { id: "t1" } as { id: string } | null,
   isLiveStream: false,
   canSeek: true,
   seekPercent: vi.fn(),
-};
+});
 
 vi.mock("@/modules/player/store/player.store", () => ({ usePlayerStore: () => mockStore }));
 
+import { FRAME_GRID_MS } from "@/lib/frame-grid";
 import { usePlayerProgress } from "../usePlayerProgress";
 
 let frames: FrameRequestCallback[] = [];
@@ -46,7 +48,9 @@ describe("usePlayerProgress", () => {
       return frames.length;
     });
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.stubGlobal("innerWidth", 1000);
     mockPlayer.currentTime = 0;
+    mockStore.currentTime = 0;
     mockStore.isPlaying = false;
     mockStore.status = "paused";
     mockStore.seekPercent.mockClear();
@@ -65,7 +69,7 @@ describe("usePlayerProgress", () => {
 
     expect(vi.getTimerCount()).toBe(1);
     mockPlayer.currentTime = 50;
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(100 + FRAME_GRID_MS);
     await nextTick();
 
     expect(vi.getTimerCount()).toBe(1);
@@ -99,15 +103,77 @@ describe("usePlayerProgress", () => {
     const bar = mount(Bar);
     expect(frames).toHaveLength(0);
 
-    // 0.05 % of a 200 s track is 100 ms.
+    // Half a pixel of a 1000 px window is 0.05 %: 100 ms of a 200 s track,
+    // then up to one 60 Hz grid tick to land on the shared frame grid.
     mockPlayer.currentTime = 20;
     vi.advanceTimersByTime(99);
     await nextTick();
     expect(bar.text()).toBe("0");
 
-    vi.advanceTimersByTime(1);
+    vi.advanceTimersByTime(FRAME_GRID_MS + 1);
     await nextTick();
     expect(bar.text()).toBe("10");
+    bar.unmount();
+  });
+
+  it("steps by half a pixel of the window, so a wide window gets finer steps", async () => {
+    vi.stubGlobal("innerWidth", 2000);
+    mockStore.isPlaying = true;
+    mockStore.status = "playing";
+    const bar = mount(Bar);
+
+    // 0.025 % of a 200 s track is 50 ms.
+    mockPlayer.currentTime = 0.05;
+    vi.advanceTimersByTime(50 + FRAME_GRID_MS);
+    await nextTick();
+
+    expect(bar.text()).toBe("0.025");
+    bar.unmount();
+  });
+
+  it("does not drop a tick whose move falls a hair short of a full step", async () => {
+    mockStore.isPlaying = true;
+    mockStore.status = "playing";
+    const bar = mount(Bar);
+
+    // Timers run a little early or late, so a tick sized to one step often
+    // sees slightly less than one.
+    mockPlayer.currentTime = 0.099;
+    vi.advanceTimersByTime(100 + FRAME_GRID_MS);
+    await nextTick();
+
+    expect(bar.text()).toBe("0.0495");
+    bar.unmount();
+  });
+
+  it("wakes on the shared 60 Hz frame grid", async () => {
+    mockStore.isPlaying = true;
+    mockStore.status = "playing";
+    const delays: number[] = [];
+    const realSetTimeout = globalThis.setTimeout;
+    vi.stubGlobal("setTimeout", ((fn: () => void, ms?: number) => {
+      delays.push(performance.now() + (ms ?? 0));
+      return realSetTimeout(fn, ms);
+    }) as typeof setTimeout);
+    const bar = mount(Bar);
+
+    const wake = delays.at(-1)!;
+    const ticks = wake / FRAME_GRID_MS;
+    expect(Math.abs(ticks - Math.round(ticks))).toBeLessThan(1e-3);
+    bar.unmount();
+  });
+
+  it("follows a seek made while paused", async () => {
+    const bar = mount(Bar);
+    expect(bar.text()).toBe("0");
+
+    // The element moves at once; the store hears it on the seek's timeupdate.
+    mockPlayer.currentTime = 100;
+    mockStore.currentTime = 100;
+    await nextTick();
+
+    expect(bar.text()).toBe("50");
+    expect(vi.getTimerCount()).toBe(0);
     bar.unmount();
   });
 

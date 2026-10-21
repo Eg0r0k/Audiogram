@@ -19,6 +19,7 @@ vi.mock("@/queries/track.queries", () => ({
   })),
 }));
 
+import { getTracksPaginated } from "@/queries/track.queries";
 import { useIndexTracksPage } from "../useIndexTracksPage";
 
 function mountComposable() {
@@ -64,6 +65,21 @@ describe("useIndexTracksPage", () => {
     // 200, freezing the container height; without it the whole library loads.
     expect(api.tracks.value.length).toBe(LIBRARY_TOTAL);
     expect(api.hasNextPage.value).toBe(false);
+
+    wrapper.unmount();
+  });
+
+  it("keeps the loaded list on screen when only the next page fails", async () => {
+    const { api, wrapper } = mountComposable();
+    await flushPromises();
+    vi.mocked(getTracksPaginated).mockRejectedValueOnce(new Error("idb"));
+
+    await api.fetchNextPage();
+    await flushPromises();
+
+    expect(api.isError.value).toBe(false);
+    expect(api.isFetchNextPageError.value).toBe(true);
+    expect(api.tracks.value).toHaveLength(PAGE_SIZE);
 
     wrapper.unmount();
   });

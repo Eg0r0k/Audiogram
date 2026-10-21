@@ -1,6 +1,7 @@
 <template>
   <component
     :is="Item"
+    v-if="!inSheet"
     @click="emit('toggle')"
   >
     <IconLikedFilled
@@ -19,6 +20,8 @@
   </component>
 </template>
 <script setup lang="ts">
+import { computed } from "vue";
+import { injectResponsiveMenu } from "@/components/ui/responsive-menu";
 import IconLike from "~icons/tabler/heart";
 import IconLikedFilled from "~icons/tabler/heart-filled";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
@@ -28,6 +31,9 @@ defineProps<{
 }>();
 
 const { Item } = useTrackMenuComponents();
+const responsiveMenu = injectResponsiveMenu();
+// The sheet header shows this as a button.
+const inSheet = computed(() => responsiveMenu?.mode.value === "sheet");
 
 const emit = defineEmits<{
   toggle: [];

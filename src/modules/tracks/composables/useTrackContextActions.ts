@@ -5,7 +5,7 @@ import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { AlbumId, ArtistId, PlaylistId, QueueItemId, TrackId } from "@/types/ids";
 
 import { useQueryClient } from "@tanstack/vue-query";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { getLogger } from "@/lib/logger";
 import { useI18n } from "vue-i18n";
 import { toValue, type MaybeRefOrGetter } from "vue";
@@ -18,7 +18,7 @@ import { platformCaps } from "@/lib/environment/platformCaps";
 import { routeLocation } from "@/app/router/route-locations";
 import { useAttachTrackLyrics } from "./useAttachTrackLyrics";
 import { useToggleTrackLike } from "./useToggleTrackLike";
-import { isRemoteTrack, trackHasLocalFile } from "@/modules/tracks/lib/trackPredicates";
+import { ephemeralRemoteDto, isRemoteTrack, trackHasLocalFile } from "@/modules/tracks/lib/trackPredicates";
 import { promoteTrackToLibrary, removeTrackFromLibrary } from "@/modules/tracks/service/libraryMembership";
 import { downloadSubject } from "@/modules/downloads/service/enqueue";
 import { cancelTrackDownload } from "@/modules/downloads/service/manager";
@@ -32,7 +32,7 @@ import { trackIdFromStreamUrl } from "@/lib/stream-url";
 import { sources } from "@/modules/sources";
 import {
   addTrackToPlaylistAndSync,
-  removeTrackFromPlaylistAndSync,
+  removeTrackFromPlaylistWithUndo,
 } from "@/queries/playlist.queries";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { statsService } from "@/services/stats.service";
@@ -46,6 +46,8 @@ export const useTrackContextActions = (
     /** Menu subject — lets DB-bound actions pin remote DTOs on demand. */
     subject?: MaybeRefOrGetter<TrackMenuSubject | null>;
     onNavigate?: () => void;
+    /** A like or lyrics edit returns a new copy; a read-only snapshot cannot take it in place. */
+    onTrackChange?: (track: Track) => void;
   } = {},
 ): ContextActions => {
   const router = useRouter();
@@ -88,8 +90,9 @@ export const useTrackContextActions = (
    * Resolves the track row a DB-bound action should operate on: the library
    * track as-is, or a remote DTO pinned on demand (like from ND browsing
    * just works). Null when the subject has no library identity (ephemeral).
+   * A failed pin is reported as the failure of the action that needed it.
    */
-  const resolveDbTrack = async (): Promise<Track | null> => {
+  const resolveDbTrack = async (failedTitle: string): Promise<Track | null> => {
     const current = toValue(track);
     if (isLibraryTrack(current)) return current;
 
@@ -103,15 +106,15 @@ export const useTrackContextActions = (
     }
     catch (error) {
       getLogger().error(`[Tracks] Pin failed for ${subject.dto.id}: ${String(error)}`);
-      toast.error(t("track.pinFailed"));
+      toaster.add({ title: failedTitle, color: "destructive" });
       return null;
     }
   };
 
   const toggleLike = async () => {
-    const current = await resolveDbTrack();
+    const current = await resolveDbTrack(t("track.likeToggleFailed"));
     if (!current) return;
-    await toggleTrackLike(current);
+    options.onTrackChange?.(await toggleTrackLike(current));
   };
 
   const showDetails = () => {
@@ -129,20 +132,40 @@ export const useTrackContextActions = (
   };
 
   const attachLyricsToTrack = async () => {
-    const current = await resolveDbTrack();
+    const current = await resolveDbTrack(t("player.lyricsAttachFailed"));
     if (!current) return;
-    await attachTrackLyrics(current);
+    const next = await attachTrackLyrics(current);
+    if (next) options.onTrackChange?.(next);
   };
 
   const addToPlaylist = async (playlistId: PlaylistId) => {
-    const current = await resolveDbTrack();
+    const current = await resolveDbTrack(t("playlist.addTrackFailed"));
     if (!current) return;
     try {
       await addTrackToPlaylistAndSync(queryClient, playlistId, current);
     }
     catch {
-      toast.error(t("playlist.addTrackFailed"));
+      toaster.add({ title: t("playlist.addTrackFailed"), color: "destructive" });
     }
+  };
+
+  // One toast per kind: a second removal replaces the first one's undo
+  // instead of stacking a toast per removed track.
+  const offerUndo = (id: string, title: string, restore: () => Promise<void>, restoreFailedTitle: string) => {
+    toaster.add({
+      id,
+      title,
+      color: "success",
+      actions: [{
+        label: t("common.undo"),
+        onClick: () => {
+          restore().catch((error: unknown) => {
+            getLogger().error(`[Tracks] Undoing "${title}" failed: ${String(error)}`);
+            toaster.add({ title: restoreFailedTitle, color: "destructive" });
+          });
+        },
+      }],
+    });
   };
 
   const removeFromQueue = () => {
@@ -157,10 +180,11 @@ export const useTrackContextActions = (
     const playlistId = toValue(options.playlistId);
     if (!isLibraryTrack(current) || !playlistId) return;
     try {
-      await removeTrackFromPlaylistAndSync(queryClient, playlistId, current.id);
+      const { restore } = await removeTrackFromPlaylistWithUndo(queryClient, playlistId, current.id);
+      offerUndo("playlist-track-removed", t("playlist.trackRemoved"), restore, t("playlist.restoreTrackFailed"));
     }
     catch {
-      toast.error(t("playlist.removeTrackFailed"));
+      toaster.add({ title: t("playlist.removeTrackFailed"), color: "destructive" });
     }
   };
 
@@ -168,10 +192,11 @@ export const useTrackContextActions = (
     const current = toValue(track);
     if (!isLibraryTrack(current)) return;
     try {
-      await statsService.removeFromHistory(current.id);
+      const restore = await statsService.removeFromHistory(current.id);
+      offerUndo("history-track-removed", t("track.removedFromHistory"), restore, t("track.restoreHistoryFailed"));
     }
     catch {
-      toast.error(t("track.removeFromHistoryFailed"));
+      toaster.add({ title: t("track.removeFromHistoryFailed"), color: "destructive" });
     }
   };
 
@@ -238,7 +263,7 @@ export const useTrackContextActions = (
         if (!targetPath) return;
 
         await writeFile(targetPath, new Uint8Array(await fileBlob.arrayBuffer()));
-        toast.success(t("track.downloadSuccess"));
+        toaster.add({ title: t("track.exported"), color: "success" });
         return;
       }
 
@@ -250,34 +275,53 @@ export const useTrackContextActions = (
       link.click();
       link.remove();
       URL.revokeObjectURL(objectUrl);
-      toast.success(t("track.downloadSuccess"));
+      toaster.add({ title: t("track.exported"), color: "success" });
     }
     catch {
-      toast.error(t("track.downloadFailed"));
+      toaster.add({ title: t("track.exportFailed"), color: "destructive" });
     }
   };
 
   const downloadsStore = useDownloadsStore();
 
-  /** The id downloads key on: the library row id or the remote DTO id. */
-  const subjectTrackId = (): TrackId | null => {
-    const subject = toValue(options.subject);
-    if (subject?.kind === "remote") return subject.dto.id;
-    const current = toValue(track);
-    return isLibraryTrack(current) ? (current.id) : null;
-  };
-
-  const downloadOffline = async () => {
+  /**
+   * What a download acts on: the subject itself, or for a playing stream the
+   * catalog track its URL names. Null when nothing can be pinned.
+   */
+  const downloadTarget = (): Exclude<TrackMenuSubject, { kind: "ephemeral" }> | null => {
     const current = toValue(track);
     const subject = toValue(options.subject)
       ?? (isLibraryTrack(current) ? { kind: "library" as const, track: current } : null);
-    if (!subject || subject.kind === "ephemeral") return;
+    if (subject?.kind !== "ephemeral") return subject;
+    const dto = ephemeralRemoteDto(subject.track);
+    return dto ? { kind: "remote", dto } : null;
+  };
+
+  /** The id downloads key on: the library row id or the remote DTO id. */
+  const subjectTrackId = (): TrackId | null => {
+    const target = downloadTarget();
+    if (!target) return null;
+    return target.kind === "remote" ? target.dto.id : target.track.id;
+  };
+
+  const downloadOffline = async () => {
+    const target = downloadTarget();
+    if (!target) return;
     try {
-      await downloadSubject(subject);
+      await downloadSubject(target);
     }
     catch (error) {
       getLogger().error(`[Downloads] Enqueue failed from the track menu: ${String(error)}`);
-      toast.error(t("track.downloadFailed"));
+      toaster.add({
+        title: t("downloads.enqueueFailed"),
+        color: "destructive",
+        actions: [{
+          label: t("common.retry"),
+          onClick: () => {
+            downloadOffline().catch(() => undefined);
+          },
+        }],
+      });
     }
   };
 
@@ -295,7 +339,7 @@ export const useTrackContextActions = (
     }
     catch (error) {
       getLogger().error(`[Downloads] Removing the downloaded copy of ${trackId} failed: ${String(error)}`);
-      toast.error(t("track.removeDownloadFailed"));
+      toaster.add({ title: t("track.removeDownloadFailed"), color: "destructive" });
     }
   };
 
@@ -311,11 +355,11 @@ export const useTrackContextActions = (
         await promoteTrackToLibrary(current.id);
       }
       await invalidateLibraryData(queryClient);
-      toast.success(t("track.addedToLibrary"));
+      toaster.add({ title: t("track.addedToLibrary"), color: "success" });
     }
     catch (error) {
       getLogger().error(`[Tracks] Add to library failed: ${String(error)}`);
-      toast.error(t("track.pinFailed"));
+      toaster.add({ title: t("track.pinFailed"), color: "destructive" });
     }
   };
 
@@ -325,11 +369,11 @@ export const useTrackContextActions = (
     try {
       await removeTrackFromLibrary(current.id);
       await invalidateLibraryData(queryClient);
-      toast.success(t("track.removedFromLibrary"));
+      toaster.add({ title: t("track.removedFromLibrary"), color: "success" });
     }
     catch (error) {
       getLogger().error(`[Tracks] Remove from library failed for ${current.id}: ${String(error)}`);
-      toast.error(t("track.removeFromLibraryFailed"));
+      toaster.add({ title: t("track.removeFromLibraryFailed"), color: "destructive" });
     }
   };
 

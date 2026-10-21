@@ -1,10 +1,9 @@
 import { computed, type Ref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { parseTrackRef, type SourceKind } from "@/types/track-ref";
-import { ytVideoIdFromStreamUrl } from "@/lib/stream-url";
 import { sources } from "@/modules/sources";
 import { localCopyQueries } from "@/queries/localCopy.queries";
-import { trackHasLocalFile } from "@/modules/tracks/lib/trackPredicates";
+import { ephemeralRemoteDto, trackHasLocalFile } from "@/modules/tracks/lib/trackPredicates";
 import type { TrackId } from "@/types/ids";
 import type { TrackMenuSubject } from "../components/menu/type";
 
@@ -15,7 +14,14 @@ import type { TrackMenuSubject } from "../components/menu/type";
 // source themselves.
 //
 export interface TrackMenuCaps {
+  kind: TrackMenuSubject["kind"];
   source: SourceKind;
+  /**
+   * The id downloads and offline copies key on: the row id, the DTO id, or
+   * the catalog track a playing stream names in its URL. Null for a stream
+   * with no catalog identity (file, radio).
+   */
+  trackId: TrackId | null;
   /** A library row with pinned = 1 — visible on library pages. */
   isInLibrary: boolean;
   /** A Dexie row exists at all (shadow rows included). */
@@ -26,28 +32,17 @@ export interface TrackMenuCaps {
   canExportFile: boolean;
   /** The source can hand over a file and no copy exists yet. */
   canDownload: boolean;
-  /** Lyrics attach to library rows only (stored locally on the pinned row). */
-  canAttachLyrics: boolean;
   canOpenExternal: boolean;
 }
+
+/** The details panel reads the Dexie row; caps-less call sites are library-only and always have one. */
+export const canShowDetails = (caps?: TrackMenuCaps | null): boolean => caps?.isPinned ?? true;
 
 function subjectTrackId(subject: TrackMenuSubject | null): TrackId | null {
   if (!subject) return null;
   if (subject.kind === "library") return subject.track.id;
   if (subject.kind === "remote") return subject.dto.id;
-  // Ephemeral tracks never have a TrackId.
-  return null;
-}
-
-function subjectSource(subject: TrackMenuSubject | null): SourceKind {
-  if (!subject) return "local";
-  if (subject.kind === "ephemeral") {
-    const { source } = subject.track;
-    return source.type === "url" && ytVideoIdFromStreamUrl(source.url) ? "yt" : "local";
-  }
-  return subject.kind === "library"
-    ? parseTrackRef(subject.track.id).kind
-    : parseTrackRef(subject.dto.id).kind;
+  return ephemeralRemoteDto(subject.track)?.id ?? null;
 }
 
 /** Capability lookup that tolerates sources not registered yet (nd until M2). */
@@ -70,11 +65,11 @@ function sourceCanDownload(kind: SourceKind): boolean {
  * `actions` — item components receive ready-made booleans.
  */
 export function useTrackMenuCaps(subject: Ref<TrackMenuSubject | null>): Ref<TrackMenuCaps> {
-  const source = computed(() => subjectSource(subject.value));
+  const trackId = computed(() => subjectTrackId(subject.value));
+  const source = computed<SourceKind>(() => (trackId.value ? parseTrackRef(trackId.value).kind : "local"));
   const isRemote = computed(() => source.value !== "local");
-  const trackId = computed(() => (isRemote.value ? subjectTrackId(subject.value) : null));
 
-  const { data: localCopy } = useQuery(computed(() => localCopyQueries.byRemoteId(trackId.value)));
+  const { data: localCopy } = useQuery(computed(() => localCopyQueries.byRemoteId(isRemote.value ? trackId.value : null)));
 
   return computed<TrackMenuCaps>(() => {
     const current = subject.value;
@@ -83,13 +78,14 @@ export function useTrackMenuCaps(subject: Ref<TrackMenuSubject | null>): Ref<Tra
     const hasLocalFile = isLibrary && trackHasLocalFile(current.track);
 
     return {
+      kind: current?.kind ?? "library",
       source: source.value,
+      trackId: trackId.value,
       isInLibrary: isLibrary && (current.track.pinned ?? 1) === 1,
       isPinned: isLibrary,
       hasLocalCopy,
       canExportFile: hasLocalFile || hasLocalCopy,
       canDownload: isRemote.value && sourceCanDownload(source.value) && !hasLocalCopy,
-      canAttachLyrics: isLibrary,
       canOpenExternal: isRemote.value,
     };
   });

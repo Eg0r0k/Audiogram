@@ -28,6 +28,13 @@
       </Empty>
     </template>
 
+    <template
+      v-if="isFetchNextPageError && !isFetchingNextPage"
+      #load-more-error
+    >
+      <LoadMoreError @retry="handleLoadMore" />
+    </template>
+
     <template #loader>
       <TrackRowLoading />
     </template>
@@ -35,12 +42,13 @@
 </template>
 
 <script setup lang="ts">
+import LoadMoreError from "@/components/common/LoadMoreError.vue";
 import { refDebounced } from "@vueuse/core";
 import { Empty, EmptyDescription } from "@/components/ui/empty";
 import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { toast } from "vue-sonner";
+import { toaster } from "@/app/toaster";
 import { EntitySelectPanel } from "@/components/entity-select";
 import TrackSelectRow from "../TrackSelectRow.vue";
 import TrackRowLoading from "../TrackRowLoading.vue";
@@ -84,6 +92,7 @@ const {
   hasNextPage,
   isLoading,
   isFetchingNextPage,
+  isFetchNextPageError,
 } = useInfiniteQuery({
   queryKey: computed(() => queryKeys.tracks.allPaginated(normalizedSearchQuery.value)),
   queryFn: ({ pageParam = 0 }) => getTracksPaginated(pageParam, normalizedSearchQuery.value),
@@ -207,12 +216,12 @@ async function handleConfirm() {
 
   try {
     await confirmSelection();
-    toast.success(t("sheet.addSuccess"));
+    toaster.add({ title: t("sheet.tracksAdded"), color: "success" });
     await props.payload.onConfirmed?.();
     closePanel();
   }
   catch {
-    toast.error(t("sheet.addFailed"));
+    toaster.add({ title: t("sheet.tracksAddFailed"), color: "destructive" });
   }
 }
 

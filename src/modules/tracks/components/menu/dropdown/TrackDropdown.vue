@@ -17,6 +17,8 @@
           <TrackMenuSheetHeader
             v-if="activeTrack"
             :track="activeTrack"
+            :actions="actions"
+            :caps="caps"
           />
         </template>
         <component
@@ -89,7 +91,7 @@ const anchorStyle = computed(() => ({
   height: `${dropdownAnchor.value.height}px`,
 }));
 
-const { activeTrack, contextComponent, contextProps } = useTrackMenuContent({
+const { activeTrack, contextComponent, contextProps, actions, caps } = useTrackMenuContent({
   context: () => props.context,
   playlistId: () => props.playlistId,
   isPlaylistOwner: () => props.isPlaylistOwner,

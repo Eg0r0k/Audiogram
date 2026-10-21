@@ -1,6 +1,6 @@
 <template>
   <!-- Any remote source served by the shared download manager (ND, YT — M5). -->
-  <template v-if="caps && caps.source !== 'local'">
+  <template v-if="!inSheetHeader && caps && caps.source !== 'local'">
     <component
       :is="Item"
       v-if="activeJob"
@@ -32,12 +32,12 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { injectResponsiveMenu } from "@/components/ui/responsive-menu";
 import { Spinner } from "@/components/ui/spinner";
 import IconDownload from "~icons/tabler/download";
 import IconCloudOff from "~icons/tabler/cloud-off";
 import { useDownloadsStore } from "@/modules/downloads/store/downloads.store";
 import type { TrackMenuCaps } from "@/modules/tracks/composables/useTrackMenuCaps";
-import type { TrackId } from "@/types/ids";
 import { useTrackMenuComponents } from "../useTrackMenuComponents";
 
 defineOptions({
@@ -47,7 +47,6 @@ defineOptions({
 const props = defineProps<{
   /** Absent caps (shell not yet caps-aware) renders nothing — safe default. */
   caps?: TrackMenuCaps | null;
-  trackId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -57,10 +56,14 @@ const emit = defineEmits<{
 }>();
 
 const { Item } = useTrackMenuComponents();
+const responsiveMenu = injectResponsiveMenu();
+// The sheet header shows this as a tile — except for a stream, which has no
+// row shape for the header to build tiles from.
+const inSheetHeader = computed(() => responsiveMenu?.mode.value === "sheet" && props.caps?.kind !== "ephemeral");
 const downloadsStore = useDownloadsStore();
 
 const activeJob = computed(() =>
-  props.trackId ? downloadsStore.byTrackId[props.trackId as TrackId] : undefined,
+  props.caps?.trackId ? downloadsStore.byTrackId[props.caps.trackId] : undefined,
 );
 
 const progressSuffix = computed(() => {

@@ -3,15 +3,15 @@ import { computed, effectScope, ref } from "vue";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { Track } from "@/modules/player/types";
 import { TrackId } from "@/types/ids";
+import { shownToasts } from "@/test/toasts";
 
 const queries = vi.hoisted(() => ({
   getTracksByIdsSorted: vi.fn(),
   setTracksLikedAndSync: vi.fn(),
 }));
 const undoApi = vi.hoisted(() => ({ deleteTracksWithUndo: vi.fn() }));
-const playlistQueries = vi.hoisted(() => ({ addTracksToPlaylistAndSync: vi.fn() }));
+const playlistQueries = vi.hoisted(() => ({ addTracksToPlaylistAndSync: vi.fn(), createPlaylistAndSync: vi.fn() }));
 const dialog = vi.hoisted(() => ({ summonDialog: vi.fn() }));
-const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 const queue = vi.hoisted(() => ({
   queue: [] as { id: string; track: { id: string } }[],
   setQueue: vi.fn(async () => {}),
@@ -25,10 +25,7 @@ vi.mock("@/queries/track.queries", () => queries);
 vi.mock("@/queries/track-undo", () => undoApi);
 vi.mock("@/queries/playlist.queries", () => playlistQueries);
 vi.mock("@/components/dialogs/summonDialog", () => dialog);
-vi.mock("@/modules/settings/store/general", () => ({
-  useGeneralSettings: () => ({ confirmTrackDeletion: { value: true }, setConfirmTrackDeletion: vi.fn() }),
-}));
-vi.mock("vue-sonner", () => ({ toast }));
+vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock("@tanstack/vue-query", () => ({ useQueryClient: () => ({ tag: "qc" }) }));
 vi.mock("@/modules/queue/store/queue.store", () => ({ useQueueStore: () => queue }));
@@ -97,7 +94,7 @@ describe("useBulkTrackActions", () => {
 
     expect(queue.insertMultipleNext).toHaveBeenCalledTimes(1);
     expect(queue.addMultipleToQueue).toHaveBeenCalledTimes(1);
-    expect(toast.success).toHaveBeenCalledTimes(2);
+    expect(shownToasts("success")).toHaveLength(2);
   });
 
   it("allLiked is false while a known selected track is not liked, true when all known are liked", () => {
@@ -116,7 +113,7 @@ describe("useBulkTrackActions", () => {
     expect(queries.setTracksLikedAndSync).toHaveBeenCalledWith({ tag: "qc" }, ["t1", "t2"], true);
     expect(queue.syncTracksMetadata).toHaveBeenCalledTimes(1);
     expect(queue.syncTracksMetadata).toHaveBeenCalledWith([expect.objectContaining({ id: "t1", isLiked: true })]);
-    expect(toast.success).toHaveBeenCalledWith("library.selection.liked");
+    expect(shownToasts("success")).toContainEqual(expect.objectContaining({ title: "library.selection.liked" }));
   });
 
   it("toggleLike unlikes when every known selected track is liked", async () => {
@@ -134,22 +131,21 @@ describe("useBulkTrackActions", () => {
     await actions.addToPlaylist("pl-1" as never);
 
     expect(playlistQueries.addTracksToPlaylistAndSync).toHaveBeenCalledWith({ tag: "qc" }, "pl-1", expect.any(Array));
-    expect(toast.success).toHaveBeenCalledWith("library.selection.addedToPlaylist");
+    expect(shownToasts("success")).toContainEqual(expect.objectContaining({ title: "library.selection.addedToPlaylist" }));
   });
 
-  it("deleteSelected asks for confirmation and stops when dismissed", async () => {
-    dialog.summonDialog.mockResolvedValue(undefined);
-    const { actions, onDone } = setup(["t1"]);
+  it("createPlaylist makes a new playlist holding the selection", async () => {
+    playlistQueries.createPlaylistAndSync.mockResolvedValue({ id: "pl-new" });
+    const { actions } = setup(["t1", "t2"]);
 
-    await actions.deleteSelected();
+    await actions.createPlaylist();
 
-    expect(dialog.summonDialog).toHaveBeenCalledWith("deleteTracks", { count: 1 }, { key: "delete-tracks" });
-    expect(undoApi.deleteTracksWithUndo).not.toHaveBeenCalled();
-    expect(onDone).not.toHaveBeenCalled();
+    expect(playlistQueries.createPlaylistAndSync).toHaveBeenCalledWith({ tag: "qc" });
+    expect(playlistQueries.addTracksToPlaylistAndSync).toHaveBeenCalledWith({ tag: "qc" }, "pl-new", expect.any(Array));
+    expect(shownToasts("success")).toContainEqual(expect.objectContaining({ title: "library.selection.addedToPlaylist" }));
   });
 
-  it("deleteSelected deletes in one call, drops queue entries, reports done", async () => {
-    dialog.summonDialog.mockResolvedValue(true);
+  it("deleteSelected deletes in one call without asking, drops queue entries, offers an undo", async () => {
     undoApi.deleteTracksWithUndo.mockResolvedValue({ deleted: 2, restore: vi.fn(), finalize: vi.fn() });
     queue.queue = [{ id: "q1", track: makeTrack("t1") }, { id: "q2", track: makeTrack("zzz") }];
     const { actions, onDone } = setup(["t1", "t2"]);
@@ -158,10 +154,22 @@ describe("useBulkTrackActions", () => {
 
     expect(undoApi.deleteTracksWithUndo).toHaveBeenCalledWith({ tag: "qc" }, ["t1", "t2"]);
     expect(queue.removeMultiple).toHaveBeenCalledWith(["q1"]);
-    expect(toast.success).toHaveBeenCalledWith("library.selection.deleted", expect.objectContaining({
-      action: expect.objectContaining({ label: "common.undo" }),
+    expect(shownToasts("success")).toContainEqual(expect.objectContaining({
+      title: "library.selection.deleted",
+      actions: [expect.objectContaining({ label: "common.undo" })],
     }));
+    expect(dialog.summonDialog).not.toHaveBeenCalled();
     expect(onDone).toHaveBeenCalledWith("delete");
+  });
+
+  it("names the action that failed", async () => {
+    queries.getTracksByIdsSorted.mockRejectedValue(new Error("boom"));
+    const { actions } = setup(["t1"]);
+
+    await actions.addToQueue();
+    await actions.addToPlaylist("pl-1" as never);
+
+    expect(shownToasts("destructive").map(toast => toast.title)).toEqual(["queue.addFailed", "library.selection.addToPlaylistFailed"]);
   });
 
   it("a failing action toasts an error, keeps busy false and does not report done", async () => {
@@ -170,7 +178,7 @@ describe("useBulkTrackActions", () => {
 
     await actions.play();
 
-    expect(toast.error).toHaveBeenCalledWith("library.selection.actionFailed");
+    expect(shownToasts("destructive")).toContainEqual(expect.objectContaining({ title: "library.selection.playFailed" }));
     expect(actions.busy.value).toBe(false);
     expect(onDone).not.toHaveBeenCalled();
   });

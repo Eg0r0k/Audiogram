@@ -21,9 +21,6 @@ vi.mock("@/modules/tracks/composables/useEphemeralImport", async () => {
     }),
   };
 });
-vi.mock("@/modules/youtube/composables/useYoutube", () => ({
-  useYoutube: () => ({ download: vi.fn() }),
-}));
 
 const stubbedItems = {
   ShowLyricsItem: true,

@@ -21,6 +21,7 @@
     <button
       v-if="draggable"
       data-drag-handle
+      data-no-drag
       class="shrink-0 w-4 h-full cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none flex items-center justify-center"
       :aria-label="$t('queue.drag')"
       @click.stop
@@ -113,6 +114,7 @@
     <Button
       v-if="isLibraryRow"
       variant="ghost"
+      color="muted"
       size="icon-sm"
       :class="[
         'rounded-full transition-opacity',
@@ -142,6 +144,7 @@
       </span>
       <Button
         variant="ghost"
+        color="muted"
         size="icon-sm"
         :class="styles.dots"
         @click.stop="onDotsClick"
@@ -176,8 +179,7 @@ import { useRouter, type RouteLocationRaw } from "vue-router";
 import type { ArtistId, QueueItemId } from "@/types/ids";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import { useTrackRowCover } from "@/modules/tracks/composables/useTrackRowCover";
-import { ytPlayableFromEphemeral, ytPlayableToDto } from "@/modules/youtube/lib/playable";
-import { useYoutubeStore } from "@/modules/youtube/store/youtube.store";
+import { ephemeralRemoteDto } from "@/modules/tracks/lib/trackPredicates";
 import SourceDownloadButton from "@/modules/downloads/components/SourceDownloadButton.vue";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { routeLocation } from "@/app/router/route-locations";
@@ -224,7 +226,6 @@ const emit = defineEmits<{
 
 const playerStore = usePlayerStore();
 const queueStore = useQueueStore();
-const ytStore = useYoutubeStore();
 const route = useRouter();
 const { toggleTrackLike } = useToggleTrackLike();
 
@@ -244,13 +245,9 @@ const isCurrentTrack = computed(() => {
 });
 // The pause/pulse state holds through a start (immediate loading); the
 // spinner follows the store's delayed indicator so a fast local start never
-// flashes it. A YT search row spends its wait in yt_resolve before it ever
-// becomes the current track, so that one is checked separately.
+// flashes it.
 const showsPlayback = computed(() => isCurrentTrack.value && (playerStore.isPlaying || playerStore.isLoading));
-const isTrackLoading = computed(() => {
-  if (ytPlayable.value && ytStore.resolvingId === ytPlayable.value.id) return true;
-  return isCurrentTrack.value && playerStore.showLoadingIndicator;
-});
+const isTrackLoading = computed(() => isCurrentTrack.value && playerStore.showLoadingIndicator);
 const showOverlay = computed(() => isCurrentTrack.value || isRowHovered.value);
 
 const overlayState = computed(() => {
@@ -272,12 +269,12 @@ const isPreview = computed(() => availability.value === "preview");
 const isLibraryRow = computed(() =>
   !isEphemeralTrack(props.track as PlayerTrack) && !props.track.sourceDto,
 );
-const ytPlayable = computed(() => ytPlayableFromEphemeral(props.track as PlayerTrack));
 // Any remote row the shared download manager can serve: catalog rows carry
-// their DTO; playing YT streams rebuild one from the stream URL (M5).
+// their DTO; a playing stream names its catalog track in its URL.
 const downloadableDto = computed(() => {
-  if (props.track.sourceDto) return props.track.sourceDto;
-  return ytPlayable.value ? ytPlayableToDto(ytPlayable.value) : null;
+  const track = props.track as PlayerTrack;
+  if (track.sourceDto) return track.sourceDto;
+  return isEphemeralTrack(track) ? ephemeralRemoteDto(track) : null;
 });
 
 const coverUrl = useTrackRowCover(() => props.track, () => props.coverUrl);

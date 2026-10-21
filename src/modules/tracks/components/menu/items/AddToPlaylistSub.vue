@@ -11,6 +11,7 @@ import IconPlaylistAdd from "~icons/tabler/playlist-add";
 import IconPlus from "~icons/tabler/plus";
 import IconPlaylist from "~icons/tabler/playlist";
 import type { PlaylistId } from "@/types/ids";
+import { injectResponsiveMenu } from "@/components/ui/responsive-menu";
 import { useTrackMenuComponents } from "../../menu/useTrackMenuComponents";
 import { usePlaylistMenu } from "../composables/usePlaylistMenu";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
@@ -20,6 +21,10 @@ const emit = defineEmits<{
 }>();
 
 const { Item, Separator, Sub, SubTrigger, SubContent } = useTrackMenuComponents();
+
+// In a sheet the field matches the taller rows around it.
+const responsiveMenu = injectResponsiveMenu();
+const inSheet = computed(() => responsiveMenu?.mode.value === "sheet");
 
 // Список плейлистов не нужен, пока сабменю закрыто: запрос стартует при первом
 // открытии, а не при каждом показе меню, и дальше живёт в кэше.
@@ -57,14 +62,18 @@ const filteredPlaylists = computed(() => {
       class="w-56 "
     >
       <div class="p-0.5">
-        <InputGroup class="bg-canvas! h-8">
+        <InputGroup
+          variant="soft"
+          :size="inSheet ? 'xl' : 'sm'"
+          class="bg-canvas!"
+        >
           <InputGroupInput
             v-model="searchQuery"
             :placeholder="$t('track.contextMenu.searchPlaylist')"
             @keydown.stop
           />
           <InputGroupAddon>
-            <IconSearch class="size-4" />
+            <IconSearch :class="inSheet ? 'size-5' : 'size-4'" />
           </InputGroupAddon>
         </InputGroup>
       </div>

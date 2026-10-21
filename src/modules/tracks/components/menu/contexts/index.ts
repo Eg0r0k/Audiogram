@@ -6,7 +6,6 @@ import LikedContext from "./LikedContext.vue";
 import QueueContext from "./QueueContext.vue";
 import PlaylistContext from "./PlaylistContext.vue";
 import HistoryContext from "./HistoryContext.vue";
-import YtContext from "./YtContext.vue";
 
 export const trackContextComponents: Record<TrackContext, Component> = {
   "default": DefaultContext,
@@ -19,6 +18,5 @@ export const trackContextComponents: Record<TrackContext, Component> = {
   "playlist": PlaylistContext,
   "album": DefaultContext,
   "history": HistoryContext,
-  "yt": YtContext,
-  "yt-search": YtContext,
+  "yt-search": DefaultContext,
 };

@@ -14,6 +14,8 @@
         <TrackMenuSheetHeader
           v-if="activeTrack"
           :track="activeTrack"
+          :actions="actions"
+          :caps="caps"
         />
       </template>
       <component
@@ -76,7 +78,7 @@ useTrackMenuAutoClose(localOpen, {
   playlistId: () => props.playlistId,
 });
 
-const { activeTrack, contextComponent, contextProps } = useTrackMenuContent({
+const { activeTrack, contextComponent, contextProps, actions, caps } = useTrackMenuContent({
   context: () => props.context,
   playlistId: () => props.playlistId,
   isPlaylistOwner: () => props.isPlaylistOwner,

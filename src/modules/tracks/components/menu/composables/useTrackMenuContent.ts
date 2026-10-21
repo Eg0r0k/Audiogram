@@ -31,6 +31,10 @@ export const useTrackMenuContent = (options: TrackMenuContentOptions) => {
     queueItemId: activeQueueItemId,
     subject: activeSubject,
     onNavigate: options.onNavigate,
+    // The sheet stays open after its header buttons, so the shown state follows.
+    onTrackChange: (next) => {
+      if (activeTrack.value?.id === next.id) activeTrack.value = next;
+    },
   });
 
   // Computed once per active subject; contexts receive ready-made booleans.
@@ -59,5 +63,5 @@ export const useTrackMenuContent = (options: TrackMenuContentOptions) => {
     }
   });
 
-  return { activeTrack, contextComponent, contextProps };
+  return { activeTrack, contextComponent, contextProps, actions, caps };
 };

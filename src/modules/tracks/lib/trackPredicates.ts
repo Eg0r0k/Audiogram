@@ -1,4 +1,6 @@
-import { isEphemeralTrack, type PlayerTrack, type Track } from "@/modules/player/types";
+import { isEphemeralTrack, type EphemeralTrack, type PlayerTrack, type Track } from "@/modules/player/types";
+import type { SourceTrackDTO } from "@/modules/sources/types";
+import { proxyPathFromUrl, trackIdFromStreamUrl } from "@/lib/stream-url";
 import { parseTrackRef, type SourceKind } from "@/types/track-ref";
 
 /** Source of a library track, derived from its (possibly prefixed) id. */
@@ -32,3 +34,36 @@ export function ephemeralFilePath(track: PlayerTrack | null): string | null {
   if (!isEphemeralTrack(track) || track.source.type !== "path") return null;
   return track.source.path;
 }
+
+/**
+ * A YouTube thumbnail proxied through the `ytimg/` route unwraps to the https
+ * URL the catalog carries as coverRef; a plain URL already is one. ND/YM
+ * covers are proxied by id, which no DTO field can carry, so they drop.
+ */
+const streamCoverRef = (cover: string | undefined): string | undefined => {
+  if (!cover) return undefined;
+  const route = proxyPathFromUrl(cover);
+  if (route === null) return cover;
+  return route.startsWith("ytimg/") ? route.slice("ytimg/".length) : undefined;
+};
+
+/**
+ * The catalog identity of a playing stream: the DTO it was built from, or
+ * one rebuilt from the proxied stream URL (queue entries that predate the
+ * DTO). Null for files and non-proxied streams (radio) — those have nothing
+ * to download or pin.
+ */
+export const ephemeralRemoteDto = (track: EphemeralTrack): SourceTrackDTO | null => {
+  if (track.sourceDto) return track.sourceDto;
+  if (track.source.type !== "url") return null;
+  const id = trackIdFromStreamUrl(track.source.url);
+  if (!id) return null;
+  return {
+    id,
+    title: track.title,
+    artistName: track.artist,
+    albumTitle: track.albumName,
+    duration: track.duration,
+    coverRef: streamCoverRef(track.cover),
+  };
+};
