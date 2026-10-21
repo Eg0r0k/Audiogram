@@ -10,7 +10,7 @@ use super::api::{YmError, YmErrorKind};
 use super::resolve::YmLinkCache;
 use super::state::YmState;
 use super::stream::{is_track_id, resolve_cached};
-use crate::app_error::AppError;
+use crate::app_error::{AppError, SourceId};
 use crate::remote_download::{
     fetch_to_tmp, tmp_dir, DownloadEvent, DownloadRegistry, DownloadRequest, DownloadResult,
 };
@@ -62,13 +62,7 @@ pub(crate) async fn download_track(
     .await;
     drop(slot);
 
-    result.map_err(|e| {
-        if e == "cancelled" {
-            YmError::new(YmErrorKind::Cancelled, e)
-        } else {
-            YmError::network(e)
-        }
-    })
+    result.map_err(YmError::from)
 }
 
 /// Downloads the whole mp3 into `downloads-tmp/<trackId>.mp3`, streaming
@@ -85,7 +79,7 @@ pub async fn ym_download<R: Runtime>(
     }
     super::state::load_session_if_needed(&app);
     let client = crate::proxy::http_client(&app)?;
-    let tmp = tmp_dir(&app)?;
+    let tmp = tmp_dir(&app).map_err(|e| AppError::from_download(SourceId::Ym, e))?;
     let result = download_track(
         &app.state::<YmState>(),
         &app.state::<YmLinkCache>(),

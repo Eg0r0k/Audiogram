@@ -5,8 +5,10 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime};
 
 use super::config::NdState;
+use crate::app_error::{AppError, SourceErrorKind, SourceId};
 use crate::remote_download::{
-    fetch_to_tmp, tmp_dir, DownloadEvent, DownloadRegistry, DownloadRequest, DownloadResult,
+    fetch_to_tmp, tmp_dir, DownloadError, DownloadEvent, DownloadRegistry, DownloadRequest,
+    DownloadResult,
 };
 
 /// Registry key: the same raw id under another source is another download.
@@ -16,7 +18,7 @@ fn registry_key(song_id: &str) -> String {
 
 /// Downloads the whole original file (`stream.view?format=raw`) into
 /// `downloads-tmp/<songId>.<ext>`, streaming progress over the channel. A
-/// cancelled download removes its partial file and errors with "cancelled".
+/// cancelled download removes its partial file and fails with kind CANCELLED.
 /// Logs carry only the song id.
 #[tauri::command]
 pub async fn nd_download<R: Runtime>(
@@ -24,19 +26,26 @@ pub async fn nd_download<R: Runtime>(
     song_id: String,
     suffix: Option<String>,
     on_progress: Channel<DownloadEvent>,
-) -> Result<DownloadResult, String> {
+) -> Result<DownloadResult, AppError> {
     if !crate::ids::is_plain_id(&song_id) {
-        return Err("invalid song id".into());
+        return Err(AppError::invalid_input("invalid song id"));
     }
     let Some(config) = app.state::<NdState>().get() else {
-        return Err("nd source is not configured".into());
+        return Err(AppError::source(
+            SourceId::Nd,
+            SourceErrorKind::Unavailable,
+            "nd source is not configured",
+        ));
     };
+    let nd_error = |e: DownloadError| AppError::from_download(SourceId::Nd, e);
 
     let registry = app.state::<DownloadRegistry>();
-    let slot = registry.register(&registry_key(&song_id))?;
+    let slot = registry
+        .register(&registry_key(&song_id))
+        .map_err(nd_error)?;
     let url = config.rest_url("stream.view", &song_id, "&format=raw");
     let client = crate::proxy::http_client(&app)?;
-    let tmp = tmp_dir(&app)?;
+    let tmp = tmp_dir(&app).map_err(nd_error)?;
     let result = fetch_to_tmp(
         &client,
         &tmp,
@@ -55,10 +64,10 @@ pub async fn nd_download<R: Runtime>(
     match &result {
         Ok(done) => log::info!("nd_download {song_id}: done ({})", done.ext),
         // A cancel is the user's own doing — nothing to report.
-        Err(e) if e == "cancelled" => {}
+        Err(DownloadError::Cancelled) => {}
         Err(e) => log::warn!("nd_download {song_id}: {e}"),
     }
-    result
+    result.map_err(nd_error)
 }
 
 /// Flags the in-flight download as cancelled; the download loop notices

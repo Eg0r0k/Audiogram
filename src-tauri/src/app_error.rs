@@ -1,5 +1,6 @@
 //! The error envelope every command rejects with; mirrors `AppError` in `src/lib/errors/app-error.ts`.
 
+use crate::remote_download::DownloadError;
 #[cfg(desktop)]
 use crate::updater::{UpdateError, UpdateErrorKind};
 use crate::ym::{YmError, YmErrorKind};
@@ -104,6 +105,16 @@ impl AppError {
     pub(crate) fn unknown(message: impl Into<String>) -> Self {
         Self::native(NativeErrorKind::Unknown, message)
     }
+
+    pub(crate) fn from_download(source: SourceId, error: DownloadError) -> Self {
+        let kind = match &error {
+            DownloadError::Cancelled => SourceErrorKind::Cancelled,
+            DownloadError::Network(_) => SourceErrorKind::Network,
+            DownloadError::Upstream(status) => kind_for_status(*status),
+            DownloadError::Io(_) | DownloadError::Other(_) => SourceErrorKind::Unknown,
+        };
+        Self::source(source, kind, error.to_string())
+    }
 }
 
 /// The kind an upstream HTTP status means for a source request.
@@ -198,8 +209,6 @@ impl From<UpdateError> for AppError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ym::{YmError, YmErrorKind};
-    use crate::youtube::{YtError, YtErrorKind};
     use serde_json::json;
 
     fn wire(error: &AppError) -> String {
@@ -342,5 +351,84 @@ mod tests {
             "UNKNOWN"
         );
         assert_eq!(tauri.to_string(), tauri::Error::UnknownPath.to_string());
+    }
+
+    #[test]
+    fn download_errors_map_upstream_statuses_to_source_kinds() {
+        for (error, kind, message) in [
+            (DownloadError::Upstream(401), "AUTH", "upstream status 401"),
+            (DownloadError::Upstream(403), "AUTH", "upstream status 403"),
+            (
+                DownloadError::Upstream(404),
+                "NOT_FOUND",
+                "upstream status 404",
+            ),
+            (
+                DownloadError::Upstream(429),
+                "RATE_LIMITED",
+                "upstream status 429",
+            ),
+            (
+                DownloadError::Upstream(503),
+                "UNAVAILABLE",
+                "upstream status 503",
+            ),
+            (
+                DownloadError::Upstream(418),
+                "UNKNOWN",
+                "upstream status 418",
+            ),
+            (DownloadError::Cancelled, "CANCELLED", "cancelled"),
+            (
+                DownloadError::Network("request failed: timed out".into()),
+                "NETWORK",
+                "request failed: timed out",
+            ),
+            (
+                DownloadError::Io("disk full".into()),
+                "UNKNOWN",
+                "disk full",
+            ),
+            (
+                DownloadError::Other("download already in progress".into()),
+                "UNKNOWN",
+                "download already in progress",
+            ),
+        ] {
+            assert_eq!(
+                serde_json::to_value(AppError::from_download(SourceId::Nd, error)).expect("json"),
+                json!({ "domain": "source", "source": "nd", "kind": kind, "message": message })
+            );
+        }
+    }
+
+    #[test]
+    fn download_errors_reach_the_envelope_through_ym_and_yt_errors() {
+        let ym = |error: DownloadError| {
+            serde_json::to_value(AppError::from(YmError::from(error))).expect("json")["kind"]
+                .clone()
+        };
+        assert_eq!(ym(DownloadError::Cancelled), "CANCELLED");
+        assert_eq!(ym(DownloadError::Network("m".into())), "NETWORK");
+        assert_eq!(ym(DownloadError::Upstream(403)), "AUTH");
+        assert_eq!(ym(DownloadError::Upstream(404)), "NOT_FOUND");
+        assert_eq!(ym(DownloadError::Upstream(429)), "RATE_LIMITED");
+        assert_eq!(ym(DownloadError::Upstream(502)), "UNAVAILABLE");
+        assert_eq!(ym(DownloadError::Io("m".into())), "UNKNOWN");
+
+        let yt = |error: DownloadError| {
+            serde_json::to_value(AppError::from(YtError::from(error))).expect("json")["kind"]
+                .clone()
+        };
+        assert_eq!(yt(DownloadError::Cancelled), "CANCELLED");
+        assert_eq!(yt(DownloadError::Network("m".into())), "NETWORK");
+        assert_eq!(yt(DownloadError::Upstream(404)), "NOT_FOUND");
+        // YtErrorKind has no UNAVAILABLE: a 5xx is the transport class it documents.
+        assert_eq!(yt(DownloadError::Upstream(503)), "NETWORK");
+        assert_eq!(yt(DownloadError::Upstream(403)), "UNKNOWN");
+        assert_eq!(yt(DownloadError::Other("m".into())), "UNKNOWN");
+
+        let message = AppError::from(YtError::from(DownloadError::Upstream(403))).to_string();
+        assert_eq!(message, "upstream status 403");
     }
 }

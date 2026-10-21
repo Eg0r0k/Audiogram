@@ -8,7 +8,8 @@ use tauri::{AppHandle, Manager, Runtime};
 
 use super::auth::{drop_session, expires_at_from, persist_session, refresh_access_token};
 use super::state::{YmSession, YmState, CLIENT_HEADER_NAME, CLIENT_HEADER_VALUE};
-use crate::app_error::AppError;
+use crate::app_error::{kind_for_status, AppError, SourceErrorKind};
+use crate::remote_download::DownloadError;
 
 /// Failure class; maps one-to-one onto the envelope's `SourceErrorKind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -91,6 +92,24 @@ impl std::fmt::Display for YmError {
 impl From<String> for YmError {
     fn from(message: String) -> Self {
         Self::unknown(message)
+    }
+}
+
+impl From<DownloadError> for YmError {
+    fn from(error: DownloadError) -> Self {
+        let kind = match &error {
+            DownloadError::Cancelled => YmErrorKind::Cancelled,
+            DownloadError::Network(_) => YmErrorKind::Network,
+            DownloadError::Upstream(status) => match kind_for_status(*status) {
+                SourceErrorKind::Auth => YmErrorKind::Auth,
+                SourceErrorKind::NotFound => YmErrorKind::NotFound,
+                SourceErrorKind::RateLimited => YmErrorKind::RateLimited,
+                SourceErrorKind::Unavailable => YmErrorKind::Unavailable,
+                _ => YmErrorKind::Unknown,
+            },
+            DownloadError::Io(_) | DownloadError::Other(_) => YmErrorKind::Unknown,
+        };
+        Self::new(kind, error.to_string())
     }
 }
 

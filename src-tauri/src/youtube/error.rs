@@ -1,6 +1,9 @@
 //! The YouTube commands' internal error; the frontend receives it as a
 //! source `AppError` with the same kind.
 
+use crate::app_error::{kind_for_status, SourceErrorKind};
+use crate::remote_download::DownloadError;
+
 /// Failure class; maps onto the envelope's `SourceErrorKind`.
 #[derive(Debug, Clone, Copy)]
 pub enum YtErrorKind {
@@ -52,5 +55,21 @@ impl std::fmt::Display for YtError {
 impl From<String> for YtError {
     fn from(message: String) -> Self {
         Self::unknown(message)
+    }
+}
+
+impl From<DownloadError> for YtError {
+    fn from(error: DownloadError) -> Self {
+        let kind = match &error {
+            DownloadError::Cancelled => YtErrorKind::Cancelled,
+            DownloadError::Network(_) => YtErrorKind::Network,
+            DownloadError::Upstream(status) => match kind_for_status(*status) {
+                SourceErrorKind::NotFound => YtErrorKind::NotFound,
+                SourceErrorKind::Unavailable => YtErrorKind::Network,
+                _ => YtErrorKind::Unknown,
+            },
+            DownloadError::Io(_) | DownloadError::Other(_) => YtErrorKind::Unknown,
+        };
+        Self::new(kind, error.to_string())
     }
 }
