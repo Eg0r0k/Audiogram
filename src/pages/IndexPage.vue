@@ -64,9 +64,10 @@ import { Separator } from "@/components/ui/separator";
 import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { routeLocation } from "@/app/router/route-locations";
-import { toaster } from "@/app/toaster";
+import { reportError } from "@/app/error-feedback";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { IS_APPLE } from "@/lib/environment/userAgent";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { SEEK_STEP } from "@/modules/hotkeys";
 import { useImport } from "@/modules/library/composables/useImport";
@@ -97,7 +98,7 @@ const { pickAndImport } = useImport();
 const { addFolder } = useWatchedFolders();
 
 const reportFailure = (action: string) => (error: unknown) => {
-  getLogger().error(`[IndexPage] ${action} failed: ${String(error)}`);
+  getLogger().error(`[IndexPage] ${action} failed: ${formatError(error)}`);
 };
 
 const navigate = (to: RouteLocationRaw, action: string) => () => {
@@ -111,7 +112,7 @@ const quickActions = ([
     available: platformCaps.hasFs,
     run: () => {
       addFolder().then((failed) => {
-        if (failed) toaster.add({ title: failed, color: "destructive" });
+        if (failed) reportError(null, { title: failed, scope: "IndexPage" });
       }, reportFailure("Adding a watched folder"));
     },
   },

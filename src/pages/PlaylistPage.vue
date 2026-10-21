@@ -104,8 +104,7 @@
 <script setup lang="ts">
 import LoadMoreError from "@/components/common/LoadMoreError.vue";
 import { computed, ref, useTemplateRef } from "vue";
-import { toaster } from "@/app/toaster";
-import { loadErrorText } from "@/app/error-feedback";
+import { loadErrorText, reportError } from "@/app/error-feedback";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
@@ -132,6 +131,7 @@ import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 const { t } = useI18n();
 const playerStore = usePlayerStore();
@@ -200,7 +200,7 @@ function handleLoadMore() {
   // The query keeps its own error state for the UI; the log is what tells us
   // WHY a scroll stopped loading more playlist tracks.
   fetchNextPage().catch((err: unknown) => {
-    getLogger().warn(`[PlaylistPage] Loading the next playlist tracks page failed: ${String(err)}`);
+    getLogger().warn(`[PlaylistPage] Loading the next playlist tracks page failed: ${formatError(err)}`);
   });
 }
 
@@ -253,15 +253,15 @@ const openDeleteDialog = async () => {
     },
   }, { key: `delete:${data.id}` });
   if (!confirmed) return;
-  if (!(await deleteAtSource())) toaster.add({ title: t("playlist.deleteFailed"), color: "destructive" });
+  if (!(await deleteAtSource())) reportError(null, { title: t("playlist.deleteFailed"), scope: "Playlist" });
 };
 
 async function handleDelete(deleteTracks: boolean) {
   try {
     await deletePlaylist({ deleteTracks });
   }
-  catch {
-    toaster.add({ title: t("playlist.deleteFailed"), color: "destructive" });
+  catch (error) {
+    reportError(error, { title: t("playlist.deleteFailed"), scope: "Playlist" });
   }
 }
 
@@ -272,7 +272,7 @@ const openEditDialog = () => {
       await updatePlaylist(changes);
     }
     catch (e) {
-      getLogger().error(`[PlaylistPage] Updating the playlist failed: ${String(e)}`);
+      getLogger().error(`[PlaylistPage] Updating the playlist failed: ${formatError(e)}`);
       throw e;
     }
   }).catch(() => undefined);

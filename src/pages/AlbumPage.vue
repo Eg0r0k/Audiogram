@@ -109,7 +109,7 @@ import { computed, ref, useTemplateRef } from "vue";
 import { catalogViewRoute } from "@/app/router/route-locations";
 import { sourceKindOf } from "@/modules/sources/lib/display";
 import { toaster } from "@/app/toaster";
-import { loadErrorText } from "@/app/error-feedback";
+import { loadErrorText, reportError } from "@/app/error-feedback";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
@@ -137,6 +137,7 @@ import type { Track } from "@/modules/player/types";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 const { t } = useI18n();
 const playerStore = usePlayerStore();
@@ -194,7 +195,7 @@ function handleLoadMore() {
   // The query keeps its own error state for the UI; the log is what tells us
   // WHY a scroll stopped loading more album tracks.
   fetchNextPage().catch((err: unknown) => {
-    getLogger().warn(`[AlbumPage] Loading the next album tracks page failed: ${String(err)}`);
+    getLogger().warn(`[AlbumPage] Loading the next album tracks page failed: ${formatError(err)}`);
   });
 }
 
@@ -248,8 +249,8 @@ async function handleDelete(deleteTracks: boolean) {
     await deleteAlbum({ deleteTracks });
     toaster.add({ title: t("album.deleted"), color: "success" });
   }
-  catch {
-    toaster.add({ title: t("album.deleteFailed"), color: "destructive" });
+  catch (error) {
+    reportError(error, { title: t("album.deleteFailed"), scope: "Album" });
   }
 }
 
@@ -260,7 +261,7 @@ const openEditDialog = () => {
       await updateAlbum(changes);
     }
     catch (e) {
-      getLogger().error(`[AlbumPage] Updating the album failed: ${String(e)}`);
+      getLogger().error(`[AlbumPage] Updating the album failed: ${formatError(e)}`);
       throw e;
     }
   }).catch(() => undefined);

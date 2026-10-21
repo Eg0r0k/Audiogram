@@ -71,7 +71,8 @@
     "recommender": {
       "evalTitle": "Оценить рекомендации",
       "evalSubtitle": "Обучить веса на автоплей-истории и посчитать AUC на отложенной выборке. Отчёт — в логе.",
-      "evalResult": "AUC {auc}, skip-rate автоплея {rate}% за 14 дн., примеров {n}"
+      "evalResult": "AUC {auc}, skip-rate автоплея {rate}% за 14 дн., примеров {n}",
+      "evalFailed": "Не удалось выполнить оценку"
     },
     "listenedWeek": "Прослушано за эту неделю",
     "listenedMonth": "Прослушано за {month}",

@@ -157,8 +157,7 @@
 <script setup lang="ts">
 import LoadMoreError from "@/components/common/LoadMoreError.vue";
 import { computed, ref, useTemplateRef } from "vue";
-import { toaster } from "@/app/toaster";
-import { loadErrorText } from "@/app/error-feedback";
+import { loadErrorText, reportError } from "@/app/error-feedback";
 import { useI18n } from "vue-i18n";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import PageErrorState from "@/components/common/PageErrorState.vue";
@@ -198,6 +197,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 const { t } = useI18n();
 const playerStore = usePlayerStore();
@@ -246,8 +246,7 @@ const createAlbum = useCreateAlbum();
 const handleCreateAlbum = () => {
   if (!artist.value) return;
   createAlbum(artist.value.id).catch((error: unknown) => {
-    getLogger().error(`[ArtistPage] Creating an album failed: ${String(error)}`);
-    toaster.add({ title: t("album.createFailed"), color: "destructive" });
+    reportError(error, { title: t("album.createFailed"), scope: "Artist" });
   });
 };
 const currentTrackId = computed(() => playerStore.currentTrack?.id ?? null);
@@ -278,7 +277,7 @@ function handleTrackLoadMore() {
   // The query keeps its own error state for the UI; the log is what tells us
   // WHY a scroll stopped loading more artist tracks.
   fetchNextTrackPage().catch((err: unknown) => {
-    getLogger().warn(`[ArtistPage] Loading the next artist tracks page failed: ${String(err)}`);
+    getLogger().warn(`[ArtistPage] Loading the next artist tracks page failed: ${formatError(err)}`);
   });
 }
 
@@ -332,8 +331,8 @@ async function handleDelete(deleteTracks: boolean) {
   try {
     await deleteArtist({ deleteTracks });
   }
-  catch {
-    toaster.add({ title: t("artist.deleteFailed"), color: "destructive" });
+  catch (error) {
+    reportError(error, { title: t("artist.deleteFailed"), scope: "Artist" });
   }
 }
 
@@ -344,7 +343,7 @@ const openEditDialog = () => {
       await updateArtist(changes);
     }
     catch (e) {
-      getLogger().error(`[ArtistPage] Updating the artist failed: ${String(e)}`);
+      getLogger().error(`[ArtistPage] Updating the artist failed: ${formatError(e)}`);
       throw e;
     }
   }).catch(() => undefined);

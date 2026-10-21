@@ -193,6 +193,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { summonDialog } from "@/components/dialogs/summonDialog";
 import { Button } from "@/components/ui/button";
@@ -213,6 +214,7 @@ import MusicIcon from "~icons/tabler/music";
 import DatabaseIcon from "~icons/tabler/database";
 import ClockIcon from "~icons/tabler/clock";
 import { formatBytes } from "@/lib/format/memory";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import { invalidateWeightsCache } from "@/modules/recommendations/service/recommender-model.service";
@@ -267,7 +269,7 @@ const confirmWipe = async (what: string, { doneText, ...texts }: WipeTexts, run:
         await run();
       }
       catch (error) {
-        getLogger().error(`[StorageSettings] ${what} failed: ${String(error)}`);
+        getLogger().error(`[StorageSettings] ${what} failed: ${formatError(error)}`);
         throw error;
       }
     },
@@ -311,15 +313,15 @@ const handleStoragePathCopied = () => {
   toaster.add({ title: t("settings.storage.locationCopied"), color: "success" });
 };
 
-const handleStoragePathCopyFailed = () => {
-  toaster.add({ title: t("common.copyFailed"), color: "destructive" });
+const handleStoragePathCopyFailed = (error: unknown) => {
+  reportError(error, { title: t("common.copyFailed"), scope: "Storage" });
 };
 
 const loadUsage = () => {
   usageFailed.value = false;
   refresh().catch((err: unknown) => {
     usageFailed.value = true;
-    getLogger().warn(`[StorageSettings] Refreshing storage usage failed: ${String(err)}`);
+    getLogger().warn(`[StorageSettings] Refreshing storage usage failed: ${formatError(err)}`);
   });
 };
 

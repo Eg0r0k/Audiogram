@@ -57,6 +57,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
@@ -99,8 +100,7 @@ const handleRecommenderEval = async () => {
     toaster.add({ title: t("settings.stats.recommender.evalResult", { auc, rate, n: report.examples }), color: "success" });
   }
   catch (error) {
-    getLogger().error(`[Recommendations] Eval failed: ${String(error)}`);
-    toaster.add({ title: String(error), color: "destructive" });
+    reportError(error, { title: t("settings.stats.recommender.evalFailed"), scope: "Stats" });
   }
 };
 </script>
