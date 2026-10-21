@@ -149,18 +149,26 @@ describe("usePlayerProgress", () => {
   it("wakes on the shared 60 Hz frame grid", async () => {
     mockStore.isPlaying = true;
     mockStore.status = "playing";
+    // Frozen off the grid: the stub reads the clock after the loop did, and on
+    // a slow CI runner the gap between the two reads alone missed the grid.
+    const clock = vi.spyOn(performance, "now").mockReturnValue(1000.123);
     const delays: number[] = [];
     const realSetTimeout = globalThis.setTimeout;
     vi.stubGlobal("setTimeout", ((fn: () => void, ms?: number) => {
       delays.push(performance.now() + (ms ?? 0));
       return realSetTimeout(fn, ms);
     }) as typeof setTimeout);
-    const bar = mount(Bar);
+    try {
+      const bar = mount(Bar);
 
-    const wake = delays.at(-1)!;
-    const ticks = wake / FRAME_GRID_MS;
-    expect(Math.abs(ticks - Math.round(ticks))).toBeLessThan(1e-3);
-    bar.unmount();
+      const wake = delays.at(-1)!;
+      const ticks = wake / FRAME_GRID_MS;
+      expect(Math.abs(ticks - Math.round(ticks))).toBeLessThan(1e-3);
+      bar.unmount();
+    }
+    finally {
+      clock.mockRestore();
+    }
   });
 
   it("follows a seek made while paused", async () => {
