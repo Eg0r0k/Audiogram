@@ -139,13 +139,13 @@ const codeOf = (error: AppError): string | undefined => {
   }
 };
 
-// The Error the message was read from is the failure itself, so its own cause is the one to print.
+// A cause that repeats the message adds nothing; an Error one may still carry its own cause.
 const causeOf = (error: AppError): unknown => {
   const cause = "cause" in error ? error.cause : undefined;
   if (cause instanceof Error && (cause.message === error.message || messageOf(cause) === error.message)) {
     return "cause" in cause ? cause.cause : undefined;
   }
-  return cause;
+  return errorMessage(cause) === error.message ? undefined : cause;
 };
 
 export const formatError = (thrown: unknown): string => {

@@ -3,8 +3,10 @@ import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { ResultAsync, errAsync, okAsync } from "neverthrow";
 import { platformCaps } from "@/lib/environment/platformCaps";
 
-const toNativeFailure = (message: string) => (cause: unknown) =>
-  new AppFailure<NativeAppError>({ domain: "native", kind: "UNKNOWN", message: errorMessage(cause, message), cause });
+const toNativeFailure = (message: string) => (cause: unknown): AppFailure =>
+  cause instanceof AppFailure
+    ? cause
+    : new AppFailure<NativeAppError>({ domain: "native", kind: "UNKNOWN", message: errorMessage(cause, message), cause });
 
 let currentUrl: string | null = null;
 
@@ -15,7 +17,7 @@ export const currentProxyUrl = (): string | null => currentUrl;
  * Pushes the active proxy URL (or `null` to clear) to the Rust side, where the
  * media-server routes pick it up, and to the TS YouTube engine. A no-op outside Tauri.
  */
-export const applyProxy = (url: string | null): ResultAsync<void, AppFailure<NativeAppError>> => {
+export const applyProxy = (url: string | null): ResultAsync<void, AppFailure> => {
   if (!platformCaps.hasNativeProxy) return okAsync(undefined);
   currentUrl = url;
 
@@ -29,9 +31,9 @@ export const applyProxy = (url: string | null): ResultAsync<void, AppFailure<Nat
  * Verifies the proxy connects by routing a request through it. Resolves with the
  * round-trip latency in milliseconds.
  */
-export const checkProxyConnection = (url: string): ResultAsync<number, AppFailure<NativeAppError>> => {
+export const checkProxyConnection = (url: string): ResultAsync<number, AppFailure> => {
   if (!platformCaps.hasNativeProxy) {
-    return errAsync(toNativeFailure("Proxy is only available in the desktop app")(undefined));
+    return errAsync(new AppFailure<NativeAppError>({ domain: "native", kind: "UNAVAILABLE", message: "Proxy check needs the desktop app" }));
   }
 
   return ResultAsync.fromPromise(

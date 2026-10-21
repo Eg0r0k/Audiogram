@@ -150,6 +150,12 @@ describe("formatError", () => {
     expect(formatError(Object.assign(new Error("write"), { cause: new Error("disk") }))).toBe("unknown/Error: write <- disk");
   });
 
+  it("formatError does not repeat a string cause equal to the message", () => {
+    const failure = new AppFailure({ domain: "native", kind: "UNKNOWN", message: "plugin said no", cause: "plugin said no" });
+
+    expect(formatError(failure)).toBe("native/UNKNOWN: plugin said no");
+  });
+
   it("formatError never prints [object Object]", () => {
     expect(formatError({ foo: 1 })).toBe("unknown: Unknown error");
 
