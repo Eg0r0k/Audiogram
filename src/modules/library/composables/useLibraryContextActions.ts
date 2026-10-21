@@ -1,7 +1,7 @@
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 import { AlbumId, PlaylistId } from "@/types/ids";
-import { getLogger } from "@/lib/logger";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { sources } from "@/modules/sources";
 import { sourceKindOf, sourceTrackToDisplay } from "@/modules/sources/lib/display";
@@ -86,8 +86,7 @@ export function useLibraryContextActions() {
       : await provider.getPlaylist(PlaylistId(item.id));
 
     if (result.isErr()) {
-      getLogger().error(`[Library] Queueing catalog ${item.type} ${item.id} failed: ${result.error.message}`);
-      toaster.add({ title: t("queue.addFailed"), color: "destructive" });
+      reportError(result.error, { title: t("queue.addFailed"), scope: "Library" });
       return;
     }
 
@@ -112,16 +111,12 @@ export function useLibraryContextActions() {
       if (!batchId) toaster.add({ title: t("media.nothingToDownload"), color: "info" });
     }
     catch (error) {
-      getLogger().error(`[Library] Batch download of ${item.type} ${item.id} failed: ${String(error)}`);
-      toaster.add({
+      reportError(error, {
         title: t("downloads.enqueueFailed"),
-        color: "destructive",
-        actions: [{
-          label: t("common.retry"),
-          onClick: () => {
-            downloadCatalog(item).catch(() => undefined);
-          },
-        }],
+        scope: "Library",
+        retry: () => {
+          downloadCatalog(item).catch(() => undefined);
+        },
       });
     }
   };

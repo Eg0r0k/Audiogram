@@ -140,7 +140,8 @@ import RightPanelHeader from "@/modules/right-panel/components/RightPanelHeader.
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { type FailedDownload, useDownloadsStore } from "@/modules/downloads/store/downloads.store";
 import { cancelTrackDownload, dismissFailedDownload, enqueueTrackDownload } from "@/modules/downloads/service/manager";
-import { toaster } from "@/app/toaster";
+import { reportError } from "@/app/error-feedback";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { formatDownloadProgress } from "@/modules/downloads/lib/formatDownloadProgress";
 import { trackQueries } from "@/queries/track.queries";
@@ -173,14 +174,13 @@ const trackIds = computed(() => [...failedJobs.value, ...jobs.value].map(job => 
 
 const retry = (entry: FailedDownload) => {
   enqueueTrackDownload(entry.trackId).catch((error: unknown) => {
-    getLogger().error(`[Downloads] Retrying ${entry.trackId} failed: ${String(error)}`);
-    toaster.add({ title: t("downloads.failed"), color: "destructive" });
+    reportError(error, { title: t("downloads.failed"), scope: "Downloads" });
   });
 };
 
 const dismiss = (entry: FailedDownload) => {
   dismissFailedDownload(entry.jobId)
-    .catch((error: unknown) => getLogger().error(`[Downloads] Dismissing ${entry.jobId} failed: ${String(error)}`));
+    .catch((error: unknown) => getLogger().error(`[Downloads] Dismissing ${entry.jobId} failed: ${formatError(error)}`));
 };
 
 const { data: titleRows } = useQuery(computed(() => trackQueries.byIds(trackIds.value)));

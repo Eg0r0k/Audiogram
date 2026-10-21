@@ -101,11 +101,13 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useNow } from "@vueuse/core";
 import { Button } from "@/components/ui/button";
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import IconExternalLink from "~icons/tabler/external-link";
 import IconLogin from "~icons/tabler/login-2";
 import { openExternal } from "@/composables/useExternalLinkInterceptor";
 import { IS_MOBILE } from "@/lib/environment/userAgent";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { useYmAuth } from "../composables/useYmAuth";
 import YmQrCode from "./YmQrCode.vue";
@@ -132,8 +134,8 @@ const guarded = async (action: () => Promise<void>, failedTitle?: string) => {
     await action();
   }
   catch (error) {
-    getLogger().error(`[YM] ${String(error)}`);
-    if (failedTitle) toaster.add({ title: failedTitle, color: "destructive" });
+    if (failedTitle) reportError(error, { title: failedTitle, scope: "YM" });
+    else getLogger().error(`[YM] ${formatError(error)}`);
   }
   finally {
     busy.value = false;
@@ -148,13 +150,13 @@ const handleCodeCopied = () => {
   toaster.add({ title: t("common.copied"), color: "success" });
 };
 
-const handleCopyFailed = () => {
-  toaster.add({ title: t("common.copyFailed"), color: "destructive" });
+const handleCopyFailed = (error: unknown) => {
+  reportError(error, { title: t("common.copyFailed"), scope: "YM" });
 };
 
 const openYandex = () => {
   if (step.value.kind !== "pending") return;
   openExternal(step.value.verificationUrl)
-    .catch(error => getLogger().error(`[YM] Opening the verification page failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[YM] Opening the verification page failed: ${formatError(error)}`));
 };
 </script>

@@ -25,6 +25,7 @@ export interface ReportErrorOptions {
   scope: string;
   id?: string;
   retry?: () => void;
+  onClose?: () => void;
 }
 
 const SOURCE_HINTS: Partial<Record<SourceErrorKind, ErrorHint>> = {
@@ -91,7 +92,7 @@ export const loadErrorText = (thrown: unknown): string => {
   return hint === undefined ? failed : `${failed}. ${hint}`;
 };
 
-export const reportError = (thrown: unknown, { title, scope, id, retry }: ReportErrorOptions): AppError | null => {
+export const reportError = (thrown: unknown, { title, scope, id, retry, onClose }: ReportErrorOptions): AppError | null => {
   const error = toAppError(thrown);
   if (isCancelled(error)) {
     getLogger().debug(`[${scope}] ${title}: cancelled`);
@@ -107,6 +108,7 @@ export const reportError = (thrown: unknown, { title, scope, id, retry }: Report
     color: "destructive",
     // Wrapped so a retry like `refetch` never receives the click event as its options.
     ...(retry ? { actions: [{ label: i18n.global.t("common.retry"), onClick: () => retry() }] } : {}),
+    ...(onClose === undefined ? {} : { onClose }),
   });
   return error;
 };

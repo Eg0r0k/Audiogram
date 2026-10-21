@@ -15,6 +15,7 @@ const queue = vi.hoisted(() => ({
 vi.mock("@/queries/track-undo", () => ({ deleteTracksWithUndo: undoApi.deleteTracksWithUndo }));
 vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
+vi.mock("@/app/i18n", () => ({ i18n: { global: { t: (key: string) => key } } }));
 vi.mock("@tanstack/vue-query", () => ({ useQueryClient: () => ({ tag: "qc" }) }));
 vi.mock("@/modules/queue/store/queue.store", () => ({ useQueueStore: () => queue }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ warn: vi.fn(), error: vi.fn() }) }));

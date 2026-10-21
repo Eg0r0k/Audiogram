@@ -1,7 +1,8 @@
 import { computed, ref, toValue, type MaybeRefOrGetter } from "vue";
 import { useQueryClient } from "@tanstack/vue-query";
-import { toaster } from "@/app/toaster";
+import { reportError } from "@/app/error-feedback";
 import { i18n } from "@/app/i18n";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { queryKeys } from "@/queries/query-keys";
 import type { SourceKind } from "@/types/track-ref";
@@ -84,16 +85,12 @@ export const useEntityLike = (
 
     if (result.isErr()) {
       optimistic.value = null;
-      getLogger().warn(`[Sources] ${next ? "Liking" : "Unliking"} ${entity} ${target} at ${resolved} failed (${result.error.kind}): ${result.error.message}`);
-      toaster.add({
+      reportError(result.error, {
         title: i18n.global.t("media.likeFailed"),
-        color: "destructive",
-        actions: [{
-          label: i18n.global.t("common.retry"),
-          onClick: () => {
-            setLiked(next).catch(retryError => getLogger().error(`[Sources] Retrying the ${entity} like failed: ${String(retryError)}`));
-          },
-        }],
+        scope: "Sources",
+        retry: () => {
+          setLiked(next).catch(retryError => getLogger().error(`[Sources] Retrying the ${entity} like failed: ${formatError(retryError)}`));
+        },
       });
       return;
     }

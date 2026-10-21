@@ -19,6 +19,8 @@ vi.mock("@/queries/library.queries", () => ({ invalidateLibraryData }));
 vi.mock("@/modules/tracks/service/ensurePinned", () => ({ ensurePinned }));
 vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
+vi.mock("@/app/i18n", () => ({ i18n: { global: { t: (key: string) => key } } }));
+vi.mock("@/lib/logger", () => ({ getLogger: () => ({ error: vi.fn(), debug: vi.fn() }) }));
 vi.mock("@/modules/sources", () => ({
   sources: { find: (kind: string) => (kind === "ym" ? provider as unknown as SourceProvider : undefined) },
 }));

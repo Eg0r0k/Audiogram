@@ -3,11 +3,13 @@ import { useQueryClient } from "@tanstack/vue-query";
 import { musicLibraryEngine } from "@/services/importer.service";
 import { invalidateLibraryData } from "@/queries/library.queries";
 import { indexImportedTracks } from "@/modules/search/service/searchIndex";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { filterFilesByExtension } from "@/lib/files/filterFiles";
 import { ACCEPTED_AUDIO_EXTENSIONS } from "@/lib/files/acceptedAudioExtensions";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { requestFiles } from "@/lib/files/requestFiles";
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { i18n } from "@/app/i18n";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
@@ -310,7 +312,7 @@ export function useImport() {
         await indexImportedTracks(result.successful.map(s => s.trackId));
       }
       catch (error) {
-        getLogger().error(`[Search] Failed to index imported tracks: ${String(error)}`);
+        getLogger().error(`[Search] Failed to index imported tracks: ${formatError(error)}`);
       }
     }
 
@@ -363,8 +365,7 @@ export function useImport() {
       await pickAndImportOrThrow(options);
     }
     catch (error) {
-      getLogger().error(`[Import] Picking and importing files failed: ${String(error)}`);
-      toaster.add({ title: i18n.global.t("common.import.toast.failed"), color: "destructive" });
+      reportError(error, { title: i18n.global.t("common.import.toast.failed"), scope: "Import" });
     }
   };
 

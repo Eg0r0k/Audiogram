@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/vue-query";
 import type { Track } from "@/modules/player/types";
-import { toaster } from "@/app/toaster";
+import { reportError } from "@/app/error-feedback";
 import { useI18n } from "vue-i18n";
 import { toggleTrackLikeAndSync } from "@/queries/track.queries";
 import { invalidateLibraryData } from "@/queries/library.queries";
@@ -44,16 +44,13 @@ export function useToggleTrackLike() {
 
       return nextTrack;
     },
-    onError: (_error, track) => {
-      toaster.add({
+    onError: (error, track) => {
+      reportError(error, {
         title: t("track.likeToggleFailed"),
-        color: "destructive",
-        actions: [{
-          label: t("common.retry"),
-          onClick: () => {
-            mutation.mutate(track);
-          },
-        }],
+        scope: "Tracks",
+        retry: () => {
+          mutation.mutate(track);
+        },
       });
     },
   });

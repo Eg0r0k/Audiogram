@@ -71,8 +71,9 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { toaster } from "@/app/toaster";
+import { reportError } from "@/app/error-feedback";
 import { useI18n } from "vue-i18n";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -131,7 +132,7 @@ const handleAddFolder = async () => {
 };
 
 function handleScan(folder: WatchedFolder) {
-  scanFolder(folder).catch(error => getLogger().error(`[WatchedFolders] Scanning ${folder.name} failed: ${String(error)}`));
+  scanFolder(folder).catch(error => getLogger().error(`[WatchedFolders] Scanning ${folder.name} failed: ${formatError(error)}`));
 }
 
 async function confirmRemove(id: string) {
@@ -147,8 +148,7 @@ async function confirmRemove(id: string) {
   catch (e) {
     // Unawaited, this rejected into nothing: the dialog closed, the folder
     // stayed and neither the user nor the log heard about it.
-    getLogger().error(`[WatchedFolders] Removing ${folder.name} failed: ${String(e)}`);
-    toaster.add({ title: t("watchedFolders.removeFailed", { name: folder.name }), color: "destructive" });
+    reportError(e, { title: t("watchedFolders.removeFailed", { name: folder.name }), scope: "WatchedFolders" });
   }
 }
 </script>

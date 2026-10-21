@@ -111,6 +111,15 @@ describe("reportError", () => {
     expect(onlyToast()).toMatchObject({ id: "queue-track-skipped", title: "Track skipped" });
   });
 
+  it("passes onClose through to the toast", () => {
+    const onClose = vi.fn();
+
+    reportError(offline, { title: "Download failed", scope: "Downloads", id: "downloads-failed", onClose });
+    toaster.remove("downloads-failed");
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("logs scope, title and the formatted error", () => {
     reportError(offline, { title: "Could not create the playlist", scope: "Playlist" });
 

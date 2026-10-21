@@ -1,9 +1,10 @@
 import pLimit from "p-limit";
-import { toaster } from "@/app/toaster";
+import { reportError } from "@/app/error-feedback";
 import { i18n } from "@/app/i18n";
 import type { DownloadJobEntity } from "@/db/entities";
 import { downloadJobRepository, trackRepository } from "@/db/repositories";
 import { platformCaps } from "@/lib/environment/platformCaps";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { sources } from "@/modules/sources";
 import type { SourceError } from "@/modules/sources";
@@ -162,7 +163,7 @@ async function sweepTmpOrphans(): Promise<void> {
     }
   }
   catch (error) {
-    getLogger().warn(`[Downloads] Temp sweep failed: ${String(error)}`);
+    getLogger().warn(`[Downloads] Temp sweep failed: ${formatError(error)}`);
   }
 }
 
@@ -184,7 +185,7 @@ async function pump(): Promise<void> {
     queued = await unwrapResult(downloadJobRepository.findByStatus("queued"));
   }
   catch (error) {
-    getLogger().error(`[Downloads] Failed to read the queue: ${String(error)}`);
+    getLogger().error(`[Downloads] Failed to read the queue: ${formatError(error)}`);
     return;
   }
 
@@ -200,7 +201,7 @@ async function pump(): Promise<void> {
         inFlight.delete(job.id);
         pump().catch(() => {});
       })
-      .catch(error => getLogger().error(`[Downloads] Job ${job.id} crashed: ${String(error)}`));
+      .catch(error => getLogger().error(`[Downloads] Job ${job.id} crashed: ${formatError(error)}`));
   }
 
   scheduleRetryPump();
@@ -239,7 +240,7 @@ async function runJob(jobId: string): Promise<void> {
       await finalizeDownload(job, result.value);
     }
     catch (error) {
-      getLogger().error(`[Downloads] Finalize failed for ${job.trackId}: ${String(error)}`);
+      getLogger().error(`[Downloads] Finalize failed for ${job.trackId}: ${formatError(error)}`);
       await failJob(job, { kind: "UNKNOWN", message: `finalize failed: ${String(error)}` });
       return;
     }
@@ -292,7 +293,7 @@ async function failJob(job: DownloadJobEntity, error: SourceError): Promise<void
   store.addFailed({ jobId: job.id, trackId: job.trackId });
   if (job.batchId) store.bumpBatch(job.batchId, "failed");
   getLogger().error(`[Downloads] Failed ${job.trackId} (${error.kind}): ${error.message}`);
-  await notifyTerminalFailure(job.trackId);
+  await notifyTerminalFailure(job.trackId, error);
 }
 
 const FAILED_TOAST_ID = "downloads-failed";
@@ -304,8 +305,7 @@ const retryDownloads = async (trackIds: TrackId[]): Promise<void> => {
     for (const trackId of trackIds) await enqueueTrackDownload(trackId);
   }
   catch (error) {
-    getLogger().error(`[Downloads] Retrying failed downloads failed: ${String(error)}`);
-    toaster.add({ title: i18n.global.t("downloads.failed"), color: "destructive" });
+    reportError(error, { title: i18n.global.t("downloads.failed"), scope: "Downloads" });
   }
 };
 
@@ -322,19 +322,16 @@ const failureTitle = async (trackId: TrackId, count: number): Promise<string> =>
   return title ? i18n.global.t("downloads.failedTitled", { title }) : i18n.global.t("downloads.failed");
 };
 
-const notifyTerminalFailure = async (trackId: TrackId): Promise<void> => {
+const notifyTerminalFailure = async (trackId: TrackId, error: SourceError): Promise<void> => {
   unacknowledged = [...unacknowledged.filter(id => id !== trackId), trackId];
   const trackIds = unacknowledged;
-  toaster.add({
-    id: FAILED_TOAST_ID,
+  reportError(trackIds.length > 1 ? null : error, {
     title: await failureTitle(trackId, trackIds.length),
-    color: "destructive",
-    actions: [{
-      label: i18n.global.t("common.retry"),
-      onClick: () => {
-        retryDownloads(trackIds).catch(() => undefined);
-      },
-    }],
+    scope: "Downloads",
+    id: FAILED_TOAST_ID,
+    retry: () => {
+      retryDownloads(trackIds).catch(() => undefined);
+    },
     onClose: () => {
       unacknowledged = [];
     },
