@@ -35,6 +35,7 @@ import { createYtSession, type YtSession } from "./session";
 import { createStreamResolver, type StreamRegistrar } from "./stream";
 import { createYtFetch } from "./transport";
 import { registerYoutubeStream } from "../api/youtubeApi";
+import { formatError } from "@/lib/errors";
 
 //
 // The catalog half of the YouTube engine: search, browse and details over
@@ -116,7 +117,7 @@ export const createYtEngine = (deps: EngineDeps): YtEngine => {
         enriched[index] = { kind: "track", ...applyTrackDetails(entity, details) };
       }
       catch (error) {
-        getLogger().warn(`[YT] Details for ${entity.id} failed, keeping the stripped row: ${String(error)}`);
+        getLogger().warn(`[YT] Details for ${entity.id} failed, keeping the stripped row: ${formatError(error)}`);
       }
     }));
     return enriched;
@@ -227,7 +228,7 @@ export const createYtEngine = (deps: EngineDeps): YtEngine => {
       return fillTopTrackDurations(detail, durations);
     }
     catch (error) {
-      getLogger().debug(`[YT] Top-track durations for ${id} unavailable: ${String(error)}`);
+      getLogger().debug(`[YT] Top-track durations for ${id} unavailable: ${formatError(error)}`);
       return detail;
     }
   };

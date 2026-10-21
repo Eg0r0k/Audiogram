@@ -6,6 +6,7 @@ import {
   trackRepository,
 } from "@/db/repositories";
 import { db } from "@/db";
+import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
 import { queryKeys } from "@/queries/query-keys";
 import {
@@ -76,7 +77,7 @@ export async function getArtistByIdOrThrow(artistId: ArtistId) {
   const artist = await unwrapResult(artistRepository.findById(artistId));
 
   if (!artist) {
-    throw new Error("Artist not found");
+    throw new DbError("NOT_FOUND", "Artist not found");
   }
 
   return artist;

@@ -77,6 +77,7 @@ import { getLogger } from "@/lib/logger";
 import { usePlaybackState } from "@/modules/player/composables/usePlaybackState";
 
 import { useGoBack } from "@/composables/useGoBack";
+import { formatError } from "@/lib/errors";
 
 const props = defineProps<{
   title: string;
@@ -103,7 +104,7 @@ const showPauseIcon = computed(() => isEntityActive.value && (isPlaying.value ||
 const handlePlay = () => {
   if (isEntityActive.value) {
     playerStore.togglePlay()
-      .catch(error => getLogger().error(`[Player] Toggling playback failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[Player] Toggling playback failed: ${formatError(error)}`));
     return;
   }
   emit("play");

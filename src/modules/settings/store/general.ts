@@ -8,6 +8,7 @@ import { platformCaps } from "@/lib/environment/platformCaps";
 import { TAURI_ONLY_KEYS } from "../schema/general";
 import { DEFAULT_LOCALE, isSupportedLocale, setHtmlLangAttribute } from "@/app/i18n/utils";
 import { autostartService } from "../services/autostart";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 
 export interface LanguageOption {
@@ -90,13 +91,7 @@ export const useGeneralSettings = () => {
 
     result.match(
       () => store.updateGeneral({ launchAtStartup: value }),
-      (err) => {
-        let causeText = "";
-        if (typeof err.cause === "string") causeText = err.cause;
-        else if (err.cause instanceof Error) causeText = err.cause.message;
-        const cause = causeText ? ` (${causeText})` : "";
-        getLogger().error(`[autostart] ${value ? "enable" : "disable"} failed: ${err.message}${cause}`);
-      },
+      err => getLogger().error(`[autostart] ${value ? "enable" : "disable"} failed: ${formatError(err)}`),
     );
   };
 

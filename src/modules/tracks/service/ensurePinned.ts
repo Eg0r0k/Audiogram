@@ -17,11 +17,12 @@ import {
   type RemotePinRows,
 } from "@/services/entity-resolver";
 import type { Track } from "@/modules/player/types";
-import { unwrapResult } from "@/queries/shared";
+import { unwrapResult } from "@/lib/errors/unwrap";
 import type { TrackMenuSubject } from "../components/menu/type";
 import { trackCoverOwner } from "@/modules/covers/composables/useTrackCover";
 import { mapTrack } from "../lib/mappers";
 import { ensureShadowCover } from "./shadowAlbumCover";
+import { formatError } from "@/lib/errors";
 
 /** Subjects per transaction — see the comment on the loop in pinInChunks. */
 const PIN_CHUNK_SIZE = 25;
@@ -188,7 +189,7 @@ const requestShadowCovers = (pinned: readonly PinnedEntry[]): void => {
 
   for (const { ownerType, ownerId, coverRef } of requests.values()) {
     ensureShadowCover(ownerType, ownerId, coverRef)
-      .catch(error => getLogger().warn(`[Covers] Shadow cover for ${ownerId} failed: ${String(error)}`));
+      .catch(error => getLogger().warn(`[Covers] Shadow cover for ${ownerId} failed: ${formatError(error)}`));
   }
 };
 
@@ -249,7 +250,7 @@ export async function ensurePinnedMany(
 
   if (pinned.length === 0 && failures.length > 0) throw failures[0];
   if (failures.length > 0) {
-    getLogger().warn(`[Pin] ${failures.length} of ${remote.length} track(s) failed: ${String(failures[0])}`);
+    getLogger().warn(`[Pin] ${failures.length} of ${remote.length} track(s) failed: ${formatError(failures[0])}`);
   }
 
   requestShadowCovers(pinned);
@@ -258,7 +259,7 @@ export async function ensurePinnedMany(
   if (ctx.requestedPinned === 1) {
     const ids = pinned.map(({ rows }) => rows.track.id);
     indexImportedTracks(ids).catch((error) => {
-      getLogger().warn(`[Search] Indexing ${ids.length} pinned track(s) failed: ${String(error)}`);
+      getLogger().warn(`[Search] Indexing ${ids.length} pinned track(s) failed: ${formatError(error)}`);
     });
   }
 

@@ -115,11 +115,11 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import type { RouteLocationRaw } from "vue-router";
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { useImageColor } from "@/composables/useImageColor";
 import { platformCaps } from "@/lib/environment/platformCaps";
-import { getLogger } from "@/lib/logger";
 import { sourceKindOf } from "@/modules/sources/lib/display";
 import {
   enqueueCollectionDownload,
@@ -226,16 +226,12 @@ async function startOfflineDownload(): Promise<void> {
     }
   }
   catch (error) {
-    getLogger().error(`[Downloads] Starting an offline download failed: ${String(error)}`);
-    toaster.add({
+    reportError(error, {
       title: t("downloads.enqueueFailed"),
-      color: "destructive",
-      actions: [{
-        label: t("common.retry"),
-        onClick: () => {
-          startOfflineDownload().catch(() => undefined);
-        },
-      }],
+      scope: "MediaHero",
+      retry: () => {
+        startOfflineDownload().catch(() => undefined);
+      },
     });
   }
 }

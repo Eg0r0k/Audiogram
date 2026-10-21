@@ -188,6 +188,7 @@ import TrackSelectionBar from "@/modules/tracks/components/TrackSelectionBar.vue
 import { useTrackSelectionMode } from "@/modules/tracks/composables/useTrackSelectionMode";
 import { useBulkTrackActions } from "@/modules/tracks/composables/useBulkTrackActions";
 import { useGoBack } from "@/composables/useGoBack";
+import { formatError } from "@/lib/errors";
 const { t } = useI18n();
 const { pickAndImport } = useImport();
 const sortKey = ref<TrackSortKey | null>(null);
@@ -286,7 +287,7 @@ function handleLoadMore() {
   // The query keeps its own error state for the UI; the log is what tells us
   // WHY a scroll stopped loading more tracks.
   fetchNextPage().catch((err: unknown) => {
-    getLogger().warn(`[AllMusicPage] Loading the next tracks page failed: ${String(err)}`);
+    getLogger().warn(`[AllMusicPage] Loading the next tracks page failed: ${formatError(err)}`);
   });
 }
 

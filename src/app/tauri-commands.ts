@@ -1,6 +1,7 @@
 import { invoke, type Channel } from "@tauri-apps/api/core";
 import type { Event, UnlistenFn } from "@tauri-apps/api/event";
 import { IS_TAURI } from "@/lib/environment/userAgent";
+import { AppFailure, toAppError, type PlatformAppError } from "@/lib/errors";
 import type { DownloadEvent } from "@/modules/sources/types";
 import type { UpdateInfo, DownloadProgress } from "@/modules/update/types";
 import type {
@@ -112,12 +113,19 @@ export interface CommandMap {
 type ArgsOf<N extends CommandName> = CommandMap[N]["args"];
 type ArgsTuple<N extends CommandName> = ArgsOf<N> extends undefined ? [] : [args: ArgsOf<N>];
 
-export class PlatformUnavailableError extends Error {
+export class PlatformUnavailableError extends AppFailure<PlatformAppError> {
   constructor(public readonly command: CommandName, public readonly reason: unknown) {
-    super(`"${command}" needs the desktop or mobile app; this build runs in the browser`);
+    super({ domain: "platform", command, message: `"${command}" needs the desktop or mobile app; this build runs in the browser` });
     this.name = "PlatformUnavailableError";
   }
 }
+
+const toFailure = (error: unknown): AppFailure => {
+  if (error instanceof AppFailure) return error;
+  // Only the Rust side rejects with a bare string, hence native.
+  if (typeof error === "string") return new AppFailure({ domain: "native", kind: "UNKNOWN", message: error });
+  return new AppFailure(toAppError(error));
+};
 
 export const invokeCommand = async <N extends CommandName>(
   name: N,
@@ -131,9 +139,8 @@ export const invokeCommand = async <N extends CommandName>(
   catch (error) {
     // Without the bridge tauri's invoke itself throws a TypeError on
     // window.__TAURI_INTERNALS__; name the platform instead of leaking that.
-    // Anything else (a mocked or real command rejection) passes through.
     if (!IS_TAURI && error instanceof TypeError) throw new PlatformUnavailableError(name, error);
-    throw error;
+    throw toFailure(error);
   }
 };
 

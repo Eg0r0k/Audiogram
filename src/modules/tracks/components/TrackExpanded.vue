@@ -263,6 +263,7 @@ import IconLike from "~icons/tabler/heart";
 import IconLikedFilled from "~icons/tabler/heart-filled";
 import IconPlay from "~icons/audiogram/play-rounded";
 import IconPause from "~icons/audiogram/pause-rounded";
+import { formatError } from "@/lib/errors";
 
 const styles = {
   root: cva(
@@ -445,12 +446,12 @@ function handleArtistClick(index: number, event: MouseEvent) {
   }
   if (props.artistRoutes) {
     const to = props.artistRoutes[index] ?? props.artistRoutes[0];
-    if (to) router.push(to).catch(error => getLogger().error(`[Tracks] Navigation to the artist page failed: ${String(error)}`));
+    if (to) router.push(to).catch(error => getLogger().error(`[Tracks] Navigation to the artist page failed: ${formatError(error)}`));
     return;
   }
   const artistId = (props.track.artistIds[index] as ArtistId | undefined)
     ?? props.track.artistIds[0];
-  if (artistId) router.push(routeLocation.artist(artistId)).catch(error => getLogger().error(`[Tracks] Navigation to the artist page failed: ${String(error)}`));
+  if (artistId) router.push(routeLocation.artist(artistId)).catch(error => getLogger().error(`[Tracks] Navigation to the artist page failed: ${formatError(error)}`));
 }
 
 function handleAlbumClick(event: MouseEvent) {
@@ -459,10 +460,10 @@ function handleAlbumClick(event: MouseEvent) {
     return;
   }
   if (props.artistRoutes || props.albumRoute !== undefined) {
-    if (props.albumRoute) router.push(props.albumRoute).catch(error => getLogger().error(`[Tracks] Navigation to the album page failed: ${String(error)}`));
+    if (props.albumRoute) router.push(props.albumRoute).catch(error => getLogger().error(`[Tracks] Navigation to the album page failed: ${formatError(error)}`));
     return;
   }
-  if (props.track.albumId) router.push(routeLocation.album(props.track.albumId)).catch(error => getLogger().error(`[Tracks] Navigation to the album page failed: ${String(error)}`));
+  if (props.track.albumId) router.push(routeLocation.album(props.track.albumId)).catch(error => getLogger().error(`[Tracks] Navigation to the album page failed: ${formatError(error)}`));
 }
 </script>
 

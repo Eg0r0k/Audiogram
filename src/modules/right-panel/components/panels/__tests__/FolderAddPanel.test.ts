@@ -22,6 +22,7 @@ vi.mock("@/modules/library/composables/useLibrary", () => ({
 }));
 
 vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
+vi.mock("@/lib/logger", () => ({ getLogger: () => ({ error: vi.fn(), debug: vi.fn() }) }));
 
 const VirtualScrollableStub = {
   props: ["items"],

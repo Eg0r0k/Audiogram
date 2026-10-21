@@ -3,6 +3,7 @@ import type { Event } from "@tauri-apps/api/event";
 import { tryOnScopeDispose } from "@vueuse/core";
 import { getLogger } from "@/lib/logger";
 import { listenEvent, type EventMap, type EventName } from "@/app/tauri-commands";
+import { formatError } from "@/lib/errors";
 
 /**
  * Composable for subscribing to Tauri events with automatic cleanup.
@@ -72,7 +73,7 @@ export default function useTauriEvent<N extends EventName>(
       removeListener = stop;
     }
     catch (error) {
-      getLogger().error(`[useTauriEvent] Failed to listen to "${name}": ${String(error)}`);
+      getLogger().error(`[useTauriEvent] Failed to listen to "${name}": ${formatError(error)}`);
     }
   };
 

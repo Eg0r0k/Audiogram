@@ -121,6 +121,7 @@ import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdo
 import { routeLocation } from "@/app/router/route-locations";
 import { getLogger } from "@/lib/logger";
 import { isEphemeralTrack } from "../types";
+import { formatError } from "@/lib/errors";
 
 const { toggleTrackLike } = useToggleTrackLike();
 const { openDropdown } = useTrackMenu();
@@ -143,7 +144,7 @@ const goToArtist = (index: number) => {
   const artistId = libraryTrack.value?.artistIds[index];
   if (artistId) {
     route.push(routeLocation.artist(artistId))
-      .catch(error => getLogger().error(`[Player] Navigation to the artist page failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[Player] Navigation to the artist page failed: ${formatError(error)}`));
   }
 };
 

@@ -56,6 +56,7 @@ import { useTopArtists } from "@/composables/useStatsQueries";
 import { formatTotalDuration } from "@/lib/format/time";
 import { routeLocation } from "@/app/router/route-locations";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 const props = defineProps<{ since?: number }>();
 
@@ -67,6 +68,6 @@ const { topArtists, isLoading } = useTopArtists(TOP_LIMIT, () => props.since);
 
 function goToArtist(id: string) {
   router.push(routeLocation.artist(id))
-    .catch(error => getLogger().error(`[Stats] Navigation to artist ${id} failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[Stats] Navigation to artist ${id} failed: ${formatError(error)}`));
 }
 </script>

@@ -109,6 +109,7 @@ import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
 import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback";
 import { getLogger } from "@/lib/logger";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
+import { formatError } from "@/lib/errors";
 
 const playerStore = usePlayerStore();
 const rightPanelStore = useRightPanelStore();
@@ -166,7 +167,7 @@ function handleLoadMore() {
   // The query keeps its own error state for the UI; the log is what tells us
   // WHY a scroll stopped loading more liked tracks.
   fetchNextPage().catch((error: unknown) => {
-    getLogger().warn(`[FavoritePage] Loading the next liked tracks page failed: ${String(error)}`);
+    getLogger().warn(`[FavoritePage] Loading the next liked tracks page failed: ${formatError(error)}`);
   });
 }
 

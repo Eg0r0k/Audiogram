@@ -6,6 +6,7 @@ import {
   playlistRepository,
   trackRepository,
 } from "@/db/repositories";
+import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
 import { buildAlbumDocFromDb, buildArtistDoc, buildTrackDocFromDb } from "@/modules/search/service/buildDocuments";
 import {
@@ -461,7 +462,7 @@ export async function addTracksToAlbumAndSync(
 
   for (const trackId of trackIds) {
     if (!trackMap.has(trackId)) {
-      throw new Error(`Track not found: ${trackId}`);
+      throw new DbError("NOT_FOUND", `Track not found: ${trackId}`);
     }
   }
 
@@ -510,7 +511,7 @@ export async function addTracksToArtistAndSync(
 
   for (const trackId of trackIds) {
     if (!trackMap.has(trackId)) {
-      throw new Error(`Track not found: ${trackId}`);
+      throw new DbError("NOT_FOUND", `Track not found: ${trackId}`);
     }
   }
 
@@ -556,7 +557,7 @@ export async function toggleTrackLikeAndSync(
   const currentTrack = await unwrapResult(trackRepository.findById(track.id));
 
   if (!currentTrack) {
-    throw new Error("Track not found");
+    throw new DbError("NOT_FOUND", "Track not found");
   }
 
   const nextValue = !track.isLiked;
@@ -585,7 +586,7 @@ export async function attachTrackLyricsAndSync(
   const currentTrack = await unwrapResult(trackRepository.findById(track.id));
 
   if (!currentTrack) {
-    throw new Error("Track not found");
+    throw new DbError("NOT_FOUND", "Track not found");
   }
 
   await unwrapResult(trackRepository.setLyricsPath(track.id, lyricsPath));
@@ -646,7 +647,7 @@ export async function updateTrackMetadataAndSync(
   const currentTrack = await unwrapResult(trackRepository.findById(track.id));
 
   if (!currentTrack) {
-    throw new Error("Track not found");
+    throw new DbError("NOT_FOUND", "Track not found");
   }
 
   const title = assertValidName(changes.title, "track title");
@@ -753,5 +754,5 @@ export async function deleteTrackAndSync(
   track: Track,
 ) {
   const deleted = await deleteTracksAndSync(queryClient, [track.id]);
-  if (deleted === 0) throw new Error("Track not found");
+  if (deleted === 0) throw new DbError("NOT_FOUND", "Track not found");
 }

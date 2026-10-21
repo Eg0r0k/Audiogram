@@ -6,6 +6,7 @@ import { getPlaylistLibraryRow } from "@/queries/playlist.queries";
 import { getLogger } from "@/lib/logger";
 import { sourceKindOf } from "@/modules/sources/lib/display";
 import type { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
+import { formatError } from "@/lib/errors";
 
 /**
  * Which action set the open menu serves: a Dexie-backed library row, or a
@@ -98,7 +99,7 @@ export const createLibraryMenu = (show: (event: Event) => void): LibraryMenu => 
       (error: unknown) => {
         // Nothing opens; say why, otherwise a broken read looks exactly
         // like "this row is a catalog row".
-        getLogger().error(`[Library] Menu lookup failed for ${item.type} ${item.id}: ${String(error)}`);
+        getLogger().error(`[Library] Menu lookup failed for ${item.type} ${item.id}: ${formatError(error)}`);
       },
     );
   };

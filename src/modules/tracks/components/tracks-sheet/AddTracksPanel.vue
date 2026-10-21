@@ -48,6 +48,7 @@ import { Empty, EmptyDescription } from "@/components/ui/empty";
 import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { EntitySelectPanel } from "@/components/entity-select";
 import TrackSelectRow from "../TrackSelectRow.vue";
@@ -68,6 +69,7 @@ import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { RightPanelAddTracksPayload } from "@/modules/right-panel/types";
 import type { Track } from "@/modules/player/types";
 import { useSelection } from "@/composables/useSelection";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 
 const props = defineProps<{
@@ -206,7 +208,7 @@ function handleLoadMore() {
     return;
   }
 
-  fetchNextPage().catch(error => getLogger().warn(`[Tracks] Loading the next page of tracks failed: ${String(error)}`));
+  fetchNextPage().catch(error => getLogger().warn(`[Tracks] Loading the next page of tracks failed: ${formatError(error)}`));
 }
 
 async function handleConfirm() {
@@ -220,8 +222,8 @@ async function handleConfirm() {
     await props.payload.onConfirmed?.();
     closePanel();
   }
-  catch {
-    toaster.add({ title: t("sheet.tracksAddFailed"), color: "destructive" });
+  catch (error) {
+    reportError(error, { title: t("sheet.tracksAddFailed"), scope: "Tracks" });
   }
 }
 

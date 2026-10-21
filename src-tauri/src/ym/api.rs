@@ -8,11 +8,11 @@ use tauri::{AppHandle, Manager, Runtime};
 
 use super::auth::{drop_session, expires_at_from, persist_session, refresh_access_token};
 use super::state::{YmSession, YmState, CLIENT_HEADER_NAME, CLIENT_HEADER_VALUE};
+use crate::app_error::AppError;
+use crate::remote_download::DownloadError;
 
-/// Failure class, serialized SCREAMING_SNAKE_CASE — one-to-one with the
-/// frontend's `SourceErrorKind`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+/// Failure class; maps one-to-one onto the envelope's `SourceErrorKind`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YmErrorKind {
     /// Not signed in, or the token stopped working and could not be refreshed.
     Auth,
@@ -28,12 +28,10 @@ pub enum YmErrorKind {
     Unknown,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct YmError {
     pub kind: YmErrorKind,
     pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub retry_after_ms: Option<u64>,
 }
 
@@ -68,18 +66,25 @@ impl YmError {
     pub fn from_status(status: u16, body: &str, retry_after_ms: Option<u64>) -> Self {
         let message =
             api_error_message(body).unwrap_or_else(|| format!("upstream status {status}"));
-        let kind = match status {
-            401 => YmErrorKind::Auth,
-            403 => YmErrorKind::Forbidden,
-            404 => YmErrorKind::NotFound,
-            429 => YmErrorKind::RateLimited,
-            500..=599 => YmErrorKind::Unavailable,
-            _ => YmErrorKind::Unknown,
-        };
         Self {
-            kind,
+            kind: YmErrorKind::from_status(status),
             message,
             retry_after_ms: if status == 429 { retry_after_ms } else { None },
+        }
+    }
+}
+
+impl YmErrorKind {
+    /// Yandex answers 403 to an account without the right (no Plus), so it
+    /// is FORBIDDEN here, unlike the shared `kind_for_status`.
+    fn from_status(status: u16) -> Self {
+        match status {
+            401 => Self::Auth,
+            403 => Self::Forbidden,
+            404 => Self::NotFound,
+            429 => Self::RateLimited,
+            500..=599 => Self::Unavailable,
+            _ => Self::Unknown,
         }
     }
 }
@@ -94,6 +99,18 @@ impl std::fmt::Display for YmError {
 impl From<String> for YmError {
     fn from(message: String) -> Self {
         Self::unknown(message)
+    }
+}
+
+impl From<DownloadError> for YmError {
+    fn from(error: DownloadError) -> Self {
+        let kind = match &error {
+            DownloadError::Cancelled => YmErrorKind::Cancelled,
+            DownloadError::Network(_) => YmErrorKind::Network,
+            DownloadError::Upstream(status) => YmErrorKind::from_status(*status),
+            DownloadError::Io(_) | DownloadError::Other(_) => YmErrorKind::Unknown,
+        };
+        Self::new(kind, error.to_string())
     }
 }
 
@@ -341,7 +358,7 @@ pub async fn call(state: &YmState, client: &reqwest::Client, req: &YmRequest) ->
 pub async fn ym_request<R: Runtime>(
     app: AppHandle<R>,
     req: YmRequest,
-) -> Result<serde_json::Value, YmError> {
+) -> Result<serde_json::Value, AppError> {
     super::state::load_session_if_needed(&app);
     let client = crate::proxy::http_client(&app)?;
     let state = app.state::<YmState>();
@@ -351,7 +368,7 @@ pub async fn ym_request<R: Runtime>(
         SessionChange::Refreshed(session) => persist_session(&app, &session),
         SessionChange::Lost => drop_session(&app),
     }
-    outcome.result
+    outcome.result.map_err(AppError::from)
 }
 
 #[cfg(test)]
@@ -711,13 +728,39 @@ mod tests {
     #[test]
     fn the_error_serializes_in_the_frontend_vocabulary() {
         let error = YmError::from_status(429, "", Some(1500));
-        let json = serde_json::to_value(&error).expect("json");
+        let json = serde_json::to_value(AppError::from(error)).expect("json");
 
+        assert_eq!(json["domain"], "source");
+        assert_eq!(json["source"], "ym");
         assert_eq!(json["kind"], "RATE_LIMITED");
         assert_eq!(json["retryAfterMs"], 1500);
 
-        let plain = serde_json::to_value(YmError::auth("nope")).expect("json");
+        let plain = serde_json::to_value(AppError::from(YmError::auth("nope"))).expect("json");
         assert_eq!(plain["kind"], "AUTH");
         assert!(plain.get("retryAfterMs").is_none());
+    }
+
+    #[test]
+    fn a_forbidden_download_keeps_the_forbidden_kind() {
+        let error = YmError::from(DownloadError::Upstream(403));
+        assert_eq!(error.kind, YmErrorKind::Forbidden);
+        assert_eq!(error.message, "upstream status 403");
+
+        let json = serde_json::to_value(AppError::from(error)).expect("json");
+        assert_eq!(json["kind"], "FORBIDDEN");
+
+        for (status, kind) in [
+            (401, YmErrorKind::Auth),
+            (404, YmErrorKind::NotFound),
+            (429, YmErrorKind::RateLimited),
+            (503, YmErrorKind::Unavailable),
+            (418, YmErrorKind::Unknown),
+        ] {
+            assert_eq!(
+                YmError::from(DownloadError::Upstream(status)).kind,
+                kind,
+                "status {status}"
+            );
+        }
     }
 }

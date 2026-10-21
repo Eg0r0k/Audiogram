@@ -31,6 +31,7 @@ import { RADIO_LOOKAHEAD, type RadioSession } from "../lib/queue-radio";
 import { shadowPinRemoteTracks } from "../lib/shadow-pin";
 import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
 import type { SourceError } from "@/types/source-dto";
+import { formatError } from "@/lib/errors";
 
 const RESTART_THRESHOLD = 3;
 // Transient failures in a row that mean the environment is broken, not the
@@ -380,7 +381,7 @@ export const useQueueStore = defineStore("queue", () => {
     }
     catch (thrown) {
       const { error } = toPlaybackFailure(thrown, item.track);
-      getLogger().error(`[Queue] Failed to play "${item.track.title}" (${error.kind}): ${String(thrown)}`);
+      getLogger().error(`[Queue] Failed to play "${item.track.title}" (${error.kind}): ${formatError(thrown)}`);
       return err(error);
     }
   }
@@ -516,7 +517,7 @@ export const useQueueStore = defineStore("queue", () => {
       if (restoredTrack && !player.currentTrack) player.presentTrack(restoredTrack);
     }
     catch (error) {
-      getLogger().error(`[Queue] Failed to restore persisted queue: ${String(error)}`);
+      getLogger().error(`[Queue] Failed to restore persisted queue: ${formatError(error)}`);
       // Infrastructure failure (DB hiccup): reset memory but keep the stored
       // snapshot untouched so the next healthy launch can still restore it.
       commit(EMPTY_STATE, { persist: false });

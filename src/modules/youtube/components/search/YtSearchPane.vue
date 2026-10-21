@@ -126,6 +126,7 @@ import SourceHealthNotice from "@/modules/sources/components/SourceHealthNotice.
 import YtSearchAllSections from "./YtSearchAllSections.vue";
 import YtSearchChips from "./YtSearchChips.vue";
 import YtSearchList from "./YtSearchList.vue";
+import { formatError } from "@/lib/errors";
 
 const {
   query,
@@ -212,7 +213,7 @@ watch(linkTarget, async (target) => {
 
 const playLinkVideo = (track: Track) => {
   queueStore.setQueue([track], 0, { type: "manual" })
-    .catch(error => getLogger().error(`[YouTube] Playing a pasted link failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[YouTube] Playing a pasted link failed: ${formatError(error)}`));
 };
 
 function applyYtHistoryItem(value: string) {

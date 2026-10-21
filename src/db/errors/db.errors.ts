@@ -4,28 +4,18 @@
 // (quota, version mismatch, upgrade failure) instead of pattern-matching on
 // message strings.
 //
-import { errorMessage } from "@/lib/errors";
+import { AppFailure, errorMessage, type DbAppError } from "@/lib/errors";
+import type { DbErrorCode } from "@/types/error-codes";
 
-export type DbErrorCode
-  /** Installed database version is newer than the schema this build declares (app downgrade). */
-  = | "VERSION"
-  /** A `.upgrade()` handler threw — the database could not be migrated. */
-    | "UPGRADE"
-  /** Browser/WebView storage quota exhausted. */
-    | "QUOTA"
-  /** Connection closed (after `versionchange` from another instance). */
-    | "CLOSED"
-  /** Unique-key violation, including a `BulkError` from bulkAdd/bulkPut. */
-    | "CONSTRAINT"
-    | "UNKNOWN";
+export type { DbErrorCode } from "@/types/error-codes";
 
-export class DbError extends Error {
+export class DbError extends AppFailure<DbAppError> {
   constructor(
     public readonly code: DbErrorCode,
     message: string,
     public readonly cause?: unknown,
   ) {
-    super(message);
+    super({ domain: "db", code, message, cause });
     this.name = "DbError";
   }
 }

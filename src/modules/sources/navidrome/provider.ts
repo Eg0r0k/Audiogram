@@ -1,4 +1,3 @@
-import { errorMessage } from "@/lib/errors";
 import { errAsync, okAsync, ResultAsync } from "neverthrow";
 import { Channel } from "@tauri-apps/api/core";
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
@@ -18,6 +17,7 @@ import type {
 } from "../navidrome/api/types";
 import { mapNdAlbum, mapNdArtist, mapNdPlaylist, mapNdSong } from "../navidrome/mappers";
 import { getNdConfig } from "../navidrome/config";
+import { asSourceError } from "../lib/errors";
 import type { DownloadEvent, SourceError, SourceProvider } from "../types";
 
 const unavailable = <T>(): ResultAsync<T, SourceError> =>
@@ -35,23 +35,6 @@ const ndIdOf = (id: TrackId | AlbumId | ArtistId | PlaylistId): string | null =>
 
 /** getAlbumList2 caps size at 500 per the Subsonic contract. */
 const MAX_ALBUM_PAGE = 500;
-
-/**
- * `invokeCommand(COMMANDS.ndDownload)` rejects with plain strings built on the Rust side
- * (never carrying upstream URLs). A manager-initiated cancel rejects with
- * the literal string "cancelled" (nd.rs) — mapped onto kind "CANCELLED"
- * here, at the only boundary that still sees the raw string.
- */
-function mapNdDownloadError(raw: unknown): SourceError {
-  const message = errorMessage(raw);
-  if (message === "cancelled") return { kind: "CANCELLED", message };
-  if (/status 40[13]\b/.test(message)) return { kind: "AUTH", message };
-  if (message.includes("not configured")) return { kind: "UNAVAILABLE", message };
-  if (message.startsWith("request failed") || message.startsWith("download failed")) {
-    return { kind: "NETWORK", message };
-  }
-  return { kind: "UNKNOWN", message };
-}
 
 export const ndSourceProvider: SourceProvider = {
   id: "nd",
@@ -196,7 +179,7 @@ export const ndSourceProvider: SourceProvider = {
     if (!this.isAvailable) return unavailable<void>();
     return ResultAsync.fromPromise(
       invokeCommand(COMMANDS.ndPrefetch, { songId }),
-      mapNdDownloadError,
+      asSourceError,
     );
   },
 
@@ -220,7 +203,7 @@ export const ndSourceProvider: SourceProvider = {
               suffix: payload.song?.suffix ?? null,
               onProgress: channel,
             }),
-            mapNdDownloadError,
+            asSourceError,
           );
         })
         .map(result => ({ path: result.path, format: { codec: result.ext } })),
@@ -232,7 +215,7 @@ export const ndSourceProvider: SourceProvider = {
     if (!songId) return errAsync({ kind: "PARSE", message: `Not a Navidrome track id: ${id}` });
     return ResultAsync.fromPromise(
       invokeCommand(COMMANDS.ndDownloadCancel, { songId }),
-      mapNdDownloadError,
+      asSourceError,
     );
   },
 };

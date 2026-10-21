@@ -6,6 +6,7 @@ import { getLogger } from "@/lib/logger";
 import { queryClient } from "@/queries/client";
 import { invalidateSource } from "@/queries/source.queries";
 import { checkSource } from "@/modules/sources/composables/useSourceHealth";
+import { formatError } from "@/lib/errors";
 
 /** Credentials are typed a character at a time — see useProxySync. */
 const INVALIDATE_DEBOUNCE_MS = 400;
@@ -34,9 +35,9 @@ export const useNdSourceSync = () => {
     ndConfig,
     () => {
       invalidateSource(queryClient, "nd")
-        .catch(error => getLogger().error(`[Settings] Dropping the cached nd data failed: ${String(error)}`));
+        .catch(error => getLogger().error(`[Settings] Dropping the cached nd data failed: ${formatError(error)}`));
       checkSource("nd")
-        .catch(error => getLogger().error(`[Settings] Probing nd failed: ${String(error)}`));
+        .catch(error => getLogger().error(`[Settings] Probing nd failed: ${formatError(error)}`));
     },
     { debounce: INVALIDATE_DEBOUNCE_MS },
   );

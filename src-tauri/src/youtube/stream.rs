@@ -10,9 +10,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use bytes::Bytes;
 use tauri::{AppHandle, Manager, Runtime};
 
+use crate::app_error::AppError;
 use crate::audio_cache::{AudioCache, CachedAudio};
 use crate::media_server::{forward_stream, memory_range_response, status_response};
-use crate::remote_download::{content_range_total, get_range};
+use crate::remote_download::{content_range_total, get_range, DownloadError};
 
 use super::{validate_id, YtError, YtErrorKind};
 
@@ -164,7 +165,7 @@ pub fn yt_register_stream<R: Runtime>(
     url: String,
     headers: Vec<(String, String)>,
     expires_at: Option<u64>,
-) -> Result<(), YtError> {
+) -> Result<(), AppError> {
     let id = validate_id(&id).map_err(YtError::invalid_input)?;
     let url = validate_stream_url(&url).map_err(YtError::invalid_input)?;
     let entry = StreamEntry {
@@ -193,7 +194,7 @@ fn not_registered() -> YtError {
 /// Called by the frontend for the next queue entry while the current track
 /// still plays; the entry must have been registered.
 #[tauri::command]
-pub async fn yt_prefetch<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), YtError> {
+pub async fn yt_prefetch<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), AppError> {
     let id = validate_id(&id).map_err(YtError::invalid_input)?;
     if app.state::<YtAudioCache>().contains(&id) {
         return Ok(());
@@ -204,25 +205,20 @@ pub async fn yt_prefetch<R: Runtime>(app: AppHandle<R>, id: String) -> Result<()
 
     let (content_type, bytes) = match fetch_ranged_bytes(&client, &entry).await {
         Ok(fetched) => fetched,
-        Err(e) => {
-            if e.starts_with("upstream status") {
-                // googlevideo refused the registered URL: stale, drop it so
-                // the next play re-resolves.
-                streams.remove(&id);
-                return Err(YtError::new(
-                    YtErrorKind::Network,
-                    format!("prefetch failed: {e}"),
-                ));
-            }
-            return Err(YtError::from(e));
+        Err(e @ DownloadError::Upstream(_)) => {
+            // googlevideo refused the registered URL: stale, drop it so
+            // the next play re-resolves.
+            streams.remove(&id);
+            return Err(YtError::new(YtErrorKind::Network, format!("prefetch failed: {e}")).into());
         }
+        Err(e) => return Err(YtError::from(e).into()),
     };
     log::debug!("yt_prefetch {id}: {} bytes", bytes.len());
 
     if !app.state::<YtAudioCache>().insert(id, content_type, bytes) {
-        return Err(YtError::from(
-            "prefetch skipped: track exceeds the cache cap".to_owned(),
-        ));
+        return Err(
+            YtError::from("prefetch skipped: track exceeds the cache cap".to_owned()).into(),
+        );
     }
     Ok(())
 }
@@ -234,7 +230,7 @@ pub async fn yt_prefetch<R: Runtime>(app: AppHandle<R>, id: String) -> Result<()
 async fn fetch_ranged_bytes(
     client: &reqwest::Client,
     entry: &StreamEntry,
-) -> Result<(String, Bytes), String> {
+) -> Result<(String, Bytes), DownloadError> {
     let mut buf: Vec<u8> = Vec::new();
     let mut content_type = "audio/mp4".to_owned();
     let mut total: Option<u64> = None;
@@ -265,9 +261,9 @@ async fn fetch_ranged_bytes(
             };
             if let Some(total) = total {
                 if total > MAX_PREFETCHED_YT_BYTES as u64 {
-                    return Err(format!(
+                    return Err(DownloadError::Other(format!(
                         "prefetch skipped: track is {total} bytes, over the cache cap"
-                    ));
+                    )));
                 }
             }
         }
@@ -275,7 +271,7 @@ async fn fetch_ranged_bytes(
         let bytes = resp
             .bytes()
             .await
-            .map_err(|e| format!("download failed: {}", e.without_url()))?;
+            .map_err(|e| DownloadError::Network(format!("download failed: {}", e.without_url())))?;
         if status == 200 {
             // The server ignored the range: the body already is the whole file.
             return Ok((content_type, bytes));
@@ -283,7 +279,9 @@ async fn fetch_ranged_bytes(
         let short_chunk = (bytes.len() as u64) < YT_RANGE_SPAN;
         buf.extend_from_slice(&bytes);
         if buf.len() > MAX_PREFETCHED_YT_BYTES {
-            return Err("prefetch skipped: track exceeds the cache cap".into());
+            return Err(DownloadError::Other(
+                "prefetch skipped: track exceeds the cache cap".into(),
+            ));
         }
         let done = match total {
             Some(total) => buf.len() as u64 >= total,

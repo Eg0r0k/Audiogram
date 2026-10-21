@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use discord_rich_presence::{DiscordIpc, DiscordIpcClient};
 use serde::Deserialize;
 
+use crate::app_error::AppError;
 use crate::discord_utils::build_activity;
 
 pub type DiscordPresenceState = Arc<Mutex<DiscordPresence>>;
@@ -28,7 +29,7 @@ pub struct DiscordActivityPayload {
 pub async fn discord_set_activity(
     state: tauri::State<'_, DiscordPresenceState>,
     payload: DiscordActivityPayload,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let presence = Arc::clone(state.inner());
     tauri::async_runtime::spawn_blocking(move || {
         presence
@@ -36,21 +37,21 @@ pub async fn discord_set_activity(
             .map_err(|e| e.to_string())?
             .set_activity(payload)
     })
-    .await
-    .map_err(|e| e.to_string())?
+    .await?
+    .map_err(AppError::from)
 }
 
 #[tauri::command]
 pub async fn discord_clear_activity(
     state: tauri::State<'_, DiscordPresenceState>,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let presence = Arc::clone(state.inner());
     tauri::async_runtime::spawn_blocking(move || {
         presence.lock().map_err(|e| e.to_string())?.clear_activity();
-        Ok(())
+        Ok::<(), String>(())
     })
-    .await
-    .map_err(|e| e.to_string())?
+    .await?
+    .map_err(AppError::from)
 }
 
 impl DiscordPresence {

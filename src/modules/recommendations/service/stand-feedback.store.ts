@@ -3,6 +3,7 @@ import { appDataDir } from "@tauri-apps/api/path";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { getLogger } from "@/lib/logger";
 import type { TrackId } from "@/types/ids";
+import { formatError } from "@/lib/errors";
 
 export type FeedbackLabel = 1 | -1;
 
@@ -53,7 +54,7 @@ export const loadFeedback = async (): Promise<Map<string, FeedbackEntry>> => {
     }
   }
   catch (error) {
-    getLogger().error(`[RecoStand] Failed to read feedback: ${String(error)}`);
+    getLogger().error(`[RecoStand] Failed to read feedback: ${formatError(error)}`);
   }
   return map;
 };

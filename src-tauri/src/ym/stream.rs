@@ -8,6 +8,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use super::api::{YmError, YmErrorKind};
 use super::resolve::{resolve, ResolvedTrack, YmLinkCache};
 use super::state::YmState;
+use crate::app_error::AppError;
 use crate::audio_cache::{AudioCache, CachedAudio};
 use crate::media_server::{forward_stream, memory_range_response, status_response};
 
@@ -134,9 +135,9 @@ fn content_type_for(link: &ResolvedTrack) -> &'static str {
 /// Downloads the whole track for the next queue entry into the in-memory
 /// cache. Called by the frontend while the current track plays.
 #[tauri::command]
-pub async fn ym_prefetch<R: Runtime>(app: AppHandle<R>, track_id: String) -> Result<(), YmError> {
+pub async fn ym_prefetch<R: Runtime>(app: AppHandle<R>, track_id: String) -> Result<(), AppError> {
     if !is_track_id(&track_id) {
-        return Err(YmError::new(YmErrorKind::Unknown, "invalid track id"));
+        return Err(YmError::new(YmErrorKind::Unknown, "invalid track id").into());
     }
     super::state::load_session_if_needed(&app);
     let client = crate::proxy::http_client(&app)?;
@@ -148,6 +149,7 @@ pub async fn ym_prefetch<R: Runtime>(app: AppHandle<R>, track_id: String) -> Res
         &track_id,
     )
     .await
+    .map_err(AppError::from)
 }
 
 async fn forward_link(

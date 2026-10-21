@@ -6,11 +6,12 @@ import { indexImportedTracks } from "@/modules/search/service/searchIndex";
 import { queryClient } from "@/queries/client";
 import { invalidateLibraryData } from "@/queries/library.queries";
 import { syncLocalCopyCache } from "@/queries/localCopy.queries";
-import { unwrapResult } from "@/queries/shared";
+import { unwrapResult } from "@/lib/errors/unwrap";
 import { extensionOf } from "@/services/import/item-io";
 import { musicLibraryEngine } from "@/services/importer.service";
 import type { ImportItem, KnownMetadata } from "@/services/types";
 import type { TrackId } from "@/types/ids";
+import { formatError } from "@/lib/errors";
 
 /** The remote row's identity, which outranks whatever tags the file carries. */
 const knownFrom = async (remoteId: TrackId, row: TrackEntity): Promise<KnownMetadata> => {
@@ -66,7 +67,7 @@ export const importDownloadedFile = async (remoteId: TrackId, absolutePath: stri
     await indexImportedTracks([localId]);
   }
   catch (error) {
-    getLogger().warn(`[Search] Indexing the downloaded ${localId} failed: ${String(error)}`);
+    getLogger().warn(`[Search] Indexing the downloaded ${localId} failed: ${formatError(error)}`);
   }
   return localId;
 };
@@ -95,6 +96,6 @@ export const finalizeDownloadImport = async (
   }
   catch (error) {
     // Best-effort: a stray temp file is reclaimed by the startup sweep.
-    getLogger().warn(`[Downloads] Removing the temp file ${file.path} failed: ${String(error)}`);
+    getLogger().warn(`[Downloads] Removing the temp file ${file.path} failed: ${formatError(error)}`);
   }
 };

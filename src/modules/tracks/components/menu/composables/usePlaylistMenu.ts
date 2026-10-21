@@ -1,6 +1,6 @@
 import { computed, type MaybeRefOrGetter } from "vue";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
-import { toaster } from "@/app/toaster";
+import { reportError } from "@/app/error-feedback";
 import { useI18n } from "vue-i18n";
 import {
   createPlaylistAndSync,
@@ -29,8 +29,8 @@ export function usePlaylistMenu(options: UsePlaylistMenuOptions = {}) {
     try {
       await createPlaylistAndSync(queryClient);
     }
-    catch {
-      toaster.add({ title: t("playlist.createFailed"), color: "destructive" });
+    catch (error) {
+      reportError(error, { title: t("playlist.createFailed"), scope: "Tracks" });
     }
   }
 

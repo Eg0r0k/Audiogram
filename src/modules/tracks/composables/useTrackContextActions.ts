@@ -5,7 +5,9 @@ import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { AlbumId, ArtistId, PlaylistId, QueueItemId, TrackId } from "@/types/ids";
 
 import { useQueryClient } from "@tanstack/vue-query";
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { useI18n } from "vue-i18n";
 import { toValue, type MaybeRefOrGetter } from "vue";
@@ -71,7 +73,7 @@ export const useTrackContextActions = (
       ?? queueStore.queue.find(item => item.track.kind === current.kind && item.track.id === current.id)?.id;
     const itemId = existingId ?? queueStore.insertNext(current).id;
     queueStore.jumpToId(itemId)
-      .catch(error => getLogger().error(`[Queue] Jumping to a queue item failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[Queue] Jumping to a queue item failed: ${formatError(error)}`));
   };
 
   const playNext = () => {
@@ -105,8 +107,7 @@ export const useTrackContextActions = (
       return pinned;
     }
     catch (error) {
-      getLogger().error(`[Tracks] Pin failed for ${subject.dto.id}: ${String(error)}`);
-      toaster.add({ title: failedTitle, color: "destructive" });
+      reportError(error, { title: failedTitle, scope: "Tracks" });
       return null;
     }
   };
@@ -144,8 +145,8 @@ export const useTrackContextActions = (
     try {
       await addTrackToPlaylistAndSync(queryClient, playlistId, current);
     }
-    catch {
-      toaster.add({ title: t("playlist.addTrackFailed"), color: "destructive" });
+    catch (error) {
+      reportError(error, { title: t("playlist.addTrackFailed"), scope: "Tracks" });
     }
   };
 
@@ -160,8 +161,7 @@ export const useTrackContextActions = (
         label: t("common.undo"),
         onClick: () => {
           restore().catch((error: unknown) => {
-            getLogger().error(`[Tracks] Undoing "${title}" failed: ${String(error)}`);
-            toaster.add({ title: restoreFailedTitle, color: "destructive" });
+            reportError(error, { title: restoreFailedTitle, scope: "Tracks" });
           });
         },
       }],
@@ -172,7 +172,7 @@ export const useTrackContextActions = (
     const queueItemId = toValue(options.queueItemId);
     if (!queueItemId) return;
     queueStore.removeFromQueue(queueItemId)
-      .catch(error => getLogger().error(`[Queue] Removing a queue item failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[Queue] Removing a queue item failed: ${formatError(error)}`));
   };
 
   const removeFromPlaylist = async () => {
@@ -183,8 +183,8 @@ export const useTrackContextActions = (
       const { restore } = await removeTrackFromPlaylistWithUndo(queryClient, playlistId, current.id);
       offerUndo("playlist-track-removed", t("playlist.trackRemoved"), restore, t("playlist.restoreTrackFailed"));
     }
-    catch {
-      toaster.add({ title: t("playlist.removeTrackFailed"), color: "destructive" });
+    catch (error) {
+      reportError(error, { title: t("playlist.removeTrackFailed"), scope: "Tracks" });
     }
   };
 
@@ -195,20 +195,20 @@ export const useTrackContextActions = (
       const restore = await statsService.removeFromHistory(current.id);
       offerUndo("history-track-removed", t("track.removedFromHistory"), restore, t("track.restoreHistoryFailed"));
     }
-    catch {
-      toaster.add({ title: t("track.removeFromHistoryFailed"), color: "destructive" });
+    catch (error) {
+      reportError(error, { title: t("track.removeFromHistoryFailed"), scope: "Tracks" });
     }
   };
 
   const goToArtist = (artistId: ArtistId) => {
-    router.push(routeLocation.artist(artistId)).catch(error => getLogger().error(`[Tracks] Navigation to the artist page failed: ${String(error)}`));
+    router.push(routeLocation.artist(artistId)).catch(error => getLogger().error(`[Tracks] Navigation to the artist page failed: ${formatError(error)}`));
     options.onNavigate?.();
   };
 
   const goToAlbum = () => {
     const current = toValue(track);
     if (!isLibraryTrack(current)) return;
-    router.push(routeLocation.album(current.albumId)).catch(error => getLogger().error(`[Tracks] Navigation to the album page failed: ${String(error)}`));
+    router.push(routeLocation.album(current.albumId)).catch(error => getLogger().error(`[Tracks] Navigation to the album page failed: ${formatError(error)}`));
     options.onNavigate?.();
   };
 
@@ -277,8 +277,8 @@ export const useTrackContextActions = (
       URL.revokeObjectURL(objectUrl);
       toaster.add({ title: t("track.exported"), color: "success" });
     }
-    catch {
-      toaster.add({ title: t("track.exportFailed"), color: "destructive" });
+    catch (error) {
+      reportError(error, { title: t("track.exportFailed"), scope: "Tracks" });
     }
   };
 
@@ -311,16 +311,12 @@ export const useTrackContextActions = (
       await downloadSubject(target);
     }
     catch (error) {
-      getLogger().error(`[Downloads] Enqueue failed from the track menu: ${String(error)}`);
-      toaster.add({
+      reportError(error, {
         title: t("downloads.enqueueFailed"),
-        color: "destructive",
-        actions: [{
-          label: t("common.retry"),
-          onClick: () => {
-            downloadOffline().catch(() => undefined);
-          },
-        }],
+        scope: "Downloads",
+        retry: () => {
+          downloadOffline().catch(() => undefined);
+        },
       });
     }
   };
@@ -338,8 +334,7 @@ export const useTrackContextActions = (
       await removeLocalCopy(trackId);
     }
     catch (error) {
-      getLogger().error(`[Downloads] Removing the downloaded copy of ${trackId} failed: ${String(error)}`);
-      toaster.add({ title: t("track.removeDownloadFailed"), color: "destructive" });
+      reportError(error, { title: t("track.removeDownloadFailed"), scope: "Downloads" });
     }
   };
 
@@ -358,8 +353,7 @@ export const useTrackContextActions = (
       toaster.add({ title: t("track.addedToLibrary"), color: "success" });
     }
     catch (error) {
-      getLogger().error(`[Tracks] Add to library failed: ${String(error)}`);
-      toaster.add({ title: t("track.pinFailed"), color: "destructive" });
+      reportError(error, { title: t("track.pinFailed"), scope: "Tracks" });
     }
   };
 
@@ -372,8 +366,7 @@ export const useTrackContextActions = (
       toaster.add({ title: t("track.removedFromLibrary"), color: "success" });
     }
     catch (error) {
-      getLogger().error(`[Tracks] Remove from library failed for ${current.id}: ${String(error)}`);
-      toaster.add({ title: t("track.removeFromLibraryFailed"), color: "destructive" });
+      reportError(error, { title: t("track.removeFromLibraryFailed"), scope: "Tracks" });
     }
   };
 
@@ -410,7 +403,7 @@ export const useTrackContextActions = (
 
   const guarded = <A extends unknown[]>(label: string, action: (...args: A) => Promise<unknown>) =>
     (...args: A) => {
-      action(...args).catch((error: unknown) => getLogger().error(`[Tracks] Action ${label} failed: ${String(error)}`));
+      action(...args).catch((error: unknown) => getLogger().error(`[Tracks] Action ${label} failed: ${formatError(error)}`));
     };
 
   return {

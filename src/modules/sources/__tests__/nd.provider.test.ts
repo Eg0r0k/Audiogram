@@ -239,18 +239,32 @@ describe("ndSourceProvider", () => {
       });
     });
 
-    it("maps backend failures onto SourceError kinds", async () => {
+    it("a cancelled download envelope becomes CANCELLED so the manager drops the job", async () => {
       subsonicFetchMock.mockReturnValue(okAsync({ song: { id: "s1", title: "x" } }));
+      invokeMock.mockRejectedValueOnce({ domain: "source", source: "nd", kind: "CANCELLED", message: "cancelled" });
 
-      invokeMock.mockRejectedValueOnce("upstream status 401");
-      expect((await ndSourceProvider.downloadToFile(ndTrackId("s1")))._unsafeUnwrapErr().kind).toBe("AUTH");
-
-      invokeMock.mockRejectedValueOnce("request failed: connect timeout");
-      expect((await ndSourceProvider.downloadToFile(ndTrackId("s1")))._unsafeUnwrapErr().kind).toBe("NETWORK");
-
-      invokeMock.mockRejectedValueOnce("cancelled");
       const cancelled = (await ndSourceProvider.downloadToFile(ndTrackId("s1")))._unsafeUnwrapErr();
-      expect(cancelled).toEqual({ kind: "CANCELLED", message: "cancelled" });
+
+      expect(cancelled).toStrictEqual({ kind: "CANCELLED", message: "cancelled" });
+    });
+
+    it("an AUTH envelope becomes AUTH", async () => {
+      subsonicFetchMock.mockReturnValue(okAsync({ song: { id: "s1", title: "x" } }));
+      invokeMock.mockRejectedValueOnce({ domain: "source", source: "nd", kind: "AUTH", message: "upstream status 401" });
+
+      const error = (await ndSourceProvider.downloadToFile(ndTrackId("s1")))._unsafeUnwrapErr();
+
+      expect(error).toStrictEqual({ kind: "AUTH", message: "upstream status 401" });
+    });
+
+    // A string carries no kind, whatever its text says.
+    it("the string rejection of an unmigrated plugin becomes UNKNOWN", async () => {
+      subsonicFetchMock.mockReturnValue(okAsync({ song: { id: "s1", title: "x" } }));
+      invokeMock.mockRejectedValueOnce("request failed: connect timeout");
+
+      const error = (await ndSourceProvider.downloadToFile(ndTrackId("s1")))._unsafeUnwrapErr();
+
+      expect(error).toStrictEqual({ kind: "UNKNOWN", message: "request failed: connect timeout" });
     });
 
     it("rejects foreign ids and missing config before any request", async () => {
@@ -273,10 +287,13 @@ describe("ndSourceProvider", () => {
     });
 
     it("maps backend failures onto SourceError kinds", async () => {
-      invokeMock.mockRejectedValueOnce("prefetch failed: upstream status 401");
+      invokeMock.mockRejectedValueOnce({ domain: "source", source: "nd", kind: "AUTH", message: "prefetch failed: upstream status 401" });
       expect((await ndSourceProvider.prefetch!(ndTrackId("s1")))._unsafeUnwrapErr().kind).toBe("AUTH");
 
-      invokeMock.mockRejectedValueOnce("prefetch skipped: track exceeds the cache cap");
+      invokeMock.mockRejectedValueOnce({ domain: "source", source: "nd", kind: "NETWORK", message: "request failed: connect timeout" });
+      expect((await ndSourceProvider.prefetch!(ndTrackId("s1")))._unsafeUnwrapErr().kind).toBe("NETWORK");
+
+      invokeMock.mockRejectedValueOnce({ domain: "native", kind: "UNKNOWN", message: "prefetch skipped: track exceeds the cache cap" });
       expect((await ndSourceProvider.prefetch!(ndTrackId("s1")))._unsafeUnwrapErr().kind).toBe("UNKNOWN");
     });
 

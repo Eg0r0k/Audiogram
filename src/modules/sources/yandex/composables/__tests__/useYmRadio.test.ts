@@ -11,6 +11,7 @@ vi.mock("../../radio/radio-session", () => ({
 }));
 vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
+vi.mock("@/app/i18n", () => ({ i18n: { global: { t: (key: string) => key } } }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ warn: vi.fn(), error: vi.fn() }) }));
 
 import { useYmRadio } from "../useYmRadio";

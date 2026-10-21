@@ -1,9 +1,11 @@
-//! Structured error type returned by YouTube commands so the frontend can
-//! branch on the failure class instead of parsing message strings.
+//! The YouTube commands' internal error; the frontend receives it as a
+//! source `AppError` with the same kind.
 
-/// Failure class, serialized as SCREAMING_SNAKE_CASE for the frontend.
-#[derive(Debug, Clone, Copy, serde::Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+use crate::app_error::{kind_for_status, SourceErrorKind};
+use crate::remote_download::DownloadError;
+
+/// Failure class; maps onto the envelope's `SourceErrorKind`.
+#[derive(Debug, Clone, Copy)]
 pub enum YtErrorKind {
     /// No stream is registered for the video (or it expired).
     NotFound,
@@ -16,8 +18,7 @@ pub enum YtErrorKind {
     Unknown,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct YtError {
     pub kind: YtErrorKind,
     pub message: String,
@@ -54,5 +55,21 @@ impl std::fmt::Display for YtError {
 impl From<String> for YtError {
     fn from(message: String) -> Self {
         Self::unknown(message)
+    }
+}
+
+impl From<DownloadError> for YtError {
+    fn from(error: DownloadError) -> Self {
+        let kind = match &error {
+            DownloadError::Cancelled => YtErrorKind::Cancelled,
+            DownloadError::Network(_) => YtErrorKind::Network,
+            DownloadError::Upstream(status) => match kind_for_status(*status) {
+                SourceErrorKind::NotFound => YtErrorKind::NotFound,
+                SourceErrorKind::Unavailable => YtErrorKind::Network,
+                _ => YtErrorKind::Unknown,
+            },
+            DownloadError::Io(_) | DownloadError::Other(_) => YtErrorKind::Unknown,
+        };
+        Self::new(kind, error.to_string())
     }
 }

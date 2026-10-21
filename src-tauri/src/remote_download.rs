@@ -20,6 +20,33 @@ pub const DOWNLOAD_TMP_SUBDIR: &str = "downloads-tmp";
 /// Progress emitted at most every this many bytes — chunks are tiny.
 const PROGRESS_EMIT_STEP: u64 = 256 * 1024;
 
+/// Why a shared download failed. No variant carries the URL (nd URLs hold auth tokens).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DownloadError {
+    Cancelled,
+    Network(String),
+    /// The upstream answered with a status the copy cannot use.
+    Upstream(u16),
+    Io(String),
+    Other(String),
+}
+
+impl std::fmt::Display for DownloadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Cancelled => f.write_str("cancelled"),
+            Self::Upstream(status) => write!(f, "upstream status {status}"),
+            Self::Network(message) | Self::Io(message) | Self::Other(message) => {
+                f.write_str(message)
+            }
+        }
+    }
+}
+
+fn io_error(error: std::io::Error) -> DownloadError {
+    DownloadError::Io(error.to_string())
+}
+
 /// In-flight downloads by `"<kind>:<id>"` — cancellation flags consumed by
 /// the sources' `*_download_cancel` commands. The manager guarantees one
 /// active job per track, so the branded id is the natural key (job ids stay
@@ -45,10 +72,13 @@ impl Drop for DownloadSlot<'_> {
 }
 
 impl DownloadRegistry {
-    pub fn register(&self, key: &str) -> Result<DownloadSlot<'_>, String> {
-        let mut map = self.0.lock().map_err(|_| "registry poisoned".to_string())?;
+    pub fn register(&self, key: &str) -> Result<DownloadSlot<'_>, DownloadError> {
+        let mut map = self
+            .0
+            .lock()
+            .map_err(|_| DownloadError::Other("registry poisoned".into()))?;
         if map.contains_key(key) {
-            return Err("download already in progress".into());
+            return Err(DownloadError::Other("download already in progress".into()));
         }
         let cancelled = Arc::new(AtomicBool::new(false));
         map.insert(key.to_owned(), Arc::clone(&cancelled));
@@ -104,11 +134,11 @@ pub struct DownloadRequest<'a> {
     pub suffix: Option<&'a str>,
 }
 
-pub fn tmp_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
+pub fn tmp_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, DownloadError> {
     Ok(app
         .path()
         .app_data_dir()
-        .map_err(|e| e.to_string())?
+        .map_err(|e| DownloadError::Io(e.to_string()))?
         .join(DOWNLOAD_TMP_SUBDIR))
 }
 
@@ -137,18 +167,18 @@ fn normalized_suffix(suffix: Option<&str>) -> Option<String> {
 /// Streams the whole upstream file into `<tmp_dir>/<file_stem>.<ext>` in
 /// one request, reporting progress over the channel. Cancellation is polled
 /// between chunks; a cancelled download removes its partial file and errors
-/// with "cancelled". Errors never embed the URL (nd URLs carry auth tokens).
+/// with [`DownloadError::Cancelled`].
 pub async fn fetch_to_tmp(
     client: &reqwest::Client,
     tmp_dir: &Path,
     req: DownloadRequest<'_>,
     on_progress: &Channel<DownloadEvent>,
     cancelled: &AtomicBool,
-) -> Result<DownloadResult, String> {
+) -> Result<DownloadResult, DownloadError> {
     let mut resp = send_get(client, req.url, req.headers, None).await?;
     let status = resp.status().as_u16();
     if status != 200 {
-        return Err(format!("upstream status {status}"));
+        return Err(DownloadError::Upstream(status));
     }
     let ext = ext_for(&req, &resp);
     let total = resp.content_length();
@@ -168,15 +198,15 @@ pub async fn fetch_to_tmp_ranged(
     span: u64,
     on_progress: &Channel<DownloadEvent>,
     cancelled: &AtomicBool,
-) -> Result<DownloadResult, String> {
+) -> Result<DownloadResult, DownloadError> {
     let mut target: Option<(PathBuf, tokio::fs::File, String)> = None;
     let mut total: Option<u64> = None;
     let mut start: u64 = 0;
 
-    let outcome: Result<u64, String> = async {
+    let outcome: Result<u64, DownloadError> = async {
         loop {
             if cancelled.load(Ordering::SeqCst) {
-                return Err("cancelled".into());
+                return Err(DownloadError::Cancelled);
             }
             let Some(mut resp) = get_range(client, req.url, req.headers, start, span).await? else {
                 break;
@@ -211,7 +241,7 @@ pub async fn fetch_to_tmp_ranged(
     let Some((path, file, ext)) = target else {
         return Err(outcome
             .err()
-            .unwrap_or_else(|| "upstream served no data".into()));
+            .unwrap_or_else(|| DownloadError::Other("upstream served no data".into())));
     };
     finish(path, ext, file, outcome, on_progress).await
 }
@@ -223,7 +253,7 @@ async fn send_get(
     url: &str,
     headers: &[(String, String)],
     range: Option<String>,
-) -> Result<reqwest::Response, String> {
+) -> Result<reqwest::Response, DownloadError> {
     let mut request = client.get(url);
     for (name, value) in headers {
         request = request.header(name.as_str(), value.as_str());
@@ -234,7 +264,7 @@ async fn send_get(
     request
         .send()
         .await
-        .map_err(|e| format!("request failed: {}", e.without_url()))
+        .map_err(|e| DownloadError::Network(format!("request failed: {}", e.without_url())))
 }
 
 /// GETs `bytes=start-(start+span-1)`. `Ok(None)` when the server answers
@@ -245,12 +275,12 @@ pub(crate) async fn get_range(
     headers: &[(String, String)],
     start: u64,
     span: u64,
-) -> Result<Option<reqwest::Response>, String> {
+) -> Result<Option<reqwest::Response>, DownloadError> {
     let range = format!("bytes={start}-{}", start + span - 1);
     let resp = send_get(client, url, headers, Some(range)).await?;
     match resp.status().as_u16() {
         416 => Ok(None),
-        status if status >= 400 => Err(format!("upstream status {status}")),
+        status if status >= 400 => Err(DownloadError::Upstream(status)),
         _ => Ok(Some(resp)),
     }
 }
@@ -276,14 +306,10 @@ async fn create_target(
     tmp_dir: &Path,
     file_stem: &str,
     ext: &str,
-) -> Result<(PathBuf, tokio::fs::File), String> {
-    tokio::fs::create_dir_all(tmp_dir)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> Result<(PathBuf, tokio::fs::File), DownloadError> {
+    tokio::fs::create_dir_all(tmp_dir).await.map_err(io_error)?;
     let path = tmp_dir.join(format!("{file_stem}.{ext}"));
-    let file = tokio::fs::File::create(&path)
-        .await
-        .map_err(|e| e.to_string())?;
+    let file = tokio::fs::File::create(&path).await.map_err(io_error)?;
     Ok((path, file))
 }
 
@@ -294,9 +320,9 @@ async fn finish(
     path: PathBuf,
     ext: String,
     file: tokio::fs::File,
-    written: Result<u64, String>,
+    written: Result<u64, DownloadError>,
     on_progress: &Channel<DownloadEvent>,
-) -> Result<DownloadResult, String> {
+) -> Result<DownloadResult, DownloadError> {
     // Waits for the blocking pool's in-flight write and closes the handle —
     // Windows refuses to delete a file that is still open.
     drop(file.into_std().await);
@@ -332,20 +358,25 @@ async fn copy_body(
     cancelled: &AtomicBool,
     offset: u64,
     total: Option<u64>,
-) -> Result<u64, String> {
+) -> Result<u64, DownloadError> {
     let mut written: u64 = 0;
     let mut last_emitted: u64 = 0;
 
     loop {
         if cancelled.load(Ordering::SeqCst) {
-            return Err("cancelled".into());
+            return Err(DownloadError::Cancelled);
         }
         let chunk = match resp.chunk().await {
             Ok(Some(chunk)) => chunk,
             Ok(None) => break,
-            Err(e) => return Err(format!("download failed: {}", e.without_url())),
+            Err(e) => {
+                return Err(DownloadError::Network(format!(
+                    "download failed: {}",
+                    e.without_url()
+                )))
+            }
         };
-        file.write_all(&chunk).await.map_err(|e| e.to_string())?;
+        file.write_all(&chunk).await.map_err(io_error)?;
         written += chunk.len() as u64;
         if written - last_emitted >= PROGRESS_EMIT_STEP {
             last_emitted = written;
@@ -356,7 +387,7 @@ async fn copy_body(
         }
     }
 
-    file.flush().await.map_err(|e| e.to_string())?;
+    file.flush().await.map_err(io_error)?;
     Ok(written)
 }
 
@@ -507,7 +538,7 @@ mod tests {
         )
         .await;
 
-        assert_eq!(result.unwrap_err(), "cancelled");
+        assert_eq!(result.unwrap_err(), DownloadError::Cancelled);
         assert!(
             !tmp.join("s1.flac").exists(),
             "partial file must be removed"
@@ -542,7 +573,7 @@ mod tests {
         )
         .await;
 
-        assert_eq!(result.unwrap_err(), "upstream status 403");
+        assert_eq!(result.unwrap_err(), DownloadError::Upstream(403));
         assert!(!tmp.exists());
         assert!(seen.lock().expect("events").is_empty());
     }
@@ -706,7 +737,7 @@ mod tests {
         )
         .await;
 
-        assert_eq!(result.unwrap_err(), "upstream status 403");
+        assert_eq!(result.unwrap_err(), DownloadError::Upstream(403));
         assert!(!tmp.exists());
     }
 }

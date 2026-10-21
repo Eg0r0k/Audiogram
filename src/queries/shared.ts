@@ -1,4 +1,5 @@
 import type { TrackEntity } from "@/db/entities";
+import { AppFailure, type SourceAppError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { reportSourceError, reportSourceOk } from "@/modules/sources/lib/health";
 import type { SourceError, SourceErrorKind } from "@/types/source-dto";
@@ -6,20 +7,16 @@ import type { SourceKind } from "@/types/track-ref";
 import { isDescendingSort, trackSortField, type TrackSortKey } from "@/types/track-sort";
 import type { Result } from "neverthrow";
 
-export { unwrapResult } from "@/lib/result";
+export { unwrapResult } from "@/lib/errors/unwrap";
 
-/**
- * Typed SourceError carried across the TanStack Query boundary. The client's
- * retry policy keys on this class: a failure of any other shape is never
- * retried.
- */
-export class SourceQueryError extends Error {
+export class SourceQueryError extends AppFailure<SourceAppError> {
   constructor(
     public readonly kind: SourceErrorKind,
     message: string,
     public readonly retryAfterMs?: number,
+    source?: SourceKind,
   ) {
-    super(message);
+    super({ domain: "source", kind, message, source, retryAfterMs });
     this.name = "SourceQueryError";
   }
 }
@@ -39,7 +36,7 @@ export const unwrapSourceResult = async <T>(
   if (result.isErr()) {
     getLogger().error(`[Source] ${result.error.kind}: ${result.error.message}`);
     if (kind) reportSourceError(kind, result.error);
-    throw new SourceQueryError(result.error.kind, result.error.message, result.error.retryAfterMs);
+    throw new SourceQueryError(result.error.kind, result.error.message, result.error.retryAfterMs, kind);
   }
 
   if (kind) reportSourceOk(kind);

@@ -2,13 +2,14 @@ import { db } from "@/db";
 import type { TrackEntity } from "@/db/entities";
 import { playlistRepository, trackRepository } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
-import { unwrapResult } from "@/queries/shared";
+import { unwrapResult } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import { removeSearchDocuments } from "@/modules/search/service/searchIndex";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import type { SourceTrackDTO } from "@/types/source-dto";
 import { sourceKindOfId } from "@/types/track-ref";
 import { ensurePinned } from "./ensurePinned";
+import { formatError } from "@/lib/errors";
 
 /** A shadow row carries everything the pin cascade needs to rebuild its family. */
 const dtoFromRow = (track: TrackEntity): SourceTrackDTO => ({
@@ -70,7 +71,7 @@ export async function removeTrackFromLibrary(trackId: TrackId): Promise<void> {
   if (result.isErr()) throw result.error;
 
   removeSearchDocuments([`track:${trackId}`, ...result.value]).catch((error) => {
-    getLogger().warn(`[Search] De-indexing removed ${trackId} failed: ${String(error)}`);
+    getLogger().warn(`[Search] De-indexing removed ${trackId} failed: ${formatError(error)}`);
   });
 }
 

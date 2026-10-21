@@ -99,6 +99,7 @@ import IconPause from "~icons/audiogram/pause-rounded";
 import IconPlay from "~icons/audiogram/play-rounded";
 import IconPinFilled from "~icons/tabler/pin-filled";
 import IconPin from "~icons/tabler/pin";
+import { formatError } from "@/lib/errors";
 
 // A no-hover device (touch) can't reveal the play and pin buttons, so they stay
 // visible there; `fluid` lets a grid size the card instead of the slider width.
@@ -147,13 +148,13 @@ const showPauseIcon = computed(() => isPlaying.value || isLoading.value);
 
 function handleClick() {
   router.push(props.item.to)
-    .catch(error => getLogger().error(`[Library] Opening ${props.item.type} ${props.item.id} failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[Library] Opening ${props.item.type} ${props.item.id} failed: ${formatError(error)}`));
 }
 
 function handlePlay() {
   if (isActiveSource.value) {
     playerStore.togglePlay()
-      .catch(error => getLogger().error(`[Player] Toggling playback failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[Player] Toggling playback failed: ${formatError(error)}`));
     return;
   }
 

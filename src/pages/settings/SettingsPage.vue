@@ -92,6 +92,7 @@ import { sourceHealth } from "@/modules/sources/lib/health";
 import { routeLocation } from "@/app/router/route-locations";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 const { t } = useI18n();
 const { mode } = useTheme();
@@ -111,7 +112,7 @@ const storageDescription = computed(() =>
 
 onMounted(() => {
   refresh().catch((err: unknown) => {
-    getLogger().warn(`[SettingsPage] Refreshing storage usage failed: ${String(err)}`);
+    getLogger().warn(`[SettingsPage] Refreshing storage usage failed: ${formatError(err)}`);
   });
 });
 </script>

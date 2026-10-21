@@ -3,12 +3,14 @@ import { REPEAT_MODES, type EphemeralTrack, type PlayerTrack, type RepeatMode, t
 import { playlistRepository, queueSnapshotRepository, trackRepository } from "@/db/repositories";
 import { LEGACY_QUEUE_STORAGE_KEY, QUEUE_CURSOR_STORAGE_KEY } from "@/db/entities";
 import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
-import { unique, unwrapResult } from "@/queries/shared";
+import { unique } from "@/queries/shared";
+import { unwrapResult } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import { migrateProxyUrl } from "@/lib/stream-url";
 import { ndPlaylistId, parseTrackRef } from "@/types/track-ref";
 import type { QueueItem, QueueSource, QueueState } from "../types";
 import { getItemsByOrder } from "../lib/queue-order";
+import { formatError } from "@/lib/errors";
 
 export const QUEUE_STORAGE_KEY = QUEUE_CURSOR_STORAGE_KEY;
 const LEGACY_PLAYER_STORAGE_KEY = "lyra-player";
@@ -272,7 +274,7 @@ const ndPlaylistSourceRewrites = async (
       if (!found) rewrites.set(id, ndPlaylistId(id));
     }
     catch (error) {
-      getLogger().warn(`[Queue] Playlist source migration skipped for ${id}: ${String(error)}`);
+      getLogger().warn(`[Queue] Playlist source migration skipped for ${id}: ${formatError(error)}`);
     }
   }
 

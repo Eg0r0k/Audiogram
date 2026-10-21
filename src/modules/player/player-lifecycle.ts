@@ -1,4 +1,5 @@
 import { until, useEventBus } from "@vueuse/core";
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { i18n } from "@/app/i18n";
 import { TrackSource } from "@/db/entities";
@@ -14,6 +15,7 @@ import { listenEndedEvent, trackChangedEvent, trackEndedEvent } from "./lib/play
 import { resolveListenOrigin, resolveListenPick } from "./lib/listen-origin";
 import { initNextTrackPrefetch } from "./service/prefetch-next";
 import { statsService } from "@/services/stats.service";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 
 /**
@@ -30,7 +32,7 @@ export function initPlayerLifecycle(): void {
 
   useEventBus(trackChangedEvent).on((track) => {
     useLyricsStore().loadFor(track)
-      .catch(error => getLogger().error(`[Lyrics] Loading lyrics failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[Lyrics] Loading lyrics failed: ${formatError(error)}`));
 
     if (!track || !isLibraryTrack(track)) return;
     const currentItem = useQueueStore().currentItem;
@@ -50,7 +52,7 @@ export function initPlayerLifecycle(): void {
     if (isLibraryTrack(player.currentTrack)) {
       const seconds = player.getListenedSeconds();
       statsService.stopListening(seconds, { completed: true })
-        .catch(err => getLogger().error(`[Stats] ${String(err)}`));
+        .catch(err => getLogger().error(`[Stats] ${formatError(err)}`));
       // Before advance(): the next track's start must find this listen closed.
       useEventBus(listenEndedEvent).emit({ track: player.currentTrack, seconds, reason: "completed" });
     }
@@ -58,7 +60,7 @@ export function initPlayerLifecycle(): void {
     // Detached on purpose: the bus handler is synchronous. advance() knows it
     // may finish late and bails when the user has claimed playback meanwhile.
     useQueueStore().advance()
-      .catch(error => getLogger().error(`[Queue] Advancing after the track ended failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[Queue] Advancing after the track ended failed: ${formatError(error)}`));
   });
 
   // The queue decides whether to skip or stop; what the user sees is decided
@@ -80,20 +82,18 @@ export function initPlayerLifecycle(): void {
 
   // The retry plays the entry the queue gave up on; its queue item is found
   // by identity, so a queue replaced since then leaves nothing to retry.
-  useEventBus(playbackStalledEvent).on(({ track, failures }) => {
-    toaster.add({
+  useEventBus(playbackStalledEvent).on(({ track, error, failures }) => {
+    reportError("cause" in error ? error.cause : error, {
       title: i18n.global.t("queue.playbackStalled", { count: failures }),
-      color: "destructive",
-      actions: [{
-        label: i18n.global.t("common.retry"),
-        onClick: () => {
-          const queue = useQueueStore();
-          const item = queue.queue.find(entry => entry.track === track);
-          if (!item) return;
-          queue.jumpToId(item.id)
-            .catch(error => getLogger().error(`[Queue] Retrying the stalled track failed: ${String(error)}`));
-        },
-      }],
+      scope: "Queue",
+      id: "queue-playback-stalled",
+      retry: () => {
+        const queue = useQueueStore();
+        const item = queue.queue.find(entry => entry.track === track);
+        if (!item) return;
+        queue.jumpToId(item.id)
+          .catch(retryError => getLogger().error(`[Queue] Retrying the stalled track failed: ${formatError(retryError)}`));
+      },
     });
   });
 
@@ -107,6 +107,6 @@ export function initPlayerLifecycle(): void {
     .then(async (track) => {
       if (usePlayerStore().status === "idle") await useLyricsStore().loadFor(track);
     })
-    .catch(error => getLogger().error(`[Lyrics] Loading lyrics for the restored track failed: ${String(error)}`));
+    .catch(error => getLogger().error(`[Lyrics] Loading lyrics for the restored track failed: ${formatError(error)}`));
   initNextTrackPrefetch();
 }

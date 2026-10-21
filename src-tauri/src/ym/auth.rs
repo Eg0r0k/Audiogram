@@ -12,6 +12,7 @@ use super::state::{
     auth_file, device_file, load_or_create_device_id, load_session_if_needed, remove_auth_file,
     write_auth_file, StoredAuth, YmSession, YmState, CLIENT_HEADER_NAME, CLIENT_HEADER_VALUE,
 };
+use crate::app_error::AppError;
 
 // The Android client's credentials. Yandex issues no music-scope OAuth
 // credentials to third parties, so an app of our own cannot be registered;
@@ -360,7 +361,7 @@ pub fn ym_auth_status<R: Runtime>(app: AppHandle<R>) -> YmAuthStatus {
 /// in the background until `ym:auth` reports how it ended. A second start
 /// cancels the previous poll.
 #[tauri::command]
-pub async fn ym_auth_start<R: Runtime>(app: AppHandle<R>) -> Result<YmDeviceCode, YmError> {
+pub async fn ym_auth_start<R: Runtime>(app: AppHandle<R>) -> Result<YmDeviceCode, AppError> {
     let client = crate::proxy::http_client(&app)?;
     let device_id = load_or_create_device_id(&device_file(&app)?);
     let oauth_base = app.state::<YmState>().endpoints.oauth.clone();
@@ -443,7 +444,7 @@ pub fn ym_auth_cancel<R: Runtime>(app: AppHandle<R>) {
 /// Forgets the session here and on disk. Nothing is revoked at Yandex — the
 /// device stays in the account's list until removed there.
 #[tauri::command]
-pub fn ym_auth_logout<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+pub fn ym_auth_logout<R: Runtime>(app: AppHandle<R>) -> Result<(), AppError> {
     let state = app.state::<YmState>();
     state.cancel_poll();
     state.set_session(None);

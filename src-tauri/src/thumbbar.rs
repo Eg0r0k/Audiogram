@@ -13,6 +13,8 @@
 use serde::Deserialize;
 use tauri::AppHandle;
 
+use crate::app_error::AppError;
+
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(not(windows), allow(dead_code))]
@@ -44,8 +46,8 @@ pub fn setup(app: &tauri::App) -> tauri::Result<()> {
 }
 
 #[tauri::command]
-pub fn thumbbar_set_state(app: AppHandle, state: ThumbbarState) -> Result<(), String> {
-    imp::set_state(&app, state)
+pub fn thumbbar_set_state(app: AppHandle, state: ThumbbarState) -> Result<(), AppError> {
+    imp::set_state(&app, state).map_err(AppError::from)
 }
 
 /// Other desktop platforms have no equivalent; the frontend never calls the

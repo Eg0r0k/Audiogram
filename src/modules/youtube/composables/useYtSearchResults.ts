@@ -10,6 +10,7 @@ import type { YtChip } from "@/modules/search/composables/useSearch";
 import { youtubeProvider } from "../provider";
 import { ytVideoToDto } from "../lib/playable";
 import { ytErrorToSource } from "../lib/errors";
+import { formatError } from "@/lib/errors";
 
 //
 // YouTube search results in the shared shape. Everything YouTube Music
@@ -99,7 +100,7 @@ export const useYtSearchResults = (
       // us WHY a scroll stopped loading more results.
       if (query.hasNextPage.value && !query.isFetchingNextPage.value) {
         query.fetchNextPage().catch((error: unknown) =>
-          getLogger().warn(`[YT] Loading the next search page failed: ${String(error)}`),
+          getLogger().warn(`[YT] Loading the next search page failed: ${formatError(error)}`),
         );
       }
     },

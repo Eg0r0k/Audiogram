@@ -3,6 +3,7 @@ import { useDebounceFn } from "@vueuse/core";
 import { isValidImportItem } from "@/lib/environment/mimeSupport";
 import { normalizePath } from "@/lib/files/filterFiles";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 export type FileChangeHandler = (paths: string[]) => void;
 export type FolderMissingHandler = () => void;
@@ -89,7 +90,7 @@ export async function startWatching(
 
         const overdue = Date.now() - oldestPendingAt >= MAX_FLUSH_DELAY_MS;
         const started = overdue ? runFlush() : flush();
-        started.catch(error => getLogger().error(`[WatchedFolders] Handling a change in ${folderPath} failed: ${String(error)}`));
+        started.catch(error => getLogger().error(`[WatchedFolders] Handling a change in ${folderPath} failed: ${formatError(error)}`));
       },
       { recursive: true, delayMs: 1000 },
     );

@@ -9,6 +9,7 @@ import { usePlayerStore } from "../store/player.store";
 import { isLibraryTrack } from "../types";
 import { COMMANDS, EVENTS } from "@/app/tauri-commands";
 import { setThumbbarState, type ThumbbarState } from "../api/thumbbarApi";
+import { formatError } from "@/lib/errors";
 
 export type { ThumbbarAction, ThumbbarState } from "../api/thumbbarApi";
 
@@ -68,23 +69,23 @@ export const useTaskbarThumbbar = () => {
   useTauriEvent(THUMBBAR_ACTION_EVENT, ({ payload }) => {
     switch (payload) {
       case "play-pause":
-        player.togglePlay().catch(error => getLogger().error(`[Player] Toggling playback from the taskbar thumbbar failed: ${String(error)}`));
+        player.togglePlay().catch(error => getLogger().error(`[Player] Toggling playback from the taskbar thumbbar failed: ${formatError(error)}`));
         break;
       case "next":
         if (queue.hasNext) {
-          queue.next().catch(error => getLogger().error(`[Queue] Next from the taskbar thumbbar failed: ${String(error)}`));
+          queue.next().catch(error => getLogger().error(`[Queue] Next from the taskbar thumbbar failed: ${formatError(error)}`));
         }
         break;
       case "previous":
         if (queue.hasPrevious) {
-          queue.previous().catch(error => getLogger().error(`[Queue] Previous from the taskbar thumbbar failed: ${String(error)}`));
+          queue.previous().catch(error => getLogger().error(`[Queue] Previous from the taskbar thumbbar failed: ${formatError(error)}`));
         }
         break;
       case "like": {
         const track = player.currentTrack;
         // mutateAsync rethrows; the user already sees the toast from onError.
         if (track && isLibraryTrack(track)) {
-          toggleTrackLike(track).catch(error => getLogger().error(`[Player] Toggling like from the taskbar thumbbar failed: ${String(error)}`));
+          toggleTrackLike(track).catch(error => getLogger().error(`[Player] Toggling like from the taskbar thumbbar failed: ${formatError(error)}`));
         }
         break;
       }

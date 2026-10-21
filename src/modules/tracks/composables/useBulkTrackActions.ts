@@ -1,9 +1,9 @@
 import { computed, ref } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import { useQueryClient } from "@tanstack/vue-query";
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
-import { getLogger } from "@/lib/logger";
 import type { Track } from "@/modules/player/types";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { TrackSortKey } from "@/modules/tracks/types";
@@ -63,8 +63,7 @@ export const useBulkTrackActions = (options: UseBulkTrackActionsOptions) => {
       options.onDone?.(action);
     }
     catch (err) {
-      getLogger().warn(`[useBulkTrackActions] ${action} failed: ${String(err)}`);
-      toaster.add({ title: t(FAILED_TITLE_KEYS[action]), color: "destructive" });
+      reportError(err, { title: t(FAILED_TITLE_KEYS[action]), scope: "useBulkTrackActions" });
     }
     finally {
       busy.value = false;

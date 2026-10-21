@@ -71,6 +71,7 @@ import SourceHealthNotice from "@/modules/sources/components/SourceHealthNotice.
 import { useSearch } from "../composables/useSearch";
 import { useSearchPaneResults } from "../composables/useSearchPaneResults";
 import type { SearchResultItem } from "../types";
+import { formatError } from "@/lib/errors";
 
 //
 // The search pane for any source. What differs between sources is where the
@@ -130,12 +131,12 @@ function navigate(item: SearchResultItem) {
     // Picking a track result plays that one track; the row is already
     // loaded, so there is nothing left to fetch.
     const track = results.trackRows.value.find(row => row.id === item.entityId);
-    if (track) playTracks([track], 0).catch(error => getLogger().error(`[Search] Playing a track result failed: ${String(error)}`));
+    if (track) playTracks([track], 0).catch(error => getLogger().error(`[Search] Playing a track result failed: ${formatError(error)}`));
     return;
   }
 
   const to = searchResultRoute(item, intent.value);
-  if (to) router.push(to).catch(error => getLogger().error(`[Search] Navigation to a result failed: ${String(error)}`));
+  if (to) router.push(to).catch(error => getLogger().error(`[Search] Navigation to a result failed: ${formatError(error)}`));
 }
 
 async function playTracks(tracks: Track[], index: number) {

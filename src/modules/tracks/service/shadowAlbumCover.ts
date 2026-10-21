@@ -6,7 +6,8 @@ import { sources } from "@/modules/sources";
 import type { TrackId } from "@/types/ids";
 import { parseTrackRef } from "@/types/track-ref";
 import { updateCoverCache } from "@/queries/cache";
-import { unwrapResult } from "@/queries/shared";
+import { unwrapResult } from "@/lib/errors/unwrap";
+import { formatError } from "@/lib/errors";
 
 /**
  * Gives a freshly pinned remote row its artwork: fetches the source-proxied
@@ -43,6 +44,6 @@ export async function ensureShadowCover(
     updateCoverCache(ownerType, ownerId, stored);
   }
   catch (error) {
-    getLogger().warn(`[Covers] Shadow cover failed for ${ownerType} ${ownerId}: ${String(error)}`);
+    getLogger().warn(`[Covers] Shadow cover failed for ${ownerType} ${ownerId}: ${formatError(error)}`);
   }
 }

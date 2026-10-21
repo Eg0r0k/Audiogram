@@ -4,6 +4,7 @@ import { getLogger } from "@/lib/logger";
 import type { ListenPick, TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
 import type { QueueItem } from "../types";
+import { formatError } from "@/lib/errors";
 
 const AUTOPLAY_RECOMMENDATION_LIMIT = 5;
 
@@ -71,7 +72,7 @@ export const createAutoplayRecommender = (deps: AutoplayDeps) => {
       }
     }
     catch (error) {
-      getLogger().error(`[Queue] Failed to load autoplay recommendations: ${String(error)}`);
+      getLogger().error(`[Queue] Failed to load autoplay recommendations: ${formatError(error)}`);
       return false;
     }
 

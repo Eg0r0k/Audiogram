@@ -88,6 +88,7 @@ import { IMAGE_MIME_TYPES } from "@/types/media";
 import { isValidImageFile } from "@/lib/environment/mimeSupport";
 import { formatBytes } from "@/lib/format/memory";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 const { t } = useI18n();
 
@@ -163,7 +164,7 @@ const handleSelectFile = async (): Promise<void> => {
     multiple: false,
   }).catch((error: unknown) => {
     if (isFileSelectionError(error) && !isUserCancellation(error)) {
-      getLogger().error(`[EditAvatar] File selection failed: ${String(error)}`);
+      getLogger().error(`[EditAvatar] File selection failed: ${formatError(error)}`);
       showError(t("dialogs.editAvatar.errors.loadFailed"));
     }
     return null;

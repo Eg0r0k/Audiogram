@@ -133,6 +133,7 @@ import type { MediaType } from "@/types/media-data";
 import type { EntityLikeState } from "@/modules/sources/composables/useEntityLike";
 import { Button } from "@/components/ui/button";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
+import { formatError } from "@/lib/errors";
 
 const props = defineProps<{
   type: MediaType;
@@ -167,7 +168,7 @@ const showPauseIcon = computed(() => isActiveSource.value && (isPlaying.value ||
 function handlePlay() {
   if (isActiveSource.value) {
     playerStore.togglePlay()
-      .catch(error => getLogger().error(`[Player] Toggling playback failed: ${String(error)}`));
+      .catch(error => getLogger().error(`[Player] Toggling playback failed: ${formatError(error)}`));
   }
   else {
     emit("play");

@@ -255,6 +255,7 @@ import IconUsers from "~icons/tabler/users";
 import IconWaveSine from "~icons/tabler/wave-sine";
 import IconWorld from "~icons/tabler/world";
 import { Menu, MenuItem, MenuTrigger } from "@/components/ui/menu";
+import { formatError } from "@/lib/errors";
 
 const props = defineProps<{
   payload: RightPanelTrackInfoPayload;
@@ -319,7 +320,7 @@ async function handleDelete(): Promise<void> {
     rightPanel.close();
   }
   catch (error) {
-    getLogger().error(`[TrackInfoPanel] Deleting the track failed: ${String(error)}`);
+    getLogger().error(`[TrackInfoPanel] Deleting the track failed: ${formatError(error)}`);
     deleteFailed.value = true;
   }
   finally {

@@ -1,5 +1,6 @@
 import type { Directive, DirectiveBinding } from "vue";
 import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 
 export interface CopyOptions {
   text?: string;
@@ -15,7 +16,7 @@ function createHandler(el: HTMLElement, binding: DirectiveBinding<CopyValue>) {
   return () => {
     const text = getText(el, binding.value);
     if (!text) return;
-    copy(text, binding).catch(err => getLogger().error(`[vCopy] Copy failed: ${String(err)}`));
+    copy(text, binding).catch(err => getLogger().error(`[vCopy] Copy failed: ${formatError(err)}`));
   };
 }
 
@@ -31,7 +32,7 @@ async function copy(text: string, binding: DirectiveBinding<CopyValue>) {
       opts.onCopy?.(text);
       return;
     }
-    getLogger().warn(`[vCopy] Copy failed: ${String(err)}`);
+    getLogger().warn(`[vCopy] Copy failed: ${formatError(err)}`);
     opts.onError?.(err);
   }
 }

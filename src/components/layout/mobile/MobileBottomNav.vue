@@ -50,6 +50,7 @@ import IconSearch from "~icons/tabler/search";
 import IconChartBar from "~icons/tabler/chart-bar";
 import IconSettings from "~icons/tabler/settings";
 import IconSettingsFilled from "~icons/tabler/settings-filled";
+import { formatError } from "@/lib/errors";
 
 const { t } = useI18n();
 const router = useRouter();
@@ -146,7 +147,7 @@ const activeIndex = computed(() => items.findIndex(item => item.key === activeKe
 const select = (item: NavItem) => {
   pendingKey.value = item.key;
   item.go()
-    .catch(error => getLogger().error(`[Nav] Opening the ${item.key} tab failed: ${String(error)}`))
+    .catch(error => getLogger().error(`[Nav] Opening the ${item.key} tab failed: ${formatError(error)}`))
     .finally(() => {
       if (pendingKey.value === item.key) pendingKey.value = null;
     });

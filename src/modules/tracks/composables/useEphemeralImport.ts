@@ -6,6 +6,7 @@ import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { ephemeralFilePath } from "@/modules/tracks/lib/trackPredicates";
 import { useImport } from "@/modules/library/composables/useImport";
 import { getTrackEntityById } from "@/queries/track.queries";
+import { formatError } from "@/lib/errors";
 
 /**
  * "Import to library" CTA on an open-with ephemeral track (M3): runs the
@@ -37,7 +38,7 @@ export function useEphemeralImport(track: MaybeRefOrGetter<PlayerTrack | null>) 
     catch (error) {
       // The import itself succeeded; a failed swap only postpones the
       // upgrade until the queue is rebuilt from the library.
-      getLogger().warn(`[Import] Queue swap failed for ${imported.trackId}: ${String(error)}`);
+      getLogger().warn(`[Import] Queue swap failed for ${imported.trackId}: ${formatError(error)}`);
     }
   }
 

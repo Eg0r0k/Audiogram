@@ -1,6 +1,6 @@
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { i18n } from "@/app/i18n";
-import { getLogger } from "@/lib/logger";
 import type { SourceTrackDTO } from "@/modules/sources/types";
 import { downloadSubject } from "./service/enqueue";
 
@@ -16,16 +16,12 @@ export async function downloadDtoWithFeedback(dto: SourceTrackDTO): Promise<void
     if (jobId === null) toaster.add({ title: i18n.global.t("downloads.done"), color: "info" });
   }
   catch (error) {
-    getLogger().error(`[Downloads] Enqueue failed for ${dto.id}: ${String(error)}`);
-    toaster.add({
+    reportError(error, {
       title: i18n.global.t("downloads.enqueueFailed"),
-      color: "destructive",
-      actions: [{
-        label: i18n.global.t("common.retry"),
-        onClick: () => {
-          downloadDtoWithFeedback(dto).catch(() => undefined);
-        },
-      }],
+      scope: "Downloads",
+      retry: () => {
+        downloadDtoWithFeedback(dto).catch(() => undefined);
+      },
     });
   }
 }

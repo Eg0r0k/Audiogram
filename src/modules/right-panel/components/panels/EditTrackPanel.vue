@@ -211,6 +211,7 @@ import { toTypedSchema } from "@vee-validate/valibot";
 import { array, integer, maxLength, minLength, minValue, number, object, optional, pipe, string } from "valibot";
 import type { InferOutput } from "valibot";
 import { useI18n } from "vue-i18n";
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { Badge } from "@/components/ui/badge";
 import { sameArtistNames, splitArtistNames } from "@/lib/artist-names";
@@ -484,8 +485,8 @@ const { mutateAsync: updateTrack, isPending } = useMutation({
   mutationFn: (changes: TrackMetadataChanges) => {
     return updateTrackMetadataAndSync(queryClient, track.value, changes);
   },
-  onError: () => {
-    toaster.add({ title: t("track.edit.saveFailed"), color: "destructive" });
+  onError: (error) => {
+    reportError(error, { title: t("track.edit.saveFailed"), scope: "RightPanel" });
   },
 });
 

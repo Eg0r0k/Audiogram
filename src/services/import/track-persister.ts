@@ -7,7 +7,7 @@ import { unitOfWork } from "@/db/unit-of-work";
 import type { ArtistId } from "@/types/ids";
 import { AlbumId } from "@/types/ids";
 import { fitWithin } from "@/lib/media/fit-within";
-import { unwrapResult } from "@/lib/result";
+import { unwrapResult } from "@/lib/errors/unwrap";
 import type { EntityResolver } from "../entity-resolver";
 import type { ImportSuccess, TrackToSave } from "../types";
 

@@ -34,6 +34,7 @@ import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import IconTrash from "~icons/tabler/trash";
 import { useQueueStore } from "../store/queue.store";
 import type { QueueItem } from "../types";
+import { formatError } from "@/lib/errors";
 
 // A component with plain props: the virtual list re-renders its slot on every
 // scroll event, and unchanged props let Vue skip the swipe wrappers and the row.
@@ -46,6 +47,6 @@ const queueStore = useQueueStore();
 
 const remove = () => {
   queueStore.removeFromQueue(props.item.id)
-    .catch((error: unknown) => getLogger().error(`[Queue] Removing a queue item failed: ${String(error)}`));
+    .catch((error: unknown) => getLogger().error(`[Queue] Removing a queue item failed: ${formatError(error)}`));
 };
 </script>

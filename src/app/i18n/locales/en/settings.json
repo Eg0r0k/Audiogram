@@ -71,7 +71,8 @@
     "recommender": {
       "evalTitle": "Evaluate recommendations",
       "evalSubtitle": "Train weights on the autoplay history and compute AUC on a held-out sample. The full report goes to the log.",
-      "evalResult": "AUC {auc}, autoplay skip rate {rate}% over 14d, {n} examples"
+      "evalResult": "AUC {auc}, autoplay skip rate {rate}% over 14d, {n} examples",
+      "evalFailed": "Evaluation failed"
     },
     "listenedWeek": "Listened this week",
     "listenedMonth": "Listened in {month}",

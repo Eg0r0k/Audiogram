@@ -12,8 +12,10 @@ use lofty::picture::{MimeType, Picture, PictureType};
 use lofty::prelude::*;
 use lofty::tag::{Tag, TagType};
 
+use crate::app_error::AppError;
 use crate::remote_download::{
-    fetch_to_tmp_ranged, tmp_dir, DownloadEvent, DownloadRegistry, DownloadRequest, DownloadResult,
+    fetch_to_tmp_ranged, tmp_dir, DownloadError, DownloadEvent, DownloadRegistry, DownloadRequest,
+    DownloadResult,
 };
 
 use super::{
@@ -40,7 +42,7 @@ fn registry_key(id: &str) -> String {
 /// Downloads the registered stream into `downloads-tmp/<id>.<ext>` (the
 /// extension follows the upstream Content-Type: m4a for AAC, webm for Opus),
 /// streaming progress over the channel, then tags an m4a in place. A
-/// cancelled download removes its partial file and errors with "cancelled".
+/// cancelled download removes its partial file and fails with kind CANCELLED.
 /// Logs carry only the video id.
 #[tauri::command]
 pub async fn yt_download<R: Runtime>(
@@ -48,7 +50,7 @@ pub async fn yt_download<R: Runtime>(
     id: String,
     meta: Option<YtTrackMeta>,
     on_progress: Channel<DownloadEvent>,
-) -> Result<DownloadResult, YtError> {
+) -> Result<DownloadResult, AppError> {
     let id = validate_id(&id).map_err(YtError::invalid_input)?;
     let streams = app.state::<YtStreamCache>();
     let entry = streams.get(&id).ok_or_else(|| {
@@ -61,9 +63,9 @@ pub async fn yt_download<R: Runtime>(
     let registry = app.state::<DownloadRegistry>();
     let slot = registry
         .register(&registry_key(&id))
-        .map_err(YtError::invalid_input)?;
+        .map_err(YtError::from)?;
     let client = http_client(&app)?;
-    let tmp = tmp_dir(&app)?;
+    let tmp = tmp_dir(&app).map_err(YtError::from)?;
     let result = fetch_to_tmp_ranged(
         &client,
         &tmp,
@@ -82,15 +84,17 @@ pub async fn yt_download<R: Runtime>(
 
     let done = match result {
         Ok(done) => done,
-        Err(e) if e == "cancelled" => return Err(YtError::cancelled("download cancelled")),
+        Err(DownloadError::Cancelled) => {
+            return Err(YtError::cancelled("download cancelled").into())
+        }
         Err(e) => {
-            if e.starts_with("upstream status") {
+            if matches!(e, DownloadError::Upstream(_)) {
                 // googlevideo refused the registered URL — stale; the next
                 // attempt must re-resolve rather than retry it.
                 streams.remove(&id);
             }
             log::warn!("yt_download {id}: {e}");
-            return Err(YtError::unknown(e));
+            return Err(YtError::from(e).into());
         }
     };
 
@@ -113,7 +117,7 @@ pub async fn yt_download<R: Runtime>(
 /// Flags the in-flight download as cancelled; the copy loop notices between
 /// chunks. Idempotent — cancelling a finished download is a routine race.
 #[tauri::command]
-pub fn yt_download_cancel<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), YtError> {
+pub fn yt_download_cancel<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), AppError> {
     let id = validate_id(&id).map_err(YtError::invalid_input)?;
     app.state::<DownloadRegistry>().cancel(&registry_key(&id));
     Ok(())

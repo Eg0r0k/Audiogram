@@ -100,7 +100,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { toaster } from "@/app/toaster";
+import { reportError } from "@/app/error-feedback";
 import { EntitySelectPanel } from "@/components/entity-select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -234,8 +234,8 @@ const handleConfirm = async () => {
   try {
     await setFolderItems(target.id, [...target.items, ...entries]);
   }
-  catch {
-    toaster.add({ title: t("sheet.folderAddFailed"), color: "destructive" });
+  catch (error) {
+    reportError(error, { title: t("sheet.folderAddFailed"), scope: "RightPanel" });
     return;
   }
   clearSelection();

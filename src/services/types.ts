@@ -1,27 +1,19 @@
 import type { TrackSource } from "@/db/entities";
+import { AppFailure, type ImportAppError } from "@/lib/errors";
+import { ImportErrorCode } from "@/types/error-codes";
 import type { TrackId } from "@/types/ids";
 import type { BaseMetadata } from "@/workers/types";
 
-export enum ImportErrorCode {
-  PARSE_FAILED = "PARSE_FAILED",
-  STORAGE_FAILED = "STORAGE_FAILED",
-  DATABASE_FAILED = "DATABASE_FAILED",
-  WORKER_TIMEOUT = "WORKER_TIMEOUT",
-  FILE_TOO_LARGE = "FILE_TOO_LARGE",
-  UNSUPPORTED_FORMAT = "UNSUPPORTED_FORMAT",
-  NATIVE_IMPORT_UNAVAILABLE = "NATIVE_IMPORT_UNAVAILABLE",
-  READ_FAILED = "READ_FAILED",
-  CANCELLED = "CANCELLED",
-}
+export { ImportErrorCode } from "@/types/error-codes";
 
-export class ImportError extends Error {
+export class ImportError extends AppFailure<ImportAppError> {
   constructor(
     public readonly code: ImportErrorCode,
     message: string,
     public readonly fileName?: string,
     public readonly cause?: unknown,
   ) {
-    super(message);
+    super({ domain: "import", code, message, fileName, cause });
     this.name = "ImportError";
   }
 

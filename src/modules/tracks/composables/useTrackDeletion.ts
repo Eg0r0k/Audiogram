@@ -1,6 +1,8 @@
 import { useQueryClient } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { deleteTracksWithUndo } from "@/queries/track-undo";
@@ -24,7 +26,7 @@ export const useTrackDeletion = () => {
     const finalize = () => {
       if (undone) return;
       undo.finalize().catch((error: unknown) => {
-        getLogger().warn(`[Tracks] Finalizing a track deletion failed: ${String(error)}`);
+        getLogger().warn(`[Tracks] Finalizing a track deletion failed: ${formatError(error)}`);
       });
     };
 
@@ -36,8 +38,7 @@ export const useTrackDeletion = () => {
         onClick: () => {
           undone = true;
           undo.restore().catch((error: unknown) => {
-            getLogger().error(`[Tracks] Restoring deleted tracks failed: ${String(error)}`);
-            toaster.add({ title: t("track.restoreFailed"), color: "destructive" });
+            reportError(error, { title: t("track.restoreFailed"), scope: "Tracks" });
           });
         },
       }],

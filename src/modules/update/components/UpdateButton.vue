@@ -41,6 +41,7 @@ import { getLogger } from "@/lib/logger";
 import downloadRaw from "~icons/tabler/download?raw";
 import loaderRaw from "~icons/tabler/loader-2?raw";
 import refreshAlertRaw from "~icons/tabler/refresh-alert?raw";
+import { formatError } from "@/lib/errors";
 
 defineProps<{
   compact?: boolean;
@@ -83,9 +84,9 @@ const label = computed(() => {
 
 function handleClick() {
   if (isError.value) {
-    store.check().catch((error: unknown) => getLogger().error(`[Update] Check failed: ${String(error)}`));
+    store.check().catch((error: unknown) => getLogger().error(`[Update] Check failed: ${formatError(error)}`));
     return;
   }
-  store.apply().catch((error: unknown) => getLogger().error(`[Update] Apply failed: ${String(error)}`));
+  store.apply().catch((error: unknown) => getLogger().error(`[Update] Apply failed: ${formatError(error)}`));
 }
 </script>

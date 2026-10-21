@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ error: vi.fn() }) }));
 
+import { DbError } from "@/db/errors/db.errors";
 import { queryClient } from "../client";
 import { SourceQueryError } from "../shared";
 
@@ -41,5 +42,32 @@ describe("query retry policy — subscription and rate limits", () => {
 
     expect(first).toBeGreaterThan(0);
     expect(second).toBeGreaterThan(first);
+  });
+});
+
+describe("query retry policy on normalised errors", () => {
+  it("retries a serialised source envelope that is not terminal", () => {
+    const envelope = { domain: "source", source: "ym", kind: "UNAVAILABLE", message: "502" };
+
+    expect(shouldRetry(0, envelope)).toBe(true);
+    expect(shouldRetry(1, envelope)).toBe(true);
+    expect(shouldRetry(2, envelope)).toBe(false);
+  });
+
+  it("does not retry INVALID_INPUT", () => {
+    expect(shouldRetry(0, new SourceQueryError("INVALID_INPUT", "bad id"))).toBe(false);
+    expect(shouldRetry(0, { domain: "source", kind: "INVALID_INPUT", message: "bad id" })).toBe(false);
+  });
+
+  it("does not retry a DbError", () => {
+    expect(shouldRetry(0, new DbError("NOT_FOUND", "Album not found"))).toBe(false);
+    expect(shouldRetry(0, new DbError("UNKNOWN", "transaction aborted"))).toBe(false);
+  });
+
+  it("uses retryAfterMs from a plain envelope", () => {
+    const envelope = { domain: "source", kind: "RATE_LIMITED", message: "slow down", retryAfterMs: 4_000 };
+
+    expect(retryDelay(0, envelope)).toBe(4_000);
+    expect(retryDelay(1, envelope)).toBe(4_000);
   });
 });

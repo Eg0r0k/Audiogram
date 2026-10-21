@@ -1,5 +1,6 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { useMutation, useQueryClient } from "@tanstack/vue-query";
+import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 import { storageService } from "@/db/storage";
@@ -116,8 +117,8 @@ export function useAttachTrackLyrics() {
 
       return nextTrack;
     },
-    onError: () => {
-      toaster.add({ title: t("player.lyricsAttachFailed"), color: "destructive" });
+    onError: (error) => {
+      reportError(error, { title: t("player.lyricsAttachFailed"), scope: "Lyrics" });
     },
   });
 

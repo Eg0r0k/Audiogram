@@ -2,6 +2,7 @@ import { Innertube, UniversalCache } from "youtubei.js";
 import { getLogger } from "@/lib/logger";
 import { installEvaluator } from "./evaluator";
 import { DEFAULT_USER_AGENT } from "./transport";
+import { formatError } from "@/lib/errors";
 
 //
 // One Innertube session per proxy configuration, built on first use.
@@ -57,7 +58,7 @@ export const createYtSession = (deps: SessionDeps): YtSession => {
   const build = async (): Promise<Innertube> => {
     installEvaluator();
     const visitorData = await fetchVisitorData(deps.fetch).catch((error: unknown) => {
-      getLogger().warn(`[YT] Visitor id lookup failed, using a local session: ${String(error)}`);
+      getLogger().warn(`[YT] Visitor id lookup failed, using a local session: ${formatError(error)}`);
       return null;
     });
     return Innertube.create({

@@ -6,6 +6,7 @@ use std::ops::Deref;
 use tauri::{AppHandle, Manager, Runtime};
 
 use super::config::NdState;
+use crate::app_error::{kind_for_status, AppError, SourceErrorKind, SourceId};
 use crate::audio_cache::{AudioCache, CachedAudio};
 
 /// Raw FLAC can be large, so the ND cache is small and per-track capped.
@@ -36,12 +37,24 @@ impl Deref for NdAudioCache {
 /// Downloads the whole audio file for the next queue entry into the
 /// in-memory cache. Called by the frontend while the current track plays.
 #[tauri::command]
-pub async fn nd_prefetch<R: Runtime>(app: AppHandle<R>, song_id: String) -> Result<(), String> {
+pub async fn nd_prefetch<R: Runtime>(app: AppHandle<R>, song_id: String) -> Result<(), AppError> {
     if app.state::<NdAudioCache>().contains(&song_id) {
         return Ok(());
     }
     let Some(config) = app.state::<NdState>().get() else {
-        return Err("nd source is not configured".into());
+        return Err(AppError::source(
+            SourceId::Nd,
+            SourceErrorKind::Unavailable,
+            "nd source is not configured",
+        ));
+    };
+    // reqwest errors can embed the URL (auth token); never propagate it.
+    let transport = |what: &str, e: reqwest::Error| {
+        AppError::source(
+            SourceId::Nd,
+            SourceErrorKind::Network,
+            format!("{what}: {}", e.without_url()),
+        )
     };
 
     let url = config.rest_url("stream.view", &song_id, "&format=raw");
@@ -49,20 +62,23 @@ pub async fn nd_prefetch<R: Runtime>(app: AppHandle<R>, song_id: String) -> Resu
         .get(&url)
         .send()
         .await
-        // reqwest errors can embed the URL (auth token) — never propagate it.
-        .map_err(|e| format!("request failed: {}", e.without_url()))?;
+        .map_err(|e| transport("request failed", e))?;
     let status = response.status().as_u16();
     if status != 200 {
-        return Err(format!("prefetch failed: upstream status {status}"));
+        return Err(AppError::source(
+            SourceId::Nd,
+            kind_for_status(status),
+            format!("prefetch failed: upstream status {status}"),
+        ));
     }
 
     // Refuse over-cap tracks BEFORE reading the body — a whole-file download
     // that insert() then drops would waste the bandwidth every retry.
     if let Some(len) = response.content_length() {
         if len > MAX_PREFETCHED_ND_BYTES as u64 {
-            return Err(format!(
+            return Err(AppError::unknown(format!(
                 "prefetch skipped: track is {len} bytes, over the cache cap"
-            ));
+            )));
         }
     }
 
@@ -72,14 +88,19 @@ pub async fn nd_prefetch<R: Runtime>(app: AppHandle<R>, song_id: String) -> Resu
         .and_then(|v| v.to_str().ok())
         .unwrap_or("audio/mpeg")
         .to_owned();
-    let bytes = response.bytes().await.map_err(|e| e.to_string())?;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| transport("download failed", e))?;
     log::debug!("nd_prefetch {song_id}: fetched {} bytes", bytes.len());
 
     if !app
         .state::<NdAudioCache>()
         .insert(song_id, content_type, bytes)
     {
-        return Err("prefetch skipped: track exceeds the cache cap".into());
+        return Err(AppError::unknown(
+            "prefetch skipped: track exceeds the cache cap",
+        ));
     }
     Ok(())
 }

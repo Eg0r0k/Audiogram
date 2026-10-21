@@ -1,21 +1,16 @@
-export enum StorageErrorCode {
-  FILE_NOT_FOUND = "FILE_NOT_FOUND",
-  PERMISSION_DENIED = "PERMISSION_DENIED",
-  STORAGE_FULL = "STORAGE_FULL",
-  INVALID_PATH = "INVALID_PATH",
-  WRITE_FAILED = "WRITE_FAILED",
-  READ_FAILED = "READ_FAILED",
-  DELETE_FAILED = "DELETE_FAILED",
-}
+import { AppFailure, type StorageAppError } from "@/lib/errors";
+import { StorageErrorCode } from "@/types/error-codes";
 
-export class StorageError extends Error {
+export { StorageErrorCode } from "@/types/error-codes";
+
+export class StorageError extends AppFailure<StorageAppError> {
   constructor(
     public readonly code: StorageErrorCode,
     message: string,
     public readonly path?: string,
     public readonly cause?: unknown,
   ) {
-    super(message);
+    super({ domain: "storage", code, message, path, cause });
     this.name = "StorageError";
   }
 

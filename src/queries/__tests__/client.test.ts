@@ -59,10 +59,10 @@ describe("query retry policy", () => {
     expect(shouldRetry(0, "PARSE")).toBe(false);
   });
 
-  // Only the source boundary (unwrapSourceResult) speaks the retry policy's
-  // vocabulary; another module's `kind` says nothing about transience.
+  // Only the source domain speaks the retry policy's vocabulary; another
+  // domain's `kind` says nothing about transience.
   it("does not read a foreign `kind` field as a source error", () => {
-    expect(shouldRetry(0, { kind: "NETWORK", message: "looks transient" })).toBe(false);
+    expect(shouldRetry(0, { domain: "update", kind: "NETWORK", message: "looks transient" })).toBe(false);
     expect(shouldRetry(0, { kind: "UNAVAILABLE_REGION", message: "yt" })).toBe(false);
   });
 });
