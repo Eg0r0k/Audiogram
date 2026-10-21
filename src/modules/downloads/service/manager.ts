@@ -7,7 +7,7 @@ import { platformCaps } from "@/lib/environment/platformCaps";
 import { getLogger } from "@/lib/logger";
 import { sources } from "@/modules/sources";
 import type { SourceError } from "@/modules/sources";
-import { unwrapResult } from "@/queries/shared";
+import { unwrapResult } from "@/lib/errors/unwrap";
 import type { TrackId } from "@/types/ids";
 import { finalizeDownloadImport } from "./finalize";
 import { useDownloadsStore, type DownloadRuntime } from "../store/downloads.store";

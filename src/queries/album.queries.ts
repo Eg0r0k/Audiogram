@@ -6,6 +6,7 @@ import {
   trackRepository,
 } from "@/db/repositories";
 import { db } from "@/db";
+import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
 import { queryKeys } from "@/queries/query-keys";
 import { buildAlbumDocFromDb, buildTrackDocFromDb } from "@/modules/search/service/buildDocuments";
@@ -51,7 +52,7 @@ export async function getAlbumByIdOrThrow(albumId: AlbumId) {
   const album = await unwrapResult(albumRepository.findById(albumId));
 
   if (!album) {
-    throw new Error("Album not found");
+    throw new DbError("NOT_FOUND", "Album not found");
   }
 
   return album;
@@ -79,7 +80,7 @@ export async function getAlbumPageData(albumId: AlbumId, sortKey: TrackSortKey |
   const artist = await unwrapResult(artistRepository.findById(album.artistId));
 
   if (!artist) {
-    throw new Error("Artist not found");
+    throw new DbError("NOT_FOUND", "Artist not found");
   }
 
   return {

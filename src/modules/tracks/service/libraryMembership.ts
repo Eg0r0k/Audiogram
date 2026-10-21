@@ -2,7 +2,7 @@ import { db } from "@/db";
 import type { TrackEntity } from "@/db/entities";
 import { playlistRepository, trackRepository } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
-import { unwrapResult } from "@/queries/shared";
+import { unwrapResult } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import { removeSearchDocuments } from "@/modules/search/service/searchIndex";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";

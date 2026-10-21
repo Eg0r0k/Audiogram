@@ -4,7 +4,7 @@ import type { PlaylistId, TrackId } from "@/types/ids";
 import type { Result } from "neverthrow";
 import { ok, err } from "neverthrow";
 import { BaseRepository } from "./base.repository";
-import { toDbError } from "@/db/errors/db.errors";
+import { DbError, toDbError } from "@/db/errors/db.errors";
 
 class PlaylistRepository extends BaseRepository<PlaylistEntity, PlaylistId> {
   constructor() {
@@ -153,7 +153,7 @@ class PlaylistRepository extends BaseRepository<PlaylistEntity, PlaylistId> {
     try {
       const playlist = await this.table.get(playlistId);
       if (!playlist) {
-        return err(new Error("Playlist not found"));
+        return err(new DbError("NOT_FOUND", "Playlist not found"));
       }
 
       const trackIds = playlist.trackIds.slice(offset, offset + limit);

@@ -6,7 +6,7 @@ import { indexImportedTracks } from "@/modules/search/service/searchIndex";
 import { queryClient } from "@/queries/client";
 import { invalidateLibraryData } from "@/queries/library.queries";
 import { syncLocalCopyCache } from "@/queries/localCopy.queries";
-import { unwrapResult } from "@/queries/shared";
+import { unwrapResult } from "@/lib/errors/unwrap";
 import { extensionOf } from "@/services/import/item-io";
 import { musicLibraryEngine } from "@/services/importer.service";
 import type { ImportItem, KnownMetadata } from "@/services/types";

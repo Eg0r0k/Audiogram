@@ -6,7 +6,7 @@ import { sources } from "@/modules/sources";
 import type { TrackId } from "@/types/ids";
 import { parseTrackRef } from "@/types/track-ref";
 import { updateCoverCache } from "@/queries/cache";
-import { unwrapResult } from "@/queries/shared";
+import { unwrapResult } from "@/lib/errors/unwrap";
 
 /**
  * Gives a freshly pinned remote row its artwork: fetches the source-proxied

@@ -3,7 +3,8 @@ import { REPEAT_MODES, type EphemeralTrack, type PlayerTrack, type RepeatMode, t
 import { playlistRepository, queueSnapshotRepository, trackRepository } from "@/db/repositories";
 import { LEGACY_QUEUE_STORAGE_KEY, QUEUE_CURSOR_STORAGE_KEY } from "@/db/entities";
 import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
-import { unique, unwrapResult } from "@/queries/shared";
+import { unique } from "@/queries/shared";
+import { unwrapResult } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import { migrateProxyUrl } from "@/lib/stream-url";
 import { ndPlaylistId, parseTrackRef } from "@/types/track-ref";

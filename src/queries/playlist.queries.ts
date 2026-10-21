@@ -6,6 +6,7 @@ import {
   playlistRepository,
   trackRepository,
 } from "@/db/repositories";
+import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
 import { queryKeys } from "@/queries/query-keys";
 import { buildPlaylistDoc } from "@/modules/search/service/buildDocuments";
@@ -59,7 +60,7 @@ export async function getPlaylistByIdOrThrow(playlistId: PlaylistId) {
   const playlist = await unwrapResult(playlistRepository.findById(playlistId));
 
   if (!playlist) {
-    throw new Error("Playlist not found");
+    throw new DbError("NOT_FOUND", "Playlist not found");
   }
 
   return playlist;

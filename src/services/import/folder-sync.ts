@@ -13,7 +13,7 @@ import {
 import { trackRepository } from "@/db/repositories";
 import { TrackSource } from "@/db/entities";
 import { TrackId } from "@/types/ids";
-import { unwrapResult } from "@/lib/result";
+import { unwrapResult } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import type { ScannedFile, SyncResult, WatchedFolder } from "@/types/watched-folders";
 import { computeFileFingerprint } from "./file-fingerprint";

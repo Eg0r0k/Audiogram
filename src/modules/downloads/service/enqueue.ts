@@ -1,6 +1,6 @@
 import type { TrackMenuSubject } from "@/modules/tracks/components/menu/type";
 import { ensurePinned } from "@/modules/tracks/service/ensurePinned";
-import { unwrapResult } from "@/queries/shared";
+import { unwrapResult } from "@/lib/errors/unwrap";
 import { sources } from "@/modules/sources";
 import type { SourceTrackDTO } from "@/modules/sources/types";
 import { playlistRepository, trackRepository } from "@/db/repositories";
