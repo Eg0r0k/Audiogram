@@ -71,6 +71,16 @@ export async function searchAlbums(query: string, limit = 8) {
   return found.filter(album => album.pinned !== 0);
 }
 
+export type AlbumWithArtistName = AlbumEntity & { artistName?: string };
+
+/** `searchAlbums` plus each album's artist name, read in one bulk lookup. */
+export const searchAlbumsWithArtistName = async (query: string, limit = 8): Promise<AlbumWithArtistName[]> => {
+  const albums = await searchAlbums(query, limit);
+  const artists = await unwrapResult(artistRepository.findByIds(unique(albums.map(album => album.artistId))));
+  const names = new Map(artists.map(artist => [artist.id, artist.name]));
+  return albums.map(album => ({ ...album, artistName: names.get(album.artistId) }));
+};
+
 export async function getAlbumPageData(albumId: AlbumId, sortKey: TrackSortKey | null = null): Promise<AlbumPageData> {
   const [album, rawTracks] = await Promise.all([
     getAlbumByIdOrThrow(albumId),

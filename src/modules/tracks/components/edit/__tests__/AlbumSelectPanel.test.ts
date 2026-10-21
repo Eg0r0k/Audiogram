@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
 import type { AlbumEntity } from "@/db/entities";
 import type { RightPanelEntitySelectPayload } from "@/modules/right-panel/types";
-import { searchAlbums } from "@/queries/album.queries";
+import { searchAlbumsWithArtistName } from "@/queries/album.queries";
 import AlbumSelectPanel from "../AlbumSelectPanel.vue";
 
 vi.mock("@/queries/album.queries", () => ({
-  searchAlbums: vi.fn(),
+  searchAlbumsWithArtistName: vi.fn(),
 }));
 vi.mock("@/components/ui/EntityCoverImage.vue", () => ({
   default: { template: "<span />" },
@@ -55,7 +55,7 @@ const renderPanel = (payload: Partial<RightPanelEntitySelectPayload> = {}) => {
 describe("AlbumSelectPanel", () => {
   beforeEach(() => {
     i18n.global.locale.value = "en";
-    vi.mocked(searchAlbums).mockResolvedValue(albums);
+    vi.mocked(searchAlbumsWithArtistName).mockResolvedValue(albums);
   });
 
   it("does not offer a separate 'No album' row", async () => {

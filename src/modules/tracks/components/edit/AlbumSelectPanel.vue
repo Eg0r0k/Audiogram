@@ -3,7 +3,7 @@
     v-model:search="search"
     :title="t('track.edit.selectAlbum')"
     :items="suggestions"
-    :get-key="(album: AlbumEntity) => album.id"
+    :get-key="(album: AlbumWithArtistName) => album.id"
     :can-create="canCreate"
     :show-confirm="isDirty"
     :reveal-key="payload.selectedAlbumId ?? null"
@@ -28,9 +28,15 @@
           />
         </ItemMedia>
         <ItemContent class="min-w-0">
-          <ItemTitle class="w-full text-sm font-normal">
+          <ItemTitle class="w-full text-sm font-medium">
             <span class="min-w-0 truncate">{{ item.title }}</span>
           </ItemTitle>
+          <ItemDescription
+            v-if="item.artistName"
+            class="truncate text-body-sm"
+          >
+            {{ item.artistName }}
+          </ItemDescription>
         </ItemContent>
         <ItemActions>
           <IconCheck
@@ -50,10 +56,9 @@ import { keepPreviousData, useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { EntitySelectPanel } from "@/components/entity-select";
 import { identityKey } from "@/lib/artist-names";
-import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";
-import type { AlbumEntity } from "@/db/entities";
-import { searchAlbums } from "@/queries/album.queries";
+import { type AlbumWithArtistName, searchAlbumsWithArtistName } from "@/queries/album.queries";
 import { queryKeys } from "@/queries/query-keys";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { usePanelUiBack } from "@/modules/right-panel/composables/usePanelUiBack";
@@ -83,7 +88,7 @@ const initialPick = (): AlbumPick | null =>
 const selected = ref<AlbumPick | null>(initialPick());
 const isDirty = computed(() => (selected.value?.id ?? selected.value?.title ?? null) !== (initialPick()?.id ?? null));
 
-const toggleAlbum = (album: AlbumEntity) => {
+const toggleAlbum = (album: AlbumWithArtistName) => {
   selected.value = selected.value?.id === album.id ? null : { id: album.id, title: album.title };
 };
 
@@ -91,8 +96,11 @@ const PICKER_LIMIT = 1000;
 
 const { data } = useQuery({
   queryKey: computed(() => queryKeys.albums.search(normalizedSearch.value)),
-  queryFn: () => searchAlbums(normalizedSearch.value, PICKER_LIMIT),
+  queryFn: () => searchAlbumsWithArtistName(normalizedSearch.value, PICKER_LIMIT),
   placeholderData: keepPreviousData,
+  // Renaming an artist does not invalidate album keys, so the captions are
+  // read fresh on every open instead of trusting the default stale time.
+  staleTime: 0,
 });
 const suggestions = computed(() =>
   [...(data.value ?? [])].sort((a, b) => a.title.localeCompare(b.title)),
