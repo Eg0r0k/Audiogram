@@ -1,6 +1,7 @@
 {
   "placeholder": "Search your library",
   "mainPlaceholder": "Search tracks, artists, albums",
+  "close": "Close search",
   "noResults": {
     "title": "No results for \"{query}\"",
     "hint": "Try searching for something else",
@@ -9,6 +10,7 @@
   "bestResult": "Best result",
   "recentTitle": "Recent searches",
   "clearHistory": "Clear history",
+  "clear": "Clear",
   "filter": {
     "all": "All",
     "track": "Tracks",

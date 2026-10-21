@@ -4,7 +4,8 @@
   "addToArtist": "Add to artist",
   "addToFavorites": "Add to favorites",
   "selectedTracks": "No tracks selected | 1 track selected | {count} tracks selected",
-  "addSuccess": "Successfully added",
-  "addFailed": "Failed to add",
+  "tracksAdded": "Tracks added",
+  "tracksAddFailed": "Couldn't add the tracks",
+  "folderAddFailed": "Couldn't add to the folder",
   "addTracks": "Add tracks"
 }

@@ -1,6 +1,7 @@
 {
   "newArtist": "New artist",
   "deleteFailed": "Failed to delete artist",
+  "updateFailed": "Failed to update artist",
   "tracks": "Tracks",
   "albums": "Albums",
   "noAlbums": "No albums yet",

@@ -3,5 +3,6 @@
   "newAlbum": "New album",
   "deleted": "Album deleted",
   "deleteFailed": "Failed to delete album",
+  "createFailed": "Couldn't create the album",
   "updateFailed": "Failed to update album"
 }

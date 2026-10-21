@@ -1,0 +1,16 @@
+{
+  "actions": {
+    "addFolder": "Add folder...",
+    "importFiles": "Import files...",
+    "connectSource": "Connect a source...",
+    "settings": "Settings"
+  },
+  "shortcuts": {
+    "previousNext": "Previous / next track",
+    "seek": "Seek {seconds} s",
+    "volume": "Volume",
+    "mute": "Mute",
+    "shuffle": "Shuffle",
+    "repeat": "Repeat"
+  }
+}

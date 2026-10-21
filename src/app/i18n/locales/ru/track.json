@@ -2,7 +2,7 @@
   "addTracks": "Добавить треки",
   "removeSelected": "Удалить выбранные",
   "addSelected": "Добавить выбранные",
-  "likeToggleFailed": "Не удалось изменить статус избранного",
+  "likeToggleFailed": "Не удалось обновить избранное",
   "pinFailed": "Не удалось добавить трек в библиотеку",
   "addedToLibrary": "Добавлено в библиотеку",
   "removedFromLibrary": "Удалено из библиотеки",
@@ -10,12 +10,14 @@
   "preview": "Фрагмент",
   "removeFromLibraryFailed": "Не удалось удалить трек из библиотеки",
   "removeFromHistoryFailed": "Не удалось удалить трек из истории",
+  "removedFromHistory": "Трек удалён из истории",
+  "restoreHistoryFailed": "Не удалось вернуть трек в историю",
   "favorite": {
     "addTracks": "Добавить треки"
   },
   "contextMenu": {
-    "addToFavorites": "Добавить в любимые треки",
-    "removeFromFavorites": "Удалить из любимых треков",
+    "addToFavorites": "Добавить в избранное",
+    "removeFromFavorites": "Убрать из избранного",
     "goToArtist": "Перейти к исполнителю",
     "goToArtists": "Перейти к исполнителям",
     "goToAlbum": "Перейти к альбому",
@@ -128,12 +130,7 @@
   "deleted": "Трек удалён",
   "deleteFailed": "Не удалось удалить трек",
   "restoreFailed": "Не удалось восстановить трек",
-  "deleteDialog": {
-    "title": "Удалить трек?",
-    "description": "«{title}» будет удалён из библиотеки вместе с файлом. Это действие нельзя отменить.",
-    "dontAskAgain": "Больше не спрашивать"
-  },
-  "downloadSuccess": "Файл скачан",
-  "downloadFailed": "Не удалось скачать файл",
+  "exported": "Файл сохранён",
+  "exportFailed": "Не удалось сохранить файл",
   "removeDownloadFailed": "Не удалось удалить скачанное"
 }

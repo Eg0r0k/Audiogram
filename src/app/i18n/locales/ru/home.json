@@ -1,0 +1,16 @@
+{
+  "actions": {
+    "addFolder": "Добавить папку...",
+    "importFiles": "Импортировать файлы...",
+    "connectSource": "Подключить источник...",
+    "settings": "Настройки"
+  },
+  "shortcuts": {
+    "previousNext": "Трек назад / вперёд",
+    "seek": "Перемотка на {seconds} с",
+    "volume": "Громкость",
+    "mute": "Без звука",
+    "shuffle": "Перемешать",
+    "repeat": "Повтор"
+  }
+}

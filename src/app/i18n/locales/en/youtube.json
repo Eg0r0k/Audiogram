@@ -2,9 +2,8 @@
   "title": "YouTube",
   "unavailable": "YouTube search is only available in the app.",
   "noResults": "Nothing found for \"{query}\".",
-  "errorPrefix": "Error: {message}",
+  "failed": "Couldn't load YouTube",
   "botError": "YouTube is temporarily blocking anonymous requests from your network (bot check). Try again later or enable a proxy in the settings.",
-  "download": "Download",
   "chip": {
     "all": "All",
     "tracks": "Tracks",

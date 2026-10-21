@@ -1,5 +1,5 @@
 {
-  "updaterError": "Ошибка обновления",
+  "updaterError": "Не удалось обновить",
   "notesPreview": "Предпросмотр изменений",
   "updateAvailable": "Доступно обновление",
   "updateToVersion": "Версия {version} доступна",
@@ -16,6 +16,7 @@
   "checking": "Проверка...",
   "upToDate": "Установлена последняя версия",
   "whatsNewTitle": "Что нового",
+  "updatedTo": "Audiogram обновлён до {version}",
   "whatsNewDescription": "Изменения, вошедшие в этот выпуск.",
   "emptyReleaseNotes": "Заметки о выпуске для этой версии ещё не опубликованы."
 }

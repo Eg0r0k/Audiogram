@@ -18,6 +18,9 @@
     "toast": {
       "done": "Nothing imported | Imported {count} track | Imported {count} tracks",
       "doneWithIssues": "Imported {imported}, {issues} with issues",
+      "noneImported": "None of the files were imported",
+      "alreadyInLibrary": "These files are already in your library",
+      "failed": "Couldn't import the files",
       "details": "Details"
     },
     "empty": "Nothing here",
@@ -65,7 +68,6 @@
   "change": "Change",
   "cancel": "Cancel",
   "done": "Done",
-  "comingSoon": "Coming Soon",
   "continue": "Continue",
   "loading": "Loading",
   "unknown": "Unknown",
@@ -92,6 +94,10 @@
   "download": "Download",
   "copy": "Copy",
   "copied": "Copied",
+  "copyFailed": "Couldn't copy",
+  "saveChangesFailed": "Couldn't save the changes",
+  "toastLabel": "Notification",
+  "toastRegion": "Notifications ({hotkey})",
   "skip": "Skip",
   "enable": "Enable",
   "disable": "Disable",
@@ -128,7 +134,7 @@
   "connected": "Connected",
   "disconnected": "Disconnected",
 
-  "favorite": "Favorite",
+  "favorite": "Favorites",
   "addToQueue": "Add to queue",
   "select": "Select",
   "quickSelect": "Quick select",

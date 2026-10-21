@@ -3,7 +3,7 @@
     "playlist": "Playlist",
     "artist": "Artist",
     "album": "Album",
-    "liked": "Liked Songs"
+    "liked": "Favorites"
   },
   "display": {
     "label": "Library format",
@@ -19,8 +19,8 @@
   "nothingToDownload": "Nothing to download",
   "filter": "Filter",
   "filterClear": "Clear filter",
-  "like": "Like",
-  "unlike": "Remove from liked",
-  "likeFailed": "Couldn't change the like",
+  "like": "Add to favorites",
+  "unlike": "Remove from favorites",
+  "likeFailed": "Couldn't update favorites",
   "openInCatalog": "Open in catalog"
 }

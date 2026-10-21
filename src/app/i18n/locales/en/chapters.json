@@ -9,6 +9,7 @@
   "lineBeyondDuration": "Timestamp is past the end of the track ({duration}): \"{line}\"",
   "cueParseEmpty": "CUE file has no entries",
   "cueParseError": "Failed to parse CUE file",
+  "saveFailed": "Couldn't save chapters",
   "edit": "Edit chapters",
   "save": "Save chapters",
   "cancelEdit": "Cancel editing",

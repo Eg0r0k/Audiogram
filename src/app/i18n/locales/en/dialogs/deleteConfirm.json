@@ -1,5 +1,9 @@
 {
-  "description": "Are you sure you want to delete \"{name}\"?",
+  "titleAlbum": "Delete album “{name}”?",
+  "titlePlaylist": "Delete playlist “{name}”?",
+  "titleArtist": "Delete artist “{name}”?",
+  "description": "This cannot be undone.",
+  "descriptionArtist": "Their albums will be deleted too. This cannot be undone.",
   "deleteTracks": "Also delete the tracks inside",
   "descriptionAtSource": "\"{name}\" will be deleted from {source}. This cannot be undone."
 }

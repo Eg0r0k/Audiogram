@@ -4,7 +4,8 @@
   "addToArtist": "Добавить к артисту",
   "addToFavorites": "Добавить в избранное",
   "selectedTracks": "Не выбрано треков | Выбран {count} трек | Выбрано {count} трека | Выбрано {count} треков",
-  "addSuccess": "Успешно добавлено",
-  "addFailed": "Ошибка добавления",
+  "tracksAdded": "Треки добавлены",
+  "tracksAddFailed": "Не удалось добавить треки",
+  "folderAddFailed": "Не удалось добавить в папку",
   "addTracks": "Добавить треки"
 }

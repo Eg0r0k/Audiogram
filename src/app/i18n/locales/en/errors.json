@@ -1,7 +1,8 @@
 {
-    "title": "Something went wrong",
+    "title": "Couldn't open the page",
     "notFound":"Not Found",
     "loadFailed": "Failed to load data",
     "tracksLoadFailed": "Failed to load tracks",
+    "loadMoreFailed": "Couldn't load more",
     "unknown": "An unexpected error occurred"
 }

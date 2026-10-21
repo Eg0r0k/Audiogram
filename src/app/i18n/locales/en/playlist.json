@@ -5,5 +5,7 @@
   "updateFailed": "Failed to update playlist",
   "addTrackFailed": "Failed to add the track to the playlist",
   "createFailed": "Failed to create playlist",
-  "removeTrackFailed": "Failed to remove the track from the playlist"
+  "removeTrackFailed": "Failed to remove the track from the playlist",
+  "trackRemoved": "Track removed from the playlist",
+  "restoreTrackFailed": "Couldn't put the track back in the playlist"
 }

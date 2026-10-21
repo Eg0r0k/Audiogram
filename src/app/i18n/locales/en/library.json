@@ -17,7 +17,7 @@
     "artist": "Artist",
     "album": "Album",
     "playlist": "Playlist",
-    "liked": "Liked Songs",
+    "liked": "Favorites",
     "allMedia": "All Music",
     "folder": "Folder",
     "radio": "Station"
@@ -76,15 +76,13 @@
     "deselectAll": "Deselect all",
     "exit": "Exit selection",
     "more": "More actions",
-    "actionFailed": "Couldn't apply the action to the selected tracks",
+    "playFailed": "Couldn't play the selected tracks",
+    "addToPlaylistFailed": "Couldn't add the tracks to the playlist",
+    "deleteFailed": "Couldn't delete the tracks",
     "addedToQueue": "Nothing added | {count} track added to the queue | {count} tracks added to the queue",
     "addedToPlaylist": "Nothing added | {count} track added to the playlist | {count} tracks added to the playlist",
     "liked": "Nothing changed | {count} track added to favorites | {count} tracks added to favorites",
     "unliked": "Nothing changed | {count} track removed from favorites | {count} tracks removed from favorites",
-    "deleted": "Nothing deleted | {count} track deleted | {count} tracks deleted",
-    "deleteDialog": {
-      "title": "Delete tracks? | Delete track? | Delete {count} tracks?",
-      "description": "Nothing to delete. | The track will be removed from the library along with its file. This cannot be undone. | {count} tracks will be removed from the library along with their files. This cannot be undone."
-    }
+    "deleted": "Nothing deleted | {count} track deleted | {count} tracks deleted"
   }
 }

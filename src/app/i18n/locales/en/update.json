@@ -1,5 +1,5 @@
 {
-  "updaterError": "Updater error",
+  "updaterError": "Couldn't update",
   "notesPreview": "Notes preview",
   "updateAvailable": "Update available",
   "updateToVersion": "Version {version} is available",
@@ -16,6 +16,7 @@
   "checking": "Checking...",
   "upToDate": "You're on the latest version",
   "whatsNewTitle": "What's new",
+  "updatedTo": "Audiogram updated to {version}",
   "whatsNewDescription": "Changes included in this release.",
   "emptyReleaseNotes": "Release notes have not been published for this version yet."
 }

@@ -1,8 +1,11 @@
 {
-  "done": "In library",
+  "done": "Already downloaded",
   "downloading": "Downloading",
   "failed": "Download failed",
   "failedTitled": "Failed to download “{title}”",
+  "failedMany": "Couldn't download {count} tracks",
+  "enqueueFailed": "Couldn't start the download",
+  "dismiss": "Remove from list",
   "active": "Active downloads",
   "batch": "Album / playlist",
   "tracks": "Tracks",

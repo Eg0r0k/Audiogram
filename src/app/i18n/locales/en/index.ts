@@ -19,6 +19,7 @@ import update from "./update.json";
 import chapters from "./chapters.json";
 import youtube from "./youtube.json";
 import downloads from "./downloads.json";
+import home from "./home.json";
 
 export default {
   common,
@@ -42,4 +43,5 @@ export default {
   chapters,
   youtube,
   downloads,
+  home,
 };

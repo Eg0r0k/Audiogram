@@ -18,7 +18,12 @@
     "resetAllDialogTitle": "Reset all settings?",
     "resetAllDialogDesc": "Every app setting will return to its default value. Your library, tracks and statistics are not affected.",
     "resetAllConfirm": "Reset",
-    "resetAllConfirmCountdown": "Reset ({seconds})"
+    "resetAllConfirmCountdown": "Reset ({seconds})",
+    "library": "Library",
+    "libraryDescription": "Folders, scanning, downloads",
+    "sourcesCount": "No sources | {count} source | {count} sources",
+    "needsAttention": "Needs attention",
+    "storageUsed": "{size} used"
   },
   "general": {
     "checkUpdates": "Check for updates on launch",
@@ -60,14 +65,32 @@
     "clearDialogTitle": "Clear listening history?",
     "clearDialogDesc": "All statistics will be reset. This cannot be undone.",
     "clearConfirm": "Clear",
-    "clearConfirmCountdown": "Clear ({seconds})",
+    "clearFailed": "Couldn't clear the listening history",
     "cleared": "Listening history cleared",
     "noGenre": "No genre",
     "recommender": {
       "evalTitle": "Evaluate recommendations",
       "evalSubtitle": "Train weights on the autoplay history and compute AUC on a held-out sample. The full report goes to the log.",
       "evalResult": "AUC {auc}, autoplay skip rate {rate}% over 14d, {n} examples"
-    }
+    },
+    "listenedWeek": "Listened this week",
+    "listenedMonth": "Listened in {month}",
+    "listenedYear": "Listened in {year}",
+    "listenedAll": "Listened all time",
+    "lastWeek": "last week",
+    "yearName": "{year}",
+    "compareMore": "{percent}% more than {prev}",
+    "compareLess": "{percent}% less than {prev}",
+    "compareSame": "Same as {prev}",
+    "playsTotal": "0 plays | {count} play | {count} plays",
+    "artistsTotal": "0 artists | {count} artist | {count} artists",
+    "recordBestDay": "Best day",
+    "withoutBreak": "without a break",
+    "habits": "Habits",
+    "activity": "Activity",
+    "completionCaption": "of tracks finished",
+    "streakDays": "0 days | {count} day | {count} days",
+    "streakCaption": "in a row"
   },
   "proxy": {
     "description": "Route YouTube search, streaming and downloads through your own proxy server.",
@@ -80,7 +103,9 @@
     "password": "Password",
     "test": "Test connection",
     "testOk": "Connected ({ms} ms)",
-    "testFailed": "Connection failed: {error}"
+    "testFailed": "Couldn't connect through the proxy",
+    "on": "On",
+    "off": "Off"
   },
   "sources": {
     "nd": {
@@ -92,14 +117,16 @@
     },
     "ym": {
       "enable": "Use Yandex Music",
-      "description": "Your likes, playlists, albums and My Wave.",
+      "description": "Your favorites, playlists, albums and My Wave.",
       "disclaimer": "Unofficial integration. Tracks and downloads come as Yandex serves them to your account; without a subscription some tracks may be 30-second previews.",
       "signIn": "Sign in to Yandex Music",
       "signedInAs": "Signed in as {name}",
       "account": "your Yandex account",
       "plus": "Yandex Plus",
       "noPlus": "No Plus subscription",
+      "stationNeedsPlus": "This station needs Yandex Plus",
       "signOut": "Sign out",
+      "signOutFailed": "Couldn't sign out of Yandex Music",
       "codeHint": "Enter this code at {url}",
       "openYandex": "Open Yandex",
       "cancel": "Cancel",
@@ -124,7 +151,7 @@
     "logsExportedTo": "Logs saved to {path}",
     "logsDownloaded": "Logs downloaded as {filename}",
     "logsEmpty": "There are no logs to export yet",
-    "logsExportFailed": "Failed to export logs: {reason}"
+    "logsExportFailed": "Couldn't export the logs"
   },
   "appearance": {
     "colorTheme": "Color theme",
@@ -208,14 +235,27 @@
     "clearAllDialogTitle": "Delete all data?",
     "clearAllDialogDesc": "This will permanently delete all your tracks, album covers, and library data. This action cannot be undone.",
     "clearAllConfirm": "Delete everything",
-    "clearAllConfirmCountdown": "Delete everything ({seconds})",
+    "clearAllFailed": "Couldn't delete all data",
+    "usageFailed": "Couldn't count the storage used",
+    "timingsDialogTitle": "Clear play history and analysis?",
+    "timingsDialogDesc": "Listening history, track audio analysis and chapters will be deleted. This cannot be undone.",
+    "timingsConfirm": "Clear",
+    "timingsClearFailed": "Couldn't clear play history and analysis",
+    "timingsCleared": "Play history and analysis cleared",
+    "lyricsDialogTitle": "Delete all lyrics?",
+    "lyricsDialogDesc": "All saved and attached lyrics will be deleted. This cannot be undone.",
+    "lyricsClearFailed": "Couldn't delete lyrics",
+    "lyricsCleared": "Lyrics deleted",
     "clearAllSummary": "{tracks} tracks · {albums} albums · {artists} artists · {size}",
     "folders": "Sidebar folders",
     "foldersDesc": "Remove custom folder structure from the sidebar",
     "timings": "Play history & analysis",
     "timingsDesc": "Clear listen history, audio features, and chapter data",
     "coversCleared": "Cover art cleared",
-    "allDataCleared": "All data has been deleted"
+    "allDataCleared": "All data has been deleted",
+    "usedByApp": "used by Audiogram",
+    "whatTakesSpace": "What takes space",
+    "listens": "No listens | {count} listen | {count} listens"
   },
   "terms": {
     "lastUpdated": "Last updated",
@@ -252,5 +292,11 @@
     "section6Title": "Changes to This Policy",
     "section6Body": "We may update this Privacy Policy from time to time. Any changes will be reflected in updated application releases. We encourage you to review this policy periodically.",
     "contact": "Questions about your privacy? Contact us on"
+  },
+  "library": {
+    "analysis": "Analysis"
+  },
+  "sourcesPage": {
+    "sources": "Sources"
   }
 }
