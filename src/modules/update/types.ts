@@ -19,17 +19,7 @@ export type UpdateStatus
     | "installing"
     | "error";
 
-export type UpdateErrorKind
-  = | "NETWORK"
-    | "INVALID_CHANNEL"
-    | "NO_UPDATE_AVAILABLE"
-    | "INSTALL_FAILED"
-    | "UNKNOWN";
-
-export interface UpdateError {
-  kind: UpdateErrorKind;
-  message: string;
-}
+export type { UpdateError, UpdateErrorKind } from "@/types/update-error";
 
 export type UpdateChannel = "stable";
 

@@ -93,6 +93,8 @@ export type SourceErrorKind
     | "RATE_LIMITED"
     | "PARSE"
     | "CANCELLED"
+    /** Malformed id or query; never retried, never a source-level verdict. */
+    | "INVALID_INPUT"
     | "UNKNOWN";
 
 export interface SourceError {
