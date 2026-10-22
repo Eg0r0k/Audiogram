@@ -5,9 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@kappa-ui/core@0.17.0':
+  '@kappa-ui/core@0.17.1':
     hash: a652a0d78df498dedf53862f2fe211495a0348c468d3f84e9d88fc562dd30aec
-    path: patches/@kappa-ui__core@0.17.0.patch
+    path: patches/@kappa-ui__core@0.17.1.patch
   motion-v@2.4.2:
     hash: 49b68562a0b970363c5bf20d995035b3ec0bb9ab414e9f8de2e59d9ee21b517d
     path: patches/motion-v@2.4.2.patch
@@ -26,8 +26,8 @@ importers:
         specifier: ^5.3.1
         version: 5.3.1
       '@kappa-ui/core':
-        specifier: ^0.17.0
-        version: 0.17.0(patch_hash=a652a0d78df498dedf53862f2fe211495a0348c468d3f84e9d88fc562dd30aec)(reka-ui@2.11.0(vue@3.5.25(typescript@5.9.3)))(vue@3.5.25(typescript@5.9.3))
+        specifier: ^0.17.1
+        version: 0.17.1(patch_hash=a652a0d78df498dedf53862f2fe211495a0348c468d3f84e9d88fc562dd30aec)(reka-ui@2.11.0(vue@3.5.25(typescript@5.9.3)))(vue@3.5.25(typescript@5.9.3))
       '@material/material-color-utilities':
         specifier: ^0.4.0
         version: 0.4.0
@@ -1335,8 +1335,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@kappa-ui/core@0.17.0':
-    resolution: {integrity: sha512-Pohd9Sd0MX8cstWFYtv+wEfZgGf7TJ4/lHQzLToqhlrX1gMGS6/dnNyQID68mhAgZBCVMrS6KOYCRl2WCxjVDw==}
+  '@kappa-ui/core@0.17.1':
+    resolution: {integrity: sha512-s1CahS7pl6tHtA6ES1JAcB7qbZcqBZIAkvwUcmjWSAyiaZtZPho6oWT6QzkKK7atvNr6l04FMm2tdMpIeZDjeQ==}
     peerDependencies:
       reka-ui: ^2.10.5
       vue: ^3.5.0
@@ -7212,7 +7212,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@kappa-ui/core@0.17.0(patch_hash=a652a0d78df498dedf53862f2fe211495a0348c468d3f84e9d88fc562dd30aec)(reka-ui@2.11.0(vue@3.5.25(typescript@5.9.3)))(vue@3.5.25(typescript@5.9.3))':
+  '@kappa-ui/core@0.17.1(patch_hash=a652a0d78df498dedf53862f2fe211495a0348c468d3f84e9d88fc562dd30aec)(reka-ui@2.11.0(vue@3.5.25(typescript@5.9.3)))(vue@3.5.25(typescript@5.9.3))':
     dependencies:
       '@use-gesture/vanilla': 10.3.1
       '@vueuse/core': 14.4.0(vue@3.5.25(typescript@5.9.3))

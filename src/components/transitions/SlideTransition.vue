@@ -289,7 +289,10 @@ watch(transitionSources, (next, prev) => {
 
 /* The page beneath is darkened by one layer between the two pages, so the
    slide animates opacity and transform only, never a filter on a whole page.
-   It follows the pages' classes; its rest state snaps without a transition. */
+   It follows the pages' classes; its rest state snaps without a transition.
+   The layer is the container's last child and reads the pages through sibling
+   combinators: a :has() on the container would make Chrome restyle the whole
+   page on every node inserted into it, together with kappa's :has() rules. */
 .slide-transition-container > .slide-dim {
   overflow: hidden;
   transform: none;
@@ -299,17 +302,19 @@ watch(transitionSources, (next, prev) => {
   pointer-events: none;
 }
 
-.slide-transition-container:has(> .slide-left-leave-from) > .slide-dim {
+.slide-transition-container > .slide-left-leave-from ~ .slide-dim {
   opacity: var(--slide-dim-from, 0);
 }
-.slide-transition-container:has(> .slide-left-leave-to):has(> .slide-left-enter-active) > .slide-dim {
+.slide-transition-container > .slide-left-leave-to ~ .slide-left-enter-active ~ .slide-dim,
+.slide-transition-container > .slide-left-enter-active ~ .slide-left-leave-to ~ .slide-dim {
   opacity: var(--slide-dim);
   transition: opacity var(--slide-duration-in) var(--slide-easing);
 }
-.slide-transition-container:has(> .slide-right-enter-from) > .slide-dim {
+.slide-transition-container > .slide-right-enter-from ~ .slide-dim {
   opacity: var(--slide-dim-from, var(--slide-dim));
 }
-.slide-transition-container:has(> .slide-right-enter-to):has(> .slide-right-leave-active) > .slide-dim {
+.slide-transition-container > .slide-right-enter-to ~ .slide-right-leave-active ~ .slide-dim,
+.slide-transition-container > .slide-right-leave-active ~ .slide-right-enter-to ~ .slide-dim {
   opacity: 0;
   transition: opacity var(--slide-duration-out) var(--slide-easing);
 }

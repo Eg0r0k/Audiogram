@@ -2,16 +2,20 @@
   <div class="flex items-center justify-between gap-3 mt-6 h-14 landscape-short:mt-0">
     <div class="min-w-0 flex-1">
       <MarqueeBlock
+        :key="`title-${currentTrack?.id}`"
         pause-on-hover
         gradient
         gradient-length="20px"
+        :loop="TOUCH_MARQUEE_LOOPS"
       >
         <span class="text-xl text-foreground font-semibold leading-tight">{{ currentTrack?.title }}</span>
       </MarqueeBlock>
       <MarqueeBlock
+        :key="`artist-${currentTrack?.id}`"
         pause-on-hover
         gradient
         gradient-length="20px"
+        :loop="TOUCH_MARQUEE_LOOPS"
       >
         <span class="text-base text-(--player-text-muted) capitalize mt-0.5 block">
           <template
@@ -58,6 +62,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
+import { TOUCH_MARQUEE_LOOPS } from "@/components/ui/marquee/marqueeMotion";
 import { Button } from "@/components/ui/button";
 import { useCurrentPlayerTrack } from "@/modules/player/composables/useCurrentPlayerTrack";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";

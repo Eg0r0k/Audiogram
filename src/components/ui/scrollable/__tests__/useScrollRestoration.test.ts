@@ -1,6 +1,6 @@
 import { mount } from "@vue/test-utils";
 import { defineComponent, h, nextTick, type PropType } from "vue";
-import { createMemoryHistory, createRouter } from "vue-router";
+import { RouterView, createMemoryHistory, createRouter } from "vue-router";
 import { describe, expect, it, vi } from "vitest";
 import { useScrollRestoration, type ScrollRestorationTarget } from "../useScrollRestoration";
 
@@ -79,5 +79,53 @@ describe("useScrollRestoration", () => {
     await roundTrip(target);
 
     expect(target.scrollToOffset).toHaveBeenCalledWith(400, { behavior: "auto" });
+  });
+
+  // By the time the old page unmounts the new one is already in the DOM, so a
+  // scroll read there lays out the whole document. The route leave, which
+  // runs before the swap, has already saved the position.
+  it("reads the position once when the page is left by navigation", async () => {
+    const target = makeVirtualTarget(530);
+    const Page = defineComponent({
+      setup() {
+        useScrollRestoration(() => target, { key: "leave-test" });
+        return () => h("div");
+      },
+    });
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/", component: Page }, { path: "/other", component: { render: () => h("div") } }],
+    });
+    await router.push("/");
+    mount(RouterView, { global: { plugins: [router] } });
+    await settle();
+
+    await router.push("/other");
+    await settle();
+
+    expect(target.getScrollAnchor).toHaveBeenCalledTimes(1);
+  });
+
+  it("still saves on unmount when the leave was cancelled", async () => {
+    const target = makeVirtualTarget(530);
+    const Page = defineComponent({
+      setup() {
+        useScrollRestoration(() => target, { key: "cancel-test" });
+        return () => h("div");
+      },
+    });
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/", component: Page }, { path: "/other", component: { render: () => h("div") } }],
+    });
+    await router.push("/");
+    const app = mount(RouterView, { global: { plugins: [router] } });
+    await settle();
+    router.beforeEach(to => to.path !== "/other");
+
+    await router.push("/other");
+    app.unmount();
+
+    expect(target.getScrollAnchor).toHaveBeenCalledTimes(2);
   });
 });

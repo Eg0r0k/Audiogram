@@ -18,8 +18,8 @@ export const inputGroupVariants = cva(
     has-[>textarea]:h-auto
     has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col
     has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col
-    has-[>[data-align=inline-start]]:*:data-[slot=input-group-control]:ps-2
-    has-[>[data-align=inline-end]]:*:data-[slot=input-group-control]:pe-2
+    [--input-group-addon-opacity:1]
+    has-[:is(input,textarea):not([data-slot=input-group-addon]_*):disabled]:[--input-group-addon-opacity:var(--disabled-opacity)]
   `,
   {
     variants: {
@@ -59,12 +59,19 @@ export const inputGroupVariants = cva(
   },
 );
 
+// Every control of a group takes this. The addons are its siblings in either
+// order, so the inset reads them with ~ and a :has() on the control itself.
+export const inputGroupControlInset = `
+  has-[~[data-align=inline-start]]:ps-2 [[data-align=inline-start]~&]:ps-2
+  has-[~[data-align=inline-end]]:pe-2 [[data-align=inline-end]~&]:pe-2
+`;
+
 export const inputGroupAddonVariants = cva(
   `
     flex cursor-text items-center gap-2 text-body-md text-muted-foreground select-none
     [&>svg]:pointer-events-none
     [&>svg:not([class*='size-'])]:size-(--input-group-icon)
-    group-has-[:is(input,textarea):not([data-slot=input-group-addon]_*):disabled]/input-group:opacity-(--disabled-opacity)
+    opacity-(--input-group-addon-opacity)
   `,
   {
     variants: {

@@ -4,6 +4,7 @@ import { type HTMLAttributes, useAttrs } from "vue";
 import { useFieldControl } from "@/lib/field-context";
 import { textControlBase, textControlInnerText } from "@/lib/text-control";
 import { cn } from "@/lib/utils";
+import { inputGroupControlInset } from ".";
 
 defineOptions({ inheritAttrs: false });
 
@@ -37,6 +38,7 @@ const control = useFieldControl(props, attrs);
         textControlBase,
         textControlInnerText,
         'h-full min-h-[calc(var(--input-group-height)-2px)] flex-1 rounded-none px-(--input-group-padding)',
+        inputGroupControlInset,
         props.class,
       )
     "

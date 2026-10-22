@@ -28,6 +28,7 @@
           pause-on-hover
           gradient
           gradient-length="20px"
+          :loop="TOUCH_MARQUEE_LOOPS"
         >
           <span class="text-sm font-medium leading-snug text-white">
             {{ title }}
@@ -37,6 +38,7 @@
           pause-on-hover
           gradient
           gradient-length="20px"
+          :loop="TOUCH_MARQUEE_LOOPS"
         >
           <span class="text-[11px] text-white/80">
             {{ artist }}
@@ -72,6 +74,7 @@
 <script setup lang="ts">
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
+import { TOUCH_MARQUEE_LOOPS } from "@/components/ui/marquee/marqueeMotion";
 import MiniPlayerProgress from "./MiniPlayerProgress.vue";
 import IconPlaylist from "~icons/tabler/playlist";
 import IconPlay from "~icons/tabler/player-play-filled";

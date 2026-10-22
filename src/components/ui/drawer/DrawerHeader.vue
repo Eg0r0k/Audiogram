@@ -9,7 +9,12 @@ const props = defineProps<{ class?: HTMLAttributes["class"] }>();
 <template>
   <div
     data-slot="drawer-header"
-    :class="cn('flex shrink-0 flex-col gap-1.5 px-6 group-has-[>[data-slot=drawer-close]]/drawer:pe-14', props.class)"
+    :class="
+      cn(
+        'flex shrink-0 flex-col gap-1.5 px-6 has-[~[data-slot=drawer-close]]:pe-14 [[data-slot=drawer-close]~&]:pe-14',
+        props.class,
+      )
+    "
   >
     <slot />
   </div>

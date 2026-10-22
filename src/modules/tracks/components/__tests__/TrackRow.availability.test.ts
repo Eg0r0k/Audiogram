@@ -46,7 +46,7 @@ const renderRow = (track: Track) =>
     global: {
       plugins: [createPinia(), i18n],
       directives: { ripple: {} },
-      stubs: { SourceDownloadButton: true, NuxtImage: true, BlurSwapTransition: true },
+      stubs: { SourceDownloadButton: true, NuxtImage: true },
     },
   });
 

@@ -4,5 +4,5 @@ packages:
 ignoredBuiltDependencies:
   - esbuild
 patchedDependencies:
-  '@kappa-ui/core@0.17.0': patches/@kappa-ui__core@0.17.0.patch
+  '@kappa-ui/core@0.17.1': patches/@kappa-ui__core@0.17.1.patch
   motion-v@2.4.2: patches/motion-v@2.4.2.patch

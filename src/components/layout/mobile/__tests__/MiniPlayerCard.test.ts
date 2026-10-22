@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { computed, ref } from "vue";
 import { mount } from "@vue/test-utils";
+import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
+import { layout, movingLoops, useMarqueeFakes } from "@/components/ui/marquee/__tests__/marquee-fakes";
 import MiniPlayerCard from "../MiniPlayerCard.vue";
 import MiniPlayerProgress from "../MiniPlayerProgress.vue";
 import { miniPlayerProgressKey } from "../mini-player-context";
@@ -39,5 +41,28 @@ describe("MiniPlayerCard progress", () => {
 
   it("paints no fill on the neighbour cards", () => {
     expect(mountCard({ showProgress: false }).findComponent(MiniPlayerProgress).exists()).toBe(false);
+  });
+});
+
+describe("MiniPlayerCard title", () => {
+  useMarqueeFakes();
+
+  // On Android WebView a running marquee redraws the whole app on every
+  // display frame, playing or paused; the line has to come to rest.
+  it("scrolls a long title twice, then rests", async () => {
+    const wrapper = mount(MiniPlayerCard, {
+      props: { title: "A very long title", artist: "A", background: "#000", progressBackground: "#111", showProgress: false },
+      global: { stubs: { NuxtImage: true } },
+      attachTo: document.body,
+    });
+    await wrapper.vm.$nextTick();
+    const [title] = wrapper.findAllComponents(MarqueeBlock);
+    layout(title!, { container: 200, text: 400 });
+    await wrapper.vm.$nextTick();
+
+    await movingLoops()[0]!.finish();
+    await movingLoops()[1]!.finish();
+
+    expect(movingLoops()).toHaveLength(2);
   });
 });

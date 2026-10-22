@@ -40,16 +40,14 @@
               v-if="canSwapIndexOnHover"
               class="index-hover-icon absolute size-4 flex items-center justify-center"
             >
-              <BlurSwapTransition :state="showPauseIcon ? 'pause' : 'play'">
-                <IconPause
-                  v-if="showPauseIcon"
-                  class="size-4 text-foreground"
-                />
-                <IconPlay
-                  v-else
-                  class="size-4 text-foreground"
-                />
-              </BlurSwapTransition>
+              <IconPause
+                v-if="showPauseIcon"
+                class="size-4 text-foreground"
+              />
+              <IconPlay
+                v-else
+                class="size-4 text-foreground"
+              />
             </span>
           </span>
         </Transition>
@@ -75,21 +73,19 @@
                 !isSelecting && 'group-hover:opacity-100',
               ]"
             >
-              <BlurSwapTransition :state="showPauseIcon ? 'playing' : 'play'">
-                <template v-if="showPauseIcon">
-                  <span
-                    v-frame-grid
-                    class="playing-pulse-dot group-hover:hidden"
-                  >
-                    <span /><span /><span />
-                  </span>
-                  <IconPause class="hidden size-4 text-white group-hover:block" />
-                </template>
-                <IconPlay
-                  v-else
-                  class="size-4 text-white"
-                />
-              </BlurSwapTransition>
+              <template v-if="showPauseIcon">
+                <span
+                  v-frame-grid
+                  class="playing-pulse-dot group-hover:hidden"
+                >
+                  <span /><span /><span />
+                </span>
+                <IconPause class="hidden size-4 text-white group-hover:block" />
+              </template>
+              <IconPlay
+                v-else
+                class="size-4 text-white"
+              />
             </div>
           </div>
 
@@ -252,7 +248,6 @@ import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
-import BlurSwapTransition from "@/components/transitions/BlurSwapTransition.vue";
 import { formatDuration, formatRelativeTime } from "@/lib/format/time";
 import { useTrackRowCover } from "@/modules/tracks/composables/useTrackRowCover";
 import type { Track } from "@/modules/player/types";
