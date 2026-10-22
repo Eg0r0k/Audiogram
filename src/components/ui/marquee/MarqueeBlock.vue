@@ -6,6 +6,7 @@
     :style="maskStyle"
     @pointerenter="onPointerEnter"
     @pointerleave="onPointerLeave"
+    @pointerup="replay"
   >
     <div
       ref="motionRef"
@@ -236,6 +237,12 @@ const measure = () => {
 
 useOwnerResizeObserver(containerRef, measure);
 useOwnerResizeObserver(itemRef, measure);
+
+// A line with a loop count rests once its loops are done; a tap runs them again.
+const replay = () => {
+  if (props.loop === 0 || !isOverflowing.value || travel === 0) return;
+  startAnimation(travel);
+};
 
 const onPointerEnter = () => {
   if (props.pauseOnHover) isHovering.value = true;

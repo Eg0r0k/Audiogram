@@ -6,6 +6,13 @@ export const MARQUEE_SPEED = 30;
 /** Rest at the start of every loop, so the beginning of the text can be read. */
 export const MARQUEE_PAUSE_MS = 1500;
 
+/**
+ * Loops of a touch-layout line per appearance or tap. Android WebView redraws
+ * the whole app on every display frame while any animation runs, so a line
+ * that never rests costs about a CPU core for as long as it is on screen.
+ */
+export const TOUCH_MARQUEE_LOOPS = 2;
+
 export interface MarqueeMotion {
   durationMs: number;
   /** Keyframe offset where the rest ends and the travel begins. */

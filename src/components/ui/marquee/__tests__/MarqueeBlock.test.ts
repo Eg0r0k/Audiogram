@@ -1,76 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { mount } from "@vue/test-utils";
 import MarqueeBlock from "../MarqueeBlock.vue";
 import { MARQUEE_PAUSE_MS, MARQUEE_SPEED, marqueeMotion } from "../marqueeMotion";
 import { FRAME_GRID_MS, gridTicks } from "@/lib/frame-grid";
+import { animate, animations, layout, movingLoops, useMarqueeFakes } from "./marquee-fakes";
 
-// happy-dom does no layout: sizes are set by hand, resize notifications are
-// fired by hand, and the animation is a spy.
-const observers: Array<{ callback: ResizeObserverCallback }> = [];
-class FakeResizeObserver {
-  constructor(public callback: ResizeObserverCallback) { observers.push(this); }
-  observe = () => {};
-  unobserve = () => {};
-  disconnect = () => {};
-}
-const notifyResize = () => observers.forEach(o => o.callback([], o as unknown as ResizeObserver));
-
-interface FakeAnimation {
-  keyframes: Keyframe[];
-  options: KeyframeAnimationOptions;
-  target: HTMLElement;
-  pause: ReturnType<typeof vi.fn>;
-  play: ReturnType<typeof vi.fn>;
-  startTime: number | null;
-  playState: string;
-  ready: Promise<unknown>;
-  cancel: ReturnType<typeof vi.fn>;
-  finished: Promise<unknown>;
-  finish: () => Promise<void>;
-}
-const animations: FakeAnimation[] = [];
-const animate = vi.fn(function (this: HTMLElement, keyframes: Keyframe[], options: KeyframeAnimationOptions) {
-  let resolve: (value: unknown) => void = () => {};
-  const finished = new Promise((r) => { resolve = r; });
-  const animation: FakeAnimation = {
-    keyframes, options, target: this, cancel: vi.fn(), finished,
-    startTime: null, playState: "running", ready: Promise.resolve(),
-    pause: vi.fn(() => { animation.playState = "paused"; }),
-    // A resume restarts the clock off the grid.
-    play: vi.fn(() => { animation.playState = "running"; animation.startTime = 1234.5; }),
-    finish: async () => { resolve(animation); await finished; await Promise.resolve(); },
-  };
-  animations.push(animation);
-  return animation as unknown as Animation;
-});
-const movingLoops = () => animations.filter(a => a.target.classList.contains("marquee-content"));
-
-const setSize = (el: Element, prop: "clientWidth" | "offsetWidth", value: number) =>
-  Object.defineProperty(el, prop, { configurable: true, get: () => value });
-
-const layout = (wrapper: ReturnType<typeof mount>, sizes: { container: number; text: number; gap?: number }) => {
-  const gap = sizes.gap ?? 48;
-  setSize(wrapper.find(".marquee-wrapper").element, "clientWidth", sizes.container);
-  setSize(wrapper.find(".marquee-item").element, "offsetWidth", sizes.text);
-  setSize(wrapper.find(".marquee-track").element, "offsetWidth", Math.max(sizes.container, sizes.text + gap));
-  notifyResize();
-};
+useMarqueeFakes();
 
 const mountMarquee = (props: Record<string, unknown> = {}) =>
   mount(MarqueeBlock, { props, slots: { default: "<span>Some title</span>" }, attachTo: document.body });
-
-beforeEach(() => {
-  observers.length = 0;
-  animations.length = 0;
-  animate.mockClear();
-  vi.stubGlobal("ResizeObserver", FakeResizeObserver);
-  Object.defineProperty(document, "timeline", { configurable: true, value: { currentTime: 1000.5 } });
-  HTMLElement.prototype.animate = animate as unknown as HTMLElement["animate"];
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
 
 describe("MarqueeBlock", () => {
   it("leaves text that fits in place, even with less than the loop gap to spare", async () => {
@@ -303,6 +241,51 @@ describe("MarqueeBlock loops", () => {
     await movingLoops()[1]!.finish();
 
     expect(movingLoops()).toHaveLength(2);
+  });
+
+  it("replays its loops when tapped after they ended", async () => {
+    const wrapper = await overflowing({ loop: 2 });
+    await movingLoops()[0]!.finish();
+    await movingLoops()[1]!.finish();
+
+    await wrapper.find(".marquee-wrapper").trigger("pointerup");
+    await movingLoops()[2]!.finish();
+    await movingLoops()[3]!.finish();
+
+    expect(movingLoops()).toHaveLength(4);
+    expect(movingLoops()[2]!.options.delay).toBe(-MARQUEE_PAUSE_MS);
+  });
+
+  it("starts the loops over when tapped while they run", async () => {
+    const wrapper = await overflowing({ loop: 2 });
+    const first = movingLoops()[0]!;
+
+    await wrapper.find(".marquee-wrapper").trigger("pointerup");
+    await first.finish();
+    await movingLoops()[1]!.finish();
+    await movingLoops()[2]!.finish();
+
+    expect(first.cancel).toHaveBeenCalled();
+    expect(movingLoops()).toHaveLength(3);
+  });
+
+  it("ignores taps on an endless line", async () => {
+    const wrapper = await overflowing();
+
+    await wrapper.find(".marquee-wrapper").trigger("pointerup");
+
+    expect(movingLoops()).toHaveLength(1);
+  });
+
+  it("ignores taps on text that fits", async () => {
+    const wrapper = mountMarquee({ loop: 2 });
+    await wrapper.vm.$nextTick();
+    layout(wrapper, { container: 200, text: 100 });
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find(".marquee-wrapper").trigger("pointerup");
+
+    expect(movingLoops()).toHaveLength(0);
   });
 
   it("does not come back after it was stopped", async () => {
