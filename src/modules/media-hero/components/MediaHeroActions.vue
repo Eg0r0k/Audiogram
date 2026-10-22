@@ -18,11 +18,11 @@
       </Button>
 
       <Button
-        class="rounded-full text-white"
+        class="rounded-full"
         size="icon-lg"
         variant="ghost"
         color="muted"
-        :class="{ 'text-primary': isShuffleActive, 'order-1 ml-auto': props.mobile }"
+        :class="[isShuffleActive ? 'text-primary' : 'text-foreground', { 'order-1 ml-auto': props.mobile }]"
         @click="emit('shuffle')"
       >
         <IconShuffle class="size-7" />
@@ -30,7 +30,7 @@
 
       <Button
         v-if="props.canAddTracks"
-        class="rounded-full text-white"
+        class="rounded-full text-foreground"
         size="icon-lg"
         variant="ghost"
         color="muted"
@@ -42,11 +42,11 @@
 
       <Button
         v-if="props.like"
-        class="rounded-full text-white"
+        class="rounded-full"
         size="icon-lg"
         variant="ghost"
         color="muted"
-        :class="{ 'text-primary': props.like.isLiked }"
+        :class="props.like.isLiked ? 'text-primary' : 'text-foreground'"
         :disabled="props.like.isPending"
         :aria-label="props.like.isLiked ? $t('media.unlike') : $t('media.like')"
         @click="props.like.toggle()"
@@ -77,15 +77,15 @@
       <InputGroup
         v-if="props.filterable"
         variant="soft"
-        class="min-w-32 max-w-56 flex-1 bg-background text-white rounded-full"
+        class="min-w-32 max-w-56 flex-1 rounded-full"
       >
         <InputGroupAddon tabindex="-1">
-          <IconSearch class="size-5 text-white/70" />
+          <IconSearch class="size-5 " />
         </InputGroupAddon>
 
         <InputGroupInput
           v-model="filter"
-          class="pl-2! text-sm! text-white placeholder:text-white/60"
+          class="pl-2! text-sm"
           :placeholder="$t('media.filter')"
           @keydown.stop
           @keydown.esc="filter = ''"
