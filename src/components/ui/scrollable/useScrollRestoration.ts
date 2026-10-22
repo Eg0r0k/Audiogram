@@ -12,7 +12,7 @@ import {
   type MaybeRefOrGetter,
   type Ref,
 } from "vue";
-import { useRoute, onBeforeRouteLeave } from "vue-router";
+import { useRoute, useRouter, onBeforeRouteLeave } from "vue-router";
 import type { ScrollAnchor } from "./scroll-anchor";
 
 type NumberLike = number | Ref<number>;
@@ -59,6 +59,7 @@ export function useScrollRestoration(
   options: UseScrollRestorationOptions = {},
 ) {
   const route = useRoute();
+  const router = useRouter();
   const targetRef = toRef(scrollableRef);
 
   const storageKey = computed(() => toValue(options.key) ?? route.fullPath);
@@ -67,6 +68,7 @@ export function useScrollRestoration(
 
   let restoredKey: string | null = null;
   let restoreRafId: number | null = null;
+  let leavingTo: string | null = null;
 
   const cancelScheduledRestore = () => {
     if (restoreRafId != null) {
@@ -179,13 +181,16 @@ export function useScrollRestoration(
     save();
   });
 
-  onBeforeRouteLeave(() => {
+  onBeforeRouteLeave((to) => {
     save();
     restoredKey = null;
+    leavingTo = to.fullPath;
   });
 
+  // After a completed navigation the next page is already in the DOM here,
+  // and the route leave above has saved the position before the swap.
   onBeforeUnmount(() => {
-    save();
+    if (leavingTo === null || leavingTo !== router.currentRoute.value.fullPath) save();
     cancelScheduledRestore();
   });
 
