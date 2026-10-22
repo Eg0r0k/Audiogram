@@ -9,7 +9,7 @@ const props = defineProps<{ class?: HTMLAttributes["class"] }>();
 <template>
   <div
     data-slot="dialog-header"
-    :class="cn('flex shrink-0 flex-col gap-1.5 group-has-[>[data-slot=dialog-close]]/dialog:pe-8', props.class)"
+    :class="cn('flex shrink-0 flex-col gap-1.5 has-[~[data-slot=dialog-close]]:pe-8 [[data-slot=dialog-close]~&]:pe-8', props.class)"
   >
     <slot />
   </div>

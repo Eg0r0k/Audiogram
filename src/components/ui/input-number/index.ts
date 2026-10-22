@@ -63,19 +63,29 @@ export const inputNumberVariants = cva(
         horizontal: `
           grid-cols-[auto_minmax(0,1fr)_auto] [grid-template-areas:'decrement_input_increment']
           [--input-number-align:center]
-          has-[>[data-slot=input-number-decrement]]:*:data-[slot=input-number-input]:ps-1.5
-          has-[>[data-slot=input-number-increment]]:*:data-[slot=input-number-input]:pe-1.5
         `,
         vertical: `
           grid-cols-[minmax(0,1fr)_auto] grid-rows-2 [grid-template-areas:'input_increment'_'input_decrement']
           [--input-number-align:start]
-          has-[>:is([data-slot=input-number-increment],[data-slot=input-number-decrement])]:*:data-[slot=input-number-input]:pe-1.5
         `,
       },
     },
     defaultVariants: { variant: "outline", size: "md", orientation: "horizontal" },
   },
 );
+
+// The input tightens its padding on a side with a button. The buttons are its
+// siblings, so it reads them with ~ and a :has() on itself.
+export const inputNumberInputInset: Record<InputNumberOrientation, string> = {
+  horizontal: `
+    has-[~[data-slot=input-number-decrement]]:ps-1.5 [[data-slot=input-number-decrement]~&]:ps-1.5
+    has-[~[data-slot=input-number-increment]]:pe-1.5 [[data-slot=input-number-increment]~&]:pe-1.5
+  `,
+  vertical: `
+    has-[~:is([data-slot=input-number-increment],[data-slot=input-number-decrement])]:pe-1.5
+    [:is([data-slot=input-number-increment],[data-slot=input-number-decrement])~&]:pe-1.5
+  `,
+};
 
 export const inputNumberInput = `${textControlBase} ${textControlInnerText} h-full rounded-none px-(--control-padding) [grid-area:input] [text-align:var(--input-number-align,start)]`;
 

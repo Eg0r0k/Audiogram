@@ -3,7 +3,7 @@ import { type HTMLAttributes, useTemplateRef } from "vue";
 
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
-import { injectInputGroupContext } from ".";
+import { injectInputGroupContext, inputGroupControlInset } from ".";
 
 defineOptions({ inheritAttrs: false });
 
@@ -33,6 +33,7 @@ defineExpose({ resize: () => textarea.value?.resize() });
           aria-invalid:focus-visible:inset-ring-0
           user-invalid:focus-visible:inset-ring-0
         `,
+        inputGroupControlInset,
         props.class,
       )
     "

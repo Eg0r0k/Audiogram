@@ -158,10 +158,10 @@ export const inputFloatingLegendVariants = cva(
     duration-short-2 ease-standard
     motion-reduce:transition-none
     group-data-float/floating:max-w-full group-data-float/floating:px-1
-    group-has-[input:focus]/floating:max-w-full group-has-[input:focus]/floating:px-1
-    group-has-[input:not(:placeholder-shown)]/floating:max-w-full
-    group-has-[input:not(:placeholder-shown)]/floating:px-1
-    group-has-[input:autofill]/floating:max-w-full group-has-[input:autofill]/floating:px-1
+    [.peer:focus~fieldset_&]:max-w-full [.peer:focus~fieldset_&]:px-1
+    [.peer:not(:placeholder-shown)~fieldset_&]:max-w-full [.peer:not(:placeholder-shown)~fieldset_&]:px-1
+    [.peer:autofill~fieldset_&]:max-w-full [.peer:autofill~fieldset_&]:px-1
+    [.peer:-webkit-autofill~fieldset_&]:max-w-full [.peer:-webkit-autofill~fieldset_&]:px-1
   `,
 );
 
