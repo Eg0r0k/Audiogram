@@ -13,16 +13,14 @@
     :title="label"
     @click.stop="download"
   >
-    <BlurSwapTransition :state="activeJob ? 'loading' : 'idle'">
-      <Spinner
-        v-if="activeJob"
-        class="size-4.5"
-      />
-      <IconDownload
-        v-else
-        class="size-4.5"
-      />
-    </BlurSwapTransition>
+    <Spinner
+      v-if="activeJob"
+      class="size-4.5"
+    />
+    <IconDownload
+      v-else
+      class="size-4.5"
+    />
   </Button>
 </template>
 
@@ -31,7 +29,6 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useQuery } from "@tanstack/vue-query";
 import { Button } from "@/components/ui/button";
-import BlurSwapTransition from "@/components/transitions/BlurSwapTransition.vue";
 import type { SourceTrackDTO } from "@/modules/sources/types";
 import { localCopyQueries } from "@/queries/localCopy.queries";
 import { downloadDtoWithFeedback } from "../downloadFeedback";

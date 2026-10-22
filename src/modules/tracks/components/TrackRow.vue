@@ -52,32 +52,30 @@
           showOverlay ? 'opacity-100' : 'opacity-0',
         ]"
       >
-        <BlurSwapTransition :state="overlayState">
-          <Spinner
-            v-if="overlayState === 'loading'"
-            class="size-4 text-white drop-shadow-md"
-          />
+        <Spinner
+          v-if="overlayState === 'loading'"
+          class="size-4 text-white drop-shadow-md"
+        />
 
-          <span
-            v-else-if="overlayState === 'pulse'"
-            v-frame-grid
-            class="playing-pulse-dot"
-          >
-            <span />
-            <span />
-            <span />
-          </span>
+        <span
+          v-else-if="overlayState === 'pulse'"
+          v-frame-grid
+          class="playing-pulse-dot"
+        >
+          <span />
+          <span />
+          <span />
+        </span>
 
-          <IconPause
-            v-else-if="overlayState === 'pause'"
-            class="size-4 text-white drop-shadow-md"
-          />
+        <IconPause
+          v-else-if="overlayState === 'pause'"
+          class="size-4 text-white drop-shadow-md"
+        />
 
-          <IconPlay
-            v-else
-            class="size-4 text-white drop-shadow-md"
-          />
-        </BlurSwapTransition>
+        <IconPlay
+          v-else
+          class="size-4 text-white drop-shadow-md"
+        />
       </div>
     </div>
 
@@ -169,7 +167,6 @@ import IconPlay from "~icons/audiogram/play-rounded";
 import IconPause from "~icons/audiogram/pause-rounded";
 
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
-import BlurSwapTransition from "@/components/transitions/BlurSwapTransition.vue";
 import { formatDuration } from "@/lib/format/time";
 import { isEphemeralTrack, type PlayerTrack, type Track } from "@/modules/player/types";
 import type { TrackContext } from "@/modules/tracks/components/menu/type";
