@@ -67,6 +67,15 @@ export interface PlaybackEngine {
   dispose: () => Promise<void>;
 }
 
+/**
+ * How long the engine stays out of loading/playing/buffering before it
+ * suspends its AudioContext. A running context renders silence on a real-time
+ * audio thread; `Player.play()` resumes it before any output.
+ */
+export const IDLE_SUSPEND_MS = 10_000;
+
+const ACTIVE_STATES: ReadonlySet<PlayerState> = new Set(["loading", "playing", "buffering"]);
+
 const describeError = (err: unknown): string => {
   if (err instanceof Error) return `${err.name}: ${err.message}`;
   try {
@@ -100,7 +109,24 @@ export const createPlaybackEngine = (options: PlaybackEngineOptions): PlaybackEn
     if (!disposed) fn(...args);
   };
 
-  player.on("statechange", live(({ to }) => handlers.onStateChange(to)));
+  let idleTimer: ReturnType<typeof setTimeout> | null = null;
+  const cancelIdleSuspend = () => {
+    if (idleTimer !== null) clearTimeout(idleTimer);
+    idleTimer = null;
+  };
+  const scheduleIdleSuspend = () => {
+    cancelIdleSuspend();
+    idleTimer = setTimeout(() => {
+      idleTimer = null;
+      if (!disposed) player.freezeAudioContext().catch(() => {});
+    }, IDLE_SUSPEND_MS);
+  };
+
+  player.on("statechange", live(({ to }) => {
+    if (ACTIVE_STATES.has(to)) cancelIdleSuspend();
+    else scheduleIdleSuspend();
+    handlers.onStateChange(to);
+  }));
   player.on("pause", live(() => handlers.onPause()));
   player.on("ended", live(() => handlers.onEnded()));
   player.on("timeupdate", live(({ currentTime }) => handlers.onTimeUpdate(currentTime)));
@@ -161,6 +187,7 @@ export const createPlaybackEngine = (options: PlaybackEngineOptions): PlaybackEn
     unlockAudio: () => player.unlockAudio(),
     dispose: () => {
       disposed = true;
+      cancelIdleSuspend();
       return player.dispose();
     },
   };
