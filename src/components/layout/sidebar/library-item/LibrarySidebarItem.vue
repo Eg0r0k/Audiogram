@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, h, type FunctionalComponent } from "vue";
 import { useRouter } from "vue-router";
 import type { LibraryItem } from "@/modules/library/types";
 import { Item } from "@/components/ui/item";
@@ -35,6 +35,15 @@ const isMenuSelected = computed(() => isMenuOpenFor(props.item));
 const { subtitle, coverOwnerType, coverOwnerId, isCurrentPlaybackSource }
   = useLibraryItemView(() => props.item);
 
+// Only the collapsed sidebar shows a tooltip; a full row would mount a tooltip
+// root, trigger and popper anchor per item for nothing.
+const CompactTooltip: FunctionalComponent<{ enabled: boolean }> = (tooltip, { slots }) => (tooltip.enabled
+  ? h(Tooltip, null, () => [
+      h(TooltipTrigger, { asChild: true }, slots.default),
+      h(TooltipContent, { side: "right", sideOffset: 10 }, slots.content),
+    ])
+  : slots.default?.());
+
 const handleClick = () => {
   if (props.item.type === "folder") {
     emit("openFolder", props.item.id);
@@ -51,65 +60,59 @@ const handleClick = () => {
 </script>
 
 <template>
-  <Tooltip>
-    <TooltipTrigger as-child>
-      <div
-        v-ripple
-        class="group/row block rounded-sm focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none focus-visible:border-ring cursor-pointer"
-        :data-menu-open="isMenuSelected || undefined"
-        role="button"
-        :class="compact ? '' : 'mx-2'"
-        tabindex="0"
-        @click="handleClick"
-        @keydown.enter="handleClick"
-        @contextmenu="openMenu(item, $event)"
-      >
-        <Link
-          v-slot="{ isExactActive }"
-          :to="item.to"
-          inactive
-        >
-          <Item
-            class="min-w-0 py-2 transition-colors pointer-events-none"
-            :class="[
-              isExactActive && isPageRow
-                ? 'bg-primary text-primary-foreground group-hover/row:bg-primary/95 group-data-menu-open/row:bg-primary/95'
-                : 'group-hover/row:bg-accent/60 group-data-menu-open/row:bg-accent/60',
-              compact ? 'justify-center gap-0 px-2 mx-1' : 'gap-3 px-3',
-            ]"
-          >
-            <LibraryItemCover
-              :item="item"
-              :cover-owner-type="coverOwnerType"
-              :cover-owner-id="coverOwnerId"
-              :compact="compact"
-              :active="isExactActive && isPageRow"
-              :is-playback-source="isCurrentPlaybackSource"
-            />
-
-            <LibraryItemInfo
-              v-if="!compact"
-              :item="item"
-              :subtitle="subtitle"
-              :active="isExactActive && isPageRow"
-              :is-playback-source="isCurrentPlaybackSource"
-            />
-          </Item>
-        </Link>
-      </div>
-    </TooltipTrigger>
-
-    <TooltipContent
-      v-if="compact"
-      side="right"
-      :side-offset="10"
+  <CompactTooltip :enabled="!!compact">
+    <div
+      v-ripple
+      class="group/row block rounded-sm focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none focus-visible:border-ring cursor-pointer"
+      :data-menu-open="isMenuSelected || undefined"
+      role="button"
+      :class="compact ? '' : 'mx-2'"
+      tabindex="0"
+      @click="handleClick"
+      @keydown.enter="handleClick"
+      @contextmenu="openMenu(item, $event)"
     >
+      <Link
+        v-slot="{ isExactActive }"
+        :to="item.to"
+        inactive
+      >
+        <Item
+          class="min-w-0 py-2 transition-colors pointer-events-none"
+          :class="[
+            isExactActive && isPageRow
+              ? 'bg-primary text-primary-foreground group-hover/row:bg-primary/95 group-data-menu-open/row:bg-primary/95'
+              : 'group-hover/row:bg-accent/60 group-data-menu-open/row:bg-accent/60',
+            compact ? 'justify-center gap-0 px-2 mx-1' : 'gap-3 px-3',
+          ]"
+        >
+          <LibraryItemCover
+            :item="item"
+            :cover-owner-type="coverOwnerType"
+            :cover-owner-id="coverOwnerId"
+            :compact="compact"
+            :active="isExactActive && isPageRow"
+            :is-playback-source="isCurrentPlaybackSource"
+          />
+
+          <LibraryItemInfo
+            v-if="!compact"
+            :item="item"
+            :subtitle="subtitle"
+            :active="isExactActive && isPageRow"
+            :is-playback-source="isCurrentPlaybackSource"
+          />
+        </Item>
+      </Link>
+    </div>
+
+    <template #content>
       <p class="font-medium">
         {{ item.title }}
       </p>
       <p class="text-muted-foreground">
         {{ subtitle }}
       </p>
-    </TooltipContent>
-  </Tooltip>
+    </template>
+  </CompactTooltip>
 </template>

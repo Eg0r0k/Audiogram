@@ -21,7 +21,7 @@ const stubs = {
   NuxtImage: true,
   EntityCoverImage: true,
   TooltipProvider: slotStub,
-  Tooltip: slotStub,
+  Tooltip: { template: "<div data-tooltip-root><slot /></div>" },
   TooltipTrigger: slotStub,
   TooltipContent: true,
 };
@@ -190,5 +190,20 @@ describe("LibrarySidebarItem", () => {
     expect(item?.className).not.toMatch(/(^|s)hover:bg-/);
     expect(row.className).toContain("group/row");
     expect(item?.className).toContain("group-hover/row:bg-accent/60");
+  });
+
+  // Only the collapsed sidebar has a tooltip to show; a full row would mount a
+  // tooltip root, trigger and popper anchor per item for nothing.
+  it("mounts no tooltip for a full-width row", async () => {
+    const { container } = await renderItem(createItem());
+
+    expect(container.querySelector("[data-tooltip-root]")).toBeNull();
+    expect(screen.getByRole("button")).toBeTruthy();
+  });
+
+  it("keeps the tooltip on a collapsed row", async () => {
+    const { container } = await renderItem(createItem(), true);
+
+    expect(container.querySelector("[data-tooltip-root]")).not.toBeNull();
   });
 });
