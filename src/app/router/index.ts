@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { titleMiddleware } from "@/app/router/middleware/title.middleware";
+import { closeDialogsOnLeave } from "@/app/router/middleware/close-dialogs.middleware";
 import { routes } from "./routes/index";
 const router = createRouter({
   history: createWebHistory("/"),
@@ -19,5 +20,6 @@ const router = createRouter({
 
 });
 router.beforeEach(titleMiddleware);
+router.afterEach(closeDialogsOnLeave);
 
 export default router;
