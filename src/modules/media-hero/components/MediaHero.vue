@@ -120,6 +120,7 @@ import { toaster } from "@/app/toaster";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { useImageColor } from "@/composables/useImageColor";
 import { platformCaps } from "@/lib/environment/platformCaps";
+import { coverGradient, placeholderCoverUrl } from "@/modules/covers/lib/placeholder";
 import { sourceKindOf } from "@/modules/sources/lib/display";
 import {
   enqueueCollectionDownload,
@@ -178,11 +179,11 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const { isMobileLayout } = useDeviceLayout();
 
-const fallbackSrc = computed(() => {
-  return isArtist(props.data)
-    ? "/img/artist-fallback.svg"
-    : "/img/fallback.svg";
-});
+const placeholderId = computed(() => (isLiked(props.data) ? null : props.data.id));
+
+const fallbackSrc = computed(() =>
+  (isLiked(props.data) ? "/img/fallback.svg" : placeholderCoverUrl(props.data.type, props.data.id)),
+);
 
 /**
  * Edit/delete need a Dexie row behind the hero. Live catalog pages (ND
@@ -249,20 +250,21 @@ provideMediaContext({
   },
 });
 
-const { color, extractColor, resetColor } = useImageColor();
+const { color, extractColor, resetColor, setColorFromHex } = useImageColor();
 const heroColor = computed(() => color.value.palette?.vivid ?? color.value.hex);
 const colorReady = ref(false);
 
 watch(
-  () => props.data.image,
-  async (newImage, oldImage) => {
-    if (newImage === oldImage) return;
-
+  [() => props.data.image, placeholderId],
+  async ([image, id]) => {
     colorReady.value = false;
     await nextTick();
 
-    if (newImage) {
-      await extractColor(newImage);
+    if (image) {
+      await extractColor(image);
+    }
+    else if (id) {
+      setColorFromHex(coverGradient(id).bottom);
     }
     else {
       resetColor();

@@ -1,9 +1,9 @@
 <template>
   <NuxtImage
     :src="src"
-    :fallback-src="fallbackSrc"
+    :fallback-src="placeholderSrc"
     :alt="alt"
-    :class="imageClass"
+    :class="[imageClass, isPending && 'bg-muted']"
     :placeholder="placeholder"
   />
 </template>
@@ -12,6 +12,7 @@
 import { computed } from "vue";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
+import { placeholderCoverUrl } from "@/modules/covers/lib/placeholder";
 import type { CoverOwnerType } from "@/db/entities";
 
 const props = withDefaults(defineProps<{
@@ -24,20 +25,27 @@ const props = withDefaults(defineProps<{
 }>(), {
   ownerType: null,
   ownerId: null,
+  fallbackSrc: undefined,
   imageClass: "",
   placeholder: false,
 });
 
-const { url } = useEntityCover(
+// An empty src would paint the alt text; this keeps the box blank instead.
+const BLANK_PIXEL = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+const { url, isLoading } = useEntityCover(
   computed(() => props.ownerType),
   computed(() => props.ownerId),
 );
 
-const resolvedFallbackSrc = computed(() => {
-  if (props.fallbackSrc) return props.fallbackSrc;
-  if (props.ownerType === "artist") return "/img/artist-fallback.svg";
-  return "/img/fallback.svg";
-});
+const placeholderSrc = computed(() => placeholderCoverUrl(props.ownerType, props.ownerId));
 
-const src = computed(() => url.value ?? resolvedFallbackSrc.value);
+// The placeholder waits for the lookup: shown earlier, it flashes before a real cover.
+const isPending = computed(() => !url.value && !props.fallbackSrc && isLoading.value);
+
+const src = computed(() => {
+  if (url.value) return url.value;
+  if (props.fallbackSrc) return props.fallbackSrc;
+  return isPending.value ? BLANK_PIXEL : placeholderSrc.value;
+});
 </script>

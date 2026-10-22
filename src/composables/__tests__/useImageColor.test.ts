@@ -154,3 +154,31 @@ describe("useImageColor", () => {
     expect(color.value.hex).toBe(RED_HEX);
   });
 });
+
+describe("setColorFromHex", () => {
+  it("gives what extraction gives for a cover of that solid colour", async () => {
+    analyzeWithCanvas.mockResolvedValue(solid(argbFromHex("#28C9B7")));
+    const extracted = await getColorFromImage("blob:cover");
+    const { color, setColorFromHex } = useImageColor();
+
+    setColorFromHex("#28C9B7");
+
+    expect(color.value).toEqual(extracted);
+  });
+
+  it("wins over an extraction still in flight", async () => {
+    let settle: (pixels: number[] | null) => void = () => {};
+    analyzeWithCanvas.mockImplementation(() => new Promise<number[] | null>((resolve) => {
+      settle = resolve;
+    }));
+    const { color, extractColor, setColorFromHex } = useImageColor();
+
+    const pending = extractColor("blob:old");
+    setColorFromHex("#28C9B7");
+    const placeholder = color.value;
+    settle(solid(BLUE));
+    await pending;
+
+    expect(color.value).toBe(placeholder);
+  });
+});

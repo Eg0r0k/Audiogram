@@ -1,4 +1,4 @@
-import { hexFromArgb } from "@material/material-color-utilities";
+import { argbFromHex, hexFromArgb } from "@material/material-color-utilities";
 import { analyzeWithCanvas } from "@/lib/color/canvas-analyzer";
 import { hexToRgb, rgbToHsl } from "@/lib/color/color";
 import { extractSeeds, paletteFromSeed } from "@/lib/color/material-palette";
@@ -36,6 +36,21 @@ function buildColorResult(hex: string): ColorResult {
   };
 }
 
+const colorFromSeeds = (seeds: number[]): ColorResult => {
+  const palette = paletteFromSeed(seeds[0]);
+  return {
+    ...buildColorResult(hexFromArgb(palette.background)),
+    seeds: seeds.map(hexFromArgb),
+    palette: {
+      accent: hexFromArgb(palette.accent),
+      onAccent: hexFromArgb(palette.onAccent),
+      text: hexFromArgb(palette.text),
+      textMuted: hexFromArgb(palette.textMuted),
+      vivid: hexFromArgb(palette.vivid),
+    },
+  };
+};
+
 export async function getColorFromImage(
   imageUrl: string,
   options: UseImageColorOptions = {},
@@ -44,20 +59,7 @@ export async function getColorFromImage(
 
   const pixels = await analyzeWithCanvas(imageUrl);
   const seeds = pixels ? extractSeeds(pixels) : [];
-  if (seeds.length > 0) {
-    const palette = paletteFromSeed(seeds[0]);
-    return {
-      ...buildColorResult(hexFromArgb(palette.background)),
-      seeds: seeds.map(hexFromArgb),
-      palette: {
-        accent: hexFromArgb(palette.accent),
-        onAccent: hexFromArgb(palette.onAccent),
-        text: hexFromArgb(palette.text),
-        textMuted: hexFromArgb(palette.textMuted),
-        vivid: hexFromArgb(palette.vivid),
-      },
-    };
-  }
+  if (seeds.length > 0) return colorFromSeeds(seeds);
 
   if (!pixels) {
     console.warn("[useImageColor] Extraction failed, using fallback:", opts.fallback);
@@ -109,11 +111,19 @@ export function useImageColor(initialOptions: UseImageColorOptions = {}) {
     error.value = null;
   };
 
+  /** The colour a cover of this solid colour would give, without drawing anything. */
+  const setColorFromHex = (hex: string) => {
+    requestId++;
+    color.value = colorFromSeeds([argbFromHex(hex)]);
+    error.value = null;
+  };
+
   return {
     color,
     isLoading,
     error,
     extractColor,
     resetColor,
+    setColorFromHex,
   };
 }

@@ -25,6 +25,7 @@ export const ROUTE_NAMES = {
   YOUTUBE_ALBUM: "youtube-album",
   YOUTUBE_ARTIST: "youtube-artist",
   DEV_RECO_STAND: "dev-reco-stand",
+  DEV_MASCOT_STAND: "dev-mascot-stand",
 } as const;
 
 export type AppRouteName = (typeof ROUTE_NAMES)[keyof typeof ROUTE_NAMES];
