@@ -120,6 +120,7 @@ import { toaster } from "@/app/toaster";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { useImageColor } from "@/composables/useImageColor";
 import { platformCaps } from "@/lib/environment/platformCaps";
+import { coverGradient, placeholderCoverUrl } from "@/modules/covers/lib/placeholder";
 import { sourceKindOf } from "@/modules/sources/lib/display";
 import {
   enqueueCollectionDownload,
@@ -178,11 +179,11 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const { isMobileLayout } = useDeviceLayout();
 
-const fallbackSrc = computed(() => {
-  return isArtist(props.data)
-    ? "/img/artist-fallback.svg"
-    : "/img/fallback.svg";
-});
+const placeholderId = computed(() => (isLiked(props.data) ? null : props.data.id));
+
+const fallbackSrc = computed(() =>
+  (isLiked(props.data) ? "/img/fallback.svg" : placeholderCoverUrl(props.data.type, props.data.id)),
+);
 
 /**
  * Edit/delete need a Dexie row behind the hero. Live catalog pages (ND
@@ -249,20 +250,21 @@ provideMediaContext({
   },
 });
 
-const { color, extractColor, resetColor } = useImageColor();
+const { color, extractColor, resetColor, setColorFromHex } = useImageColor();
 const heroColor = computed(() => color.value.palette?.vivid ?? color.value.hex);
 const colorReady = ref(false);
 
 watch(
-  () => props.data.image,
-  async (newImage, oldImage) => {
-    if (newImage === oldImage) return;
-
+  [() => props.data.image, placeholderId],
+  async ([image, id]) => {
     colorReady.value = false;
     await nextTick();
 
-    if (newImage) {
-      await extractColor(newImage);
+    if (image) {
+      await extractColor(image);
+    }
+    else if (id) {
+      setColorFromHex(coverGradient(id).bottom);
     }
     else {
       resetColor();
@@ -348,19 +350,25 @@ const actionBindings = computed(() => ({
 </script>
 
 <style>
-/* The cover colour settles into the card behind the page without an edge.
-   Light theme holds it under the white text and fades only below the
-   actions (the phone hero has no padding under them, so its fade is
-   shorter); on the dark card the fade runs the whole height (smoothstep). */
+/* The cover colour settles into the card behind the page without an edge,
+   on a smoothstep curve. Light theme holds it under the white text and
+   fades across the actions row, which is why its icons use the foreground
+   colour; the length keeps the meta line on full colour. On the dark card
+   the fade runs the whole height. */
 .media-hero-gradient {
-  --hero-fade-length: 4.5rem;
+  --hero-fade-length: 7rem;
   --hero-fade: linear-gradient(
     to bottom,
     rgb(0 0 0) calc(100% - var(--hero-fade-length)),
-    rgb(0 0 0 / 0.9) calc(100% - var(--hero-fade-length) * 0.78),
-    rgb(0 0 0 / 0.65) calc(100% - var(--hero-fade-length) * 0.56),
-    rgb(0 0 0 / 0.35) calc(100% - var(--hero-fade-length) * 0.33),
-    rgb(0 0 0 / 0.1) calc(100% - var(--hero-fade-length) * 0.11),
+    rgb(0 0 0 / 0.97) calc(100% - var(--hero-fade-length) * 0.9),
+    rgb(0 0 0 / 0.9) calc(100% - var(--hero-fade-length) * 0.8),
+    rgb(0 0 0 / 0.78) calc(100% - var(--hero-fade-length) * 0.7),
+    rgb(0 0 0 / 0.65) calc(100% - var(--hero-fade-length) * 0.6),
+    rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade-length) * 0.5),
+    rgb(0 0 0 / 0.35) calc(100% - var(--hero-fade-length) * 0.4),
+    rgb(0 0 0 / 0.22) calc(100% - var(--hero-fade-length) * 0.3),
+    rgb(0 0 0 / 0.1) calc(100% - var(--hero-fade-length) * 0.2),
+    rgb(0 0 0 / 0.03) calc(100% - var(--hero-fade-length) * 0.1),
     transparent 100%
   );
   -webkit-mask-image: var(--hero-fade);
@@ -368,7 +376,7 @@ const actionBindings = computed(() => ({
 }
 
 .media-hero-gradient[data-phone] {
-  --hero-fade-length: 1.5rem;
+  --hero-fade-length: 4rem;
 }
 
 .dark .media-hero-gradient {

@@ -11,4 +11,13 @@ export const devRoutes: RouteRecordRaw[] = [
       depth: 2,
     },
   },
+  {
+    path: "/dev/mascot",
+    name: ROUTE_NAMES.DEV_MASCOT_STAND,
+    component: () => import("@/pages/dev/MascotStandPage.vue"),
+    meta: {
+      title: "Маскоты-заглушки",
+      depth: 2,
+    },
+  },
 ];

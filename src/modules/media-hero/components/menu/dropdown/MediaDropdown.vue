@@ -2,7 +2,7 @@
   <ResponsiveMenu>
     <ResponsiveMenuTrigger>
       <Button
-        class="rounded-full text-white"
+        class="rounded-full text-foreground"
         size="icon-lg"
         variant="ghost"
         color="muted"

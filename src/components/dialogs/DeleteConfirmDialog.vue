@@ -13,21 +13,12 @@
         class="size-16 shrink-0 overflow-hidden bg-muted"
         :class="coverShapeClass"
       >
-        <img
-          v-if="coverUrl"
-          :src="coverUrl"
+        <EntityCoverImage
+          :owner-type="data.type"
+          :owner-id="data.id"
           :alt="data.name"
-          class="size-full object-cover"
-        >
-        <div
-          v-else
-          class="flex size-full items-center justify-center"
-        >
-          <component
-            :is="fallbackIcon"
-            class="size-6 text-muted-foreground"
-          />
-        </div>
+          image-class="size-full object-cover"
+        />
       </div>
 
       <div class="min-w-0 flex-1 overflow-hidden">
@@ -85,11 +76,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import type { DeleteConfirmData, DeleteConfirmResult } from "@/components/dialogs/deleteConfirm";
-import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
-
-import IconPlaylist from "~icons/tabler/playlist";
-import IconDisc from "~icons/tabler/disc";
-import IconUser from "~icons/tabler/user";
+import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";
 
 const props = defineProps<{
   data: DeleteConfirmData;
@@ -104,11 +91,6 @@ watch(() => props.data.defaultDeleteTracks, (value) => {
 }, { immediate: true });
 
 const canDeleteTracks = computed(() => props.data.trackCount > 0 && !props.data.atSource);
-
-const { url: coverUrl } = useEntityCover(
-  () => props.data.type,
-  () => props.data.id,
-);
 
 const dialogTitle = computed(() => {
   const name = props.data.name;
@@ -135,16 +117,4 @@ const dialogDescription = computed(() => {
 const coverShapeClass = computed(() =>
   props.data.type === "artist" ? "rounded-full" : "rounded-lg",
 );
-
-const fallbackIcon = computed(() => {
-  switch (props.data.type) {
-    case "album":
-      return IconDisc;
-    case "artist":
-      return IconUser;
-    case "playlist":
-    default:
-      return IconPlaylist;
-  }
-});
 </script>

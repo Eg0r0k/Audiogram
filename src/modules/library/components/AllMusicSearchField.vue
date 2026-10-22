@@ -2,7 +2,7 @@
   <InputGroup
     variant="soft"
     size="lg"
-    class="min-w-0 rounded-full bg-background!"
+    class="min-w-0 rounded-full bg-canvas!"
   >
     <InputGroupAddon tabindex="-1">
       <IconSearch class="mr-1 size-5 text-muted-foreground" />

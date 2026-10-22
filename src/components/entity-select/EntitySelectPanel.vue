@@ -16,7 +16,7 @@
       <InputGroup
         variant="soft"
         size="lg"
-        class="flex-1 rounded-full"
+        class="flex-1 rounded-full bg-canvas!"
       >
         <InputGroupAddon tabindex="-1">
           <IconSearch class="ml-1 size-5 text-muted-foreground" />

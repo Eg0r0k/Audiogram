@@ -36,7 +36,7 @@
               >
                 <NuxtImage
                   v-slot="{ imgAttrs, isLoaded, src }"
-                  :src="coverUrl"
+                  :src="panelCoverUrl"
                   fallback-src="/img/fallback.svg"
                   custom
                 >
@@ -63,7 +63,7 @@
                 >
                   <NuxtImage
                     v-slot="{ imgAttrs, isLoaded, src }"
-                    :src="coverUrl"
+                    :src="panelCoverUrl"
                     fallback-src="/img/fallback.svg"
                     class="
               h-auto
@@ -240,6 +240,7 @@ import { Button } from "@/components/ui/button";
 import { getLogger } from "@/lib/logger";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
+import { mascotCoverUrl } from "@/modules/covers/lib/placeholder";
 import { useCurrentTrackCover } from "@/modules/player/composables/useCurrentTrackCover";
 import type { Track } from "@/modules/player/types";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
@@ -291,6 +292,9 @@ function onCoverContextMenu(event: MouseEvent): void {
 }
 
 const { track: currentTrack, libraryTrack, coverUrl } = useCurrentTrackCover();
+
+// Recomputes only when the track changes, so every stretch of silence gets a new random mascot.
+const panelCoverUrl = computed(() => (currentTrack.value ? coverUrl.value : mascotCoverUrl(crypto.randomUUID())));
 
 const artistsList = computed(() => {
   const artistValue = currentTrack.value?.artist;
