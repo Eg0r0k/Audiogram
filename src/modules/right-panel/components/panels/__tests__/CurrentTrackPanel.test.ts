@@ -2,10 +2,12 @@
 import userEvent from "@testing-library/user-event";
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { nextTick } from "vue";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { PlayerTrack, Track } from "@/modules/player/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
+import { mascotCoverUrl } from "@/modules/covers/lib/placeholder";
 import CurrentTrackPanel from "../CurrentTrackPanel.vue";
 
 const importCurrentMock = vi.hoisted(() => vi.fn());
@@ -127,5 +129,31 @@ describe("CurrentTrackPanel cover colour", () => {
     expect(block!.className).toContain("transition-[background-color]");
     expect(block!.className).toContain("duration-900");
     expect(block!.className).toContain("motion-reduce:transition-none");
+  });
+});
+
+describe("CurrentTrackPanel idle cover", () => {
+  beforeEach(() => {
+    i18n.global.locale.value = "en";
+  });
+
+  const coverSrc = (container: Element) => container.querySelector("nuxt-image-stub")?.getAttribute("src");
+
+  it("shows a different mascot every time nothing is playing", async () => {
+    vi.spyOn(crypto, "randomUUID")
+      .mockReturnValueOnce("idle-a-0000-0000-0000-000000000000")
+      .mockReturnValueOnce("idle-b-0000-0000-0000-000000000000");
+    const { container } = renderPanel(null);
+    const playerStore = usePlayerStore();
+
+    expect(coverSrc(container)).toBe(mascotCoverUrl("idle-a-0000-0000-0000-000000000000"));
+
+    playerStore.currentTrack = libraryTrack();
+    await nextTick();
+    expect(coverSrc(container)).toBe("/img/fallback.svg");
+
+    playerStore.currentTrack = null;
+    await nextTick();
+    expect(coverSrc(container)).toBe(mascotCoverUrl("idle-b-0000-0000-0000-000000000000"));
   });
 });
