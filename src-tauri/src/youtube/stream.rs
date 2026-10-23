@@ -115,16 +115,19 @@ const MAX_STREAM_URL_LEN: usize = 16 * 1024;
 
 /// Only googlevideo over https is ever forwarded: the route would otherwise
 /// be an open proxy for whatever the webview registers.
-fn validate_stream_url(url: &str) -> Result<String, String> {
+fn validate_stream_url(url: &str) -> Result<String, YtError> {
     if url.len() > MAX_STREAM_URL_LEN {
-        return Err("stream url too long".into());
+        return Err(YtError::invalid_input("stream url too long"));
     }
-    let parsed = tauri::Url::parse(url).map_err(|_| "stream url is not a url".to_string())?;
+    let parsed =
+        tauri::Url::parse(url).map_err(|_| YtError::invalid_input("stream url is not a url"))?;
     let host = parsed.host_str().unwrap_or_default();
     if parsed.scheme() != "https"
         || !(host == "googlevideo.com" || host.ends_with(".googlevideo.com"))
     {
-        return Err("stream url must be an https googlevideo url".into());
+        return Err(YtError::invalid_input(
+            "stream url must be an https googlevideo url",
+        ));
     }
     Ok(url.to_owned())
 }
@@ -166,8 +169,8 @@ pub fn yt_register_stream<R: Runtime>(
     headers: Vec<(String, String)>,
     expires_at: Option<u64>,
 ) -> Result<(), AppError> {
-    let id = validate_id(&id).map_err(YtError::invalid_input)?;
-    let url = validate_stream_url(&url).map_err(YtError::invalid_input)?;
+    let id = validate_id(&id)?;
+    let url = validate_stream_url(&url)?;
     let entry = StreamEntry {
         url,
         headers: forwardable_headers(headers),
@@ -195,7 +198,7 @@ fn not_registered() -> YtError {
 /// still plays; the entry must have been registered.
 #[tauri::command]
 pub async fn yt_prefetch<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), AppError> {
-    let id = validate_id(&id).map_err(YtError::invalid_input)?;
+    let id = validate_id(&id)?;
     if app.state::<YtAudioCache>().contains(&id) {
         return Ok(());
     }
@@ -216,9 +219,7 @@ pub async fn yt_prefetch<R: Runtime>(app: AppHandle<R>, id: String) -> Result<()
     log::debug!("yt_prefetch {id}: {} bytes", bytes.len());
 
     if !app.state::<YtAudioCache>().insert(id, content_type, bytes) {
-        return Err(
-            YtError::from("prefetch skipped: track exceeds the cache cap".to_owned()).into(),
-        );
+        return Err(YtError::unknown("prefetch skipped: track exceeds the cache cap").into());
     }
     Ok(())
 }

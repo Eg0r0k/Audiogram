@@ -160,6 +160,36 @@ async fn import_local_file(
     .await?
 }
 
+macro_rules! commands {
+    ($($extra:path),* $(,)?) => {
+        tauri::generate_handler![
+            app_data_folder_size,
+            import_local_file,
+            media_server::media_server_base,
+            media_server::image_server_base,
+            proxy::set_proxy,
+            proxy::proxy_check,
+            nd::nd_set_config,
+            nd::nd_prefetch,
+            nd::nd_download,
+            nd::nd_download_cancel,
+            ym::ym_auth_status,
+            ym::ym_auth_start,
+            ym::ym_auth_cancel,
+            ym::ym_auth_logout,
+            ym::ym_request,
+            ym::ym_prefetch,
+            ym::ym_download,
+            ym::ym_download_cancel,
+            youtube::yt_register_stream,
+            youtube::yt_prefetch,
+            youtube::yt_download,
+            youtube::yt_download_cancel,
+            $($extra),*
+        ]
+    };
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Bound BEFORE any webview exists so the frontend can never observe a
@@ -242,62 +272,17 @@ pub fn run() {
         );
 
     #[cfg(desktop)]
-    let builder = builder.invoke_handler(tauri::generate_handler![
-        app_data_folder_size,
-        import_local_file,
-        media_server::media_server_base,
-        media_server::image_server_base,
+    let builder = builder.invoke_handler(commands![
         discord::discord_set_activity,
         discord::discord_clear_activity,
         thumbbar::thumbbar_set_state,
         launch_context,
         updater::check_update,
         updater::install_update,
-        youtube::yt_register_stream,
-        youtube::yt_prefetch,
-        youtube::yt_download,
-        youtube::yt_download_cancel,
-        proxy::set_proxy,
-        proxy::proxy_check,
-        nd::nd_set_config,
-        nd::nd_prefetch,
-        nd::nd_download,
-        nd::nd_download_cancel,
-        ym::ym_auth_status,
-        ym::ym_auth_start,
-        ym::ym_auth_cancel,
-        ym::ym_auth_logout,
-        ym::ym_request,
-        ym::ym_prefetch,
-        ym::ym_download,
-        ym::ym_download_cancel,
     ]);
 
     #[cfg(mobile)]
-    let builder = builder.invoke_handler(tauri::generate_handler![
-        app_data_folder_size,
-        import_local_file,
-        media_server::media_server_base,
-        media_server::image_server_base,
-        proxy::set_proxy,
-        proxy::proxy_check,
-        nd::nd_set_config,
-        nd::nd_prefetch,
-        nd::nd_download,
-        nd::nd_download_cancel,
-        ym::ym_auth_status,
-        ym::ym_auth_start,
-        ym::ym_auth_cancel,
-        ym::ym_auth_logout,
-        ym::ym_request,
-        ym::ym_prefetch,
-        ym::ym_download,
-        ym::ym_download_cancel,
-        youtube::yt_register_stream,
-        youtube::yt_prefetch,
-        youtube::yt_download,
-        youtube::yt_download_cancel,
-    ]);
+    let builder = builder.invoke_handler(commands![]);
 
     builder
         .setup(move |app| {

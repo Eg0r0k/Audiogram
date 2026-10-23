@@ -14,6 +14,16 @@ pub struct DiscordPresence {
     client: Option<DiscordIpcClient>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum DiscordError {
+    #[error("Discord Client ID is not configured")]
+    NotConfigured,
+    #[error("{0}")]
+    Ipc(String),
+    #[error("poisoned lock: another task failed inside")]
+    Poisoned,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DiscordActivityPayload {
@@ -34,7 +44,7 @@ pub async fn discord_set_activity(
     tauri::async_runtime::spawn_blocking(move || {
         presence
             .lock()
-            .map_err(|e| e.to_string())?
+            .map_err(|_| DiscordError::Poisoned)?
             .set_activity(payload)
     })
     .await?
@@ -47,18 +57,24 @@ pub async fn discord_clear_activity(
 ) -> Result<(), AppError> {
     let presence = Arc::clone(state.inner());
     tauri::async_runtime::spawn_blocking(move || {
-        presence.lock().map_err(|e| e.to_string())?.clear_activity();
-        Ok::<(), String>(())
+        presence
+            .lock()
+            .map_err(|_| DiscordError::Poisoned)?
+            .clear_activity();
+        Ok::<(), DiscordError>(())
     })
     .await?
     .map_err(AppError::from)
 }
 
 impl DiscordPresence {
-    fn set_activity(&mut self, payload: DiscordActivityPayload) -> Result<(), String> {
+    pub(crate) fn set_activity(
+        &mut self,
+        payload: DiscordActivityPayload,
+    ) -> Result<(), DiscordError> {
         let client_id = payload.client_id.trim().to_owned();
         if client_id.is_empty() {
-            return Err("Discord Client ID is not configured".into());
+            return Err(DiscordError::NotConfigured);
         }
 
         let activity = build_activity(payload);
@@ -67,8 +83,12 @@ impl DiscordPresence {
         match client.set_activity(activity.clone()) {
             Ok(()) => Ok(()),
             Err(_) => {
-                client.reconnect().map_err(|e| e.to_string())?;
-                client.set_activity(activity).map_err(|e| e.to_string())
+                client
+                    .reconnect()
+                    .map_err(|e| DiscordError::Ipc(e.to_string()))?;
+                client
+                    .set_activity(activity)
+                    .map_err(|e| DiscordError::Ipc(e.to_string()))
             }
         }
     }
@@ -87,7 +107,7 @@ impl DiscordPresence {
         }
     }
 
-    fn ensure_client(&mut self, client_id: &str) -> Result<&mut DiscordIpcClient, String> {
+    fn ensure_client(&mut self, client_id: &str) -> Result<&mut DiscordIpcClient, DiscordError> {
         let should_recreate = self.client.is_none() || self.client_id.as_deref() != Some(client_id);
 
         if should_recreate {
@@ -96,7 +116,9 @@ impl DiscordPresence {
             }
 
             let mut client = DiscordIpcClient::new(client_id);
-            client.connect().map_err(|e| e.to_string())?;
+            client
+                .connect()
+                .map_err(|e| DiscordError::Ipc(e.to_string()))?;
 
             self.client = Some(client);
             self.client_id = Some(client_id.to_owned());
@@ -104,6 +126,6 @@ impl DiscordPresence {
 
         self.client
             .as_mut()
-            .ok_or_else(|| "Discord IPC client is not initialized".into())
+            .ok_or_else(|| DiscordError::Ipc("Discord IPC client is not initialized".into()))
     }
 }

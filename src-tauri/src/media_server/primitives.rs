@@ -218,9 +218,21 @@ pub(crate) fn memory_range_response(
 
 /// Why an image could not be passed through: the request itself, or an
 /// upstream that answered with something other than 200.
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum ImageError {
+    #[error("{0}")]
     Request(String),
+    #[error("upstream status {0}")]
     Status(u16),
+}
+
+/// Why [`forward_stream`] produced no response. Never carries the URL.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum ForwardError {
+    #[error("request failed: {0}")]
+    Request(String),
+    #[error("{0}")]
+    Response(#[from] http::Error),
 }
 
 /// Whole-request deadline on top of the shared client's connect and read
@@ -318,7 +330,7 @@ pub(crate) async fn forward_stream(
     range: Option<String>,
     max_span: Option<u64>,
     origin: Option<&str>,
-) -> Result<http::Response<Body>, String> {
+) -> Result<http::Response<Body>, ForwardError> {
     use futures_util::TryStreamExt;
 
     let range = match max_span {
@@ -337,7 +349,7 @@ pub(crate) async fn forward_stream(
     let resp = req
         .send()
         .await
-        .map_err(|e| format!("request failed: {}", e.without_url()))?;
+        .map_err(|e| ForwardError::Request(e.without_url().to_string()))?;
     let status = resp.status().as_u16();
     let upstream_headers = resp.headers().clone();
 
@@ -360,9 +372,7 @@ pub(crate) async fn forward_stream(
         .bytes_stream()
         .map_err(|e| std::io::Error::other(e.without_url().to_string()))
         .map_ok(hyper::body::Frame::data);
-    builder
-        .body(StreamBody::new(stream).boxed())
-        .map_err(|e| e.to_string())
+    Ok(builder.body(StreamBody::new(stream).boxed())?)
 }
 
 #[cfg(test)]

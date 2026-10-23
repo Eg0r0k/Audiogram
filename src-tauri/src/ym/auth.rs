@@ -352,8 +352,8 @@ pub async fn fetch_account(
 /// The stored session, restored from disk on the first call. No network:
 /// the frontend's own connection check is what proves the token still works.
 #[tauri::command]
-pub fn ym_auth_status<R: Runtime>(app: AppHandle<R>) -> YmAuthStatus {
-    load_session_if_needed(&app);
+pub async fn ym_auth_status<R: Runtime>(app: AppHandle<R>) -> YmAuthStatus {
+    load_session_if_needed(&app).await;
     app.state::<YmState>().session().into()
 }
 
@@ -363,7 +363,7 @@ pub fn ym_auth_status<R: Runtime>(app: AppHandle<R>) -> YmAuthStatus {
 #[tauri::command]
 pub async fn ym_auth_start<R: Runtime>(app: AppHandle<R>) -> Result<YmDeviceCode, AppError> {
     let client = crate::proxy::http_client(&app)?;
-    let device_id = load_or_create_device_id(&device_file(&app)?);
+    let device_id = load_or_create_device_id(&device_file(&app)?).await;
     let oauth_base = app.state::<YmState>().endpoints.oauth.clone();
     let (device_code, code) =
         request_device_code(&client, &oauth_base, &device_id, device_name()).await?;
@@ -417,11 +417,11 @@ async fn complete_sign_in<R: Runtime>(
         token.refresh_token.as_deref(),
         expires_at_from(token.expires_in),
     );
-    if let Err(e) =
-        auth_file(app).and_then(|path| write_auth_file(&path, &StoredAuth::from_session(&session)))
-    {
+    if let Err(e) = store_session(app, &session).await {
         log::warn!("ym: storing the session failed: {e}");
     }
+    // A stored session still loading must not land on top of this one.
+    load_session_if_needed(app).await;
     state.set_session(Some(session));
     log::info!(
         "ym: signed in as uid {} (plus: {})",
@@ -444,30 +444,36 @@ pub fn ym_auth_cancel<R: Runtime>(app: AppHandle<R>) {
 /// Forgets the session here and on disk. Nothing is revoked at Yandex — the
 /// device stays in the account's list until removed there.
 #[tauri::command]
-pub fn ym_auth_logout<R: Runtime>(app: AppHandle<R>) -> Result<(), AppError> {
+pub async fn ym_auth_logout<R: Runtime>(app: AppHandle<R>) -> Result<(), AppError> {
+    // A stored session still loading must not come back after this.
+    load_session_if_needed(&app).await;
     let state = app.state::<YmState>();
     state.cancel_poll();
     state.set_session(None);
-    remove_auth_file(&auth_file(&app)?);
+    remove_auth_file(&auth_file(&app)?).await;
     log::info!("ym: signed out");
     Ok(())
 }
 
+async fn store_session<R: Runtime>(app: &AppHandle<R>, session: &YmSession) -> tauri::Result<()> {
+    let path = auth_file(app)?;
+    write_auth_file(&path, &StoredAuth::from_session(session))
+        .await
+        .map_err(tauri::Error::Io)
+}
+
 /// Persists a refreshed session (the token endpoint rotated the tokens).
-pub fn persist_session<R: Runtime>(app: &AppHandle<R>, session: &YmSession) {
-    if let Err(e) =
-        auth_file(app).and_then(|path| write_auth_file(&path, &StoredAuth::from_session(session)))
-    {
+pub async fn persist_session<R: Runtime>(app: &AppHandle<R>, session: &YmSession) {
+    if let Err(e) = store_session(app, session).await {
         log::warn!("ym: storing the refreshed session failed: {e}");
     }
 }
 
 /// The session stopped working: drop it everywhere and tell the frontend.
-pub fn drop_session<R: Runtime>(app: &AppHandle<R>) {
-    let state = app.state::<YmState>();
-    state.set_session(None);
+pub async fn drop_session<R: Runtime>(app: &AppHandle<R>) {
+    app.state::<YmState>().set_session(None);
     if let Ok(path) = auth_file(app) {
-        remove_auth_file(&path);
+        remove_auth_file(&path).await;
     }
     log::info!("ym: session expired, signed out");
     emit_auth(app, &YmAuthEvent::Expired);

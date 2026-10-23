@@ -9,6 +9,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use super::auth::{drop_session, expires_at_from, persist_session, refresh_access_token};
 use super::state::{YmSession, YmState, CLIENT_HEADER_NAME, CLIENT_HEADER_VALUE};
 use crate::app_error::AppError;
+use crate::proxy::ProxyError;
 use crate::remote_download::DownloadError;
 
 /// Failure class; maps one-to-one onto the envelope's `SourceErrorKind`.
@@ -25,10 +26,12 @@ pub enum YmErrorKind {
     Unavailable,
     /// A download the user cancelled — the manager drops the job on this.
     Cancelled,
+    InvalidInput,
     Unknown,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("{message}")]
 pub struct YmError {
     pub kind: YmErrorKind,
     pub message: String,
@@ -89,16 +92,9 @@ impl YmErrorKind {
     }
 }
 
-impl std::fmt::Display for YmError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-/// Helper errors (proxy config, paths) arrive as strings.
-impl From<String> for YmError {
-    fn from(message: String) -> Self {
-        Self::unknown(message)
+impl From<ProxyError> for YmError {
+    fn from(error: ProxyError) -> Self {
+        Self::unknown(error.to_string())
     }
 }
 
@@ -291,8 +287,12 @@ pub async fn call(state: &YmState, client: &reqwest::Client, req: &YmRequest) ->
         result,
         session: SessionChange::Unchanged,
     };
+    let lost = || CallOutcome {
+        result: Err(YmError::auth("session expired")),
+        session: SessionChange::Lost,
+    };
 
-    let Some(session) = state.session() else {
+    let (Some(session), read_at) = state.versioned_session() else {
         return unchanged(Err(YmError::auth("not signed in to Yandex Music")));
     };
     let Some(path) = allowed_path(&req.path, session.uid) else {
@@ -313,41 +313,49 @@ pub async fn call(state: &YmState, client: &reqwest::Client, req: &YmRequest) ->
     }
 
     // One refresh, one retry; a session that still fails is over.
-    let Some(refresh) = session.refresh_token() else {
-        state.set_session(None);
-        return CallOutcome {
-            result: Err(YmError::auth("session expired")),
-            session: SessionChange::Lost,
-        };
-    };
-    let refreshed = match refresh_access_token(client, &state.endpoints.oauth, refresh).await {
-        Ok(token) => session.with_tokens(
-            &token.access_token,
-            token.refresh_token.as_deref(),
-            expires_at_from(token.expires_in),
-        ),
-        Err(_) => {
-            state.set_session(None);
-            return CallOutcome {
-                result: Err(YmError::auth("session expired")),
-                session: SessionChange::Lost,
+    let (retry_with, refreshed) = {
+        let _refreshing = state.refresh_lock.lock().await;
+        let (current, now) = state.versioned_session();
+        if now == read_at {
+            let token = match session.refresh_token() {
+                Some(refresh) => refresh_access_token(client, &state.endpoints.oauth, refresh)
+                    .await
+                    .ok(),
+                None => None,
             };
+            let Some(token) = token else {
+                state.set_session(None);
+                return lost();
+            };
+            let fresh = session.with_tokens(
+                &token.access_token,
+                token.refresh_token.as_deref(),
+                expires_at_from(token.expires_in),
+            );
+            state.set_session(Some(fresh.clone()));
+            (fresh, true)
+        } else {
+            // Another call refreshed (or lost) the session while this one waited.
+            match current {
+                Some(current) if current.uid == session.uid => (current, false),
+                _ => return unchanged(Err(YmError::auth("session expired"))),
+            }
         }
     };
-    state.set_session(Some(refreshed.clone()));
 
-    let second = send(client, api_base, &refreshed, req, &path).await;
+    let second = send(client, api_base, &retry_with, req, &path).await;
     match &second {
         Err(e) if e.kind == YmErrorKind::Auth => {
             state.set_session(None);
-            CallOutcome {
-                result: Err(YmError::auth("session expired")),
-                session: SessionChange::Lost,
-            }
+            lost()
         }
         _ => CallOutcome {
             result: second,
-            session: SessionChange::Refreshed(refreshed),
+            session: if refreshed {
+                SessionChange::Refreshed(retry_with)
+            } else {
+                SessionChange::Unchanged
+            },
         },
     }
 }
@@ -359,14 +367,14 @@ pub async fn ym_request<R: Runtime>(
     app: AppHandle<R>,
     req: YmRequest,
 ) -> Result<serde_json::Value, AppError> {
-    super::state::load_session_if_needed(&app);
+    super::state::load_session_if_needed(&app).await;
     let client = crate::proxy::http_client(&app)?;
     let state = app.state::<YmState>();
     let outcome = call(&state, &client, &req).await;
     match outcome.session {
         SessionChange::Unchanged => {}
-        SessionChange::Refreshed(session) => persist_session(&app, &session),
-        SessionChange::Lost => drop_session(&app),
+        SessionChange::Refreshed(session) => persist_session(&app, &session).await,
+        SessionChange::Lost => drop_session(&app).await,
     }
     outcome.result.map_err(AppError::from)
 }
@@ -651,6 +659,86 @@ mod tests {
         assert!(matches!(outcome.session, SessionChange::Lost));
         assert!(state.session().is_none());
         assert_eq!(calls.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn concurrent_401s_refresh_the_token_exactly_once() {
+        let refreshes = Arc::new(AtomicUsize::new(0));
+        let seen = Arc::clone(&refreshes);
+        let upstream = spawn_upstream(move |req| match req.uri().path() {
+            "/token" => {
+                seen.fetch_add(1, Ordering::SeqCst);
+                json(200, NEW_TOKEN)
+            }
+            _ if req.headers()["Authorization"] == "OAuth tok-new" => json(200, LIKES),
+            _ => json(401, "{}"),
+        })
+        .await;
+        let state = signed_in(&upstream);
+        let client = reqwest::Client::new();
+        let req = get("/users/{uid}/likes/tracks");
+
+        let outcomes =
+            futures_util::future::join_all((0..4).map(|_| call(&state, &client, &req))).await;
+
+        assert_eq!(refreshes.load(Ordering::SeqCst), 1);
+        assert!(outcomes.iter().all(|outcome| outcome.result.is_ok()));
+        let refreshed = outcomes
+            .iter()
+            .filter(|outcome| matches!(outcome.session, SessionChange::Refreshed(_)))
+            .count();
+        assert_eq!(refreshed, 1, "only the caller that refreshed reports it");
+        assert_eq!(
+            state.session().expect("live session").authorization(),
+            "OAuth tok-new"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_caller_that_lost_the_race_retries_with_the_refreshed_session_and_reports_unchanged()
+    {
+        let refreshes = Arc::new(AtomicUsize::new(0));
+        let rejected = Arc::new(tokio::sync::Notify::new());
+        let (seen, signal) = (Arc::clone(&refreshes), Arc::clone(&rejected));
+        let upstream = spawn_upstream(move |req| match req.uri().path() {
+            "/token" => {
+                seen.fetch_add(1, Ordering::SeqCst);
+                json(200, NEW_TOKEN)
+            }
+            _ if req.headers()["Authorization"] == "OAuth tok-old" => {
+                signal.notify_one();
+                json(401, "{}")
+            }
+            _ if req.headers()["Authorization"] == "OAuth tok-winner" => json(200, LIKES),
+            _ => json(401, "{}"),
+        })
+        .await;
+        let state = signed_in(&upstream);
+        let client = reqwest::Client::new();
+        let req = get("/users/{uid}/likes/tracks");
+        let winner = state.refresh_lock.lock().await;
+
+        let win_the_race = async {
+            rejected.notified().await;
+            state.set_session(Some(YmSession::new(
+                42,
+                true,
+                "Tester",
+                "tok-winner",
+                Some("refresh-2"),
+                None,
+            )));
+            drop(winner);
+        };
+        let (outcome, ()) = tokio::join!(call(&state, &client, &req), win_the_race);
+
+        assert!(outcome.result.is_ok());
+        assert!(matches!(outcome.session, SessionChange::Unchanged));
+        assert_eq!(refreshes.load(Ordering::SeqCst), 0);
+        assert_eq!(
+            state.session().expect("live session").authorization(),
+            "OAuth tok-winner"
+        );
     }
 
     #[tokio::test]

@@ -65,12 +65,12 @@ fn xml_tag<'a>(xml: &'a str, tag: &str) -> Option<&'a str> {
 }
 
 /// The four pieces of the signed path out of `<download-info>…</download-info>`.
-pub fn parse_download_xml(xml: &str) -> Result<XmlInfo, String> {
+pub fn parse_download_xml(xml: &str) -> Result<XmlInfo, YmError> {
     let field = |tag: &str| {
         xml_tag(xml, tag)
             .filter(|value| !value.is_empty())
             .map(str::to_owned)
-            .ok_or_else(|| format!("download-info xml: missing <{tag}>"))
+            .ok_or_else(|| YmError::unknown(format!("download-info xml: missing <{tag}>")))
     };
     Ok(XmlInfo {
         host: field("host")?,
@@ -140,7 +140,7 @@ pub async fn resolve(
     if status != 200 {
         return Err(YmError::from_status(status, "", None));
     }
-    let info = parse_download_xml(&xml).map_err(YmError::unknown)?;
+    let info = parse_download_xml(&xml)?;
     Ok(ResolvedTrack {
         url: signed_url(&info, link_scheme),
         preview: best.preview,
@@ -241,17 +241,20 @@ mod tests {
             "<download-info><host></host><path>/p</path><ts>1</ts><s>s</s></download-info>"
         )
         .is_err());
-        assert!(parse_download_xml("not xml").is_err());
+        let missing = parse_download_xml("not xml").unwrap_err();
+        assert_eq!(missing.kind, YmErrorKind::Unknown);
+        assert_eq!(missing.message, "download-info xml: missing <host>");
         assert_eq!(
             parse_download_xml(
                 "<download-info><host>h</host><path>/p</path><ts>1</ts><s>s</s></download-info>"
-            ),
-            Ok(XmlInfo {
+            )
+            .expect("complete xml"),
+            XmlInfo {
                 host: "h".into(),
                 path: "/p".into(),
                 ts: "1".into(),
                 s: "s".into()
-            })
+            }
         );
     }
 

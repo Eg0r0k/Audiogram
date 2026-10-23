@@ -19,9 +19,11 @@
 //! The cache key embeds source mtime + length so an edited/replaced file
 //! re-renders, and the codec prefix keeps the two kinds apart.
 
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 
 use symphonia::core::audio::SampleBuffer;
 use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_AAC, CODEC_TYPE_ALAC};
@@ -46,19 +48,49 @@ pub(crate) fn is_transcode_candidate(path: &str) -> bool {
     is_mp4_family(path) || is_ape(path)
 }
 
-fn open_format(src: &Path) -> Result<Box<dyn FormatReader>, String> {
-    let file = std::fs::File::open(src).map_err(|e| e.to_string())?;
+#[derive(Debug, thiserror::Error)]
+enum TranscodeError {
+    #[error("{0}")]
+    Io(#[from] std::io::Error),
+    #[error("{0}")]
+    Format(String),
+    #[error("{0}")]
+    Unsupported(String),
+}
+
+impl From<symphonia::core::errors::Error> for TranscodeError {
+    fn from(error: symphonia::core::errors::Error) -> Self {
+        Self::Format(error.to_string())
+    }
+}
+
+impl From<hound::Error> for TranscodeError {
+    fn from(error: hound::Error) -> Self {
+        Self::Format(error.to_string())
+    }
+}
+
+impl From<ape_decoder::ApeError> for TranscodeError {
+    fn from(error: ape_decoder::ApeError) -> Self {
+        Self::Format(error.to_string())
+    }
+}
+
+fn format_error(message: &str) -> TranscodeError {
+    TranscodeError::Format(message.to_owned())
+}
+
+fn open_format(src: &Path) -> Result<Box<dyn FormatReader>, TranscodeError> {
+    let file = std::fs::File::open(src)?;
     let mss = MediaSourceStream::new(Box::new(file), Default::default());
     let mut hint = Hint::new();
     hint.with_extension("m4a");
-    let probed = symphonia::default::get_probe()
-        .format(
-            &hint,
-            mss,
-            &FormatOptions::default(),
-            &MetadataOptions::default(),
-        )
-        .map_err(|e| e.to_string())?;
+    let probed = symphonia::default::get_probe().format(
+        &hint,
+        mss,
+        &FormatOptions::default(),
+        &MetadataOptions::default(),
+    )?;
     Ok(probed.format)
 }
 
@@ -169,14 +201,14 @@ fn cache_name(src: &Path, prefix: &str, ext: &str) -> std::io::Result<String> {
 
 /// Decodes the ALAC track of `src` into `dst` as PCM WAV, preserving the
 /// source bit depth (16/24/32; sub-byte depths round up).
-fn decode_to_wav(src: &Path, dst: &Path) -> Result<(), String> {
+fn decode_to_wav(src: &Path, dst: &Path) -> Result<(), TranscodeError> {
     let mut format = open_format(src)?;
 
     let track = format
         .tracks()
         .iter()
         .find(|t| t.codec_params.codec == CODEC_TYPE_ALAC)
-        .ok_or("no ALAC track")?
+        .ok_or_else(|| format_error("no ALAC track"))?
         .clone();
 
     let src_bits = track.codec_params.bits_per_sample.unwrap_or(16);
@@ -188,9 +220,8 @@ fn decode_to_wav(src: &Path, dst: &Path) -> Result<(), String> {
         _ => 32,
     };
 
-    let mut decoder = symphonia::default::get_codecs()
-        .make(&track.codec_params, &DecoderOptions::default())
-        .map_err(|e| e.to_string())?;
+    let mut decoder =
+        symphonia::default::get_codecs().make(&track.codec_params, &DecoderOptions::default())?;
 
     // Rate and channel count live in the ALAC magic cookie, which only the
     // decoder parses — the writer is created off the first decoded buffer.
@@ -205,7 +236,7 @@ fn decode_to_wav(src: &Path, dst: &Path) -> Result<(), String> {
             {
                 break;
             }
-            Err(e) => return Err(e.to_string()),
+            Err(e) => return Err(e.into()),
         };
         if packet.track_id() != track.id {
             continue;
@@ -214,49 +245,44 @@ fn decode_to_wav(src: &Path, dst: &Path) -> Result<(), String> {
             Ok(decoded) => decoded,
             // A corrupt packet mid-file should not kill the whole track.
             Err(symphonia::core::errors::Error::DecodeError(_)) => continue,
-            Err(e) => return Err(e.to_string()),
+            Err(e) => return Err(e.into()),
         };
         let spec = *decoded.spec();
         let out = match &mut writer {
             Some(out) => out,
-            None => writer.insert(
-                hound::WavWriter::create(
-                    dst,
-                    hound::WavSpec {
-                        channels: spec.channels.count() as u16,
-                        sample_rate: spec.rate,
-                        bits_per_sample: out_bits,
-                        sample_format: hound::SampleFormat::Int,
-                    },
-                )
-                .map_err(|e| e.to_string())?,
-            ),
+            None => writer.insert(hound::WavWriter::create(
+                dst,
+                hound::WavSpec {
+                    channels: spec.channels.count() as u16,
+                    sample_rate: spec.rate,
+                    bits_per_sample: out_bits,
+                    sample_format: hound::SampleFormat::Int,
+                },
+            )?),
         };
         let buf =
             sample_buf.get_or_insert_with(|| SampleBuffer::new(decoded.capacity() as u64, spec));
         buf.copy_interleaved_ref(decoded);
         let shift = 32 - u32::from(out_bits);
         for &sample in buf.samples() {
-            out.write_sample(sample >> shift)
-                .map_err(|e| e.to_string())?;
+            out.write_sample(sample >> shift)?;
         }
     }
 
     writer
-        .ok_or("empty audio stream")?
-        .finalize()
-        .map_err(|e| e.to_string())
+        .ok_or_else(|| format_error("empty audio stream"))?
+        .finalize()?;
+    Ok(())
 }
 
 /// Decodes a Monkey's Audio file into `dst` as PCM WAV, frame by frame — one
 /// APE frame of PCM in memory at a time. The header carries exact sizes, so
 /// Range math on the rendition is byte-accurate.
-fn decode_ape_to_wav(src: &Path, dst: &Path) -> Result<(), String> {
+fn decode_ape_to_wav(src: &Path, dst: &Path) -> Result<(), TranscodeError> {
     use std::io::Write;
 
-    let file = std::fs::File::open(src).map_err(|e| e.to_string())?;
-    let mut decoder =
-        ape_decoder::ApeDecoder::new(std::io::BufReader::new(file)).map_err(|e| e.to_string())?;
+    let file = std::fs::File::open(src)?;
+    let mut decoder = ape_decoder::ApeDecoder::new(std::io::BufReader::new(file))?;
 
     // RIFF sizes are u32 — a multi-hour album image can exceed them and the
     // header would silently wrap. Refuse; the raw-file fallback applies.
@@ -264,20 +290,20 @@ fn decode_ape_to_wav(src: &Path, dst: &Path) -> Result<(), String> {
     let pcm_bytes =
         info.total_samples * u64::from(info.channels) * u64::from(info.bits_per_sample / 8);
     if pcm_bytes + 44 > u64::from(u32::MAX) {
-        return Err(format!(
+        return Err(TranscodeError::Unsupported(format!(
             "decoded size {pcm_bytes} exceeds the WAV 4 GiB limit"
-        ));
+        )));
     }
 
-    let out = std::fs::File::create(dst).map_err(|e| e.to_string())?;
+    let out = std::fs::File::create(dst)?;
     let mut out = std::io::BufWriter::new(out);
-    out.write_all(&decoder.info().generate_wav_header())
-        .map_err(|e| e.to_string())?;
+    out.write_all(&decoder.info().generate_wav_header())?;
     for frame in 0..decoder.total_frames() {
-        let pcm = decoder.decode_frame(frame).map_err(|e| e.to_string())?;
-        out.write_all(&pcm).map_err(|e| e.to_string())?;
+        let pcm = decoder.decode_frame(frame)?;
+        out.write_all(&pcm)?;
     }
-    out.flush().map_err(|e| e.to_string())
+    out.flush()?;
+    Ok(())
 }
 
 /// AudioSpecificConfig → `(object_type, sampling_frequency_index,
@@ -325,7 +351,7 @@ fn adts_header(
 /// No decoding happens: mp4 already stores the exact AAC frames, they just
 /// lack the per-frame header a bare stream needs. The point is losing the
 /// video track — see [`has_video_track`].
-fn remux_mp4_aac_to_adts(src: &Path, dst: &Path) -> Result<(), String> {
+fn remux_mp4_aac_to_adts(src: &Path, dst: &Path) -> Result<(), TranscodeError> {
     use std::io::Write;
 
     let mut format = open_format(src)?;
@@ -333,16 +359,16 @@ fn remux_mp4_aac_to_adts(src: &Path, dst: &Path) -> Result<(), String> {
         .tracks()
         .iter()
         .find(|t| t.codec_params.codec == CODEC_TYPE_AAC)
-        .ok_or("no AAC track")?
+        .ok_or_else(|| format_error("no AAC track"))?
         .clone();
 
     let asc = track
         .codec_params
         .extra_data
         .as_deref()
-        .ok_or("AAC track carries no AudioSpecificConfig")?;
-    let (signalled_type, freq_index, channel_config) =
-        parse_audio_specific_config(asc).ok_or("unreadable AudioSpecificConfig")?;
+        .ok_or_else(|| format_error("AAC track carries no AudioSpecificConfig"))?;
+    let (signalled_type, freq_index, channel_config) = parse_audio_specific_config(asc)
+        .ok_or_else(|| format_error("unreadable AudioSpecificConfig"))?;
 
     // HE-AAC (SBR, type 5) and HE-AACv2 (PS, 29) describe an AAC-LC core plus
     // an extension the payload already carries inline, and the sampling index
@@ -360,13 +386,13 @@ fn remux_mp4_aac_to_adts(src: &Path, dst: &Path) -> Result<(), String> {
     // layout. Anything else (explicit rates, program config elements) would
     // need more than a header rewrite.
     if !(1..=4).contains(&object_type) || freq_index > 12 || !(1..=7).contains(&channel_config) {
-        return Err(format!(
+        return Err(TranscodeError::Unsupported(format!(
             "unsupported AAC config: object_type={signalled_type} \
              freq_index={freq_index} channel_config={channel_config}"
-        ));
+        )));
     }
 
-    let out = std::fs::File::create(dst).map_err(|e| e.to_string())?;
+    let out = std::fs::File::create(dst)?;
     let mut out = std::io::BufWriter::new(out);
     let mut frames: u64 = 0;
     loop {
@@ -378,22 +404,23 @@ fn remux_mp4_aac_to_adts(src: &Path, dst: &Path) -> Result<(), String> {
             {
                 break;
             }
-            Err(e) => return Err(e.to_string()),
+            Err(e) => return Err(e.into()),
         };
         if packet.track_id() != track.id {
             continue;
         }
         let data = packet.buf();
         let header = adts_header(object_type, freq_index, channel_config, data.len())
-            .ok_or("AAC frame too large for ADTS")?;
-        out.write_all(&header).map_err(|e| e.to_string())?;
-        out.write_all(data).map_err(|e| e.to_string())?;
+            .ok_or_else(|| TranscodeError::Unsupported("AAC frame too large for ADTS".into()))?;
+        out.write_all(&header)?;
+        out.write_all(data)?;
         frames += 1;
     }
     if frames == 0 {
-        return Err("no AAC frames".into());
+        return Err(format_error("no AAC frames"));
     }
-    out.flush().map_err(|e| e.to_string())
+    out.flush()?;
+    Ok(())
 }
 
 /// Removes tmp files orphaned by a previous process killed mid-decode.
@@ -409,7 +436,7 @@ pub(crate) fn clean_stale_tmp(cache_dir: &Path) {
     }
 }
 
-type DecodeFn = fn(&Path, &Path) -> Result<(), String>;
+type DecodeFn = fn(&Path, &Path) -> Result<(), TranscodeError>;
 
 /// Which rendition a source needs, if any.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -525,54 +552,84 @@ pub(crate) fn rendition_path(src: &Path, cache_dir: &Path) -> Option<PathBuf> {
 
     // The media element opens 2+ connections per load; without this lock the
     // concurrent cache misses would decode the same file in parallel (doubled
-    // CPU, colliding tmp writes). Serialize decodes and re-check the cache
-    // under the lock — the loser wakes up to a finished WAV. Runs inside
-    // spawn_blocking, so blocking here is fine.
-    static DECODE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    let _guard = DECODE_LOCK
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if dst.is_file() {
-        return Some(dst);
-    }
+    // CPU, colliding tmp writes). Serialize decodes of one destination and
+    // re-check the cache under the lock, so the loser wakes up to a finished
+    // file. Runs inside spawn_blocking, so blocking here is fine.
+    let key = dst.clone();
+    with_decode_lock(&key, move || {
+        if dst.is_file() {
+            return Some(dst);
+        }
 
-    // Unique tmp per attempt: a half-written file is never visible under the
-    // final name, and no two writers ever share a tmp path.
-    static TMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-    let seq = TMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let tmp = cache_dir.join(format!(
-        "{}.tmp-{}-{seq}",
-        dst.file_name()?.to_string_lossy(),
-        std::process::id(),
-    ));
-    let started = std::time::Instant::now();
-    match decode(src, &tmp) {
-        Ok(()) => {
-            log::info!(
-                "{prefix} transcode: {} decoded in {:.1}s",
-                src.display(),
-                started.elapsed().as_secs_f32(),
-            );
-            if let Err(e) = std::fs::rename(&tmp, &dst) {
-                let _ = std::fs::remove_file(&tmp);
-                // Lost the race to another writer — the destination exists.
-                if !dst.is_file() {
-                    log::warn!("{prefix} transcode: rename failed: {e}");
-                    return None;
+        // Unique tmp per attempt: a half-written file is never visible under the
+        // final name, and no two writers ever share a tmp path.
+        static TMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let seq = TMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let tmp = cache_dir.join(format!(
+            "{}.tmp-{}-{seq}",
+            dst.file_name()?.to_string_lossy(),
+            std::process::id(),
+        ));
+        let started = std::time::Instant::now();
+        match decode(src, &tmp) {
+            Ok(()) => {
+                log::info!(
+                    "{prefix} transcode: {} decoded in {:.1}s",
+                    src.display(),
+                    started.elapsed().as_secs_f32(),
+                );
+                if let Err(e) = std::fs::rename(&tmp, &dst) {
+                    let _ = std::fs::remove_file(&tmp);
+                    // Lost the race to another writer; the destination exists.
+                    if !dst.is_file() {
+                        log::warn!("{prefix} transcode: rename failed: {e}");
+                        return None;
+                    }
                 }
+                Some(dst)
             }
-            Some(dst)
+            Err(e) => {
+                let _ = std::fs::remove_file(&tmp);
+                log::warn!("{prefix} transcode: decode failed: {e}");
+                None
+            }
         }
-        Err(e) => {
-            let _ = std::fs::remove_file(&tmp);
-            log::warn!("{prefix} transcode: decode failed: {e}");
-            None
-        }
+    })
+}
+
+/// Handles are cloned only under the map lock, so a count of one means nobody waits.
+static DECODE_LOCKS: LazyLock<Mutex<HashMap<PathBuf, Arc<Mutex<()>>>>> =
+    LazyLock::new(Default::default);
+
+fn with_decode_lock<T>(key: &Path, f: impl FnOnce() -> T) -> T {
+    let lock = Arc::clone(
+        DECODE_LOCKS
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .entry(key.to_path_buf())
+            .or_default(),
+    );
+    let result = {
+        let _guard = lock.lock().unwrap_or_else(PoisonError::into_inner);
+        f()
+    };
+
+    let mut locks = DECODE_LOCKS.lock().unwrap_or_else(PoisonError::into_inner);
+    drop(lock);
+    if locks
+        .get(key)
+        .is_some_and(|entry| Arc::strong_count(entry) == 1)
+    {
+        locks.remove(key);
     }
+    result
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{mpsc, Arc, Condvar, Mutex};
+    use std::time::Duration;
+
     use super::*;
 
     fn fixture(name: &str) -> PathBuf {
@@ -619,6 +676,94 @@ mod tests {
         assert!(leftovers.is_empty(), "leftover tmp files: {leftovers:?}");
 
         let _ = std::fs::remove_dir_all(cache);
+    }
+
+    const LOCK_TIMEOUT: Duration = Duration::from_secs(2);
+
+    fn decode_lock_key() -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "audiogram-decode-lock-{}.wav",
+            crate::media_server::new_token()
+        ))
+    }
+
+    #[test]
+    fn the_same_destination_serialises_decodes() {
+        let key = decode_lock_key();
+        let (events, seen) = mpsc::channel();
+        let (release, released) = mpsc::channel::<()>();
+
+        let first = {
+            let (key, events) = (key.clone(), events.clone());
+            std::thread::spawn(move || {
+                with_decode_lock(&key, || {
+                    let _ = events.send("first in");
+                    let _ = released.recv_timeout(LOCK_TIMEOUT);
+                    let _ = events.send("first out");
+                });
+            })
+        };
+        assert_eq!(seen.recv_timeout(LOCK_TIMEOUT), Ok("first in"));
+
+        let second = {
+            let key = key.clone();
+            std::thread::spawn(move || {
+                let _ = events.send("second waiting");
+                with_decode_lock(&key, || {
+                    let _ = events.send("second in");
+                });
+            })
+        };
+        assert_eq!(seen.recv_timeout(LOCK_TIMEOUT), Ok("second waiting"));
+        assert_eq!(
+            seen.recv_timeout(Duration::from_millis(200)),
+            Err(mpsc::RecvTimeoutError::Timeout),
+            "the second decode entered while the first was still inside"
+        );
+
+        release.send(()).expect("first thread waiting");
+        assert_eq!(seen.recv_timeout(LOCK_TIMEOUT), Ok("first out"));
+        assert_eq!(seen.recv_timeout(LOCK_TIMEOUT), Ok("second in"));
+        first.join().expect("first thread");
+        second.join().expect("second thread");
+
+        assert!(
+            !DECODE_LOCKS.lock().unwrap().contains_key(&key),
+            "the entry outlived its last holder"
+        );
+    }
+
+    #[test]
+    fn different_destinations_decode_concurrently() {
+        // std's Barrier cannot time out, and a thread stuck in it would keep
+        // its lock held for every other transcode test.
+        let inside = Arc::new((Mutex::new(0usize), Condvar::new()));
+
+        let threads: Vec<_> = (0..2)
+            .map(|_| {
+                let (key, inside) = (decode_lock_key(), Arc::clone(&inside));
+                std::thread::spawn(move || {
+                    with_decode_lock(&key, || {
+                        let (count, changed) = &*inside;
+                        let mut count = count.lock().unwrap();
+                        *count += 1;
+                        changed.notify_all();
+                        !changed
+                            .wait_timeout_while(count, LOCK_TIMEOUT, |count| *count < 2)
+                            .unwrap()
+                            .1
+                            .timed_out()
+                    })
+                })
+            })
+            .collect();
+
+        for thread in threads {
+            assert!(
+                thread.join().expect("decode thread"),
+                "the two decodes never ran at the same time"
+            );
+        }
     }
 
     #[test]

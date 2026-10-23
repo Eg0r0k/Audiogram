@@ -1,5 +1,8 @@
 //! The error envelope every command rejects with; mirrors `AppError` in `src/lib/errors/app-error.ts`.
 
+#[cfg(desktop)]
+use crate::discord::DiscordError;
+use crate::proxy::ProxyError;
 use crate::remote_download::DownloadError;
 #[cfg(desktop)]
 use crate::updater::{UpdateError, UpdateErrorKind};
@@ -45,27 +48,33 @@ pub(crate) enum NativeErrorKind {
     Unknown,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, thiserror::Error)]
 #[serde(tag = "domain", rename_all = "lowercase")]
 pub(crate) enum AppError {
+    #[error("{message}")]
     Source {
-        source: SourceId,
+        // thiserror treats a field named `source` as the error's cause.
+        #[serde(rename = "source")]
+        source_id: SourceId,
         kind: SourceErrorKind,
         message: String,
         #[serde(rename = "retryAfterMs", skip_serializing_if = "Option::is_none")]
         retry_after_ms: Option<u64>,
     },
+    #[error("{message}")]
     Native {
         kind: NativeErrorKind,
         message: String,
     },
     #[cfg(desktop)]
+    #[error("{message}")]
     Update {
         kind: UpdateErrorKind,
         message: String,
     },
     // A cancelled download is a source CANCELLED; this domain is the frontend's.
     #[allow(dead_code)]
+    #[error("{message}")]
     Cancelled { message: String },
 }
 
@@ -76,7 +85,7 @@ impl AppError {
         message: impl Into<String>,
     ) -> Self {
         Self::Source {
-            source,
+            source_id: source,
             kind,
             message: message.into(),
             retry_after_ms: None,
@@ -128,28 +137,6 @@ pub(crate) fn kind_for_status(status: u16) -> SourceErrorKind {
     }
 }
 
-impl std::fmt::Display for AppError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let message = match self {
-            Self::Source { message, .. }
-            | Self::Native { message, .. }
-            | Self::Cancelled { message } => message,
-            #[cfg(desktop)]
-            Self::Update { message, .. } => message,
-        };
-        f.write_str(message)
-    }
-}
-
-impl std::error::Error for AppError {}
-
-/// Helper errors (locks, paths, IPC) arrive as strings.
-impl From<String> for AppError {
-    fn from(message: String) -> Self {
-        Self::unknown(message)
-    }
-}
-
 impl From<std::io::Error> for AppError {
     fn from(error: std::io::Error) -> Self {
         Self::io(error.to_string())
@@ -159,6 +146,25 @@ impl From<std::io::Error> for AppError {
 impl From<tauri::Error> for AppError {
     fn from(error: tauri::Error) -> Self {
         Self::unknown(error.to_string())
+    }
+}
+
+impl From<ProxyError> for AppError {
+    fn from(error: ProxyError) -> Self {
+        match error {
+            ProxyError::InvalidUrl(_) => Self::invalid_input(error.to_string()),
+            ProxyError::Build(_) | ProxyError::Poisoned => Self::unknown(error.to_string()),
+        }
+    }
+}
+
+#[cfg(desktop)]
+impl From<DiscordError> for AppError {
+    fn from(error: DiscordError) -> Self {
+        match error {
+            DiscordError::NotConfigured => Self::invalid_input(error.to_string()),
+            DiscordError::Ipc(_) | DiscordError::Poisoned => Self::unknown(error.to_string()),
+        }
     }
 }
 
@@ -172,10 +178,11 @@ impl From<YmError> for AppError {
             YmErrorKind::Network => SourceErrorKind::Network,
             YmErrorKind::Unavailable => SourceErrorKind::Unavailable,
             YmErrorKind::Cancelled => SourceErrorKind::Cancelled,
+            YmErrorKind::InvalidInput => SourceErrorKind::InvalidInput,
             YmErrorKind::Unknown => SourceErrorKind::Unknown,
         };
         Self::Source {
-            source: SourceId::Ym,
+            source_id: SourceId::Ym,
             kind,
             message: error.message,
             retry_after_ms: error.retry_after_ms,
@@ -218,7 +225,7 @@ mod tests {
     #[test]
     fn a_source_error_serialises_with_the_domain_tag_and_camel_case_retry() {
         let limited = AppError::Source {
-            source: SourceId::Ym,
+            source_id: SourceId::Ym,
             kind: SourceErrorKind::RateLimited,
             message: "slow down".into(),
             retry_after_ms: Some(1500),
@@ -310,6 +317,7 @@ mod tests {
             (YmErrorKind::Network, "NETWORK"),
             (YmErrorKind::Unavailable, "UNAVAILABLE"),
             (YmErrorKind::Cancelled, "CANCELLED"),
+            (YmErrorKind::InvalidInput, "INVALID_INPUT"),
             (YmErrorKind::Unknown, "UNKNOWN"),
         ] {
             assert_eq!(
@@ -335,7 +343,7 @@ mod tests {
     #[test]
     fn string_and_io_errors_become_native() {
         assert_eq!(
-            serde_json::to_value(AppError::from("lock poisoned".to_owned())).expect("json"),
+            serde_json::to_value(AppError::unknown("lock poisoned")).expect("json"),
             json!({ "domain": "native", "kind": "UNKNOWN", "message": "lock poisoned" })
         );
 
@@ -431,5 +439,76 @@ mod tests {
 
         let message = AppError::from(YtError::from(DownloadError::Upstream(403))).to_string();
         assert_eq!(message, "upstream status 403");
+    }
+
+    #[test]
+    fn ym_invalid_input_reaches_the_envelope_as_invalid_input() {
+        let error = AppError::from(YmError::new(YmErrorKind::InvalidInput, "invalid track id"));
+
+        assert_eq!(
+            serde_json::to_value(&error).expect("json"),
+            json!({
+                "domain": "source",
+                "source": "ym",
+                "kind": "INVALID_INPUT",
+                "message": "invalid track id",
+            })
+        );
+        assert_eq!(error.to_string(), "invalid track id");
+    }
+
+    #[test]
+    fn a_proxy_url_that_does_not_parse_is_invalid_input() {
+        let invalid = crate::proxy::client_builder(Some("not a url")).unwrap_err();
+        assert!(matches!(invalid, ProxyError::InvalidUrl(_)));
+        assert_eq!(
+            serde_json::to_value(AppError::from(invalid)).expect("json")["kind"],
+            "INVALID_INPUT"
+        );
+
+        assert_eq!(
+            serde_json::to_value(AppError::from(ProxyError::Poisoned)).expect("json"),
+            json!({ "domain": "native", "kind": "UNKNOWN", "message": "proxy state poisoned" })
+        );
+        let ym = YmError::from(ProxyError::Poisoned);
+        assert_eq!(ym.kind, YmErrorKind::Unknown);
+        assert_eq!(ym.message, "proxy state poisoned");
+        assert!(matches!(
+            YtError::from(ProxyError::Poisoned).kind,
+            YtErrorKind::Unknown
+        ));
+    }
+
+    #[cfg(desktop)]
+    #[test]
+    fn a_discord_client_without_an_id_is_invalid_input() {
+        use crate::discord::{DiscordActivityPayload, DiscordError, DiscordPresence};
+
+        let error = DiscordPresence::default()
+            .set_activity(DiscordActivityPayload {
+                client_id: "  ".into(),
+                title: "t".into(),
+                artist: None,
+                album: None,
+                duration: None,
+                position: None,
+            })
+            .unwrap_err();
+        assert!(matches!(error, DiscordError::NotConfigured));
+        assert_eq!(
+            serde_json::to_value(AppError::from(error)).expect("json"),
+            json!({
+                "domain": "native",
+                "kind": "INVALID_INPUT",
+                "message": "Discord Client ID is not configured",
+            })
+        );
+
+        for other in [DiscordError::Ipc("m".into()), DiscordError::Poisoned] {
+            assert_eq!(
+                serde_json::to_value(AppError::from(other)).expect("json")["kind"],
+                "UNKNOWN"
+            );
+        }
     }
 }

@@ -21,26 +21,19 @@ pub const DOWNLOAD_TMP_SUBDIR: &str = "downloads-tmp";
 const PROGRESS_EMIT_STEP: u64 = 256 * 1024;
 
 /// Why a shared download failed. No variant carries the URL (nd URLs hold auth tokens).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum DownloadError {
+    #[error("cancelled")]
     Cancelled,
+    #[error("{0}")]
     Network(String),
     /// The upstream answered with a status the copy cannot use.
+    #[error("upstream status {0}")]
     Upstream(u16),
+    #[error("{0}")]
     Io(String),
+    #[error("{0}")]
     Other(String),
-}
-
-impl std::fmt::Display for DownloadError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Cancelled => f.write_str("cancelled"),
-            Self::Upstream(status) => write!(f, "upstream status {status}"),
-            Self::Network(message) | Self::Io(message) | Self::Other(message) => {
-                f.write_str(message)
-            }
-        }
-    }
 }
 
 fn io_error(error: std::io::Error) -> DownloadError {
