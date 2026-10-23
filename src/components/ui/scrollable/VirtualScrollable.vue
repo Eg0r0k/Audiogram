@@ -2,17 +2,11 @@
   <div
     :class="wrapperClasses"
   >
-    <div
-      v-if="scrollable.USE_OWN_SCROLL && showThumbVisible"
-      class="scrollable-thumb-container scrollable-thumb-container-y"
-    >
-      <div
-        class="scrollable-thumb"
-        :class="{ 'is-focused': scrollable.isDragging.value }"
-        :style="thumbStyle"
-        @mousedown="scrollable.handleThumbMouseDown"
-      />
-    </div>
+    <ScrollableThumb
+      v-if="scrollable.USE_OWN_SCROLL && !hideThumb"
+      :scrollable="scrollable"
+      direction="vertical"
+    />
 
     <div
       ref="containerRef"
@@ -99,6 +93,7 @@ import { scrollableInjectionKey } from "./injection";
 import type { ScrollAnchor } from "./scroll-anchor";
 import { useSlideContentReady } from "@/components/transitions/slideContentReady";
 import { isScrollLockedByOverlay } from "./scroll-lock";
+import ScrollableThumb from "./ScrollableThumb.vue";
 import useScrollable from "./useScrollable";
 
 interface Props {
@@ -300,15 +295,6 @@ const containerClasses = computed(() => [
     "no-scrollbar-safari": scrollable.IS_SAFARI && !scrollable.IS_MOBILE_SAFARI,
   },
 ]);
-
-const showThumbVisible = computed(
-  () => !props.hideThumb && scrollable.thumbSize.value > 0,
-);
-
-const thumbStyle = computed(() => ({
-  height: `${scrollable.thumbSize.value}px`,
-  transform: `translateY(${scrollable.thumbPosition.value}px)`,
-}));
 
 const stickyStyle = computed(() => ({
   top: props.stickyOffset,

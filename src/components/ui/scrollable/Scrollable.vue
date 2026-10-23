@@ -1,21 +1,10 @@
 <template>
   <div :class="wrapperClasses">
-    <div
-      v-if="scrollable.USE_OWN_SCROLL && showThumbVisible"
-      class="scrollable-thumb-container"
-      :class="
-        direction === 'horizontal'
-          ? 'scrollable-thumb-container-x'
-          : 'scrollable-thumb-container-y'
-      "
-    >
-      <div
-        class="scrollable-thumb"
-        :class="{ 'is-focused': scrollable.isDragging.value }"
-        :style="thumbStyle"
-        @mousedown="scrollable.handleThumbMouseDown"
-      />
-    </div>
+    <ScrollableThumb
+      v-if="scrollable.USE_OWN_SCROLL && !hideThumb"
+      :scrollable="scrollable"
+      :direction="direction"
+    />
 
     <div
       ref="containerRef"
@@ -31,6 +20,7 @@
 import { computed, provide, useTemplateRef, watch } from "vue";
 import { scrollableInjectionKey } from "./injection";
 import { isScrollLockedByOverlay } from "./scroll-lock";
+import ScrollableThumb from "./ScrollableThumb.vue";
 import useScrollable from "./useScrollable";
 
 interface Props {
@@ -108,23 +98,6 @@ const containerClasses = computed(() => [
     "no-scrollbar-safari": scrollable.IS_SAFARI && !scrollable.IS_MOBILE_SAFARI,
   },
 ]);
-
-const showThumbVisible = computed(
-  () => !props.hideThumb && scrollable.thumbSize.value > 0,
-);
-
-const thumbStyle = computed(() => {
-  if (props.direction === "vertical") {
-    return {
-      height: `${scrollable.thumbSize.value}px`,
-      transform: `translateY(${scrollable.thumbPosition.value}px)`,
-    };
-  }
-  return {
-    width: `${scrollable.thumbSize.value}px`,
-    transform: `translateX(${scrollable.thumbPosition.value}px)`,
-  };
-});
 
 provide(scrollableInjectionKey, scrollable);
 
