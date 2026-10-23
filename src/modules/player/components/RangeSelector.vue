@@ -21,18 +21,18 @@
             class="range-selector__segment"
             :class="{ 'range-selector__segment--hover': hoverSegmentIndex === i }"
             :style="segmentStyle(segment)"
-          />
+          >
+            <div
+              :ref="el => (hoverFillEls[i] = el as HTMLElement | null)"
+              class="range-selector__hover-filled"
+            />
+            <div
+              :ref="el => (fillEls[i] = el as HTMLElement | null)"
+              class="range-selector__filled"
+            />
+          </div>
         </div>
 
-        <div
-          ref="hoverFilledRef"
-          class="range-selector__hover-filled"
-          style="display: none"
-        />
-        <div
-          ref="filledRef"
-          class="range-selector__filled"
-        />
         <div
           v-if="showThumb"
           ref="thumbRef"
@@ -137,10 +137,17 @@ const emit = defineEmits<{
 }>();
 
 const containerRef = useTemplateRef<HTMLDivElement>("containerRef");
-const filledRef = useTemplateRef<HTMLDivElement>("filledRef");
 const seekRef = useTemplateRef<HTMLInputElement>("seekRef");
 const thumbRef = useTemplateRef<HTMLDivElement>("thumbRef");
-const hoverFilledRef = useTemplateRef<HTMLDivElement>("hoverFilledRef");
+// One fill (and one hover fill) per segment, the way YouTube draws chapters:
+// the gaps between segments are empty space, so the played colour can never
+// paint over them. Filled by function refs, written to directly (no render).
+const fillEls: (HTMLElement | null)[] = [];
+const hoverFillEls: (HTMLElement | null)[] = [];
+// Last value written per segment: a progress tick touches only the segment
+// it is in, the finished and the untouched ones keep their style as is.
+let lastFill: number[] = [];
+let lastHoverFill: number[] = [];
 
 const mousedown = ref(false);
 // Not bound in the template: the value lands on the <input> and the bar by
@@ -174,6 +181,7 @@ const containerClasses = computed(() => [
     "range-selector--transition": props.withTransition && !props.useTransform && !props.disableTransition,
     "range-selector--active": mousedown.value,
     "range-selector--hovering": isHovering.value,
+    "range-selector--hover-fill": !!props.duration && (isHovering.value || mousedown.value),
     "range-selector--no-transition": props.disableTransition,
     "range-selector--disabled": props.disabled,
   },
@@ -206,14 +214,88 @@ const segments = computed<Segment[]>(() => {
 
 const hasChapters = computed(() => segments.value.length > 1);
 
+// Half of the gap between two chapters, in px: each segment is inset by it
+// on both sides. No chapters, no gap.
+const SEGMENT_INSET = 2;
+const segmentInset = computed(() => (hasChapters.value ? SEGMENT_INSET : 0));
+
 function segmentStyle(segment: Segment): Record<string, string> {
-  if (!hasChapters.value) {
-    return { left: "0%", width: "100%" };
-  }
+  const inset = segmentInset.value;
   return {
-    left: `calc(${segment.start}% + 2px)`,
-    width: `calc(${Math.max(segment.end - segment.start, 0)}% - 4px)`,
+    left: `calc(${segment.start}% + ${inset}px)`,
+    width: `calc(${Math.max(segment.end - segment.start, 0)}% - ${inset * 2}px)`,
   };
+}
+
+/** Index of the segment a percent falls in; the last one takes 100. */
+function segmentIndexAt(percent: number): number {
+  const list = segments.value;
+  for (let i = 0; i < list.length - 1; i++) {
+    if (percent < list[i].end) return i;
+  }
+  return list.length - 1;
+}
+
+/** 0..1: how much of a segment a percent has covered. */
+function segmentFraction(segment: Segment, percent: number): number {
+  const len = segment.end - segment.start;
+  if (len <= 0) return percent >= segment.end ? 1 : 0;
+  return clamp((percent - segment.start) / len, 0, 1);
+}
+
+// The gaps eat pixels, so pixels and time are not linear across the bar:
+// inside a segment the drawn length maps to its whole time span, a point in
+// a gap snaps to the chapter boundary. Both directions use the same rects,
+// so the fill ends exactly under the cursor.
+function pxToPercent(px: number, total: number): number {
+  if (total <= 0) return 0;
+  const inset = segmentInset.value;
+  if (!inset || props.vertical) return clamp((px / total) * 100, 0, 100);
+
+  const list = segments.value;
+  for (let i = 0; i < list.length; i++) {
+    const seg = list[i];
+    const right = (seg.end / 100) * total - inset;
+    if (px <= right || i === list.length - 1) {
+      const left = (seg.start / 100) * total + inset;
+      const w = right - left;
+      const t = w > 0 ? clamp((px - left) / w, 0, 1) : 0;
+      return seg.start + t * (seg.end - seg.start);
+    }
+  }
+  return 100;
+}
+
+function percentToPx(percent: number, total: number): number {
+  const inset = segmentInset.value;
+  if (!inset || props.vertical) return (percent / 100) * total;
+  const seg = segments.value[segmentIndexAt(percent)];
+  const left = (seg.start / 100) * total + inset;
+  const w = Math.max(((seg.end - seg.start) / 100) * total - inset * 2, 0);
+  return left + segmentFraction(seg, percent) * w;
+}
+
+/** Same as percentToPx, as CSS: stays right while the bar resizes. */
+function percentToCss(percent: number): string {
+  const inset = segmentInset.value;
+  if (!inset || props.vertical) return `${percent}%`;
+  const seg = segments.value[segmentIndexAt(percent)];
+  const t = segmentFraction(seg, percent);
+  return `calc(${seg.start}% + ${inset}px + (${seg.end - seg.start}% - ${inset * 2}px) * ${t})`;
+}
+
+/** Writes a per-segment scaleX for `percent` into `els`, skipping unchanged ones. */
+function paintSegments(els: (HTMLElement | null)[], last: number[], percent: number, useWidth: boolean): void {
+  const list = segments.value;
+  for (let i = 0; i < list.length; i++) {
+    const el = els[i];
+    if (!el) continue;
+    const t = segmentFraction(list[i], percent);
+    if (last[i] === t) continue;
+    last[i] = t;
+    if (useWidth) el.style.width = `${t * 100}%`;
+    else el.style.transform = `scaleX(${t})`;
+  }
 }
 
 const hoverSegmentIndex = computed(() => {
@@ -264,18 +346,14 @@ watch([hoverTimeLabel, hoverChapterTitle], ([time, chapter]) => {
 const tooltipAnchor = {
   getBoundingClientRect: () => {
     const rect = containerRef.value?.getBoundingClientRect() ?? new DOMRect();
-    const offset = (hoverPercent.value / 100) * rect.width;
+    const offset = percentToPx(hoverPercent.value, rect.width);
     const x = !props.vertical && isRTL() ? rect.right - offset : rect.left + offset;
     return new DOMRect(x, rect.top, 0, rect.height);
   },
 };
 
 function setHoverFilled(percent: number): void {
-  const el = hoverFilledRef.value;
-  if (!el) return;
-  const show = props.duration && (isHovering.value || mousedown.value);
-  el.style.display = show ? "block" : "none";
-  el.style.width = `${percent}%`;
+  paintSegments(hoverFillEls, lastHoverFill, percent, false);
 }
 
 function calcPercentFromPosition(x: number, y: number): number {
@@ -297,24 +375,17 @@ function calcPercentFromPosition(x: number, y: number): number {
     offsetAxisVal = rectMax - offsetAxisVal;
   }
 
-  return rectMax > 0 ? clamp((offsetAxisVal / rectMax) * 100, 0, 100) : 0;
+  return pxToPercent(offsetAxisVal, rectMax);
 }
 
 function setFilled(value: number): void {
-  if (!filledRef.value) return;
+  const range = props.max - props.min;
+  const percent = range > 0 ? clamp(((value - props.min) / range) * 100, 0, 100) : 0;
 
-  let percents = (value - props.min) / (props.max - props.min);
-  percents = clamp(percents, 0, 1);
-
-  if (props.useTransform) {
-    filledRef.value.style.transform = `scaleX(${percents})`;
-  }
-  else {
-    filledRef.value.style.width = `${percents * 100}%`;
-  }
+  paintSegments(fillEls, lastFill, percent, !props.useTransform);
 
   if (thumbRef.value) {
-    thumbRef.value.style.left = `${percents * 100}%`;
+    thumbRef.value.style.left = percentToCss(percent);
   }
 }
 
@@ -455,6 +526,17 @@ watch(
   },
 );
 
+// New chapters (another track, a loaded chapter list) re-key the segments:
+// their fills come back empty, so repaint them from the current value.
+watch(segments, (list) => {
+  fillEls.length = list.length;
+  hoverFillEls.length = list.length;
+  lastFill = [];
+  lastHoverFill = [];
+  setFilled(internalValue.value);
+  setHoverFilled(isHovering.value || mousedown.value ? hoverPercent.value : 0);
+}, { flush: "post" });
+
 onMounted(() => {
   setProgress(props.modelValue);
 });
@@ -468,8 +550,11 @@ defineExpose({
 
 <style scoped>
 .range-selector {
-  --range-height: 3px;
+  /* Drawn height is always the hover one; at rest the segments are squashed
+     to --range-rest-scale of it. scaleY, not height: no layout per frame,
+     and nothing next to the bar moves while it grows. */
   --range-height-hover: 5px;
+  --range-rest-scale: 0.6; /* 3px of 5px */
   --range-bg: var(--border);
   --range-bg-hover: var(--muted);
   --range-filled: var(--primary);
@@ -497,67 +582,61 @@ defineExpose({
   pointer-events: none;
 }
 
+/* Each segment carries its own fills, so a gap stays a gap even behind
+   the played part. Only the hovered segment grows, like YouTube's chapters;
+   with no chapters the one segment is the whole bar. */
 .range-selector__segment {
   position: absolute;
   bottom: 0;
-  height: var(--range-height);
-  background-color: var(--range-bg);
+  height: var(--range-height-hover);
+  overflow: hidden;
   border-radius: var(--range-radius);
-  transition: height 0.15s ease, background-color 0.15s ease;
+  background-color: var(--range-bg);
+  transform: scaleY(var(--range-rest-scale));
+  transform-origin: center bottom;
+  transition: transform 0.15s ease, background-color 0.15s ease;
 }
 
 .range-selector__segment--hover {
-  height: var(--range-height-hover);
+  transform: scaleY(1);
   background-color: var(--range-bg-hover);
 }
 
-.range-selector__filled {
+.range-selector__filled,
+.range-selector__hover-filled {
   position: absolute;
-  left: 0;
-  bottom: 0;
-  height: var(--range-height);
-  border-radius: var(--range-radius);
-  background-color: var(--range-filled);
+  inset: 0;
   pointer-events: none;
   transform-origin: left center;
-  transition: height 0.15s ease;
-}
-
-.range-selector--hovering .range-selector__filled,
-.range-selector--active .range-selector__filled {
-  height: var(--range-height-hover);
-}
-
-.range-selector--transform .range-selector__filled {
-  width: 100%;
   transform: scaleX(0);
-  will-change: transform;
 }
 
-.range-selector--transition .range-selector__filled {
-  transition: width 0.1s linear, height 0.15s ease;
-}
-
-.range-selector--active .range-selector__filled {
-  transition: height 0.15s ease !important;
-}
-
-.range-selector--no-transition .range-selector__filled {
-  transition: none !important;
+.range-selector__filled {
+  background-color: var(--range-filled);
 }
 
 .range-selector__hover-filled {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: var(--range-height);
+  visibility: hidden;
   background-color: var(--input);
-  pointer-events: none;
 }
 
-.range-selector--hovering .range-selector__hover-filled,
-.range-selector--active .range-selector__hover-filled {
-  height: var(--range-height-hover);
+.range-selector--hover-fill .range-selector__hover-filled {
+  visibility: visible;
+}
+
+/* Width path, kept for hosts that turn the transform off. */
+.range-selector:not(.range-selector--transform) .range-selector__filled {
+  width: 0;
+  transform: none;
+}
+
+.range-selector--transition .range-selector__filled {
+  transition: width 0.1s linear;
+}
+
+.range-selector--active .range-selector__filled,
+.range-selector--no-transition .range-selector__filled {
+  transition: none !important;
 }
 
 .range-selector__input {
@@ -583,6 +662,7 @@ defineExpose({
   outline-offset: 2px;
 }
 
+/* Outside the segments: never squashed by their scaleY. */
 .range-selector__thumb {
   position: absolute;
   bottom: 50%;
@@ -594,11 +674,11 @@ defineExpose({
   pointer-events: none;
 }
 
-/* No hover, no "grow on hover": touch devices get the hover height as the
-   resting height, so the touch target is never the thin idle track. */
+/* No hover, no "grow on hover": touch devices rest at full height, so the
+   touch target is never the thin idle track. */
 @media (hover: none) {
   .range-selector {
-    --range-height: var(--range-height-hover);
+    --range-rest-scale: 1;
   }
 }
 </style>
