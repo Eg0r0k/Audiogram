@@ -145,7 +145,7 @@ fn content_type_for(link: &ResolvedTrack) -> &'static str {
 #[tauri::command]
 pub async fn ym_prefetch<R: Runtime>(app: AppHandle<R>, track_id: String) -> Result<(), AppError> {
     validate_track_id(&track_id)?;
-    super::state::load_session_if_needed(&app);
+    super::state::load_session_if_needed(&app).await;
     let client = crate::proxy::http_client(&app)?;
     prefetch_track(
         &app.state::<YmState>(),

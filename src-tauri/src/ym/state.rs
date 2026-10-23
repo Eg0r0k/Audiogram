@@ -2,12 +2,12 @@
 //! the on-disk token store and the device id.
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, RwLock};
 
 use secrecy::{ExposeSecret, SecretString};
 use tauri::{AppHandle, Manager, Runtime};
-use tokio::sync::Semaphore;
+use tokio::sync::{OnceCell, Semaphore};
 use tokio_util::sync::CancellationToken;
 
 pub const API_BASE: &str = "https://api.music.yandex.net";
@@ -146,9 +146,11 @@ struct Poll {
 
 pub struct YmState {
     session: RwLock<Option<YmSession>>,
+    session_version: AtomicU64,
+    pub refresh_lock: tokio::sync::Mutex<()>,
     poll: Mutex<Option<Poll>>,
     next_poll_id: AtomicU64,
-    loaded: AtomicBool,
+    loaded: OnceCell<()>,
     pub permits: Semaphore,
     pub endpoints: Endpoints,
 }
@@ -163,9 +165,11 @@ impl YmState {
     pub fn with_endpoints(api: &str, oauth: &str) -> Self {
         Self {
             session: RwLock::new(None),
+            session_version: AtomicU64::new(0),
+            refresh_lock: tokio::sync::Mutex::new(()),
             poll: Mutex::new(None),
             next_poll_id: AtomicU64::new(1),
-            loaded: AtomicBool::new(false),
+            loaded: OnceCell::new(),
             permits: Semaphore::new(MAX_PARALLEL_REQUESTS),
             endpoints: Endpoints {
                 api: api.trim_end_matches('/').to_owned(),
@@ -185,9 +189,18 @@ impl YmState {
         self.session.read().ok().and_then(|guard| guard.clone())
     }
 
+    /// Both under the session lock, so the version always names this session.
+    pub fn versioned_session(&self) -> (Option<YmSession>, u64) {
+        match self.session.read() {
+            Ok(guard) => (guard.clone(), self.session_version.load(Ordering::SeqCst)),
+            Err(_) => (None, self.session_version.load(Ordering::SeqCst)),
+        }
+    }
+
     pub fn set_session(&self, session: Option<YmSession>) {
         if let Ok(mut guard) = self.session.write() {
             *guard = session;
+            self.session_version.fetch_add(1, Ordering::SeqCst);
         }
     }
 
@@ -245,43 +258,54 @@ pub fn device_file<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<PathBuf> {
     Ok(app.path().app_data_dir()?.join(DEVICE_FILE))
 }
 
-pub fn read_auth_file(path: &Path) -> Option<StoredAuth> {
-    let raw = std::fs::read_to_string(path).ok()?;
+pub async fn read_auth_file(path: &Path) -> Option<StoredAuth> {
+    let raw = tokio::fs::read_to_string(path).await.ok()?;
     serde_json::from_str(&raw).ok()
 }
 
 /// Writes the session for the next launch. Unix: owner-only permissions;
 /// Windows and Android app-data directories are private per user/app already.
-pub fn write_auth_file(path: &Path, auth: &StoredAuth) -> std::io::Result<()> {
+pub async fn write_auth_file(path: &Path, auth: &StoredAuth) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
+        tokio::fs::create_dir_all(parent).await?;
     }
     let json = serde_json::to_string(auth).map_err(std::io::Error::other)?;
-    std::fs::write(path, json)?;
+    tokio::fs::write(path, json).await?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+        let _ = tokio::fs::set_permissions(path, PermissionsExt::from_mode(0o600)).await;
     }
     Ok(())
 }
 
-pub fn remove_auth_file(path: &Path) {
-    let _ = std::fs::remove_file(path);
+pub async fn remove_auth_file(path: &Path) {
+    let _ = tokio::fs::remove_file(path).await;
 }
 
-/// Reads the stored session once per launch; later calls are free.
-pub(crate) fn load_session_if_needed<R: Runtime>(app: &AppHandle<R>) {
+/// Reads the stored session once per launch; later calls are free, and a
+/// call that arrives mid-read waits for it.
+pub(crate) async fn load_session_if_needed<R: Runtime>(app: &AppHandle<R>) {
     let state = app.state::<YmState>();
-    if state.loaded.swap(true, Ordering::SeqCst) {
+    if state.loaded.initialized() {
         return;
     }
-    if let Ok(path) = auth_file(app) {
-        if let Some(stored) = read_auth_file(&path) {
-            log::info!("ym: restored session for uid {}", stored.uid);
-            state.set_session(Some(stored.into_session()));
-        }
-    }
+    load_stored_session(&state, auth_file(app).ok().as_deref()).await;
+}
+
+async fn load_stored_session(state: &YmState, path: Option<&Path>) {
+    state
+        .loaded
+        .get_or_init(|| async {
+            let Some(path) = path else {
+                return;
+            };
+            if let Some(stored) = read_auth_file(path).await {
+                log::info!("ym: restored session for uid {}", stored.uid);
+                state.set_session(Some(stored.into_session()));
+            }
+        })
+        .await;
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -292,8 +316,9 @@ struct StoredDevice {
 
 /// The device Yandex lists the sign-in under. Generated once and kept across
 /// sign-outs so the account's device list does not grow a new entry per login.
-pub fn load_or_create_device_id(path: &Path) -> String {
-    if let Some(stored) = std::fs::read_to_string(path)
+pub async fn load_or_create_device_id(path: &Path) -> String {
+    if let Some(stored) = tokio::fs::read_to_string(path)
+        .await
         .ok()
         .and_then(|raw| serde_json::from_str::<StoredDevice>(&raw).ok())
         .filter(|stored| !stored.device_id.is_empty())
@@ -302,12 +327,12 @@ pub fn load_or_create_device_id(path: &Path) -> String {
     }
     let device_id = new_device_id();
     if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
+        let _ = tokio::fs::create_dir_all(parent).await;
     }
     if let Ok(json) = serde_json::to_string(&StoredDevice {
         device_id: device_id.clone(),
     }) {
-        let _ = std::fs::write(path, json);
+        let _ = tokio::fs::write(path, json).await;
     }
     device_id
 }
@@ -338,8 +363,8 @@ mod tests {
         assert!(!debug.contains("refresh-secret"));
     }
 
-    #[test]
-    fn stored_auth_round_trips_through_the_file() {
+    #[tokio::test]
+    async fn stored_auth_round_trips_through_the_file() {
         let path = temp_path("auth.json");
         let session = YmSession::new(
             42,
@@ -350,8 +375,10 @@ mod tests {
             Some(1_800_000_000),
         );
 
-        write_auth_file(&path, &StoredAuth::from_session(&session)).expect("write");
-        let restored = read_auth_file(&path).expect("read").into_session();
+        write_auth_file(&path, &StoredAuth::from_session(&session))
+            .await
+            .expect("write");
+        let restored = read_auth_file(&path).await.expect("read").into_session();
 
         assert_eq!(restored.uid, 42);
         assert!(restored.has_plus);
@@ -360,30 +387,55 @@ mod tests {
         assert_eq!(restored.refresh_token(), Some("refresh-1"));
         assert_eq!(restored.expires_at, Some(1_800_000_000));
 
-        remove_auth_file(&path);
-        assert!(read_auth_file(&path).is_none());
+        remove_auth_file(&path).await;
+        assert!(read_auth_file(&path).await.is_none());
     }
 
-    #[test]
-    fn a_missing_or_corrupt_file_is_no_session() {
+    #[tokio::test]
+    async fn a_missing_or_corrupt_file_is_no_session() {
         let path = temp_path("corrupt.json");
-        assert!(read_auth_file(&path).is_none());
+        assert!(read_auth_file(&path).await.is_none());
 
         std::fs::write(&path, "{not json").expect("write");
-        assert!(read_auth_file(&path).is_none());
+        assert!(read_auth_file(&path).await.is_none());
         let _ = std::fs::remove_file(path);
     }
 
-    #[test]
-    fn the_device_id_is_created_once_and_then_reused() {
+    #[tokio::test]
+    async fn the_device_id_is_created_once_and_then_reused() {
         let path = temp_path("device.json");
 
-        let first = load_or_create_device_id(&path);
-        let second = load_or_create_device_id(&path);
+        let first = load_or_create_device_id(&path).await;
+        let second = load_or_create_device_id(&path).await;
 
         assert_eq!(first.len(), 32);
         assert_eq!(first, second);
         let _ = std::fs::remove_file(path);
+    }
+
+    #[tokio::test]
+    async fn a_second_caller_waits_for_the_first_session_load() {
+        let path = temp_path("load.json");
+        let stored = YmSession::new(42, true, "Tester", "access-1", None, None);
+        write_auth_file(&path, &StoredAuth::from_session(&stored))
+            .await
+            .expect("write");
+        let state = YmState::default();
+
+        let (first, second) = tokio::join!(
+            async {
+                load_stored_session(&state, Some(&path)).await;
+                state.session().map(|session| session.uid)
+            },
+            async {
+                load_stored_session(&state, Some(&path)).await;
+                state.session().map(|session| session.uid)
+            },
+        );
+
+        assert_eq!(first, Some(42));
+        assert_eq!(second, Some(42), "the second caller saw no session");
+        remove_auth_file(&path).await;
     }
 
     #[test]

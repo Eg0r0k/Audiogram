@@ -65,7 +65,7 @@ impl<R: Runtime> RemoteRoutes for AppRoutes<R> {
             );
         }
         if let Some(id) = rest.strip_prefix("ym/track/") {
-            crate::ym::load_session_if_needed(app);
+            crate::ym::load_session_if_needed(app).await;
             let state = app.state::<crate::ym::YmState>();
             let links = app.state::<crate::ym::YmLinkCache>();
             let cache = app.state::<crate::ym::YmAudioCache>();

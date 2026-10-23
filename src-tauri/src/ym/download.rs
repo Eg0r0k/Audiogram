@@ -75,7 +75,7 @@ pub async fn ym_download<R: Runtime>(
     on_progress: Channel<DownloadEvent>,
 ) -> Result<DownloadResult, AppError> {
     validate_track_id(&track_id)?;
-    super::state::load_session_if_needed(&app);
+    super::state::load_session_if_needed(&app).await;
     let client = crate::proxy::http_client(&app)?;
     let tmp = tmp_dir(&app).map_err(|e| AppError::from_download(SourceId::Ym, e))?;
     let result = download_track(
