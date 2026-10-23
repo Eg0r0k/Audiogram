@@ -157,6 +157,9 @@ export function useSelection<T extends Selectable>(
     let movedToNewRow = false;
     let isDragSelecting: boolean | null = null;
     let snapshotAtDragStart: Set<string> | null = null;
+    // The range maps indices to ids through items, so a new array re-applies the same index.
+    let lastAppliedIndex = -1;
+    let lastAppliedItems: T[] | null = null;
 
     let stopMouseDrag: (() => void) | null = null;
     let stopTouchDrag: (() => void) | null = null;
@@ -174,6 +177,10 @@ export function useSelection<T extends Selectable>(
     }
 
     function applyDragRange(currentIndex: number): void {
+      if (currentIndex === lastAppliedIndex && items.value === lastAppliedItems) return;
+      lastAppliedIndex = currentIndex;
+      lastAppliedItems = items.value;
+
       const [start, end] = dragStartIndex <= currentIndex
         ? [dragStartIndex, currentIndex]
         : [currentIndex, dragStartIndex];
@@ -198,6 +205,8 @@ export function useSelection<T extends Selectable>(
       movedToNewRow = false;
       isDragSelecting = null;
       snapshotAtDragStart = null;
+      lastAppliedIndex = -1;
+      lastAppliedItems = null;
     }
 
     function initDragState(rowIndex: number, rowId: string): void {
@@ -205,6 +214,8 @@ export function useSelection<T extends Selectable>(
       movedToNewRow = false;
       isDragSelecting = !_selectedIds.value.has(rowId);
       snapshotAtDragStart = new Set(_selectedIds.value);
+      lastAppliedIndex = -1;
+      lastAppliedItems = null;
     }
 
     function onMouseMove(e: MouseEvent): void {
