@@ -1,0 +1,41 @@
+[advisories]
+# Advisories have no warn level: fail on our own picks, not on what tauri brings.
+unmaintained = "workspace"
+# Reachable only through tauri and tauri-plugin-updater; the fixed versions
+# need tauri 2.12, whose windows 0.62 clashes with our windows 0.61.
+# Re-check this list when tauri is bumped.
+ignore = [
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml via plist via tauri: parses our own bundled plist, no untrusted input" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml via plist via tauri: same" },
+    { id = "RUSTSEC-2026-0367", reason = "zip via tauri-plugin-updater: extracts only our minisign-verified release archive" },
+    { id = "RUSTSEC-2026-0368", reason = "zip via tauri-plugin-updater: same" },
+    { id = "RUSTSEC-2026-0369", reason = "zip via tauri-plugin-updater: same" },
+]
+
+[bans]
+multiple-versions = "warn"
+skip = [
+    { crate = "reqwest", reason = "tauri-plugin-updater brings 0.13 while tauri-plugin-http is still on 0.12; see Cargo.toml" },
+]
+
+[licenses]
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Zlib",
+]
+
+[licenses.private]
+ignore = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
