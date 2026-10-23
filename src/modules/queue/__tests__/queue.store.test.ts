@@ -2654,25 +2654,43 @@ describe("queue.store", () => {
       expect((store.queue[0].track as any).source.url).toBe(`${LIVE_BASE}/yt/dQw4w9WgXcQ`);
     });
 
-    it("rewrites proxied cover fields and leaves foreign URLs untouched", async () => {
+    it("drops retired proxied cover fields and leaves foreign URLs untouched", async () => {
       const store = useQueueStore();
       seedStoredSnapshot(snapshotWithEphemeral(
         {
           source: { type: "url", url: "https://radio.example/stream.m3u8" },
           cover: "http://127.0.0.1:60123/staletoken/nd/cover/al-1?size=300",
         },
-        "http://127.0.0.1:60123/staletoken/nd/cover/al-2",
+        "http://127.0.0.1:60123/staletoken/ym/cover/avatars.yandex.net%2Fx%2F%25%25?size=300",
       ));
 
       await store.restorePersistedQueue();
 
       const restored = store.queue[0];
       expect((restored.track as any).source.url).toBe("https://radio.example/stream.m3u8");
-      expect((restored.track as any).cover).toBe(`${LIVE_BASE}/nd/cover/al-1?size=300`);
-      expect(restored.cover).toBe(`${LIVE_BASE}/nd/cover/al-2`);
+      expect((restored.track as any).cover).toBeUndefined();
+      expect(restored.cover).toBeUndefined();
     });
 
-    it("rewrites item covers of library tracks too", async () => {
+    it("keeps ytimg covers rebased onto the live base", async () => {
+      const thumb = encodeURIComponent("https://i.ytimg.com/vi/dQw4w9WgXcQ/hq720.jpg?sqp=abc");
+      const store = useQueueStore();
+      seedStoredSnapshot(snapshotWithEphemeral(
+        {
+          source: { type: "url", url: "http://127.0.0.1:60123/staletoken/yt/dQw4w9WgXcQ" },
+          cover: `http://127.0.0.1:60123/staletoken/ytimg/${thumb}`,
+        },
+        `http://127.0.0.1:60123/staletoken/ytimg/${thumb}`,
+      ));
+
+      await store.restorePersistedQueue();
+
+      const restored = store.queue[0];
+      expect((restored.track as any).cover).toBe(`${LIVE_BASE}/ytimg/${thumb}`);
+      expect(restored.cover).toBe(`${LIVE_BASE}/ytimg/${thumb}`);
+    });
+
+    it("drops retired item covers of library tracks too", async () => {
       vi.mocked(trackRepository.findByIds).mockResolvedValue(ok([createTrackEntity("1")]));
       const store = useQueueStore();
       seedStoredSnapshot({
@@ -2691,7 +2709,8 @@ describe("queue.store", () => {
 
       await store.restorePersistedQueue();
 
-      expect(store.queue[0].cover).toBe(`${LIVE_BASE}/nd/cover/al-9`);
+      expect(store.queue).toHaveLength(1);
+      expect(store.queue[0].cover).toBeUndefined();
     });
   });
 

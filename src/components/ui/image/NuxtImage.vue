@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, useAttrs, useTemplateRef, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, useAttrs, useTemplateRef, watch } from "vue";
 import type { ImgHTMLAttributes } from "vue";
 
 export interface ImageProps {
@@ -71,6 +71,8 @@ const imgEl = useTemplateRef<HTMLImageElement>("imgEl");
 const placeholderLoaded = ref(false);
 const useFallback = ref(false);
 const originalSrcFailed = ref(false);
+let probe: HTMLImageElement | null = null;
+let disposed = false;
 
 // ── Load-animation gating (custom slot mode) ────────────────────────────────
 // The slot's `isLoaded` should flip through the "not loaded" state ONLY when
@@ -211,12 +213,13 @@ function markFallback() {
 }
 
 function handleLoadSuccess(event?: Event) {
+  if (disposed) return;
   placeholderLoaded.value = true;
   emit("load", event || new Event("load"));
 }
 
 function handleLoadError(error: unknown) {
-  if (originalSrcFailed.value) {
+  if (disposed || originalSrcFailed.value) {
     return;
   }
 
@@ -231,6 +234,7 @@ function loadMainImage() {
   }
 
   const img = new Image();
+  probe = img;
 
   if (props.crossorigin) {
     img.crossOrigin = props.crossorigin;
@@ -328,5 +332,23 @@ onMounted(() => {
   }
 
   setupImageListeners();
+});
+
+// Chromium keeps downloading a detached <img>; only an empty src cancels it.
+onBeforeUnmount(() => {
+  disposed = true;
+
+  if (probe && !placeholderLoaded.value) {
+    probe.onload = null;
+    probe.onerror = null;
+    probe.src = "";
+  }
+
+  const el = imgEl.value;
+  if (el && !el.complete) {
+    el.onload = null;
+    el.onerror = null;
+    el.src = "";
+  }
 });
 </script>

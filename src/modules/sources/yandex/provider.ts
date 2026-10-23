@@ -1,7 +1,7 @@
 import { errAsync, okAsync, ResultAsync } from "neverthrow";
 import { Channel } from "@tauri-apps/api/core";
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
-import { ymCoverUrl, ymTrackStreamUrl } from "@/lib/stream-url";
+import { ymTrackStreamUrl } from "@/lib/stream-url";
 import { parseTrackRef } from "@/types/track-ref";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 import type {
@@ -27,6 +27,7 @@ import type {
   YmTrack,
 } from "./api/types";
 import { isYmAvailable, setYmHasPlus } from "./config";
+import { ymCoverHttpsUrl } from "./lib/cover";
 import { useYmAuthStore } from "./store/ym-auth.store";
 import {
   flattenAlbumTracks,
@@ -345,7 +346,7 @@ export const ymSourceProvider: SourceProvider = {
   },
 
   coverUrl(coverRef, size) {
-    return ymCoverUrl(coverRef, size);
+    return ymCoverHttpsUrl(coverRef, size);
   },
 
   /** The media server resolves the real URL per request; nothing to fetch here. */

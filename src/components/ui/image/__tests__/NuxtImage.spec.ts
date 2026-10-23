@@ -5,6 +5,8 @@ import { renderWithPlugins, screen, waitFor } from "@/test/utils";
 import NuxtImage from "../NuxtImage.vue";
 
 function mockImageDecode(decode: () => Promise<void>) {
+  const instances: MockImage[] = [];
+
   class MockImage {
     crossOrigin = "";
     sizes = "";
@@ -12,10 +14,45 @@ function mockImageDecode(decode: () => Promise<void>) {
     src = "";
 
     decode = vi.fn(decode);
+
+    constructor() {
+      instances.push(this);
+    }
   }
 
   vi.stubGlobal("Image", MockImage);
+  return instances;
 }
+
+const mockImageWithoutDecodeFailingOnAbort = () => {
+  const instances: MockImage[] = [];
+
+  class MockImage {
+    crossOrigin = "";
+    sizes = "";
+    srcset = "";
+    onload: ((event: Event) => void) | null = null;
+    onerror: ((event: Event) => void) | null = null;
+
+    private currentSrc = "";
+
+    constructor() {
+      instances.push(this);
+    }
+
+    get src() {
+      return this.currentSrc;
+    }
+
+    set src(value: string) {
+      this.currentSrc = value;
+      if (!value) this.onerror?.(new Event("error"));
+    }
+  }
+
+  vi.stubGlobal("Image", MockImage);
+  return instances;
+};
 
 function mockImageWithoutDecodeSyncLoad() {
   class MockImage {
@@ -179,5 +216,78 @@ describe("NuxtImage", () => {
       expect(image).toHaveAttribute("src", "/img/fallback.svg");
       expect(image).not.toHaveClass("blur-sm");
     });
+  });
+
+  it("clears the probe src on unmount while the load is pending", () => {
+    const probes = mockImageDecode(() => new Promise(() => {}));
+
+    const CustomImage = defineComponent({
+      components: { NuxtImage },
+      template: `
+        <NuxtImage src="/covers/album.png" custom v-slot="{ imgAttrs, src }">
+          <img v-bind="imgAttrs" :src="src" alt="Album cover">
+        </NuxtImage>
+      `,
+    });
+
+    const { unmount } = renderWithPlugins(CustomImage);
+
+    expect(probes).toHaveLength(1);
+    expect(probes[0].src).toBe("/covers/album.png");
+
+    unmount();
+
+    expect(probes[0].src).toBe("");
+  });
+
+  it("clears the rendered img src on unmount while the load is pending", () => {
+    const { unmount } = renderWithPlugins(NuxtImage, {
+      props: { src: "/covers/album.png", alt: "Album cover" },
+    });
+
+    const image = screen.getByRole("img", { name: "Album cover" });
+    expect(image).toHaveAttribute("src", "/covers/album.png");
+
+    unmount();
+
+    expect(image).toHaveAttribute("src", "");
+    expect(image.onload).toBeNull();
+    expect(image.onerror).toBeNull();
+  });
+
+  it("does not emit error for a load aborted by unmount", async () => {
+    const probes = mockImageWithoutDecodeFailingOnAbort();
+    const onError = vi.fn();
+
+    const { unmount } = renderWithPlugins(NuxtImage, {
+      props: { src: "/covers/album.png", alt: "Album cover", placeholder: true, onError },
+    });
+
+    expect(probes[0].src).toBe("/covers/album.png");
+
+    unmount();
+    await Promise.resolve();
+
+    expect(probes[0].src).toBe("");
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("leaves a completed image untouched on unmount", async () => {
+    const probes = mockImageDecode(() => Promise.resolve());
+
+    const { unmount } = renderWithPlugins(NuxtImage, {
+      props: { src: "/covers/album.png", alt: "Album cover", placeholder: true },
+    });
+
+    const image = screen.getByRole("img", { name: "Album cover" });
+    await waitFor(() => {
+      expect(image).toHaveAttribute("src", "/covers/album.png");
+    });
+    Object.defineProperty(image, "complete", { value: true });
+
+    unmount();
+
+    expect(probes[0].src).toBe("/covers/album.png");
+    expect(image).toHaveAttribute("src", "/covers/album.png");
   });
 });

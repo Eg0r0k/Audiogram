@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { okAsync } from "neverthrow";
+import { md5 } from "@noble/hashes/legacy.js";
+import { bytesToHex } from "@noble/hashes/utils.js";
 import { AlbumId, PlaylistId, TrackId } from "@/types/ids";
 import { ndAlbumId, ndPlaylistId, ndTrackId } from "@/types/track-ref";
 
@@ -206,12 +208,42 @@ describe("ndSourceProvider", () => {
     expect(artists[0]?.id).toBe("nd:ar1");
   });
 
-  it("builds stream and cover URLs through the media server", async () => {
+  it("builds the stream URL through the media server", async () => {
     const stream = await ndSourceProvider.resolveStreamUrl(ndTrackId("s1"));
     expect(stream._unsafeUnwrap()).toBe(`${MEDIA_BASE}/nd/song/s1`);
+  });
 
-    expect(ndSourceProvider.coverUrl("al-al1", 300)).toBe(`${MEDIA_BASE}/nd/cover/al-al1?size=300`);
-    expect(ndSourceProvider.coverUrl("al-al1")).toBe(`${MEDIA_BASE}/nd/cover/al-al1`);
+  describe("coverUrl", () => {
+    it("coverUrl points at the server's getCoverArt with auth params and size", () => {
+      const url = new URL(ndSourceProvider.coverUrl("al-al1", 300));
+
+      expect(url.origin).toBe("https://demo.example");
+      expect(url.pathname).toBe("/rest/getCoverArt");
+      expect(url.searchParams.get("id")).toBe("al-al1");
+      expect(url.searchParams.get("size")).toBe("300");
+      expect(url.searchParams.get("u")).toBe("joe");
+      for (const key of ["t", "s", "v", "c"]) expect(url.searchParams.get(key)).toBeTruthy();
+      const salt = url.searchParams.get("s") ?? "";
+      expect(url.searchParams.get("t")).toBe(bytesToHex(md5(new TextEncoder().encode(`sesame${salt}`))));
+      expect(url.href).not.toContain("sesame");
+
+      expect(new URL(ndSourceProvider.coverUrl("al-al1")).searchParams.has("size")).toBe(false);
+    });
+
+    it("coverUrl is stable across calls within a session", () => {
+      const first = ndSourceProvider.coverUrl("al-al1", 300);
+
+      expect(ndSourceProvider.coverUrl("al-al1", 300)).toBe(first);
+      const salt = new URL(first).searchParams.get("s");
+      expect(salt).toMatch(/^[0-9a-f]{16}$/);
+      expect(new URL(ndSourceProvider.coverUrl("al-al2", 64)).searchParams.get("s")).toBe(salt);
+    });
+
+    it("coverUrl is empty when the source is not configured", () => {
+      configState.current = null;
+
+      expect(ndSourceProvider.coverUrl("al-al1", 300)).toBe("");
+    });
   });
 
   describe("downloadToFile", () => {

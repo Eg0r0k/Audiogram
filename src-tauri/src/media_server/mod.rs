@@ -1,5 +1,5 @@
-//! Loopback HTTP media server — the transport for all audio (and proxied
-//! covers) on every platform.
+//! Loopback HTTP media server: the transport for all audio (and proxied
+//! YouTube thumbnails) on every platform.
 //!
 //! Replaces the `stream://` custom protocol: wry cannot stream custom-protocol
 //! bodies (on Android the whole body is materialized into one Java `byte[]`,
@@ -9,7 +9,7 @@
 //! Bound to `127.0.0.1:0` (random port) BEFORE the webview starts; every
 //! request path must begin with a per-launch random token segment:
 //! `/{token}/local/<enc path>`, `/{token}/nd/song/<id>`,
-//! `/{token}/nd/cover/<id>?size=<px>`, `/{token}/yt/<videoId>`,
+//! `/{token}/ym/track/<id>`, `/{token}/yt/<videoId>`,
 //! `/{token}/ytimg/<enc https url>`.
 //!
 //! The local route answers with two different bodies: by default the playable
@@ -17,15 +17,17 @@
 //! `?raw=1` the file exactly as it is on disk — what tag parsing and
 //! fingerprinting need.
 
+mod breaker;
 mod local;
 mod primitives;
 mod remote;
 mod server;
 
+pub use breaker::UpstreamBreaker;
 #[cfg(test)]
 pub(crate) use primitives::new_token;
 pub(crate) use primitives::{
-    cors, file_extension, forward_image, forward_stream, memory_range_response, status_response,
+    file_extension, forward_image, forward_stream, memory_range_response, status_response,
     ImageError,
 };
 pub use server::{bind_on_loopback, spawn};
@@ -41,11 +43,12 @@ pub(crate) type Body = BoxBody<bytes::Bytes, std::io::Error>;
 /// commands.
 ///
 /// Two ports, one server: the webview allows six HTTP/1.1 connections per
-/// host, and a burst of proxied covers (a few remote pages opened in a row,
-/// an upstream or a proxy that answers slowly) held all six — the media
-/// element's own request for a LOCAL file then queued behind them for as
-/// long as those covers took to fail. Images on their own origin get their
-/// own pool; audio never waits for a cover.
+/// host, and a burst of proxied images from a slow upstream or proxy would
+/// hold all six while the media element's request for a LOCAL file queued
+/// behind them. Images on their own origin get their own pool; audio never
+/// waits for a cover. The image port serves YouTube thumbnails only: ND and
+/// YM covers load in the webview straight from their hosts, which send
+/// `Access-Control-Allow-Origin: *`.
 pub struct MediaServerState {
     pub port: u16,
     pub image_port: u16,
@@ -61,7 +64,7 @@ pub fn media_server_base(state: tauri::State<'_, MediaServerState>) -> String {
     format!("http://127.0.0.1:{}/{}", state.port, state.token)
 }
 
-/// Same server, same routes, second port: the base for proxied covers and
+/// Same server, same routes, second port: the base for proxied YouTube
 /// thumbnails (see [`MediaServerState`]).
 #[tauri::command]
 pub fn image_server_base(state: tauri::State<'_, MediaServerState>) -> String {

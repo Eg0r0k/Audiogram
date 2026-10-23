@@ -223,10 +223,14 @@ pub(crate) enum ImageError {
     Status(u16),
 }
 
-/// GET `url` and stream the image through with cacheable headers — the body
-/// every cover route shares. Covers are cacheable, unlike tokenized audio:
-/// the webview may keep them for a day, which kills the `<img>` remount
-/// re-fetch flicker. Errors never embed the URL.
+/// Whole-request deadline on top of the shared client's connect and read
+/// gaps, so a stalled upstream frees the webview connection early.
+const IMAGE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+
+/// GET `url` and stream the image through with cacheable headers. Images are
+/// cacheable, unlike tokenized audio: the webview may keep them for a day,
+/// which kills the `<img>` remount re-fetch flicker. A timeout is
+/// [`ImageError::Request`]. Errors never embed the URL.
 pub(crate) async fn forward_image(
     client: &reqwest::Client,
     url: &str,
@@ -236,6 +240,7 @@ pub(crate) async fn forward_image(
 
     let response = client
         .get(url)
+        .timeout(IMAGE_TIMEOUT)
         .send()
         .await
         .map_err(|e| ImageError::Request(e.without_url().to_string()))?;

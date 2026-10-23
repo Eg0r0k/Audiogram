@@ -139,9 +139,10 @@ export const loadPersistedQueue = async (
 
 // The media server's port and token change every launch, so any stored
 // proxy URL (playback or cover) must be re-pointed at the live base;
-// foreign URLs pass through.
+// foreign URLs pass through. A retired cover route is dropped, not kept as
+// "": an empty string would stop the `??` fallback to the track's own cover.
 const migrateCover = (cover: string | null | undefined) =>
-  cover ? migrateProxyUrl(cover) : cover;
+  cover ? migrateProxyUrl(cover) || undefined : cover;
 
 // Queue items are never edited in place — every change is a new object — so
 // the serialized form of an item can be reused for as long as the item

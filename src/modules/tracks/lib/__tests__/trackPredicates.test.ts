@@ -85,7 +85,9 @@ describe("ephemeralRemoteDto", () => {
     });
   });
 
-  it("keeps a plain https cover and drops one proxied by cover id", () => {
+  // A restored ND stream has no cover: the queue restore drops the retired
+  // loopback cover routes.
+  it("keeps a plain https cover and rebuilds a cover-less ND stream", () => {
     const plain = ephemeralRemoteDto({
       kind: "ephemeral",
       id: "e1",
@@ -93,17 +95,16 @@ describe("ephemeralRemoteDto", () => {
       cover: COVER,
       source: { type: "url", url: `${BASE}/yt/abc` },
     });
-    const byId = ephemeralRemoteDto({
+    const ndStream = ephemeralRemoteDto({
       kind: "ephemeral",
       id: "e2",
       title: "Song",
-      cover: `${BASE}/nd/cover/al1?size=226`,
       source: { type: "url", url: `${BASE}/nd/song/42` },
     });
 
     expect(plain?.coverRef).toBe(COVER);
-    expect(byId).toMatchObject({ id: "nd:42", title: "Song" });
-    expect(byId?.coverRef).toBeUndefined();
+    expect(ndStream).toMatchObject({ id: "nd:42", title: "Song" });
+    expect(ndStream?.coverRef).toBeUndefined();
   });
 
   it("returns null for files and non-proxied streams", () => {

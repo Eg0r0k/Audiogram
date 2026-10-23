@@ -5,7 +5,7 @@ import { ndTrackId, ymTrackId, ytTrackId } from "@/types/track-ref";
 
 //
 // URL helpers for the loopback media server — the transport for all audio
-// and proxied covers. The Rust side binds `127.0.0.1:{random port}` before
+// and YouTube thumbnails. The Rust side binds `127.0.0.1:{random port}` before
 // the webview exists and guards every route with a per-launch token:
 //
 //   http://127.0.0.1:{port}/{token}/yt/<videoId>
@@ -14,13 +14,13 @@ import { ndTrackId, ymTrackId, ytTrackId } from "@/types/track-ref";
 //   http://127.0.0.1:{port}/{token}/local/<encoded absolute path>
 //   http://127.0.0.1:{port}/{token}/local/<encoded absolute path>?raw=1
 //       — the same file WITHOUT the playback rendition (see localFileRawUrl)
-//   http://127.0.0.1:{imagePort}/{token}/nd/cover/<coverId>?size=<px>
-//   http://127.0.0.1:{imagePort}/{token}/ym/cover/<encoded %% cover uri>?size=<px>
 //   http://127.0.0.1:{imagePort}/{token}/ytimg/<encoded https thumbnail url>
 //
-// Images live on a second port of the same server: the webview allows six
-// connections per host, and a burst of slow proxied covers used to hold all
-// six while the media element's request for a local file queued behind them.
+// Images (`ytimg/` only) live on a second port of the same server: the webview
+// allows six connections per host, and a burst of slow thumbnails must not
+// hold all six while the media element's request for a local file queues
+// behind them. Navidrome and Yandex covers load straight from their hosts,
+// which send `Access-Control-Allow-Origin: *`.
 //
 // The bases are fetched ONCE at bootstrap (top-level await in main.ts), so
 // the builders stay synchronous. Ports and token change every launch —
@@ -94,12 +94,6 @@ export const localFileRawUrl = (absolutePath: string): string => {
   return `${localFileStreamUrl(absolutePath)}?raw=1`;
 };
 
-/** Builds the proxied Navidrome cover URL. */
-export const ndCoverUrl = (coverId: string, size?: number): string => {
-  const query = size ? `?size=${size}` : "";
-  return `${requireImageBase()}/nd/cover/${encodeURIComponent(coverId)}${query}`;
-};
-
 /**
  * Builds the proxied YouTube thumbnail URL. The whole https URL rides as ONE
  * encoded segment (it may carry its own query); the Rust side percent-decodes
@@ -114,26 +108,10 @@ export const ymTrackStreamUrl = (trackId: string): string => {
   return `${requireBase()}/ym/track/${encodeURIComponent(trackId)}`;
 };
 
-/**
- * Builds the proxied Yandex cover URL. The cover ref is Yandex's scheme-less
- * URI with its `%%` size placeholder, riding as ONE encoded segment; the Rust
- * side substitutes the size, adds the scheme and enforces the host allowlist.
- */
-export const ymCoverUrl = (coverRef: string, size?: number): string => {
-  const query = size ? `?size=${size}` : "";
-  return `${requireImageBase()}/ym/cover/${encodeURIComponent(coverRef)}${query}`;
-};
+const KNOWN_ROUTES = /^(yt|nd\/song|ym\/track|local|ytimg)\//;
+const RETIRED_COVER_ROUTES = /^(nd|ym)\/cover\//;
 
-const KNOWN_ROUTES = /^(yt|nd\/song|nd\/cover|ym\/track|ym\/cover|local|ytimg)\//;
-
-/**
- * Recognizes a server URL from this or any previous session
- * (`http://127.0.0.1:{port}/{token}/…`, any port and token) and returns the
- * decoded route path (`yt/<id>`, `nd/song/<id>`, `nd/cover/<id>?size=<px>`,
- * `local/<abs path>`, `ytimg/<https url>`), or null for anything that is not
- * a proxy URL.
- */
-export const proxyPathFromUrl = (url: string | null | undefined): string | null => {
+const loopbackRoute = (url: string | null | undefined): string | null => {
   if (!url) return null;
   try {
     const parsed = new URL(url);
@@ -144,12 +122,22 @@ export const proxyPathFromUrl = (url: string | null | undefined): string | null 
     const slash = path.indexOf("/");
     if (slash === -1) return null;
 
-    const withQuery = `${path.slice(slash + 1)}${parsed.search}`;
-    return KNOWN_ROUTES.test(withQuery) ? withQuery : null;
+    return `${path.slice(slash + 1)}${parsed.search}`;
   }
   catch {
     return null;
   }
+};
+
+/**
+ * Recognizes a server URL from this or any previous session
+ * (`http://127.0.0.1:{port}/{token}/...`, any port and token) and returns the
+ * decoded route path (`yt/<id>`, `nd/song/<id>`, `local/<abs path>`,
+ * `ytimg/<https url>`), or null for anything that is not a proxy URL.
+ */
+export const proxyPathFromUrl = (url: string | null | undefined): string | null => {
+  const route = loopbackRoute(url);
+  return route !== null && KNOWN_ROUTES.test(route) ? route : null;
 };
 
 /**
@@ -195,6 +183,8 @@ export const trackIdFromStreamUrl = (url: string | null | undefined): TrackId | 
  */
 export const migrateProxyUrl = (url: string): string => {
   if (!serverBase) return url;
+  // Nothing serves these any more; the empty string tells the caller to drop the field.
+  if (RETIRED_COVER_ROUTES.test(loopbackRoute(url) ?? "")) return "";
   const path = proxyPathFromUrl(url);
   if (!path) return url;
 
@@ -210,20 +200,8 @@ export const migrateProxyUrl = (url: string): string => {
   const ndSong = route.startsWith("nd/song/") ? route.slice("nd/song/".length) : null;
   if (ndSong) return ndSongStreamUrl(ndSong);
 
-  const ndCover = route.startsWith("nd/cover/") ? route.slice("nd/cover/".length) : null;
-  if (ndCover) {
-    const size = /(?:^|&)size=(\d+)/.exec(query)?.[1];
-    return ndCoverUrl(ndCover, size ? Number(size) : undefined);
-  }
-
   const ymTrack = route.startsWith("ym/track/") ? route.slice("ym/track/".length) : null;
   if (ymTrack) return ymTrackStreamUrl(ymTrack);
-
-  const ymCover = route.startsWith("ym/cover/") ? route.slice("ym/cover/".length) : null;
-  if (ymCover) {
-    const size = /(?:^|&)size=(\d+)/.exec(query)?.[1];
-    return ymCoverUrl(ymCover, size ? Number(size) : undefined);
-  }
 
   const local = route.startsWith("local/") ? route.slice("local/".length) : null;
   if (local) return rebuildLocalUrl(local, query);

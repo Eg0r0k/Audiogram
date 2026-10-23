@@ -37,8 +37,8 @@ export function ephemeralFilePath(track: PlayerTrack | null): string | null {
 
 /**
  * A YouTube thumbnail proxied through the `ytimg/` route unwraps to the https
- * URL the catalog carries as coverRef; a plain URL already is one. ND/YM
- * covers are proxied by id, which no DTO field can carry, so they drop.
+ * URL the catalog carries as coverRef; a plain URL already is one. Only
+ * legacy snapshots reach this; their ND/YM covers are dropped on restore.
  */
 const streamCoverRef = (cover: string | undefined): string | undefined => {
   if (!cover) return undefined;
