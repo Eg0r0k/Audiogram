@@ -17,22 +17,8 @@
     >
       <div :class="styles.indexCol">
         <Transition name="index-swap">
-          <button
-            v-if="isSelecting"
-            key="checkbox"
-            class="flex items-center justify-center"
-            tabindex="-1"
-            @click.stop="onCheckboxClick"
-          >
-            <Checkbox
-              :model-value="isSelected"
-              size="lg"
-              tabindex="-1"
-            />
-          </button>
           <span
-            v-else
-            key="index"
+            v-if="!isSelecting"
             class="relative flex items-center justify-center"
           >
             <span :class="[styles.index, canSwapIndexOnHover && 'index-hover-idle']">{{ index }}</span>
@@ -52,6 +38,21 @@
           </span>
         </Transition>
       </div>
+      <Transition name="index-swap">
+        <button
+          v-if="isSelecting"
+          :data-cover-check="showCover || undefined"
+          class="row-check flex items-center justify-center"
+          tabindex="-1"
+          @click.stop="onCheckboxClick"
+        >
+          <Checkbox
+            :model-value="isSelected"
+            size="lg"
+            tabindex="-1"
+          />
+        </button>
+      </Transition>
       <div :class="styles.firstCol">
         <div
           v-if="showCover"
@@ -88,19 +89,6 @@
               />
             </div>
           </div>
-
-          <span
-            v-if="isSelecting"
-            data-cover-check
-            class="cover-check pointer-events-none absolute -right-1.5 -bottom-1.5 rounded-full bg-background p-0.5"
-          >
-            <Checkbox
-              :model-value="isSelected"
-              size="sm"
-              class="rounded-full"
-              tabindex="-1"
-            />
-          </span>
         </div>
 
         <div class="min-w-0 flex-1">
@@ -501,20 +489,18 @@ function handleAlbumClick(event: MouseEvent) {
   border-bottom-right-radius: 0;
 }
 
-.index-col { grid-column: index; }
-.first-col { grid-column: first; }
-.var1-col  { grid-column: var1; }
-.var2-col  { grid-column: var2; }
-.last-col  { grid-column: last; }
+/* The checkbox shares a cell (index, or the cover's in the narrow layout):
+   without an explicit row, auto-placement moves the other item to a new one. */
+.index-col { grid-column: index; grid-row: 1; }
+.row-check { grid-column: index; grid-row: 1; justify-self: center; }
+.first-col { grid-column: first; grid-row: 1; }
+.var1-col  { grid-column: var1; grid-row: 1; }
+.var2-col  { grid-column: var2; grid-row: 1; }
+.last-col  { grid-column: last; grid-row: 1; }
 
 .index-swap-enter-active,
 .index-swap-leave-active {
   transition: opacity 0.15s ease-out, transform 0.15s ease-out;
-}
-/* Leave element is taken out of flow so enter/leave crossfade in place
-   instead of playing sequentially. */
-.index-swap-leave-active {
-  position: absolute;
 }
 .index-swap-enter-from,
 .index-swap-leave-to {
@@ -552,7 +538,6 @@ function handleAlbumClick(event: MouseEvent) {
 
 /* The selection checkbox lives in the index column; where that column is
    gone it moves onto the cover's corner. */
-.cover-check { display: none; }
 @container (max-width: 620px) {
   .track-expanded {
     --grid-template-columns: var(--grid-template-columns-small) !important;
@@ -560,7 +545,24 @@ function handleAlbumClick(event: MouseEvent) {
   }
   .index-col,
   .var1-col,
-  .var2-col { display: none; }
-  .cover-check { display: flex; }
+  .var2-col,
+  .row-check { display: none; }
+  .track-expanded .row-check[data-cover-check] {
+    display: flex;
+    grid-column: first;
+    justify-self: start;
+    /* A 20px badge 6px past the bottom-right corner of the 40px cover. */
+    translate: 26px 16px;
+    position: relative;
+    z-index: 11;
+    padding: 2px;
+    border-radius: 9999px;
+    background-color: var(--background);
+    pointer-events: none;
+  }
+  .track-expanded .row-check[data-cover-check] :deep([data-slot="checkbox"]) {
+    --choice-size: 1rem;
+    border-radius: 9999px;
+  }
 }
 </style>

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  CheckboxIndicator,
   CheckboxRoot,
   type CheckboxRootEmits,
   type CheckboxRootProps,
@@ -72,10 +71,7 @@ const onPointerLeave = () => {
     @pointerenter="onPointerEnter"
     @pointerleave="onPointerLeave"
   >
-    <CheckboxIndicator
-      force-mount
-      class="pointer-events-none absolute -inset-0.5"
-    >
+    <span class="pointer-events-none absolute -inset-0.5">
       <svg
         viewBox="0 0 24 24"
         fill="none"
@@ -97,6 +93,6 @@ const onPointerLeave = () => {
           class="[stroke-dasharray:1] [stroke-dashoffset:1] transition-[stroke-dashoffset] duration-short-4 ease-standard group-data-[state=indeterminate]/checkbox:[stroke-dashoffset:0] motion-reduce:transition-none"
         />
       </svg>
-    </CheckboxIndicator>
+    </span>
   </CheckboxRoot>
 </template>

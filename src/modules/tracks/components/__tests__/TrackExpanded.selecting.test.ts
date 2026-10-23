@@ -113,12 +113,42 @@ describe("TrackExpanded in select mode", () => {
     expect(emitted().play).toBeUndefined();
   });
 
-  it("puts a round checkbox on the cover while selecting, for layouts that hide the index column", () => {
-    const { container } = renderRow(true, { isSelected: true });
+  it("renders a single checkbox while selecting", () => {
+    for (const showCover of [true, false]) {
+      const { container, unmount } = renderRow(true, { showCover });
+      expect(container.querySelectorAll("[data-slot=checkbox]"), `showCover: ${showCover}`).toHaveLength(1);
+      unmount();
+    }
+  });
+
+  it("hooks the single checkbox to the cover corner when the row has a cover, reflecting the selection", async () => {
+    const { container, rerender, unmount } = renderRow(true, { isSelected: true });
     const badge = container.querySelector("[data-cover-check]")!;
-    const checkbox = badge.querySelector("[data-slot=checkbox]")!;
+    const checkbox = container.querySelector("[data-slot=checkbox]")!;
+    expect(badge.contains(checkbox)).toBe(true);
     expect(checkbox.getAttribute("data-state")).toBe("checked");
-    expect(checkbox.className).toContain("rounded-full");
+
+    await rerender({ isSelected: false });
+    expect(checkbox.getAttribute("data-state")).toBe("unchecked");
+    unmount();
+
+    const coverless = renderRow(true, { showCover: false, isSelected: true });
+    expect(coverless.container.querySelector("[data-cover-check]")).toBeNull();
+    expect(coverless.container.querySelector("[data-slot=checkbox]")!.getAttribute("data-state")).toBe("checked");
+  });
+
+  it("selects instead of playing when the checkbox is clicked", async () => {
+    for (const showCover of [true, false]) {
+      const { container, emitted, unmount } = renderRow(true, { showCover });
+
+      await fireEvent.click(container.querySelector("[data-slot=checkbox]")!);
+
+      const selects = emitted<[unknown, MouseEvent]>().select;
+      expect(selects, `showCover: ${showCover}`).toHaveLength(1);
+      expect(selects[0][1]).toBeInstanceOf(MouseEvent);
+      expect(emitted().play).toBeUndefined();
+      unmount();
+    }
   });
 
   it("renders no cover checkbox outside select mode", () => {
