@@ -2,6 +2,7 @@
 //! source `AppError` with the same kind.
 
 use crate::app_error::{kind_for_status, SourceErrorKind};
+use crate::proxy::ProxyError;
 use crate::remote_download::DownloadError;
 
 /// Failure class; maps onto the envelope's `SourceErrorKind`.
@@ -18,7 +19,8 @@ pub enum YtErrorKind {
     Unknown,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("{message}")]
 pub struct YtError {
     pub kind: YtErrorKind,
     pub message: String,
@@ -45,16 +47,9 @@ impl YtError {
     }
 }
 
-impl std::fmt::Display for YtError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-/// String errors from internal helpers (fs, the shared download machinery, …).
-impl From<String> for YtError {
-    fn from(message: String) -> Self {
-        Self::unknown(message)
+impl From<ProxyError> for YtError {
+    fn from(error: ProxyError) -> Self {
+        Self::unknown(error.to_string())
     }
 }
 

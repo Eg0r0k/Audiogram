@@ -9,6 +9,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use super::auth::{drop_session, expires_at_from, persist_session, refresh_access_token};
 use super::state::{YmSession, YmState, CLIENT_HEADER_NAME, CLIENT_HEADER_VALUE};
 use crate::app_error::AppError;
+use crate::proxy::ProxyError;
 use crate::remote_download::DownloadError;
 
 /// Failure class; maps one-to-one onto the envelope's `SourceErrorKind`.
@@ -25,10 +26,12 @@ pub enum YmErrorKind {
     Unavailable,
     /// A download the user cancelled — the manager drops the job on this.
     Cancelled,
+    InvalidInput,
     Unknown,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("{message}")]
 pub struct YmError {
     pub kind: YmErrorKind,
     pub message: String,
@@ -89,16 +92,9 @@ impl YmErrorKind {
     }
 }
 
-impl std::fmt::Display for YmError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-/// Helper errors (proxy config, paths) arrive as strings.
-impl From<String> for YmError {
-    fn from(message: String) -> Self {
-        Self::unknown(message)
+impl From<ProxyError> for YmError {
+    fn from(error: ProxyError) -> Self {
+        Self::unknown(error.to_string())
     }
 }
 

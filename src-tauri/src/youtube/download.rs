@@ -51,7 +51,7 @@ pub async fn yt_download<R: Runtime>(
     meta: Option<YtTrackMeta>,
     on_progress: Channel<DownloadEvent>,
 ) -> Result<DownloadResult, AppError> {
-    let id = validate_id(&id).map_err(YtError::invalid_input)?;
+    let id = validate_id(&id)?;
     let streams = app.state::<YtStreamCache>();
     let entry = streams.get(&id).ok_or_else(|| {
         YtError::new(
@@ -118,7 +118,7 @@ pub async fn yt_download<R: Runtime>(
 /// chunks. Idempotent — cancelling a finished download is a routine race.
 #[tauri::command]
 pub fn yt_download_cancel<R: Runtime>(app: AppHandle<R>, id: String) -> Result<(), AppError> {
-    let id = validate_id(&id).map_err(YtError::invalid_input)?;
+    let id = validate_id(&id)?;
     app.state::<DownloadRegistry>().cancel(&registry_key(&id));
     Ok(())
 }
@@ -163,7 +163,7 @@ async fn embed_metadata<R: Runtime>(
     path: &Path,
     id: &str,
     meta: Option<YtTrackMeta>,
-) -> Result<(), String> {
+) -> lofty::error::Result<()> {
     let mut tag = Tag::new(TagType::Mp4Ilst);
     let mut cover_url: Option<String> = None;
 
@@ -203,8 +203,7 @@ async fn embed_metadata<R: Runtime>(
     let path = path.to_path_buf();
     tokio::task::spawn_blocking(move || tag.save_to_path(&path, WriteOptions::default()))
         .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())
+        .map_err(std::io::Error::other)?
 }
 
 /// Fetches the cover, preferring the caller-provided (already host-validated)

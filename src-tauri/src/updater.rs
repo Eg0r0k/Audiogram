@@ -23,7 +23,8 @@ pub(crate) enum UpdateErrorKind {
     Unknown,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
+#[error("{message}")]
 pub struct UpdateError {
     pub(crate) kind: UpdateErrorKind,
     pub(crate) message: String,

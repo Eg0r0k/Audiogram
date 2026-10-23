@@ -63,7 +63,7 @@ mod imp {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    pub fn set_state(_app: &AppHandle, _state: ThumbbarState) -> Result<(), String> {
+    pub fn set_state(_app: &AppHandle, _state: ThumbbarState) -> tauri::Result<()> {
         Ok(())
     }
 }
@@ -319,7 +319,7 @@ mod imp {
         Ok(())
     }
 
-    pub fn set_state(app: &AppHandle, state: ThumbbarState) -> Result<(), String> {
+    pub fn set_state(app: &AppHandle, state: ThumbbarState) -> tauri::Result<()> {
         app.run_on_main_thread(move || {
             THUMBBAR.with_borrow_mut(|t| {
                 if let Some(t) = t {
@@ -328,6 +328,5 @@ mod imp {
                 }
             });
         })
-        .map_err(|e| e.to_string())
     }
 }

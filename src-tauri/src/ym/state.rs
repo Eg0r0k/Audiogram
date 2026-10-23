@@ -237,20 +237,12 @@ fn new_device_id() -> String {
 
 // ── Storage ──────────────────────────────────────────────────────────
 
-pub fn auth_file<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
-    Ok(app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join(AUTH_FILE))
+pub fn auth_file<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<PathBuf> {
+    Ok(app.path().app_data_dir()?.join(AUTH_FILE))
 }
 
-pub fn device_file<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
-    Ok(app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join(DEVICE_FILE))
+pub fn device_file<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<PathBuf> {
+    Ok(app.path().app_data_dir()?.join(DEVICE_FILE))
 }
 
 pub fn read_auth_file(path: &Path) -> Option<StoredAuth> {
@@ -260,12 +252,12 @@ pub fn read_auth_file(path: &Path) -> Option<StoredAuth> {
 
 /// Writes the session for the next launch. Unix: owner-only permissions;
 /// Windows and Android app-data directories are private per user/app already.
-pub fn write_auth_file(path: &Path, auth: &StoredAuth) -> Result<(), String> {
+pub fn write_auth_file(path: &Path, auth: &StoredAuth) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(parent)?;
     }
-    let json = serde_json::to_string(auth).map_err(|e| e.to_string())?;
-    std::fs::write(path, json).map_err(|e| e.to_string())?;
+    let json = serde_json::to_string(auth).map_err(std::io::Error::other)?;
+    std::fs::write(path, json)?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

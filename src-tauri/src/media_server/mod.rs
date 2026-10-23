@@ -28,7 +28,7 @@ pub use breaker::UpstreamBreaker;
 pub(crate) use primitives::new_token;
 pub(crate) use primitives::{
     file_extension, forward_image, forward_stream, memory_range_response, status_response,
-    ImageError,
+    ForwardError, ImageError,
 };
 pub use server::{bind_on_loopback, spawn};
 

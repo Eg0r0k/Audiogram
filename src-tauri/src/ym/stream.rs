@@ -10,7 +10,7 @@ use super::resolve::{resolve, ResolvedTrack, YmLinkCache};
 use super::state::YmState;
 use crate::app_error::AppError;
 use crate::audio_cache::{AudioCache, CachedAudio};
-use crate::media_server::{forward_stream, memory_range_response, status_response};
+use crate::media_server::{forward_stream, memory_range_response, status_response, ForwardError};
 
 /// mp3 320 runs ~2.4 MB/min; three tracks comfortably fit under this.
 const MAX_PREFETCHED_YM_TRACKS: usize = 3;
@@ -40,6 +40,14 @@ impl Deref for YmAudioCache {
 /// Yandex track ids are decimal; anything else never reaches a URL.
 pub(crate) fn is_track_id(id: &str) -> bool {
     !id.is_empty() && id.len() <= 20 && id.bytes().all(|b| b.is_ascii_digit())
+}
+
+pub(crate) fn validate_track_id(id: &str) -> Result<(), YmError> {
+    if is_track_id(id) {
+        Ok(())
+    } else {
+        Err(YmError::new(YmErrorKind::InvalidInput, "invalid track id"))
+    }
 }
 
 /// The link for a track: cached while fresh, resolved otherwise.
@@ -136,9 +144,7 @@ fn content_type_for(link: &ResolvedTrack) -> &'static str {
 /// cache. Called by the frontend while the current track plays.
 #[tauri::command]
 pub async fn ym_prefetch<R: Runtime>(app: AppHandle<R>, track_id: String) -> Result<(), AppError> {
-    if !is_track_id(&track_id) {
-        return Err(YmError::new(YmErrorKind::Unknown, "invalid track id").into());
-    }
+    validate_track_id(&track_id)?;
     super::state::load_session_if_needed(&app);
     let client = crate::proxy::http_client(&app)?;
     prefetch_track(
@@ -157,7 +163,7 @@ async fn forward_link(
     link: &ResolvedTrack,
     range: Option<String>,
     origin: Option<&str>,
-) -> Result<http::Response<crate::media_server::Body>, String> {
+) -> Result<http::Response<crate::media_server::Body>, ForwardError> {
     let mut response = forward_stream(client, &link.url, &[], range, None, origin).await?;
     if response.status().is_success() {
         if let Ok(value) = http::HeaderValue::from_str(content_type_for(link)) {
@@ -505,5 +511,20 @@ mod tests {
         assert!(!is_track_id("40144:3328"));
         assert!(!is_track_id("../x"));
         assert!(!is_track_id("dQw4w9WgXcQ"));
+    }
+
+    #[test]
+    fn a_bad_track_id_is_invalid_input_not_unknown() {
+        for bad in ["", "../x", "40144:3328", "dQw4w9WgXcQ"] {
+            let error = validate_track_id(bad).unwrap_err();
+            assert_eq!(error.kind, YmErrorKind::InvalidInput, "{bad:?}");
+            assert_eq!(error.message, "invalid track id");
+        }
+        assert!(validate_track_id("40144").is_ok());
+
+        let wire = serde_json::to_value(AppError::from(validate_track_id("../x").unwrap_err()))
+            .expect("json");
+        assert_eq!(wire["source"], "ym");
+        assert_eq!(wire["kind"], "INVALID_INPUT");
     }
 }

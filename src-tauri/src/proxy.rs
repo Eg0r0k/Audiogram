@@ -27,6 +27,17 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 /// happens mid-playback nothing does, and playback simply stops.
 const READ_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// A proxy-config failure; never carries a request URL.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum ProxyError {
+    #[error("{0}")]
+    InvalidUrl(String),
+    #[error("{0}")]
+    Build(#[from] reqwest::Error),
+    #[error("proxy state poisoned")]
+    Poisoned,
+}
+
 #[derive(Default)]
 struct ProxyInner {
     /// `scheme://[user:pass@]host:port`; `None` means "direct".
@@ -54,19 +65,15 @@ impl ProxyState {
     /// every proxy change. `reqwest::Client` is an `Arc` inside, so the clone
     /// is a refcount bump and every caller shares one connection pool.
     /// Errors are proxy-config errors — they never carry request URLs.
-    pub(crate) fn client(&self) -> Result<reqwest::Client, String> {
-        let mut inner = self
-            .0
-            .lock()
-            .map_err(|_| "proxy state poisoned".to_string())?;
+    pub(crate) fn client(&self) -> Result<reqwest::Client, ProxyError> {
+        let mut inner = self.0.lock().map_err(|_| ProxyError::Poisoned)?;
         if let Some(client) = &inner.client {
             return Ok(client.clone());
         }
         let client = client_builder(inner.url.as_deref())?
             .connect_timeout(CONNECT_TIMEOUT)
             .read_timeout(READ_TIMEOUT)
-            .build()
-            .map_err(|e| e.to_string())?;
+            .build()?;
         inner.client = Some(client.clone());
         Ok(client)
     }
@@ -75,10 +82,12 @@ impl ProxyState {
 /// A reqwest builder with the proxy applied — the one place a proxy URL is
 /// parsed, so every client agrees on what an invalid URL means: an error,
 /// never a silent direct connection.
-pub(crate) fn client_builder(proxy: Option<&str>) -> Result<reqwest::ClientBuilder, String> {
+pub(crate) fn client_builder(proxy: Option<&str>) -> Result<reqwest::ClientBuilder, ProxyError> {
     let mut builder = reqwest::Client::builder();
     if let Some(url) = proxy {
-        builder = builder.proxy(reqwest::Proxy::all(url).map_err(|e| e.to_string())?);
+        let proxy = reqwest::Proxy::all(url)
+            .map_err(|e| ProxyError::InvalidUrl(e.without_url().to_string()))?;
+        builder = builder.proxy(proxy);
     }
     Ok(builder)
 }
@@ -97,7 +106,7 @@ fn redacted(url: &str) -> String {
 }
 
 /// The shared client honoring the proxy state — see [`ProxyState::client`].
-pub(crate) fn http_client<R: Runtime>(app: &AppHandle<R>) -> Result<reqwest::Client, String> {
+pub(crate) fn http_client<R: Runtime>(app: &AppHandle<R>) -> Result<reqwest::Client, ProxyError> {
     app.state::<ProxyState>().client()
 }
 
@@ -122,8 +131,7 @@ pub async fn proxy_check(url: String) -> Result<u64, AppError> {
     }
 
     // Proxy::all fails only on an unparsable URL or unknown scheme: the user's input.
-    let client = client_builder(Some(&url))
-        .map_err(AppError::invalid_input)?
+    let client = client_builder(Some(&url))?
         .timeout(Duration::from_secs(10))
         .build()
         .map_err(|e| AppError::network(e.to_string()))?;
@@ -148,7 +156,7 @@ pub async fn proxy_check(url: String) -> Result<u64, AppError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{redacted, ProxyState};
+    use super::{redacted, ProxyError, ProxyState};
 
     #[test]
     fn redacted_drops_credentials_and_keeps_the_endpoint() {
@@ -191,6 +199,6 @@ mod tests {
         let state = ProxyState::default();
         state.set(Some("not a url".into()));
 
-        assert!(state.client().is_err());
+        assert!(matches!(state.client(), Err(ProxyError::InvalidUrl(_))));
     }
 }

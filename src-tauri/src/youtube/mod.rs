@@ -25,10 +25,10 @@ pub(crate) use crate::proxy::http_client;
 
 /// Trims a frontend-supplied video id and checks it is safe to embed in a
 /// route path and an output file name.
-fn validate_id(id: &str) -> Result<String, String> {
+fn validate_id(id: &str) -> Result<String, YtError> {
     let id = id.trim();
     if !crate::ids::is_plain_id(id) {
-        return Err("invalid video id".into());
+        return Err(YtError::invalid_input("invalid video id"));
     }
     Ok(id.to_owned())
 }

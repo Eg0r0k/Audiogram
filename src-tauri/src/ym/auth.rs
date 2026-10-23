@@ -417,9 +417,9 @@ async fn complete_sign_in<R: Runtime>(
         token.refresh_token.as_deref(),
         expires_at_from(token.expires_in),
     );
-    if let Err(e) =
-        auth_file(app).and_then(|path| write_auth_file(&path, &StoredAuth::from_session(&session)))
-    {
+    if let Err(e) = auth_file(app).and_then(|path| {
+        write_auth_file(&path, &StoredAuth::from_session(&session)).map_err(tauri::Error::Io)
+    }) {
         log::warn!("ym: storing the session failed: {e}");
     }
     state.set_session(Some(session));
@@ -455,9 +455,9 @@ pub fn ym_auth_logout<R: Runtime>(app: AppHandle<R>) -> Result<(), AppError> {
 
 /// Persists a refreshed session (the token endpoint rotated the tokens).
 pub fn persist_session<R: Runtime>(app: &AppHandle<R>, session: &YmSession) {
-    if let Err(e) =
-        auth_file(app).and_then(|path| write_auth_file(&path, &StoredAuth::from_session(session)))
-    {
+    if let Err(e) = auth_file(app).and_then(|path| {
+        write_auth_file(&path, &StoredAuth::from_session(session)).map_err(tauri::Error::Io)
+    }) {
         log::warn!("ym: storing the refreshed session failed: {e}");
     }
 }

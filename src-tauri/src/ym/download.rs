@@ -9,7 +9,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use super::api::{YmError, YmErrorKind};
 use super::resolve::YmLinkCache;
 use super::state::YmState;
-use super::stream::{is_track_id, resolve_cached};
+use super::stream::{resolve_cached, validate_track_id};
 use crate::app_error::{AppError, SourceId};
 use crate::remote_download::{
     fetch_to_tmp, tmp_dir, DownloadEvent, DownloadRegistry, DownloadRequest, DownloadResult,
@@ -74,9 +74,7 @@ pub async fn ym_download<R: Runtime>(
     track_id: String,
     on_progress: Channel<DownloadEvent>,
 ) -> Result<DownloadResult, AppError> {
-    if !is_track_id(&track_id) {
-        return Err(YmError::new(YmErrorKind::Unknown, "invalid track id").into());
-    }
+    validate_track_id(&track_id)?;
     super::state::load_session_if_needed(&app);
     let client = crate::proxy::http_client(&app)?;
     let tmp = tmp_dir(&app).map_err(|e| AppError::from_download(SourceId::Ym, e))?;
