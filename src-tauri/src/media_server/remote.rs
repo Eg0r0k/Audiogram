@@ -1,5 +1,6 @@
-//! Remote routes (`nd/…`, `ym/…`, `yt/…`) behind a trait so the HTTP core
-//! needs no `AppHandle`; the production impl wraps one, tests use a stub.
+//! Remote routes (`nd/song/`, `ym/track/`, `yt/`, `ytimg/`) behind a trait so
+//! the HTTP core needs no `AppHandle`; the production impl wraps one, tests
+//! use a stub.
 
 use std::future::Future;
 
@@ -36,7 +37,7 @@ impl<R: Runtime> RemoteRoutes for AppRoutes<R> {
     async fn dispatch(
         &self,
         rest: String,
-        query: Option<String>,
+        _query: Option<String>,
         range: Option<String>,
         origin: Option<String>,
     ) -> Option<http::Response<Body>> {
@@ -63,12 +64,6 @@ impl<R: Runtime> RemoteRoutes for AppRoutes<R> {
                 crate::nd::serve_song(config, &cache, &client, id, range.as_deref(), origin).await,
             );
         }
-        if let Some(id) = rest.strip_prefix("nd/cover/") {
-            let config = app.state::<crate::nd::NdState>().get();
-            return Some(
-                crate::nd::serve_cover(config, &client, id, query.as_deref(), origin).await,
-            );
-        }
         if let Some(id) = rest.strip_prefix("ym/track/") {
             crate::ym::load_session_if_needed(app);
             let state = app.state::<crate::ym::YmState>();
@@ -78,16 +73,12 @@ impl<R: Runtime> RemoteRoutes for AppRoutes<R> {
                 crate::ym::serve_track(&state, &links, &cache, &client, id, range, origin).await,
             );
         }
-        if let Some(cover_ref) = rest.strip_prefix("ym/cover/") {
-            return Some(
-                crate::ym::serve_cover(&client, cover_ref, query.as_deref(), origin).await,
-            );
-        }
         if let Some(id) = rest.strip_prefix("yt/") {
             return Some(crate::youtube::serve_yt(app, &client, id, range, origin).await);
         }
         if let Some(url) = rest.strip_prefix("ytimg/") {
-            return Some(crate::youtube::serve_image(&client, url, origin).await);
+            let breaker = app.state::<super::UpstreamBreaker>();
+            return Some(crate::youtube::serve_image(&client, &breaker, url, origin).await);
         }
 
         None

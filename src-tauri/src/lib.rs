@@ -201,6 +201,7 @@ pub fn run() {
         .manage(ym::YmAudioCache::default())
         .manage(youtube::YtStreamCache::default())
         .manage(youtube::YtAudioCache::default())
+        .manage(media_server::UpstreamBreaker::default())
         .manage(media_state);
 
     #[cfg(desktop)]
