@@ -335,9 +335,10 @@ describe("ymSourceProvider", () => {
       expect(invokeCommand).not.toHaveBeenCalled();
     });
 
-    it("proxies covers through the image server with the size", () => {
+    it("points covers straight at the Yandex host at the requested rendition", () => {
       expect(ymSourceProvider.coverUrl("avatars.yandex.net/get-music-content/1/x.a.1-1/%%", 300))
-        .toBe("http://127.0.0.1:4321/tok/ym/cover/avatars.yandex.net%2Fget-music-content%2F1%2Fx.a.1-1%2F%25%25?size=300");
+        .toBe("https://avatars.yandex.net/get-music-content/1/x.a.1-1/300x300");
+      expect(ymSourceProvider.coverUrl("evil.example/x/%%", 300)).toBe("");
     });
 
     it("warms the next track through ym_prefetch", async () => {

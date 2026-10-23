@@ -1,10 +1,10 @@
 import { errAsync, okAsync, ResultAsync } from "neverthrow";
 import { Channel } from "@tauri-apps/api/core";
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
-import { ndCoverUrl, ndSongStreamUrl } from "@/lib/stream-url";
+import { ndSongStreamUrl } from "@/lib/stream-url";
 import { parseTrackRef } from "@/types/track-ref";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
-import { subsonicFetch, type NdConfig } from "../navidrome/api/subsonic";
+import { randomSalt, subsonicFetch, subsonicUrl, type NdConfig } from "../navidrome/api/subsonic";
 import type {
   GetAlbumList2Payload,
   GetAlbumPayload,
@@ -35,6 +35,9 @@ const ndIdOf = (id: TrackId | AlbumId | ArtistId | PlaylistId): string | null =>
 
 /** getAlbumList2 caps size at 500 per the Subsonic contract. */
 const MAX_ALBUM_PAGE = 500;
+
+// One salt per launch: a fresh one per call would change every cover URL on each render and defeat the browser cache.
+const COVER_SALT = randomSalt();
 
 export const ndSourceProvider: SourceProvider = {
   id: "nd",
@@ -163,7 +166,9 @@ export const ndSourceProvider: SourceProvider = {
   },
 
   coverUrl(coverRef, size) {
-    return ndCoverUrl(coverRef, size);
+    const config = getNdConfig();
+    if (!config) return "";
+    return subsonicUrl(config, "getCoverArt", { id: coverRef, ...(size ? { size } : {}) }, COVER_SALT);
   },
 
   resolveStreamUrl(id) {

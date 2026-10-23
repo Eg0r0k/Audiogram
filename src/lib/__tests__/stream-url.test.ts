@@ -19,7 +19,6 @@ import {
   localFileRawUrl,
   localFileStreamUrl,
   migrateProxyUrl,
-  ndCoverUrl,
   ndSongStreamUrl,
   proxyPathFromUrl,
   setMediaServerBaseForTests,
@@ -49,15 +48,14 @@ describe("initMediaServerBase", () => {
     expect(mocks.invoke).toHaveBeenCalledWith("media_server_base");
     expect(mocks.invoke).toHaveBeenCalledWith("image_server_base");
     expect(ytStreamUrl("dQw4w9WgXcQ")).toBe("http://127.0.0.1:999/abc/yt/dQw4w9WgXcQ");
-    // Covers and thumbnails use the image origin, audio the media origin, so
-    // a burst of slow covers never occupies the audio connection pool.
-    expect(ndCoverUrl("al-1", 300)).toBe("http://127.0.0.1:998/abc/nd/cover/al-1?size=300");
+    // Thumbnails use the image origin, audio the media origin, so a burst of
+    // slow thumbnails never occupies the audio connection pool.
     expect(ytImageUrl(THUMB)).toBe(`http://127.0.0.1:998/abc/ytimg/${THUMB_ENC}`);
     expect(ndSongStreamUrl("s1")).toBe("http://127.0.0.1:999/abc/nd/song/s1");
-    // A cover stored under a previous session's single-port base re-points
-    // onto the image origin.
-    expect(migrateProxyUrl("http://127.0.0.1:5000/oldtoken/nd/cover/al-1?size=64"))
-      .toBe("http://127.0.0.1:998/abc/nd/cover/al-1?size=64");
+    // A thumbnail stored under a previous session's single-port base
+    // re-points onto the image origin.
+    expect(migrateProxyUrl(`http://127.0.0.1:5000/oldtoken/ytimg/${THUMB_ENC}`))
+      .toBe(`http://127.0.0.1:998/abc/ytimg/${THUMB_ENC}`);
     mocks.invoke.mockReset();
   });
 });
@@ -66,8 +64,6 @@ describe("builders", () => {
   it("build server URLs off the cached base", () => {
     expect(ytStreamUrl("dQw4w9WgXcQ")).toBe(`${BASE}/yt/dQw4w9WgXcQ`);
     expect(ndSongStreamUrl("s1")).toBe(`${BASE}/nd/song/s1`);
-    expect(ndCoverUrl("al-al1", 300)).toBe(`${BASE}/nd/cover/al-al1?size=300`);
-    expect(ndCoverUrl("al-al1")).toBe(`${BASE}/nd/cover/al-al1`);
   });
 
   it("percent-encodes ids and local paths", () => {
@@ -116,7 +112,7 @@ describe("proxyPathFromUrl", () => {
   });
 
   it("keeps a real query when the server form carries one", () => {
-    expect(proxyPathFromUrl(`${BASE}/nd/cover/al-1?size=300`)).toBe("nd/cover/al-1?size=300");
+    expect(proxyPathFromUrl(`${BASE}/local/C%3A%2Fa.m4a?raw=1`)).toBe("local/C:/a.m4a?raw=1");
   });
 
   it("decodes the thumbnail URL out of the ytimg route", () => {
@@ -156,8 +152,8 @@ describe("migrateProxyUrl", () => {
       .toBe(`${BASE}/yt/dQw4w9WgXcQ`);
     expect(migrateProxyUrl("http://127.0.0.1:60123/deadbeef/nd/song/s1"))
       .toBe(`${BASE}/nd/song/s1`);
-    expect(migrateProxyUrl("http://127.0.0.1:60123/deadbeef/nd/cover/al-1?size=300"))
-      .toBe(`${BASE}/nd/cover/al-1?size=300`);
+    expect(migrateProxyUrl("http://127.0.0.1:60123/deadbeef/ym/track/40144"))
+      .toBe(`${BASE}/ym/track/40144`);
   });
 
   it("re-encodes local paths for the current base", () => {
@@ -188,5 +184,23 @@ describe("migrateProxyUrl", () => {
     setMediaServerBaseForTests(null);
     const stale = "http://127.0.0.1:60123/deadbeef/yt/dQw4w9WgXcQ";
     expect(migrateProxyUrl(stale)).toBe(stale);
+  });
+});
+
+describe("retired cover routes", () => {
+  const YM_REF_ENC = encodeURIComponent("avatars.yandex.net/get-music-content/1/x.a.1-1/%%");
+
+  it("retired cover routes migrate to an empty string", () => {
+    expect(migrateProxyUrl("http://127.0.0.1:60123/deadbeef/nd/cover/al-1?size=300")).toBe("");
+    expect(migrateProxyUrl(`http://127.0.0.1:60123/deadbeef/ym/cover/${YM_REF_ENC}?size=300`)).toBe("");
+    // The same path on a real host is somebody's https URL, not ours.
+    expect(migrateProxyUrl("https://nd.example/tok/nd/cover/al-1?size=300"))
+      .toBe("https://nd.example/tok/nd/cover/al-1?size=300");
+  });
+
+  it("proxyPathFromUrl no longer recognizes cover routes", () => {
+    expect(proxyPathFromUrl(`${BASE}/nd/cover/al-1?size=300`)).toBeNull();
+    expect(proxyPathFromUrl(`${BASE}/ym/cover/${YM_REF_ENC}?size=300`)).toBeNull();
+    expect(proxyPathFromUrl(`${BASE}/ytimg/${THUMB_ENC}`)).toBe(`ytimg/${THUMB}`);
   });
 });

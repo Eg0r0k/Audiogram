@@ -10,7 +10,7 @@ import { unwrapResult } from "@/lib/errors/unwrap";
 import { formatError } from "@/lib/errors";
 
 /**
- * Gives a freshly pinned remote row its artwork: fetches the source-proxied
+ * Gives a freshly pinned remote row its artwork: fetches the source's
  * image for `coverRef` and stores the blob under the owner `trackCoverOwner`
  * picked — the shadow album when the track has one, otherwise the track
  * itself. Idempotent (an existing cover wins) and strictly best-effort — a
