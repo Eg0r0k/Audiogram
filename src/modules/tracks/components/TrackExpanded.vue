@@ -108,11 +108,9 @@
               v-if="isExplicit"
               class="mr-1 inline-flex size-4 font-bold shrink-0 items-center justify-center rounded-[4px] bg-muted  text-[10px] uppercase text-foreground"
             >E</span>
-            <IconCheck
-              v-if="isDownloaded"
-              class="mr-1 size-4 shrink-0 text-foreground"
-              :aria-label="$t('downloads.done')"
-              :title="$t('downloads.done')"
+            <DownloadedMark
+              v-if="offlineTrackId"
+              :track-id="offlineTrackId"
             />
             <span
               v-if="isMobileLayout"
@@ -245,16 +243,14 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import { useTrackContextMenu } from "@/modules/tracks/components/menu/context-menu/useTrackContextMenu";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import SourceDownloadButton from "@/modules/downloads/components/SourceDownloadButton.vue";
+import DownloadedMark from "@/modules/downloads/components/DownloadedMark.vue";
 import HighlightedText from "@/modules/search/components/HighlightedText";
 import type { SearchMatch } from "@/modules/search/types";
-import { localCopyQueries } from "@/queries/localCopy.queries";
-import { useQuery } from "@tanstack/vue-query";
 import type { ArtistId, TrackId } from "@/types/ids";
 import { useI18n } from "vue-i18n";
 import { useRouter, type RouteLocationRaw } from "vue-router";
 import { routeLocation } from "@/app/router/route-locations";
 import { getLogger } from "@/lib/logger";
-import IconCheck from "~icons/tabler/check";
 import IconDots from "~icons/tabler/dots";
 import IconLike from "~icons/tabler/heart";
 import IconLikedFilled from "~icons/tabler/heart-filled";
@@ -382,10 +378,6 @@ const isLibraryRow = computed(() => !props.track.sourceDto);
 // The downloaded check by the title: catalog rows carry their DTO id, YT
 // display rows pass downloadId explicitly.
 const offlineTrackId = computed(() => props.downloadId ?? props.track.sourceDto?.id ?? null);
-// A local library row has no remote id to look up: `byRemoteId(null)` is a
-// skipToken query, so the observer idles without fetching.
-const localCopy = useQuery(computed(() => localCopyQueries.byRemoteId(offlineTrackId.value))).data;
-const isDownloaded = computed(() => !!localCopy.value);
 const relativeAddedAt = computed(() =>
   props.track.addedAt ? formatRelativeTime(props.track.addedAt, locale.value) : "",
 );

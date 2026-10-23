@@ -39,11 +39,22 @@ export const formatISODate = (date: Date): string => date.toISOString().slice(0,
 
 export const formatISOTimestamp = (): string => new Date().toISOString();
 
+const relativeTimeFormatters = new Map<string, Intl.RelativeTimeFormat>();
+
+const relativeTimeFormatter = (locale: string): Intl.RelativeTimeFormat => {
+  let formatter = relativeTimeFormatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+    relativeTimeFormatters.set(locale, formatter);
+  }
+  return formatter;
+};
+
 export const formatRelativeTime = (value?: number, locale?: string): string => {
   if (!value) return "-";
   const diffSeconds = Math.round((value - Date.now()) / 1000);
   const absSeconds = Math.abs(diffSeconds);
-  const formatter = new Intl.RelativeTimeFormat(locale || navigator.language, { numeric: "auto" });
+  const formatter = relativeTimeFormatter(locale || navigator.language);
   if (absSeconds < 60) return formatter.format(diffSeconds, "second");
   const diffMinutes = Math.round(diffSeconds / 60);
   if (Math.abs(diffMinutes) < 60) return formatter.format(diffMinutes, "minute");

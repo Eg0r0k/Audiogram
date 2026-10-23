@@ -49,9 +49,9 @@ const remoteRow = (id: string, isLiked = false): Track => ({
 const localRow = (): Track => ({ ...remoteRow("local-1"), source: TrackSource.LOCAL_INTERNAL, sourceDto: undefined });
 
 /** Runs the composable inside a component setup so vue-query has its client. */
-const setup = () => {
+const setup = (queryClient = new QueryClient()) => {
   const app = createApp({ render: () => null });
-  app.use(VueQueryPlugin, { queryClient: new QueryClient() });
+  app.use(VueQueryPlugin, { queryClient });
   const scope = effectScope();
   let api!: ReturnType<typeof useToggleTrackLike>;
   app.runWithContext(() => {
@@ -124,5 +124,15 @@ describe("useToggleTrackLike", () => {
     expect(ensurePinned).not.toHaveBeenCalled();
     expect(provider.setTrackLiked).not.toHaveBeenCalled();
     expect(toggleTrackLikeAndSync).toHaveBeenCalled();
+  });
+
+  it("creates no mutation in the query client", async () => {
+    const queryClient = new QueryClient();
+    const { toggleTrackLike } = setup(queryClient);
+
+    await toggleTrackLike(localRow());
+    await toggleTrackLike(remoteRow("ym:40144"));
+
+    expect(queryClient.getMutationCache().getAll()).toEqual([]);
   });
 });

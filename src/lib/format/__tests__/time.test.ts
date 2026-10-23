@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createCalendarTooltipFormatter } from "../time";
+import { createCalendarTooltipFormatter, formatRelativeTime } from "../time";
 
 const t = (key: string, params?: Record<string, unknown>) => `${key}:${String(params?.count)}`;
 
@@ -28,5 +28,31 @@ describe("createCalendarTooltipFormatter", () => {
     }
 
     expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("formatRelativeTime", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("builds one formatter per locale", () => {
+    const Original = Intl.RelativeTimeFormat;
+    const spy = vi.spyOn(Intl, "RelativeTimeFormat").mockImplementation(
+      function (...args: ConstructorParameters<typeof Intl.RelativeTimeFormat>) {
+        return new Original(...args);
+      } as unknown as typeof Intl.RelativeTimeFormat,
+    );
+    const now = Date.now();
+    const day = 86_400_000;
+
+    for (let days = 1; days <= 10; days++) {
+      formatRelativeTime(now - days * day, "de");
+      formatRelativeTime(now - days * 60_000, "fr");
+    }
+
+    expect(spy.mock.calls.map(([locale]) => locale)).toEqual(["de", "fr"]);
+    expect(formatRelativeTime(now - 3 * day, "de")).toBe(new Original("de", { numeric: "auto" }).format(-3, "day"));
+    expect(formatRelativeTime(now - 3 * 60_000, "fr")).toBe(new Original("fr", { numeric: "auto" }).format(-3, "minute"));
   });
 });

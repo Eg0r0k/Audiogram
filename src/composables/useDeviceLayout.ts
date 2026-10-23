@@ -5,13 +5,8 @@ const breakpoints = useBreakpoints({ tablet: 1024 });
 
 export type LayoutType = "desktop" | "mobile";
 
-export function useDeviceLayout() {
-  const isMobileLayout = breakpoints.smaller("tablet");
-  const isDesktopLayout = breakpoints.greaterOrEqual("tablet");
+const isMobileLayout = breakpoints.smaller("tablet");
+const isDesktopLayout = computed(() => !isMobileLayout.value);
+const layoutType = computed<LayoutType>(() => (isMobileLayout.value ? "mobile" : "desktop"));
 
-  const layoutType = computed<LayoutType>(() =>
-    isMobileLayout.value ? "mobile" : "desktop",
-  );
-
-  return { layoutType, isMobileLayout, isDesktopLayout } as const;
-}
+export const useDeviceLayout = () => ({ layoutType, isMobileLayout, isDesktopLayout }) as const;
