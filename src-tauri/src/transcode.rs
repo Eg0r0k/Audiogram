@@ -19,9 +19,11 @@
 //! The cache key embeds source mtime + length so an edited/replaced file
 //! re-renders, and the codec prefix keeps the two kinds apart.
 
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 
 use symphonia::core::audio::SampleBuffer;
 use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_AAC, CODEC_TYPE_ALAC};
@@ -550,54 +552,84 @@ pub(crate) fn rendition_path(src: &Path, cache_dir: &Path) -> Option<PathBuf> {
 
     // The media element opens 2+ connections per load; without this lock the
     // concurrent cache misses would decode the same file in parallel (doubled
-    // CPU, colliding tmp writes). Serialize decodes and re-check the cache
-    // under the lock — the loser wakes up to a finished WAV. Runs inside
-    // spawn_blocking, so blocking here is fine.
-    static DECODE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    let _guard = DECODE_LOCK
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if dst.is_file() {
-        return Some(dst);
-    }
+    // CPU, colliding tmp writes). Serialize decodes of one destination and
+    // re-check the cache under the lock, so the loser wakes up to a finished
+    // file. Runs inside spawn_blocking, so blocking here is fine.
+    let key = dst.clone();
+    with_decode_lock(&key, move || {
+        if dst.is_file() {
+            return Some(dst);
+        }
 
-    // Unique tmp per attempt: a half-written file is never visible under the
-    // final name, and no two writers ever share a tmp path.
-    static TMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-    let seq = TMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let tmp = cache_dir.join(format!(
-        "{}.tmp-{}-{seq}",
-        dst.file_name()?.to_string_lossy(),
-        std::process::id(),
-    ));
-    let started = std::time::Instant::now();
-    match decode(src, &tmp) {
-        Ok(()) => {
-            log::info!(
-                "{prefix} transcode: {} decoded in {:.1}s",
-                src.display(),
-                started.elapsed().as_secs_f32(),
-            );
-            if let Err(e) = std::fs::rename(&tmp, &dst) {
-                let _ = std::fs::remove_file(&tmp);
-                // Lost the race to another writer — the destination exists.
-                if !dst.is_file() {
-                    log::warn!("{prefix} transcode: rename failed: {e}");
-                    return None;
+        // Unique tmp per attempt: a half-written file is never visible under the
+        // final name, and no two writers ever share a tmp path.
+        static TMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let seq = TMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let tmp = cache_dir.join(format!(
+            "{}.tmp-{}-{seq}",
+            dst.file_name()?.to_string_lossy(),
+            std::process::id(),
+        ));
+        let started = std::time::Instant::now();
+        match decode(src, &tmp) {
+            Ok(()) => {
+                log::info!(
+                    "{prefix} transcode: {} decoded in {:.1}s",
+                    src.display(),
+                    started.elapsed().as_secs_f32(),
+                );
+                if let Err(e) = std::fs::rename(&tmp, &dst) {
+                    let _ = std::fs::remove_file(&tmp);
+                    // Lost the race to another writer; the destination exists.
+                    if !dst.is_file() {
+                        log::warn!("{prefix} transcode: rename failed: {e}");
+                        return None;
+                    }
                 }
+                Some(dst)
             }
-            Some(dst)
+            Err(e) => {
+                let _ = std::fs::remove_file(&tmp);
+                log::warn!("{prefix} transcode: decode failed: {e}");
+                None
+            }
         }
-        Err(e) => {
-            let _ = std::fs::remove_file(&tmp);
-            log::warn!("{prefix} transcode: decode failed: {e}");
-            None
-        }
+    })
+}
+
+/// Handles are cloned only under the map lock, so a count of one means nobody waits.
+static DECODE_LOCKS: LazyLock<Mutex<HashMap<PathBuf, Arc<Mutex<()>>>>> =
+    LazyLock::new(Default::default);
+
+fn with_decode_lock<T>(key: &Path, f: impl FnOnce() -> T) -> T {
+    let lock = Arc::clone(
+        DECODE_LOCKS
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .entry(key.to_path_buf())
+            .or_default(),
+    );
+    let result = {
+        let _guard = lock.lock().unwrap_or_else(PoisonError::into_inner);
+        f()
+    };
+
+    let mut locks = DECODE_LOCKS.lock().unwrap_or_else(PoisonError::into_inner);
+    drop(lock);
+    if locks
+        .get(key)
+        .is_some_and(|entry| Arc::strong_count(entry) == 1)
+    {
+        locks.remove(key);
     }
+    result
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{mpsc, Arc, Condvar, Mutex};
+    use std::time::Duration;
+
     use super::*;
 
     fn fixture(name: &str) -> PathBuf {
@@ -644,6 +676,94 @@ mod tests {
         assert!(leftovers.is_empty(), "leftover tmp files: {leftovers:?}");
 
         let _ = std::fs::remove_dir_all(cache);
+    }
+
+    const LOCK_TIMEOUT: Duration = Duration::from_secs(2);
+
+    fn decode_lock_key() -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "audiogram-decode-lock-{}.wav",
+            crate::media_server::new_token()
+        ))
+    }
+
+    #[test]
+    fn the_same_destination_serialises_decodes() {
+        let key = decode_lock_key();
+        let (events, seen) = mpsc::channel();
+        let (release, released) = mpsc::channel::<()>();
+
+        let first = {
+            let (key, events) = (key.clone(), events.clone());
+            std::thread::spawn(move || {
+                with_decode_lock(&key, || {
+                    let _ = events.send("first in");
+                    let _ = released.recv_timeout(LOCK_TIMEOUT);
+                    let _ = events.send("first out");
+                });
+            })
+        };
+        assert_eq!(seen.recv_timeout(LOCK_TIMEOUT), Ok("first in"));
+
+        let second = {
+            let key = key.clone();
+            std::thread::spawn(move || {
+                let _ = events.send("second waiting");
+                with_decode_lock(&key, || {
+                    let _ = events.send("second in");
+                });
+            })
+        };
+        assert_eq!(seen.recv_timeout(LOCK_TIMEOUT), Ok("second waiting"));
+        assert_eq!(
+            seen.recv_timeout(Duration::from_millis(200)),
+            Err(mpsc::RecvTimeoutError::Timeout),
+            "the second decode entered while the first was still inside"
+        );
+
+        release.send(()).expect("first thread waiting");
+        assert_eq!(seen.recv_timeout(LOCK_TIMEOUT), Ok("first out"));
+        assert_eq!(seen.recv_timeout(LOCK_TIMEOUT), Ok("second in"));
+        first.join().expect("first thread");
+        second.join().expect("second thread");
+
+        assert!(
+            !DECODE_LOCKS.lock().unwrap().contains_key(&key),
+            "the entry outlived its last holder"
+        );
+    }
+
+    #[test]
+    fn different_destinations_decode_concurrently() {
+        // std's Barrier cannot time out, and a thread stuck in it would keep
+        // its lock held for every other transcode test.
+        let inside = Arc::new((Mutex::new(0usize), Condvar::new()));
+
+        let threads: Vec<_> = (0..2)
+            .map(|_| {
+                let (key, inside) = (decode_lock_key(), Arc::clone(&inside));
+                std::thread::spawn(move || {
+                    with_decode_lock(&key, || {
+                        let (count, changed) = &*inside;
+                        let mut count = count.lock().unwrap();
+                        *count += 1;
+                        changed.notify_all();
+                        !changed
+                            .wait_timeout_while(count, LOCK_TIMEOUT, |count| *count < 2)
+                            .unwrap()
+                            .1
+                            .timed_out()
+                    })
+                })
+            })
+            .collect();
+
+        for thread in threads {
+            assert!(
+                thread.join().expect("decode thread"),
+                "the two decodes never ran at the same time"
+            );
+        }
     }
 
     #[test]

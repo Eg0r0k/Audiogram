@@ -83,13 +83,14 @@ impl ProxyState {
 /// parsed, so every client agrees on what an invalid URL means: an error,
 /// never a silent direct connection.
 pub(crate) fn client_builder(proxy: Option<&str>) -> Result<reqwest::ClientBuilder, ProxyError> {
-    let mut builder = reqwest::Client::builder();
-    if let Some(url) = proxy {
-        let proxy = reqwest::Proxy::all(url)
-            .map_err(|e| ProxyError::InvalidUrl(e.without_url().to_string()))?;
-        builder = builder.proxy(proxy);
-    }
-    Ok(builder)
+    let builder = reqwest::Client::builder();
+    let Some(url) = proxy else {
+        // Otherwise reqwest falls back to HTTP_PROXY/ALL_PROXY from the environment.
+        return Ok(builder.no_proxy());
+    };
+    let proxy = reqwest::Proxy::all(url)
+        .map_err(|e| ProxyError::InvalidUrl(e.without_url().to_string()))?;
+    Ok(builder.proxy(proxy))
 }
 
 /// The proxy URL with its credentials dropped — the only form that may reach
@@ -156,7 +157,71 @@ pub async fn proxy_check(url: String) -> Result<u64, AppError> {
 
 #[cfg(test)]
 mod tests {
+    use std::ffi::OsString;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    use bytes::Bytes;
+    use http_body_util::Full;
+
     use super::{redacted, ProxyError, ProxyState};
+    use crate::media_server::test_support::spawn_upstream;
+
+    /// Puts the overridden variables back on drop, also when an assert panics.
+    struct EnvOverride(Vec<(&'static str, Option<OsString>)>);
+
+    impl EnvOverride {
+        fn set(vars: &[(&'static str, &str)]) -> Self {
+            let saved = vars
+                .iter()
+                .map(|&(name, value)| {
+                    let previous = std::env::var_os(name);
+                    std::env::set_var(name, value);
+                    (name, previous)
+                })
+                .collect();
+            Self(saved)
+        }
+    }
+
+    impl Drop for EnvOverride {
+        fn drop(&mut self) {
+            for (name, previous) in self.0.drain(..).rev() {
+                match previous {
+                    Some(value) => std::env::set_var(name, value),
+                    None => std::env::remove_var(name),
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn a_cleared_proxy_ignores_the_environment() {
+        let hits = Arc::new(AtomicUsize::new(0));
+        let seen = Arc::clone(&hits);
+        let upstream = spawn_upstream(move |_req| {
+            seen.fetch_add(1, Ordering::SeqCst);
+            http::Response::new(Full::new(Bytes::from_static(b"ok")))
+        })
+        .await;
+        let dead_proxy = {
+            let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+            format!("http://{}", listener.local_addr().expect("addr"))
+        };
+
+        // Parallel tests use 127.0.0.1, which NO_PROXY keeps direct; only
+        // `localhost` would reach the dead proxy.
+        let _env = EnvOverride::set(&[("NO_PROXY", "127.0.0.1"), ("HTTP_PROXY", &dead_proxy)]);
+        let client = ProxyState::default().client().expect("direct client");
+        let response = client
+            .get(upstream.replacen("127.0.0.1", "localhost", 1))
+            .send()
+            .await
+            .expect("a direct request, not one through the dead proxy");
+
+        assert_eq!(response.status(), 200);
+        assert_eq!(hits.load(Ordering::SeqCst), 1);
+    }
 
     #[test]
     fn redacted_drops_credentials_and_keeps_the_endpoint() {
