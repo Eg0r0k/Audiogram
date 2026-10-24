@@ -17,13 +17,19 @@
         @submit.prevent="onSubmit"
       >
         <div class="space-y-2">
-          <InputFloating
+          <Label
+            class="text-muted-foreground"
+            for="track-title"
+          >
+            {{ $t('track.edit.fields.title') }}
+          </Label>
+          <Input
             id="track-title"
             v-model="titleInput"
             variant="soft"
-            :label="$t('track.edit.placeholders.title')"
+            size="xl"
             :disabled="isPending"
-            :class="{ 'border-destructive focus-visible:ring-destructive': errors.title }"
+            :aria-invalid="!!errors.title || undefined"
             @keydown.enter.prevent="onSubmit"
           />
 
@@ -35,42 +41,45 @@
           </p>
         </div>
 
-        <div class="space-y-2 rounded-lg bg-accent p-3">
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-sm font-medium">{{ $t('track.edit.fields.artists') }}</span>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              :aria-label="changeArtistsLabel"
-              :disabled="isPending"
-              @click="openArtistPicker"
-            >
-              {{ $t('common.change') }}
-            </Button>
-          </div>
-
-          <div
-            v-if="artistChips.length > 0"
-            class="flex flex-wrap gap-1.5"
+        <div class="space-y-2">
+          <Label
+            id="track-artists-label"
+            class="text-muted-foreground"
+            for="track-artists"
           >
-            <Badge
-              v-for="name in artistChips"
-              :key="name"
-              color="accent"
-              class="max-w-full"
-            >
-              <span class="min-w-0 truncate">{{ name }}</span>
-            </Badge>
-          </div>
-
-          <p
-            v-else
-            class="text-sm text-muted-foreground"
+            {{ $t('track.edit.fields.artists') }}
+          </Label>
+          <button
+            id="track-artists"
+            type="button"
+            :class="pickerButtonClass"
+            aria-labelledby="track-artists-label track-artists-value"
+            :disabled="isPending"
+            @click="openArtistPicker"
           >
-            {{ $t('track.edit.noArtists') }}
-          </p>
+            <span
+              id="track-artists-value"
+              class="flex min-w-0 flex-1 flex-wrap gap-1.5"
+            >
+              <template v-if="artistChips.length > 0">
+                <Badge
+                  v-for="name in artistChips"
+                  :key="name"
+                  color="surface"
+                  class="max-w-full"
+                >
+                  <span class="min-w-0 truncate">{{ name }}</span>
+                </Badge>
+              </template>
+              <span
+                v-else
+                class="text-muted-foreground"
+              >
+                {{ $t('track.edit.noArtists') }}
+              </span>
+            </span>
+            <IconChevronRight class="size-5 shrink-0 text-muted-foreground" />
+          </button>
 
           <p
             v-if="artistsError"
@@ -80,39 +89,46 @@
           </p>
         </div>
 
-        <div class="space-y-2 rounded-lg bg-accent p-3">
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-sm font-medium">{{ $t('track.edit.fields.album') }}</span>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              :aria-label="changeAlbumLabel"
-              :disabled="isPending"
-              @click="openAlbumPicker"
-            >
-              {{ $t('common.change') }}
-            </Button>
-          </div>
-
-          <div class="flex min-w-0 items-center gap-2 text-sm">
-            <IconDisc class="size-4 shrink-0 text-muted-foreground" />
-
+        <div class="space-y-2">
+          <Label
+            id="track-album-label"
+            class="text-muted-foreground"
+            for="track-album"
+          >
+            {{ $t('track.edit.fields.album') }}
+          </Label>
+          <button
+            id="track-album"
+            type="button"
+            :class="pickerButtonClass"
+            aria-labelledby="track-album-label track-album-value"
+            :disabled="isPending"
+            @click="openAlbumPicker"
+          >
             <span
-              v-if="albumLabel"
-              class="min-w-0 truncate"
+              v-if="albumId"
+              class="size-8 shrink-0 overflow-hidden rounded-sm bg-muted"
             >
-              {{ albumLabel }}
+              <EntityCoverImage
+                owner-type="album"
+                :owner-id="albumId"
+                alt=""
+                image-class="size-full object-cover"
+              />
             </span>
-
-            <span
+            <IconDisc
               v-else
-              class="text-muted-foreground"
+              class="size-5 shrink-0 text-muted-foreground"
+            />
+            <span
+              id="track-album-value"
+              class="min-w-0 flex-1 truncate"
+              :class="!albumLabel && 'text-muted-foreground font-medium'"
             >
-              {{ $t('track.edit.noAlbum') }}
+              {{ albumLabel || $t('track.edit.noAlbum') }}
             </span>
-          </div>
+            <IconChevronRight class="size-5 shrink-0 text-muted-foreground" />
+          </button>
 
           <p
             v-if="newAlbumTitle"
@@ -131,7 +147,10 @@
 
         <div class="grid grid-cols-2 gap-3">
           <div class="space-y-2">
-            <Label for="track-number">
+            <Label
+              class="text-muted-foreground"
+              for="track-number"
+            >
               {{ $t('track.edit.fields.trackNo') }}
             </Label>
             <InputNumber
@@ -159,7 +178,10 @@
           </div>
 
           <div class="space-y-2">
-            <Label for="disk-number">
+            <Label
+              class="text-muted-foreground"
+              for="disk-number"
+            >
               {{ $t('track.edit.fields.diskNo') }}
             </Label>
             <InputNumber
@@ -216,7 +238,8 @@ import { Badge } from "@/components/ui/badge";
 import { sameArtistNames, splitArtistNames } from "@/lib/artist-names";
 import { NAME_MAX_LENGTH } from "@/lib/limits";
 import { Button } from "@/components/ui/button";
-import { InputFloating } from "@/components/ui/input-floating";
+import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";
+import { Input, inputVariants } from "@/components/ui/input";
 import { InputNumber, InputNumberDecrement, InputNumberIncrement, InputNumberInput } from "@/components/ui/input-number";
 import { Label } from "@/components/ui/label";
 import { Scrollable } from "@/components/ui/scrollable";
@@ -231,7 +254,9 @@ import { summonDialog } from "@/components/dialogs/summonDialog";
 import { useTrackEditDraft, type TrackEditDraft } from "@/modules/tracks/composables/useTrackEditDraft";
 import { updateTrackMetadataAndSync, type TrackMetadataChanges } from "@/queries/track.queries";
 import type { AlbumId } from "@/types/ids";
+import { cn } from "@/lib/utils";
 import RightPanelHeader from "../RightPanelHeader.vue";
+import IconChevronRight from "~icons/tabler/chevron-right";
 import IconDisc from "~icons/tabler/disc";
 import IconSave from "~icons/tabler/device-floppy";
 
@@ -319,8 +344,12 @@ const artistsError = computed<string | undefined>(() => {
   return Object.entries(fieldErrors).find(([key]) => key.startsWith("artists["))?.[1];
 });
 
-const changeArtistsLabel = computed(() => `${t("common.change")} — ${t("track.edit.fields.artists")}`);
-const changeAlbumLabel = computed(() => `${t("common.change")} — ${t("track.edit.fields.album")}`);
+// Artists and album open a picker from a button dressed as the text fields
+// around it; it grows past one line when the artist chips wrap.
+const pickerButtonClass = cn(
+  inputVariants({ variant: "soft", size: "xl" }),
+  "state-layer relative flex h-auto min-h-(--control-height-xl)  cursor-pointer items-center gap-4 py-2 text-start",
+);
 
 const titleInput = computed<string | number>({
   get: () => title.value,

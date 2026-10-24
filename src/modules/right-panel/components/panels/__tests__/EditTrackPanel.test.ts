@@ -25,6 +25,7 @@ const slotStub = { template: "<div><slot /></div>" };
 const stubs = {
   Scrollable: slotStub,
   FloatingActionButton: slotStub,
+  EntityCoverImage: true,
   RightPanelHeader: {
     emits: ["back", "close"],
     template: `<div>
@@ -95,10 +96,20 @@ describe("EditTrackPanel", () => {
     payload.onDone?.();
 
     first.unmount();
-    renderPanel(track);
+    const { container } = renderPanel(track);
 
     expect(screen.getByText("Fresh Album")).toBeInTheDocument();
     expect(screen.getByText("A new album will be created")).toBeInTheDocument();
+    // Not created yet, so there is no cover to show.
+    expect(container.querySelector("entity-cover-image-stub")).toBeNull();
+  });
+
+  it("shows the current album's cover on the album button", async () => {
+    const { container } = renderPanel(libraryTrack());
+
+    const cover = screen.getByRole("button", { name: /Album/ }).querySelector("entity-cover-image-stub");
+    expect(cover?.getAttribute("ownerid")).toBe("a1");
+    expect(container.querySelectorAll("entity-cover-image-stub")).toHaveLength(1);
   });
 
   it("clears the album when the picker reports none and saves the track album-less", async () => {
