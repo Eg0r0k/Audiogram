@@ -28,6 +28,7 @@ interface Props {
   onScrollOffset?: number;
   bordered?: boolean;
   hideThumb?: boolean;
+  fitContent?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -35,6 +36,7 @@ const props = withDefaults(defineProps<Props>(), {
   onScrollOffset: 300,
   bordered: false,
   hideThumb: false,
+  fitContent: false,
 });
 
 const emit = defineEmits<{
@@ -78,11 +80,14 @@ function handleScrollEmit(e: Event) {
   emit("scroll", e);
 }
 
+const sizingClass = computed(() => {
+  if (props.direction === "horizontal") return "scrollable-direction-x";
+  return props.fitContent ? "scrollable-fit" : "scrollable-direction-y";
+});
+
 const wrapperClasses = computed(() => [
   "scrollable-wrapper",
-  props.direction === "vertical"
-    ? "scrollable-direction-y"
-    : "scrollable-direction-x",
+  sizingClass.value,
   {
     "scrollable-y-bordered": props.bordered && props.direction === "vertical",
     "scrolled-start": props.bordered && scrollable.isScrolledToStart.value,
@@ -190,6 +195,23 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
   inset: 0;
   overflow-anchor: none;
   -webkit-overflow-scrolling: touch;
+}
+
+/* A flex column, so a wrapper capped by its max-height or by a flex parent
+   shrinks the in-flow container below its content and it scrolls. */
+.scrollable-fit {
+  display: flex;
+  flex-direction: column;
+}
+.scrollable-fit > .scrollable {
+  position: relative;
+  inset: auto;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+}
+.scrollable-fit > .scrollable-thumb-container-y {
+  align-self: flex-end;
 }
 
 .scrollable::-webkit-scrollbar {
