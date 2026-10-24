@@ -1,0 +1,76 @@
+
+@layer components {
+  .release-notes-markdown {
+    @apply text-sm leading-5 text-muted-foreground;
+  }
+  .release-notes-markdown > :first-child { margin-top: 0; }
+  .release-notes-markdown > :last-child { margin-bottom: 0; }
+
+  .release-notes-markdown p { @apply my-3; }
+
+  /* Hero and item images: 16:9 reserved up front, so nothing jumps on load */
+  .release-notes-markdown .rn-media {
+    @apply relative block aspect-video overflow-hidden rounded-lg bg-muted;
+  }
+  .release-notes-markdown .rn-media > img,
+  .release-notes-markdown .rn-media > video {
+    @apply block size-full object-cover;
+  }
+  .release-notes-markdown .rn-hero { @apply mb-8 rounded-[10px]; }
+  .release-notes-markdown .rn-shot { @apply mt-3; }
+  .release-notes-markdown .rn-media[data-failed] { @apply grid place-items-center; }
+  .release-notes-markdown .rn-media[data-failed] > * { @apply hidden; }
+  .release-notes-markdown .rn-media[data-failed]::after {
+    content: var(--rn-failed);
+    @apply text-xs text-muted-foreground;
+  }
+
+  /* Section headings: colour by kind, a line to the right like Discord */
+  .release-notes-markdown h2 {
+    @apply mt-8 mb-3 flex items-center gap-3 text-base leading-6 font-semibold text-foreground;
+  }
+  .release-notes-markdown h2::after {
+    content: "";
+    @apply h-px flex-1 bg-border;
+  }
+  .release-notes-markdown h2[data-kind="feat"] { --rn-kind: var(--release-feat); }
+  .release-notes-markdown h2[data-kind="impr"] { --rn-kind: var(--release-impr); }
+  .release-notes-markdown h2[data-kind="fix"] { --rn-kind: var(--release-fix); }
+  .release-notes-markdown h2[data-kind] { color: var(--rn-kind); }
+  .release-notes-markdown h2[data-kind]::after {
+    background: color-mix(in oklch, var(--rn-kind) 45%, var(--card));
+  }
+  .release-notes-markdown h1 { @apply mt-8 mb-3 text-base leading-6 font-semibold text-foreground; }
+  .release-notes-markdown h3,
+  .release-notes-markdown h4 { @apply mt-6 mb-2 text-sm font-semibold text-foreground; }
+
+  /* Plain lists */
+  .release-notes-markdown ul,
+  .release-notes-markdown ol { @apply my-3 space-y-2 pl-5 text-foreground; }
+  .release-notes-markdown ul { list-style: disc; }
+  .release-notes-markdown ol { list-style: decimal; }
+  .release-notes-markdown li::marker { color: var(--muted-foreground); }
+
+  /* "- **Title** - text" items: title and description, no bullets */
+  .release-notes-markdown ul:has(> .rn-item) {
+    @apply list-none space-y-4 pl-0 text-muted-foreground;
+  }
+  .release-notes-markdown .rn-title { @apply m-0 font-semibold text-foreground; }
+  .release-notes-markdown .rn-desc { @apply mt-1 mb-0; }
+
+  .release-notes-markdown strong { @apply font-semibold text-foreground; }
+  .release-notes-markdown a {
+    @apply text-foreground underline decoration-primary/60 underline-offset-4;
+  }
+  .release-notes-markdown code {
+    @apply rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.8125rem] text-foreground;
+  }
+  .release-notes-markdown pre { @apply my-3 overflow-x-auto rounded-lg bg-muted p-4; }
+  .release-notes-markdown pre code { @apply bg-transparent p-0 text-sm; }
+  .release-notes-markdown blockquote {
+    @apply my-3 rounded-lg bg-muted px-4 py-3 text-foreground;
+  }
+  .release-notes-markdown blockquote > p { @apply m-0; }
+  .release-notes-markdown blockquote code { @apply bg-card; }
+  .release-notes-markdown hr { @apply my-8 border-0 border-t border-border; }
+}

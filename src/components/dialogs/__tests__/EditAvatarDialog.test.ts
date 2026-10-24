@@ -9,7 +9,7 @@ vi.mock("@/lib/files/requestFiles", () => ({
   requestFiles: vi.fn(async () => [new File(["x"], "notes.txt", { type: "text/plain" })]),
 }));
 vi.mock("vue-cropperjs", () => ({ default: { name: "VueCropper", render: () => null } }));
-vi.mock("cropperjs/dist/cropper.css", () => ({}));
+vi.mock("@/styles/cropper.css", () => ({}));
 
 describe("EditAvatarDialog", () => {
   afterEach(async () => {

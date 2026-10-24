@@ -1,0 +1,66 @@
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  /* In the base layer so utilities like hover:underline can win; an
+     unlayered rule would outrank every Tailwind utility. */
+  a {
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  :root {
+    --kappa-ripple-easing: var(--ease-standard, cubic-bezier(0.2, 0, 0, 1));
+  }
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* The pre-kappa ghost button: muted text that darkens under the pointer. */
+  [data-slot][data-color="muted"] {
+    --tone: var(--muted-foreground);
+    --tone-foreground: var(--background);
+    --tone-text: var(--muted-foreground);
+  }
+
+  [data-slot="button"][data-color="muted"]:hover:not(:disabled) {
+    --tone-text: var(--foreground);
+  }
+
+  /* The pre-kappa outline button: the page's own fill, muted in the dark. */
+  [data-slot][data-color="surface"] {
+    --tone: var(--background);
+    --tone-foreground: var(--foreground);
+    --tone-text: var(--foreground);
+  }
+
+  .dark [data-slot][data-color="surface"] {
+    --tone: var(--muted);
+  }
+
+  /* The card's own fill, for secondary actions on muted surfaces. */
+  [data-slot][data-color="card"] {
+    --tone: var(--card);
+    --tone-foreground: var(--card-foreground);
+    --tone-text: var(--card-foreground);
+  }
+
+  [data-slot][data-color="accent"],
+  [data-slot][data-state="on"][data-active-color="accent"],
+  [data-slot][aria-pressed="true"][data-active-color="accent"] {
+    --tone: var(--accent);
+    --tone-foreground: var(--accent-foreground);
+    --tone-text: var(--accent-foreground);
+  }
+}
+
+.no-pinch-zoom {
+  touch-action: pan-x pan-y;
+}
+
+img,
+video {
+  -webkit-user-drag: none;
+}

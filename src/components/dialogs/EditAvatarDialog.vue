@@ -122,7 +122,7 @@ function isUserCancellation(error: FileSelectionError): boolean {
 
 const VueCropper = defineAsyncComponent({
   loader: async () => {
-    await import("cropperjs/dist/cropper.css");
+    await import("@/styles/cropper.css");
     return import("vue-cropperjs");
   },
   loadingComponent: () => h(
