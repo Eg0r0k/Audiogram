@@ -148,4 +148,27 @@ describe("LyricsPanelEmpty", () => {
 
     expect(buttons()).toEqual(["Try again"]);
   });
+
+  it("uses the silver fill for the empty-state actions", () => {
+    const expectSilver = (name: string) => {
+      const button = screen.getByRole("button", { name });
+      expect(button).toHaveAttribute("data-variant", "solid");
+      expect(button).toHaveAttribute("data-color", "silver");
+    };
+    const expectGhost = (name: string) =>
+      expect(screen.getByRole("button", { name })).toHaveAttribute("data-variant", "ghost");
+
+    const cases: [PlayerTrack, LyricsFailure | null, string, string | null][] = [
+      [track, null, "Write lyrics", "Attach file"],
+      [{ ...track, lyricsPath: "lyrics/t1.lrc", lyricsFileName: "Song.lrc" }, "file-missing", "Attach file", "Remove lyrics"],
+      [track, "network", "Try again", "Write lyrics"],
+      [openedFile, null, "Add to library", null],
+    ];
+    for (const [subject, reason, primary, secondary] of cases) {
+      const { unmount } = renderEmpty(subject, reason);
+      expectSilver(primary);
+      if (secondary) expectGhost(secondary);
+      unmount();
+    }
+  });
 });

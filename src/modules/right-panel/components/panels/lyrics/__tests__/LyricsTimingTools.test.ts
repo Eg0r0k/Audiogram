@@ -46,7 +46,7 @@ const loader = vi.mocked(loadTrackLyrics);
 
 const slotStub = { template: "<div><slot /></div>" };
 const stubs = {
-  Scrollable: slotStub,
+  Scrollable: { template: "<div data-testid=\"scroll-area\"><slot /></div>" },
   RightPanelHeader: {
     props: ["title", "description", "showBack"],
     emits: ["back", "close"],
@@ -279,6 +279,18 @@ describe("LyricsTimingTools", () => {
 
     mockPlayerState.currentTrack = { ...track, lyricsOffsetMs: 300 };
     expect(useLyricsStore().offsetMs).toBe(300);
+  });
+
+  it("keeps the timing save button outside the scrolling area", async () => {
+    await play();
+    const { container } = renderPanel();
+    await enterAdjust();
+
+    const panelRoot = container.firstElementChild;
+    expect(fab().parentElement).toBe(panelRoot);
+    expect(panelRoot).toHaveClass("overflow-hidden!");
+    expect(fab().closest("[data-testid='scroll-area']")).toBeNull();
+    expect(lineEl("Two").closest("[data-testid='scroll-area']")).not.toBeNull();
   });
 
   it("stays in adjust mode when saving the offset fails", async () => {

@@ -1,5 +1,8 @@
 <template>
-  <div class="relative flex h-full min-h-0 flex-col overflow-hidden bg-card">
+  <div
+    class="relative flex h-full min-h-0 flex-col overflow-hidden! bg-card"
+    :style="keyboardInsetStyle"
+  >
     <RightPanelHeader
       :title="title"
       :description="description"
@@ -56,14 +59,16 @@
         </template>
         <Button
           v-else-if="mode === 'edit' || mode === 'write'"
+          size="icon-lg"
           variant="ghost"
-          color="neutral"
-          size="sm"
+          color="muted"
+          class="shrink-0 rounded-full"
+          :aria-label="$t('lyrics.attachFile')"
+          :title="$t('lyrics.attachFile')"
           :disabled="isPending"
           @click="attachFromEditor"
         >
-          <IconFileUpload />
-          {{ $t('lyrics.attachFile') }}
+          <IconFileUpload class="size-6" />
         </Button>
         <Button
           v-else-if="mode === 'sync'"
@@ -127,8 +132,8 @@
             </p>
             <Button
               v-if="attachableTrack"
-              variant="outline"
-              color="neutral"
+              variant="solid"
+              color="silver"
               size="sm"
               @click="startSync"
             >
@@ -191,6 +196,7 @@ import { Button } from "@/components/ui/button";
 import { Menu, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Scrollable } from "@/components/ui/scrollable";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useKeyboardInset } from "@/composables/useKeyboardInset";
 import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import LyricsLines from "@/modules/player/components/lyrics/LyricsLines.vue";
@@ -230,6 +236,8 @@ const rightPanel = useRightPanelStore();
 const { track, kind, lines, plainLines, status, reason, source, raw, activeLineIndex, seekToLine } = useCurrentLyrics();
 const { attachableTrack } = useAttachCurrentTrackLyrics();
 const { attachFile, deleteLyrics, isPending } = useLyricsActions();
+const { keyboardInset } = useKeyboardInset();
+const keyboardInsetStyle = computed(() => ({ "--keyboard-inset": `${keyboardInset.value}px` }));
 
 const mode = ref<Mode>("view");
 const subject = shallowRef<Track | null>(null);

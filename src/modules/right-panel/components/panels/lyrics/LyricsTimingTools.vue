@@ -1,10 +1,10 @@
 <template>
-  <div class="relative flex min-h-0 flex-1 flex-col">
+  <div class="flex min-h-0 flex-1 flex-col">
     <div class="shrink-0 px-5 pt-2 pb-3">
       <div class="flex items-center gap-2">
         <Button
-          variant="outline"
-          color="neutral"
+          variant="solid"
+          color="silver"
           size="icon-sm"
           :aria-label="$t('lyrics.adjust.earlier')"
           @pointerdown="startHold(-1, $event)"
@@ -22,8 +22,8 @@
           {{ valueLabel }}
         </span>
         <Button
-          variant="outline"
-          color="neutral"
+          variant="solid"
+          color="silver"
           size="icon-sm"
           :aria-label="$t('lyrics.adjust.later')"
           @pointerdown="startHold(1, $event)"
@@ -64,19 +64,19 @@
         />
       </div>
     </Scrollable>
-
-    <FloatingActionButton :show="dirty">
-      <Button
-        type="button"
-        class="size-12 rounded-full shadow-lg"
-        :aria-label="$t('lyrics.adjust.save')"
-        :disabled="isPending || !dirty"
-        @click="save"
-      >
-        <IconSave class="size-6" />
-      </Button>
-    </FloatingActionButton>
   </div>
+
+  <FloatingActionButton :show="dirty">
+    <Button
+      type="button"
+      class="size-12 rounded-full shadow-lg"
+      :aria-label="$t('lyrics.adjust.save')"
+      :disabled="isPending || !dirty"
+      @click="save"
+    >
+      <IconSave class="size-6" />
+    </Button>
+  </FloatingActionButton>
 </template>
 
 <script setup lang="ts">

@@ -824,6 +824,13 @@ video {
     --tone: var(--muted);
   }
 
+  /* A light grey fill for secondary actions, the same in both themes. */
+  [data-slot][data-color="silver"] {
+    --tone: #b2b2b2;
+    --tone-foreground: oklch(0.145 0 0);
+    --tone-text: var(--foreground);
+  }
+
   [data-slot][data-color="accent"],
   [data-slot][data-state="on"][data-active-color="accent"],
   [data-slot][aria-pressed="true"][data-active-color="accent"] {

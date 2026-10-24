@@ -47,7 +47,7 @@ const loader = vi.mocked(loadTrackLyrics);
 
 const slotStub = { template: "<div><slot /></div>" };
 const stubs = {
-  Scrollable: slotStub,
+  Scrollable: { template: "<div data-testid=\"scroll-area\"><slot /></div>" },
   RightPanelHeader: {
     props: ["title", "description", "showBack"],
     emits: ["back", "close"],
@@ -380,5 +380,45 @@ describe("LyricsPanel", () => {
 
     expect(actions.attachFile).toHaveBeenCalledWith(expect.objectContaining({ id: "t1" }));
     expect(editor()).toBeNull();
+  });
+
+  it("shows the editor's Attach file as an icon button", async () => {
+    const expectIconButton = () => {
+      const attach = screen.getByRole("button", { name: "Attach file" });
+      expect(attach).toHaveAttribute("aria-label", "Attach file");
+      expect(attach).toHaveAttribute("title", "Attach file");
+      expect(attach.textContent?.trim()).toBe("");
+      expect(attach.querySelector("svg")).not.toBeNull();
+      expect(attach).toHaveAttribute("data-size", "icon-lg");
+      expect(attach).toHaveAttribute("data-variant", "ghost");
+      expect(attach).toHaveAttribute("data-color", "muted");
+      expect(attach).toHaveClass("rounded-full");
+    };
+
+    await play(synced({ type: "file", fileName: "Song.lrc" }));
+    const { unmount } = renderPanel();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Edit lyrics" }));
+    expectIconButton();
+    unmount();
+
+    await play({ status: "idle" });
+    renderPanel();
+    await userEvent.click(screen.getByRole("button", { name: "Write lyrics" }));
+    expect(screen.getByRole("heading", { name: "Write lyrics" })).toBeInTheDocument();
+    expectIconButton();
+  });
+
+  it("keeps the save button outside the scrolling area", async () => {
+    await play(synced({ type: "file", fileName: "Song.lrc" }));
+    const { container } = renderPanel();
+
+    await userEvent.click(screen.getByRole("menuitem", { name: "Edit lyrics" }));
+
+    const panelRoot = container.firstElementChild;
+    const fab = screen.getByTestId("fab");
+    expect(panelRoot).toHaveClass("overflow-hidden!");
+    expect(fab.parentElement).toBe(panelRoot);
+    expect(fab.closest("[data-testid='scroll-area']")).toBeNull();
+    expect(editor()!.closest("[data-testid='scroll-area']")).not.toBeNull();
   });
 });

@@ -37,7 +37,7 @@
       </h2>
       <p
         v-if="description"
-        class="mt-0.5 text-xs text-muted-foreground"
+        class="mt-0.5 truncate text-xs text-muted-foreground"
       >
         {{ description }}
       </p>

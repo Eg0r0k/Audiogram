@@ -64,8 +64,8 @@
     </p>
     <Button
       v-if="state === 'empty'"
-      variant="outline"
-      color="neutral"
+      variant="solid"
+      color="silver"
       size="sm"
       class="mt-3"
       @click="rightPanel.openLyrics()"
@@ -74,8 +74,8 @@
     </Button>
     <Button
       v-else
-      variant="outline"
-      color="neutral"
+      variant="solid"
+      color="silver"
       size="sm"
       class="mt-3"
       @click="retry"

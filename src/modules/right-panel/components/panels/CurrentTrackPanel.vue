@@ -206,8 +206,8 @@
                   </div>
                   <Button
                     v-if="!queueStore.isRadio"
-                    variant="outline"
-                    color="neutral"
+                    variant="solid"
+                    color="silver"
                     size="sm"
                     class="shrink-0"
                     @click="repeatQueue"

@@ -8,8 +8,8 @@
       <div class="flex flex-wrap justify-center gap-2">
         <template v-if="reason === 'file-missing' && libraryTrack">
           <Button
-            variant="outline"
-            color="neutral"
+            variant="solid"
+            color="silver"
             size="sm"
             :disabled="isPending"
             @click="attachFile(libraryTrack)"
@@ -28,8 +28,8 @@
         </template>
         <template v-else-if="reason === 'network'">
           <Button
-            variant="outline"
-            color="neutral"
+            variant="solid"
+            color="silver"
             size="sm"
             @click="retry"
           >
@@ -48,8 +48,8 @@
         </template>
         <template v-else-if="libraryTrack">
           <Button
-            variant="outline"
-            color="neutral"
+            variant="solid"
+            color="silver"
             size="sm"
             @click="emit('write')"
           >
@@ -68,8 +68,8 @@
         </template>
         <Button
           v-else-if="importPath"
-          variant="outline"
-          color="neutral"
+          variant="solid"
+          color="silver"
           size="sm"
           :disabled="isImportRunning"
           @click="importCurrent"
