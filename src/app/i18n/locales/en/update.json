@@ -1,6 +1,5 @@
 {
   "updaterError": "Couldn't update",
-  "notesPreview": "Notes preview",
   "updateAvailable": "Update available",
   "updateToVersion": "Version {version} is available",
   "updateTo": "Update to {version}",
@@ -17,6 +16,14 @@
   "upToDate": "You're on the latest version",
   "whatsNewTitle": "What's new",
   "updatedTo": "Audiogram updated to {version}",
-  "whatsNewDescription": "Changes included in this release.",
-  "emptyReleaseNotes": "Release notes have not been published for this version yet."
+  "whatsNewIn": "What's new in {version}",
+  "notesLoading": "Loading release notes",
+  "notesFailed": "Couldn't load release notes",
+  "notesFailedHint": "Check your connection and try again.",
+  "tryAgain": "Try again",
+  "openOnGithub": "Open on GitHub",
+  "noNotes": "No release notes for {version} yet",
+  "allReleases": "See all releases on GitHub",
+  "viewRelease": "View release on GitHub",
+  "imageFailed": "Image didn't load"
 }

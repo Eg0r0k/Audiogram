@@ -1,6 +1,7 @@
 import { useStorage } from "@vueuse/core";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
+import { normalizeReleaseNotes } from "../lib/release-notes";
 
 export const useChangelogStore = defineStore("changelog", () => {
   const lastSeenVersion = useStorage<string>("audiogram:lastSeenVersion", "");
@@ -16,14 +17,12 @@ export const useChangelogStore = defineStore("changelog", () => {
   const stagedVersion = useStorage<string | null>("audiogram:stagedVersion", null);
 
   const isDialogOpen = ref(false);
-  const previewVersion = ref<string | null>(null);
-  const previewChangelog = ref<string | null>(null);
+  const dialogVersion = ref(__APP_VERSION__);
+  const dialogChangelog = ref<string | null>(null);
 
-  const activeVersion = computed(
-    () => previewVersion.value ?? pendingVersion.value ?? __APP_VERSION__,
-  );
-  const activeChangelog = computed(
-    () => previewChangelog.value ?? pendingChangelog.value,
+  const activeVersion = computed(() => dialogVersion.value);
+  const activeChangelog = computed(() =>
+    dialogChangelog.value === null ? null : normalizeReleaseNotes(dialogChangelog.value),
   );
 
   const hasUnseenUpdate = computed(
@@ -60,7 +59,7 @@ export const useChangelogStore = defineStore("changelog", () => {
   };
 
   const promoteStagedChangelog = (): boolean => {
-    if (stagedVersion.value !== __APP_VERSION__ || !stagedChangelog.value) {
+    if (stagedVersion.value !== __APP_VERSION__ || stagedChangelog.value === null) {
       return false;
     }
 
@@ -69,24 +68,15 @@ export const useChangelogStore = defineStore("changelog", () => {
     return true;
   };
 
-  const openPending = () => {
-    if (!pendingVersion.value || !pendingChangelog.value) return;
-
-    previewVersion.value = null;
-    previewChangelog.value = null;
+  const openDialog = (version: string = __APP_VERSION__) => {
+    dialogVersion.value = version;
+    dialogChangelog.value = version === pendingVersion.value ? pendingChangelog.value : null;
     isDialogOpen.value = true;
   };
 
-  const openPreview = (version: string, changelog: string) => {
-    previewVersion.value = version;
-    previewChangelog.value = changelog;
-    isDialogOpen.value = true;
-  };
-
+  // Keeps the dialog's notes: markSeen clears pending ones mid close animation.
   const closeDialog = () => {
     isDialogOpen.value = false;
-    previewVersion.value = null;
-    previewChangelog.value = null;
 
     if (hasUnseenUpdate.value) {
       markSeen();
@@ -96,8 +86,6 @@ export const useChangelogStore = defineStore("changelog", () => {
   const markSeen = () => {
     lastSeenVersion.value = pendingVersion.value ?? __APP_VERSION__;
     clearPendingChangelog();
-    previewVersion.value = null;
-    previewChangelog.value = null;
     isDialogOpen.value = false;
 
     if (stagedVersion.value === __APP_VERSION__) {
@@ -143,8 +131,7 @@ export const useChangelogStore = defineStore("changelog", () => {
     clearStagedChangelog,
     setPendingChangelog,
     stageChangelog,
-    openPending,
-    openPreview,
+    openDialog,
     closeDialog,
     markSeen,
     resetSeenState,

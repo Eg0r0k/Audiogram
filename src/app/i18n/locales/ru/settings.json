@@ -147,7 +147,6 @@
     "termsOfService": "Условия использования",
     "privacyPolicy": "Политика конфиденциальности",
     "licenses": "Лицензии",
-    "releaseNotesLoadFailed": "Не удалось загрузить заметки о релизе",
     "exportLogs": "Экспорт логов",
     "logsExportedTo": "Логи сохранены в {path}",
     "logsDownloaded": "Логи скачаны как {filename}",

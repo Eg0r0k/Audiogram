@@ -1,10 +1,7 @@
-
 @layer components {
   .release-notes-markdown {
     @apply text-sm leading-5 text-muted-foreground;
   }
-  .release-notes-markdown > :first-child { margin-top: 0; }
-  .release-notes-markdown > :last-child { margin-bottom: 0; }
 
   .release-notes-markdown p { @apply my-3; }
 
@@ -12,37 +9,41 @@
   .release-notes-markdown .rn-media {
     @apply relative block aspect-video overflow-hidden rounded-lg bg-muted;
   }
-  .release-notes-markdown .rn-media > img,
-  .release-notes-markdown .rn-media > video {
+  .release-notes-markdown .rn-media > img {
     @apply block size-full object-cover;
   }
   .release-notes-markdown .rn-hero { @apply mb-8 rounded-[10px]; }
   .release-notes-markdown .rn-shot { @apply mt-3; }
   .release-notes-markdown .rn-media[data-failed] { @apply grid place-items-center; }
-  .release-notes-markdown .rn-media[data-failed] > * { @apply hidden; }
-  .release-notes-markdown .rn-media[data-failed]::after {
-    content: var(--rn-failed);
-    @apply text-xs text-muted-foreground;
+  .release-notes-markdown .rn-media[data-failed] > img { @apply hidden; }
+  .release-notes-markdown .rn-failed {
+    @apply flex flex-col items-center gap-2 px-4 text-center text-xs text-foreground/70;
   }
+  .release-notes-markdown .rn-failed > svg { @apply size-6; }
 
-  /* Section headings: colour by kind, a line to the right like Discord */
-  .release-notes-markdown h2 {
-    @apply mt-8 mb-3 flex items-center gap-3 text-base leading-6 font-semibold text-foreground;
-  }
-  .release-notes-markdown h2::after {
-    content: "";
-    @apply h-px flex-1 bg-border;
-  }
-  .release-notes-markdown h2[data-kind="feat"] { --rn-kind: var(--release-feat); }
-  .release-notes-markdown h2[data-kind="impr"] { --rn-kind: var(--release-impr); }
-  .release-notes-markdown h2[data-kind="fix"] { --rn-kind: var(--release-fix); }
-  .release-notes-markdown h2[data-kind] { color: var(--rn-kind); }
-  .release-notes-markdown h2[data-kind]::after {
-    background: color-mix(in oklch, var(--rn-kind) 45%, var(--card));
-  }
   .release-notes-markdown h1 { @apply mt-8 mb-3 text-base leading-6 font-semibold text-foreground; }
-  .release-notes-markdown h3,
-  .release-notes-markdown h4 { @apply mt-6 mb-2 text-sm font-semibold text-foreground; }
+  .release-notes-markdown h4,
+  .release-notes-markdown h5,
+  .release-notes-markdown h6 { @apply mt-6 mb-2 text-sm font-semibold text-foreground; }
+
+  /* Sections: colour by kind, a line after the text like Discord. An inline
+     line instead of flex keeps links and code in the heading text inline. */
+  .release-notes-markdown :is(h2, h3, [data-kind]) {
+    @apply mt-8 mb-3 overflow-x-clip text-base leading-6 font-semibold text-foreground;
+  }
+  .release-notes-markdown :is(h2, h3, [data-kind])::after {
+    content: "";
+    @apply ms-3 -me-[100%] inline-block h-px w-full bg-border align-middle;
+  }
+  .release-notes-markdown [data-kind="feat"] { --rn-kind: var(--release-feat); }
+  .release-notes-markdown [data-kind="impr"] { --rn-kind: var(--release-impr); }
+  .release-notes-markdown [data-kind="fix"] { --rn-kind: var(--release-fix); }
+  .release-notes-markdown [data-kind] { color: var(--rn-kind); }
+  .release-notes-markdown [data-kind] strong { color: inherit; }
+  .release-notes-markdown [data-kind]::after {
+    background: var(--rn-kind);
+    opacity: 0.45;
+  }
 
   /* Plain lists */
   .release-notes-markdown ul,
@@ -55,6 +56,7 @@
   .release-notes-markdown ul:has(> .rn-item) {
     @apply list-none space-y-4 pl-0 text-muted-foreground;
   }
+  .release-notes-markdown ul:has(> .rn-item) > li:not(.rn-item) { @apply text-foreground; }
   .release-notes-markdown .rn-title { @apply m-0 font-semibold text-foreground; }
   .release-notes-markdown .rn-desc { @apply mt-1 mb-0; }
 
@@ -73,4 +75,11 @@
   .release-notes-markdown blockquote > p { @apply m-0; }
   .release-notes-markdown blockquote code { @apply bg-card; }
   .release-notes-markdown hr { @apply my-8 border-0 border-t border-border; }
+  .release-notes-markdown table { @apply my-3 block w-max max-w-full overflow-x-auto; }
+  .release-notes-markdown :is(th, td) { @apply border border-border px-3 py-1.5 text-start; }
+  .release-notes-markdown th { @apply font-semibold text-foreground; }
+
+  /* Last, so they beat the section margins of the same specificity */
+  .release-notes-markdown > :first-child { margin-top: 0; }
+  .release-notes-markdown > :last-child { margin-bottom: 0; }
 }

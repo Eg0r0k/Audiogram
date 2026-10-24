@@ -5,7 +5,7 @@ import { useChangelogStore } from "./changelog.store";
 import type { DownloadProgress, PwaUpdateHandlers, UpdateChannel, UpdateError, UpdateInfo, UpdateStatus } from "../types";
 import { checkUpdate, installUpdate } from "../api/updateApi";
 import { fetchReleaseNotes } from "../api/changelogApi";
-import { normalizeReleaseNotes } from "../lib/releaseNotes";
+import { normalizeReleaseNotes } from "../lib/release-notes";
 import { IS_MOBILE } from "@/lib/environment/userAgent";
 import { platformCaps } from "@/lib/environment/platformCaps";
 

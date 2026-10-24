@@ -1,71 +1,51 @@
-import { errorMessage } from "@/lib/errors";
-import { useQueryClient } from "@tanstack/vue-query";
-import { ref } from "vue";
-import { releaseNotesQueryOptions } from "../api/changelogApi";
-import { normalizeReleaseNotes } from "../lib/releaseNotes";
+import { useQuery } from "@tanstack/vue-query";
+import { computed } from "vue";
+import { GITHUB_RELEASES_URL, releasePageUrl, releaseQueryOptions } from "../api/changelogApi";
 import { useChangelogStore } from "../store/changelog.store";
+
+export type ReleaseNotesStatus = "loading" | "ready" | "empty" | "error";
 
 export const useReleaseNotesDialog = () => {
   const changelogStore = useChangelogStore();
-  const queryClient = useQueryClient();
 
-  const isOpening = ref(false);
-  const error = ref<string | null>(null);
+  const version = computed(() => changelogStore.activeVersion);
+  const tag = computed(() => `v${version.value}`);
 
-  const clearError = () => {
-    error.value = null;
+  const query = useQuery(computed(() => ({
+    ...releaseQueryOptions(tag.value),
+    enabled: changelogStore.isDialogOpen,
+  })));
+
+  const release = computed(() => query.data.value);
+  const storedBody = computed(() => changelogStore.activeChangelog);
+
+  const body = computed(() => release.value?.body ?? storedBody.value ?? "");
+
+  const status = computed<ReleaseNotesStatus>(() => {
+    if (release.value !== undefined || storedBody.value !== null) {
+      return body.value ? "ready" : "empty";
+    }
+    return query.isError.value || query.isPaused.value ? "error" : "loading";
+  });
+
+  const publishedAt = computed(() => {
+    const iso = release.value?.publishedAt;
+    return iso ? new Date(iso) : null;
+  });
+
+  const releaseUrl = computed(() => release.value?.url ?? releasePageUrl(tag.value));
+
+  const retry = async () => {
+    await query.refetch();
   };
-
-  const openVersion = async (
-    version: string,
-    initialMarkdown?: string | null,
-  ): Promise<boolean> => {
-    clearError();
-
-    if (
-      version === changelogStore.pendingVersion
-      && changelogStore.pendingChangelog
-    ) {
-      changelogStore.openPending();
-      return true;
-    }
-
-    const inlineNotes = initialMarkdown?.trim();
-    if (inlineNotes) {
-      changelogStore.openPreview(version, normalizeReleaseNotes(inlineNotes));
-      return true;
-    }
-
-    isOpening.value = true;
-
-    try {
-      const markdown = await queryClient.ensureQueryData(
-        releaseNotesQueryOptions(`v${version}`),
-      );
-      changelogStore.openPreview(version, normalizeReleaseNotes(markdown));
-      return true;
-    }
-    catch (cause) {
-      error.value = errorMessage(cause);
-      return false;
-    }
-    finally {
-      isOpening.value = false;
-    }
-  };
-
-  const openCurrent = () => openVersion(
-    __APP_VERSION__,
-    changelogStore.pendingVersion === __APP_VERSION__
-      ? changelogStore.pendingChangelog
-      : null,
-  );
 
   return {
-    isOpening,
-    error,
-    clearError,
-    openCurrent,
-    openVersion,
+    version,
+    status,
+    body,
+    publishedAt,
+    releaseUrl,
+    releasesUrl: GITHUB_RELEASES_URL,
+    retry,
   };
 };

@@ -4,7 +4,7 @@ import { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 vi.mock("@/modules/sources", () => ({ sources: { get: () => ({}) } }));
 
 import { sourceQueries } from "../source.queries";
-import { latestTagQueryOptions, releaseNotesQueryOptions } from "@/modules/update/api/changelogApi";
+import { latestTagQueryOptions, releaseQueryOptions } from "@/modules/update/api/changelogApi";
 
 describe("remote query options", () => {
   it("every source catalog query waits for the network", () => {
@@ -25,7 +25,7 @@ describe("remote query options", () => {
   });
 
   it("changelog queries wait for the network", () => {
-    expect(releaseNotesQueryOptions("v1.0.0").networkMode).toBe("online");
+    expect(releaseQueryOptions("v1.0.0").networkMode).toBe("online");
     expect(latestTagQueryOptions("stable").networkMode).toBe("online");
   });
 });

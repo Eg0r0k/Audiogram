@@ -130,6 +130,9 @@
   --control-gap-xl: calc(var(--spacing) * 3);
   --tabs-pill: var(--background);
   --shimmer-color: oklch(from currentColor l c h / calc(alpha * 0.2));
+  --release-feat: #2e7520;
+  --release-impr: #1a66ad;
+  --release-fix: #b83a26;
 }
 
 .dark {
@@ -179,6 +182,9 @@
   --scrim: #0000004d;
   --tabs-pill: color-mix(in oklab, var(--input) 30%, transparent);
   --shimmer-color: oklch(from currentColor max(0.8, calc(l + 0.4)) c h / calc(alpha + 0.4));
+  --release-feat: #9ad164;
+  --release-impr: #5caffa;
+  --release-fix: #ff845e;
 }
 
 /* High contrast: tokens only. Secondary text moves next to the foreground,
@@ -231,9 +237,6 @@
   --z-mobile-dock: 30;
   --z-mobile-player: 40;
   --z-mobile-right-panel: 50;
-  --release-feat: #2e7520;
-  --release-impr: #1a66ad;
-  --release-fix: #b83a26;
 }
 
 .is-tauri:not(.is-mobile) {

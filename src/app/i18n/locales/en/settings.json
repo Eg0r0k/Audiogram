@@ -147,7 +147,6 @@
     "termsOfService": "Terms of Service",
     "privacyPolicy": "Privacy Policy",
     "licenses": "Licenses",
-    "releaseNotesLoadFailed": "Failed to load release notes",
     "exportLogs": "Export logs",
     "logsExportedTo": "Logs saved to {path}",
     "logsDownloaded": "Logs downloaded as {filename}",

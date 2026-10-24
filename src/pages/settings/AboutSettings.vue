@@ -74,8 +74,7 @@
       <SettingsItem
         :icon="IconSparkles"
         :title="$t('settings.about.whatsNew')"
-        :error="releaseNotesError ?? undefined"
-        @click="handleOpenWhatsNew"
+        @click="changelog.openDialog()"
       >
         <template #action>
           <div class="flex items-center gap-2">
@@ -85,14 +84,7 @@
             >
               {{ $t("settings.about.newBadge") }}
             </span>
-            <Spinner
-              v-if="isOpening"
-              class="size-4 text-muted-foreground"
-            />
-            <IconChevronRight
-              v-else
-              class="size-5 text-muted-foreground"
-            />
+            <IconChevronRight class="size-5 text-muted-foreground" />
           </div>
         </template>
       </SettingsItem>
@@ -198,7 +190,6 @@ import Link from "@/components/ui/link/Link.vue";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsItem from "@/modules/settings/components/SettingsItem.vue";
 import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
-import { useReleaseNotesDialog } from "@/modules/update/composables/useReleaseNotesDialog";
 import { useChangelogStore } from "@/modules/update/store/changelog.store";
 import { useUpdateStore } from "@/modules/update/store/update.store";
 import { routeLocation } from "@/app/router/route-locations";
@@ -230,15 +221,7 @@ const checkStateLabel = computed(() => {
   }
 });
 
-const {
-  isOpening,
-  error,
-  clearError,
-  openCurrent,
-} = useReleaseNotesDialog();
-
 const exportLogsError = ref<string | null>(null);
-const releaseNotesError = ref<string | null>(null);
 
 const handleExportLogs = async () => {
   exportLogsError.value = null;
@@ -261,17 +244,6 @@ const handleExportLogs = async () => {
   );
 
   isExporting.value = false;
-};
-
-const handleOpenWhatsNew = async () => {
-  releaseNotesError.value = null;
-  const isOpened = await openCurrent();
-
-  if (isOpened) return;
-
-  getLogger().warn(`[AboutSettings] Loading release notes failed: ${error.value ?? "unknown"}`);
-  releaseNotesError.value = t("settings.about.releaseNotesLoadFailed");
-  clearError();
 };
 
 </script>

@@ -1,6 +1,5 @@
 {
   "updaterError": "Не удалось обновить",
-  "notesPreview": "Предпросмотр изменений",
   "updateAvailable": "Доступно обновление",
   "updateToVersion": "Версия {version} доступна",
   "updateTo": "Обновить до {version}",
@@ -17,6 +16,14 @@
   "upToDate": "Установлена последняя версия",
   "whatsNewTitle": "Что нового",
   "updatedTo": "Audiogram обновлён до {version}",
-  "whatsNewDescription": "Изменения, вошедшие в этот выпуск.",
-  "emptyReleaseNotes": "Заметки о выпуске для этой версии ещё не опубликованы."
+  "whatsNewIn": "Что нового в {version}",
+  "notesLoading": "Загрузка заметок о выпуске",
+  "notesFailed": "Не удалось загрузить заметки о выпуске",
+  "notesFailedHint": "Проверьте подключение и попробуйте ещё раз.",
+  "tryAgain": "Попробовать снова",
+  "openOnGithub": "Открыть на GitHub",
+  "noNotes": "Заметок о выпуске {version} пока нет",
+  "allReleases": "Все выпуски на GitHub",
+  "viewRelease": "Открыть выпуск на GitHub",
+  "imageFailed": "Изображение не загрузилось"
 }

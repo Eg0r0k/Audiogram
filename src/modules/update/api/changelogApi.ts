@@ -13,8 +13,24 @@ interface GithubRelease {
   tag_name: string;
   body: string | null;
   prerelease: boolean;
-  published_at: string;
+  published_at: string | null;
+  html_url: string;
 }
+
+export interface Release {
+  body: string;
+  publishedAt: string | null;
+  url: string;
+}
+
+export const GITHUB_RELEASES_URL = `https://github.com/${GITHUB_REPO}/releases`;
+
+export const releasePageUrl = (tag: string) => `${GITHUB_RELEASES_URL}/tag/${tag}`;
+
+const fetchGithubRelease = (tag: string, signal?: AbortSignal) => $fetch<GithubRelease>(
+  `https://api.github.com/repos/${GITHUB_REPO}/releases/tags/${tag}`,
+  { headers: GITHUB_HEADERS, signal },
+);
 
 export interface ChangelogError {
   kind: "NETWORK" | "NOT_FOUND" | "PARSE_ERROR";
@@ -38,22 +54,30 @@ export const changelogKeys = {
     [...changelogKeys.all, "latestTag", channel] as const,
 };
 
-export function releaseNotesQueryOptions(tag: string) {
+// Resolves to null while the tag has no published release.
+export const releaseQueryOptions = (tag: string) => {
   return queryOptions({
     queryKey: changelogKeys.byTag(tag),
-    queryFn: async () => {
-      const release = await $fetch<GithubRelease>(
-        `https://api.github.com/repos/${GITHUB_REPO}/releases/tags/${tag}`,
-        { headers: GITHUB_HEADERS },
-      );
-      return release.body?.trim() ?? "";
+    queryFn: async ({ signal }): Promise<Release | null> => {
+      try {
+        const release = await fetchGithubRelease(tag, signal);
+        return {
+          body: release.body?.trim() ?? "",
+          publishedAt: release.published_at,
+          url: release.html_url,
+        };
+      }
+      catch (e) {
+        if (e instanceof FetchError && e.status === 404) return null;
+        throw e;
+      }
     },
     staleTime: Infinity,
     gcTime: 24 * 60 * 60 * 1000,
     retry: 2,
     networkMode: "online",
   });
-}
+};
 
 export const latestTagQueryOptions = (channel: "stable") => {
   return queryOptions({
@@ -77,10 +101,7 @@ export const fetchReleaseNotes = (
   signal?: AbortSignal,
 ): ResultAsync<string, ChangelogError> => {
   return ResultAsync.fromPromise(
-    $fetch<GithubRelease>(
-      `https://api.github.com/repos/${GITHUB_REPO}/releases/tags/${tag}`,
-      { headers: GITHUB_HEADERS, signal },
-    ).then(r => r.body?.trim() ?? ""),
+    fetchGithubRelease(tag, signal).then(r => r.body?.trim() ?? ""),
     toChangelogError,
   );
 };

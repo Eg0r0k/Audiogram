@@ -3,8 +3,7 @@ import { useI18n } from "vue-i18n";
 import { onMounted, watch } from "vue";
 import { toaster } from "@/app/toaster";
 import { useChangelogStore } from "../store/changelog.store";
-import { releaseNotesQueryOptions } from "../api/changelogApi";
-import { normalizeReleaseNotes } from "../lib/releaseNotes";
+import { releaseQueryOptions } from "../api/changelogApi";
 
 const WHATS_NEW_TOAST_ID = "whats-new";
 
@@ -24,13 +23,14 @@ export const useChangelogOnStartup = () => {
         toaster.remove(WHATS_NEW_TOAST_ID);
         return;
       }
+      const version = changelogStore.pendingVersion ?? __APP_VERSION__;
       toaster.add({
         id: WHATS_NEW_TOAST_ID,
-        title: t("update.updatedTo", { version: changelogStore.pendingVersion ?? __APP_VERSION__ }),
+        title: t("update.updatedTo", { version }),
         color: "info",
         actions: [{
           label: t("update.whatsNewTitle"),
-          onClick: () => changelogStore.openPending(),
+          onClick: () => changelogStore.openDialog(version),
         }],
         onClose: () => {
           if (!changelogStore.isDialogOpen) changelogStore.markSeen();
@@ -46,19 +46,14 @@ export const useChangelogOnStartup = () => {
 
     if (
       changelogStore.pendingVersion === __APP_VERSION__
-      && changelogStore.pendingChangelog
+      && changelogStore.pendingChangelog !== null
     ) {
       return;
     }
 
-    const tag = `v${__APP_VERSION__}`;
-
     try {
-      const markdown = await queryClient.ensureQueryData(releaseNotesQueryOptions(tag));
-      changelogStore.setPendingChangelog(
-        __APP_VERSION__,
-        normalizeReleaseNotes(markdown),
-      );
+      const release = await queryClient.ensureQueryData(releaseQueryOptions(`v${__APP_VERSION__}`));
+      if (release) changelogStore.setPendingChangelog(__APP_VERSION__, release.body);
     }
     catch {
     // noop
