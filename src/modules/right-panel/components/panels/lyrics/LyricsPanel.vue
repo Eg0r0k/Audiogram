@@ -133,7 +133,7 @@
             <Button
               v-if="attachableTrack"
               variant="solid"
-              color="silver"
+              color="card"
               size="sm"
               @click="startSync"
             >

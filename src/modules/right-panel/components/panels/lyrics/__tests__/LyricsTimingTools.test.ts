@@ -111,7 +111,7 @@ const enterAdjust = () => userEvent.click(screen.getByRole("menuitem", { name: "
 
 const lineEl = (text: string) => screen.getByText(text).closest("[data-slot='lyrics-line']") as HTMLElement;
 const highlighted = () => document.querySelector("[aria-current='true'] span")?.textContent?.trim() ?? null;
-const value = () => screen.getByRole("status");
+const value = () => screen.getByRole("spinbutton", { name: "Lyrics offset" });
 const heading = () => screen.getByRole("heading").textContent?.trim();
 const fab = () => screen.getByTestId("fab");
 
@@ -134,12 +134,12 @@ describe("LyricsTimingTools", () => {
     expect(heading()).toBe("Adjust timing");
     expect(screen.getByTestId("header-description")).toHaveTextContent("Song \u00B7 Artist");
     expect(screen.getByText("Tap the line you hear right now to sync to it.")).toBeInTheDocument();
-    expect(value()).toHaveTextContent("0.0 s");
+    expect(value()).toHaveValue("0.0s");
     expect(lineEl("Two")).toHaveTextContent("0:20.0");
 
     await userEvent.click(screen.getByRole("button", { name: "Show lines 0.1 s earlier" }));
 
-    expect(value()).toHaveTextContent("-0.1 s");
+    expect(value()).toHaveValue("-0.1s");
     expect(highlighted()).toBe("Two");
     expect(lineEl("Two")).toHaveTextContent("0:19.9");
     expect(useLyricsStore().offsetMs).toBe(-100);
@@ -172,43 +172,45 @@ describe("LyricsTimingTools", () => {
     await enterAdjust();
     const later = screen.getByRole("button", { name: "Show lines 0.1 s later" });
     const earlier = screen.getByRole("button", { name: "Show lines 0.1 s earlier" });
+    const press = (button: HTMLElement) =>
+      fireEvent.pointerDown(button, { button: 0, pointerId: 1, pointerType: "mouse" });
+    const release = () => fireEvent.pointerUp(window, { button: 0, pointerId: 1, pointerType: "mouse" });
 
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] });
     try {
-      await fireEvent.pointerDown(later, { button: 0 });
-      expect(value()).toHaveTextContent("+0.1 s");
+      await press(later);
+      expect(value()).toHaveValue("+0.1s");
 
       await vi.advanceTimersByTimeAsync(399);
-      expect(value()).toHaveTextContent("+0.1 s");
+      expect(value()).toHaveValue("+0.1s");
 
       await vi.advanceTimersByTimeAsync(1);
-      expect(value()).toHaveTextContent("+0.2 s");
+      expect(value()).toHaveValue("+0.2s");
 
-      await vi.advanceTimersByTimeAsync(300);
-      expect(value()).toHaveTextContent("+0.5 s");
+      await vi.advanceTimersByTimeAsync(180);
+      expect(value()).toHaveValue("+0.5s");
 
-      await fireEvent.pointerUp(later, { button: 0 });
-      await fireEvent.click(later, { detail: 1 });
+      await release();
       await vi.advanceTimersByTimeAsync(1000);
-      expect(value()).toHaveTextContent("+0.5 s");
+      expect(value()).toHaveValue("+0.5s");
 
-      await fireEvent.pointerDown(earlier, { button: 0 });
-      await vi.advanceTimersByTimeAsync(500);
-      expect(value()).toHaveTextContent("+0.2 s");
+      await press(earlier);
+      await vi.advanceTimersByTimeAsync(460);
+      expect(value()).toHaveValue("+0.2s");
 
-      await fireEvent.pointerLeave(earlier);
+      await release();
       await vi.advanceTimersByTimeAsync(1000);
-      expect(value()).toHaveTextContent("+0.2 s");
+      expect(value()).toHaveValue("+0.2s");
     }
     finally {
       vi.useRealTimers();
     }
 
-    later.focus();
-    await userEvent.keyboard("{Enter}");
+    value().focus();
+    await userEvent.keyboard("{ArrowUp}");
     await nextTick();
 
-    expect(value()).toHaveTextContent("+0.3 s");
+    expect(value()).toHaveValue("+0.3s");
     expect(useLyricsStore().offsetMs).toBe(300);
   });
 
@@ -220,14 +222,14 @@ describe("LyricsTimingTools", () => {
 
     await userEvent.click(lineEl("Two"));
 
-    expect(value()).toHaveTextContent("+5.0 s");
+    expect(value()).toHaveValue("+5.0s");
     expect(highlighted()).toBe("Two");
     expect(lineEl("Two")).toHaveTextContent("0:25.0");
 
     mockPlayerState.currentTime = 25.06;
     await userEvent.click(lineEl("Three"));
 
-    expect(value()).toHaveTextContent("-5.0 s");
+    expect(value()).toHaveValue("-5.0s");
     expect(useLyricsStore().offsetMs).toBe(-5000);
     expect(highlighted()).toBe("Three");
     expect(mockPlayerState.seekTo).not.toHaveBeenCalled();
@@ -240,14 +242,13 @@ describe("LyricsTimingTools", () => {
     await enterAdjust();
 
     const reset = screen.getByRole("button", { name: "Reset" });
-    expect(value()).toHaveTextContent("+0.8 s");
+    expect(value()).toHaveValue("+0.8s");
     expect(reset).toBeEnabled();
     expect(fab()).toHaveAttribute("data-show", "false");
 
     await userEvent.click(reset);
 
-    expect(value()).toHaveTextContent("0.0 s");
-    expect(value().textContent?.trim()).toBe("0.0 s");
+    expect(value()).toHaveValue("0.0s");
     expect(reset).toBeDisabled();
     expect(useLyricsStore().offsetMs).toBe(0);
     expect(fab()).toHaveAttribute("data-show", "true");
@@ -304,7 +305,7 @@ describe("LyricsTimingTools", () => {
     await flushPromises();
 
     expect(heading()).toBe("Adjust timing");
-    expect(value()).toHaveTextContent("+0.1 s");
+    expect(value()).toHaveValue("+0.1s");
     expect(useLyricsStore().offsetMs).toBe(100);
   });
 });

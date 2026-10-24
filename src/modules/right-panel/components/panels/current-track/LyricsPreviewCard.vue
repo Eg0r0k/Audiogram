@@ -65,7 +65,7 @@
     <Button
       v-if="state === 'empty'"
       variant="solid"
-      color="silver"
+      color="card"
       size="sm"
       class="mt-3"
       @click="rightPanel.openLyrics()"
@@ -75,7 +75,7 @@
     <Button
       v-else
       variant="solid"
-      color="silver"
+      color="card"
       size="sm"
       class="mt-3"
       @click="retry"

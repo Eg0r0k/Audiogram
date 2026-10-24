@@ -207,7 +207,7 @@
                   <Button
                     v-if="!queueStore.isRadio"
                     variant="solid"
-                    color="silver"
+                    color="card"
                     size="sm"
                     class="shrink-0"
                     @click="repeatQueue"

@@ -9,7 +9,7 @@
         <template v-if="reason === 'file-missing' && libraryTrack">
           <Button
             variant="solid"
-            color="silver"
+            color="card"
             size="sm"
             :disabled="isPending"
             @click="attachFile(libraryTrack)"
@@ -29,7 +29,7 @@
         <template v-else-if="reason === 'network'">
           <Button
             variant="solid"
-            color="silver"
+            color="card"
             size="sm"
             @click="retry"
           >
@@ -49,7 +49,7 @@
         <template v-else-if="libraryTrack">
           <Button
             variant="solid"
-            color="silver"
+            color="card"
             size="sm"
             @click="emit('write')"
           >
@@ -69,7 +69,7 @@
         <Button
           v-else-if="importPath"
           variant="solid"
-          color="silver"
+          color="card"
           size="sm"
           :disabled="isImportRunning"
           @click="importCurrent"

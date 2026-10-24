@@ -33,7 +33,7 @@
   "adjust": {
     "earlier": "Show lines 0.1 s earlier",
     "later": "Show lines 0.1 s later",
-    "value": "{value} s",
+    "offset": "Lyrics offset",
     "reset": "Reset",
     "hint": "Tap the line you hear right now to sync to it.",
     "save": "Save timing"
