@@ -1,4 +1,4 @@
-import { computed, inject, nextTick, onUnmounted, ref, toValue, watch } from "vue";
+import { computed, inject, nextTick, onMounted, onUnmounted, ref, toValue, watch } from "vue";
 import type { ComponentPublicInstance, MaybeRefOrGetter } from "vue";
 import { useEventListener, useResizeObserver } from "@vueuse/core";
 import { scrollableInjectionKey } from "@/components/ui/scrollable/injection";
@@ -41,6 +41,7 @@ export const useLyricsFollow = (source: LyricsFollowSource) => {
   let lastActiveIndex = -1;
   let scrollEndTimer: ReturnType<typeof setTimeout> | null = null;
   let scrollFrame: number | null = null;
+  let jumpFrame: number | null = null;
   const anchorRatio = () => toValue(source.anchorRatio ?? DEFAULT_ANCHOR_RATIO);
 
   const follow = ref<FollowState>(INITIAL_FOLLOW_STATE);
@@ -102,7 +103,7 @@ export const useLyricsFollow = (source: LyricsFollowSource) => {
   // cover a scripted scroll, so the preference is checked here.
   const reducedMotion = typeof matchMedia === "undefined" ? null : matchMedia(REDUCED_MOTION_QUERY);
 
-  const scrollToActiveLine = () => {
+  const scrollToActiveLine = (instant = false) => {
     const container = scrollParent.value;
     const offset = activeLineOffset();
     if (!container || offset === null) return;
@@ -111,7 +112,7 @@ export const useLyricsFollow = (source: LyricsFollowSource) => {
     const from = container.scrollTop;
     const to = from + offset;
     if (Math.abs(offset) < 1) return;
-    if (reducedMotion?.matches) {
+    if (instant || reducedMotion?.matches) {
       container.scrollTop = to;
       return;
     }
@@ -160,16 +161,36 @@ export const useLyricsFollow = (source: LyricsFollowSource) => {
     lineRefs[index] = element instanceof HTMLElement ? element : null;
   };
 
+  const cancelJump = () => {
+    if (jumpFrame != null) cancelAnimationFrame(jumpFrame);
+    jumpFrame = null;
+  };
+
+  // A frame runs after Vue's render flush, so the lines and the tail padding are measured in place.
+  const scheduleJump = () => {
+    cancelJump();
+    jumpFrame = requestAnimationFrame(() => {
+      jumpFrame = null;
+      const index = source.activeLineIndex();
+      if (index < 0 || !isFollowing.value) return;
+      lastActiveIndex = index;
+      scrollToActiveLine(true);
+    });
+  };
+
+  onMounted(scheduleJump);
+
   // A new track (or reloaded lyrics) starts followed again. Refs past the new
   // last line would otherwise keep pointing at the previous track's nodes.
   watch(source.lines, (lines) => {
     lineRefs.length = lines.length;
     dispatch({ type: "linesChanged" });
     lastActiveIndex = -1;
+    scheduleJump();
   });
 
   watch(source.activeLineIndex, async (index) => {
-    if (index < 0 || index === lastActiveIndex) return;
+    if (index < 0 || index === lastActiveIndex || jumpFrame !== null) return;
     lastActiveIndex = index;
     await nextTick();
 
@@ -189,6 +210,7 @@ export const useLyricsFollow = (source: LyricsFollowSource) => {
 
   onUnmounted(() => {
     cancelScroll();
+    cancelJump();
     if (scrollEndTimer) clearTimeout(scrollEndTimer);
     lineRefs.length = 0;
   });

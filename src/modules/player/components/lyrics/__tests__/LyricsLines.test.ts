@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/vue";
+import { fireEvent, render, screen } from "@testing-library/vue";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
@@ -42,6 +42,40 @@ const verseTexts = (container: Element) =>
 
 const rect = (top: number, height: number) =>
   ({ top, bottom: top + height, height, left: 0, right: 0, width: 0, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+
+const allowMotion = () =>
+  vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }));
+
+const SONG = Array.from({ length: 12 }, (_, i) => `Line ${i + 1}`);
+const VIEWPORT = 1000;
+const ANCHOR = 0.25;
+const ROW = 100;
+const LINE_HEIGHT = 28;
+
+const anchoredTop = (row: number) => row * ROW + LINE_HEIGHT / 2 - VIEWPORT * ANCHOR;
+
+const scroller = () => {
+  const element = document.createElement("div");
+  const writes: number[] = [];
+  let top = 0;
+  Object.defineProperty(element, "scrollTop", {
+    configurable: true,
+    get: () => top,
+    set: (value: number) => {
+      top = value;
+      writes.push(value);
+    },
+  });
+  element.getBoundingClientRect = () => rect(0, VIEWPORT);
+  const scrollable = { containerRef: ref(element) } as unknown as ScrollableContext;
+  return { element, writes, provide: { [scrollableInjectionKey as symbol]: scrollable } };
+};
+
+const layOut = (container: Element, scrollElement: HTMLElement) => {
+  container.querySelectorAll<HTMLElement>("[data-slot='lyrics-line']").forEach((line, row) => {
+    line.getBoundingClientRect = () => rect(row * ROW - scrollElement.scrollTop, LINE_HEIGHT);
+  });
+};
 
 describe("LyricsLines", () => {
   afterEach(() => {
@@ -165,5 +199,65 @@ describe("LyricsLines", () => {
 
     expect(lineEl("Two")).toHaveAttribute("aria-current", "true");
     await vi.waitFor(() => expect(container.scrollTop).toBe(528));
+  });
+
+  it("jumps to the current line as soon as it mounts, without waiting for the next line", async () => {
+    allowMotion();
+    const scroll = scroller();
+
+    const { container } = renderLines({ lines: linesOf(SONG), activeIndex: 5, anchorRatio: ANCHOR }, scroll.provide);
+    layOut(container, scroll.element);
+
+    await vi.waitFor(() => expect(scroll.element.scrollTop).toBe(anchoredTop(5)));
+    expect(scroll.writes).toEqual([anchoredTop(5)]);
+    expect(lineEl("Line 6")).toHaveAttribute("aria-current", "true");
+  });
+
+  it("jumps to the current line when the lyrics arrive while the view is open", async () => {
+    allowMotion();
+    const scroll = scroller();
+    const { container, rerender } = renderLines({ lines: [], anchorRatio: ANCHOR }, scroll.provide);
+
+    await rerender({ lines: linesOf(SONG), activeIndex: 5 });
+    layOut(container, scroll.element);
+
+    await vi.waitFor(() => expect(scroll.element.scrollTop).toBe(anchoredTop(5)));
+    expect(scroll.writes).toEqual([anchoredTop(5)]);
+
+    scroll.element.scrollTop = 0;
+    scroll.writes.length = 0;
+    await rerender({ lines: linesOf(SONG.map(text => `${text}, fixed`)), activeIndex: 5 });
+    layOut(container, scroll.element);
+
+    await vi.waitFor(() => expect(scroll.element.scrollTop).toBe(anchoredTop(5)));
+    expect(scroll.writes).toEqual([anchoredTop(5)]);
+  });
+
+  it("still follows the next line with the smooth scroll during playback", async () => {
+    allowMotion();
+    const scroll = scroller();
+    const { container, rerender } = renderLines({ lines: linesOf(SONG), activeIndex: 5, anchorRatio: ANCHOR }, scroll.provide);
+    layOut(container, scroll.element);
+    await vi.waitFor(() => expect(scroll.element.scrollTop).toBe(anchoredTop(5)));
+    await fireEvent.scroll(scroll.element);
+
+    scroll.writes.length = 0;
+    await rerender({ activeIndex: 6 });
+
+    await vi.waitFor(() => expect(scroll.element.scrollTop).toBe(anchoredTop(6)));
+    const steps = scroll.writes.slice(0, -1);
+    expect(steps.length).toBeGreaterThan(1);
+    expect(steps.every(top => top >= anchoredTop(5) && top < anchoredTop(6))).toBe(true);
+    expect(screen.queryByRole("button", { name: "Back to current line" })).toBeNull();
+
+    await fireEvent.wheel(scroll.element);
+    scroll.element.scrollTop = 0;
+    await fireEvent.scroll(scroll.element);
+
+    expect(await screen.findByRole("button", { name: "Back to current line" })).toBeInTheDocument();
+    scroll.writes.length = 0;
+    await rerender({ activeIndex: 7 });
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(scroll.writes).toEqual([]);
   });
 });

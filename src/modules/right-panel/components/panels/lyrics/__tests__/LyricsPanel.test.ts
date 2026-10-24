@@ -193,6 +193,18 @@ describe("LyricsPanel", () => {
     expect(menuItems()).toEqual(["Edit lyrics", "Attach file\u2026"]);
   });
 
+  it("sizes the menu icons like the track menus", async () => {
+    await play(synced({ type: "file", fileName: "Song.lrc" }));
+    renderPanel();
+
+    const items = screen.getAllByRole("menuitem");
+    expect(items).toHaveLength(4);
+    for (const item of items) {
+      expect(item.querySelector("svg")).toHaveClass("size-5.5");
+    }
+    expect(screen.getByRole("button", { name: "More options" }).querySelector("svg")).toHaveClass("size-6");
+  });
+
   it("shows no menu for a track outside the library", async () => {
     await play(synced({ type: "lrclib" }), stream);
     const { container, unmount } = renderPanel();

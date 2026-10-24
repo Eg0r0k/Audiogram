@@ -28,18 +28,18 @@
               {{ sourceLabel }}
             </MenuLabel>
             <MenuItem @click="startEdit">
-              <IconPencil />
+              <IconPencil class="size-5.5" />
               {{ $t('lyrics.edit') }}
             </MenuItem>
             <MenuItem
               v-if="kind === 'synced'"
               @click="startAdjust"
             >
-              <IconClock />
+              <IconClock class="size-5.5" />
               {{ $t('lyrics.adjustTiming') }}
             </MenuItem>
             <MenuItem @click="attachFromMenu">
-              <IconFileUpload />
+              <IconFileUpload class="size-5.5" />
               {{ source.type === 'file' ? $t('lyrics.menu.replaceFile') : $t('lyrics.menu.attachFile') }}
             </MenuItem>
             <template v-if="source.type === 'file'">
@@ -48,7 +48,7 @@
                 color="destructive"
                 @click="deleteFromMenu"
               >
-                <IconTrash />
+                <IconTrash class="size-5.5" />
                 {{ $t('lyrics.delete') }}
               </MenuItem>
             </template>
