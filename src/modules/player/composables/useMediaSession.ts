@@ -1,11 +1,11 @@
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { usePlayerStore } from "../store/player.store";
-import { onMounted, onUnmounted, ref, computed, watch } from "vue";
+import { onMounted, onUnmounted, ref, computed, shallowRef, watch } from "vue";
 import { trackCoverOwner, useTrackCover } from "@/modules/covers/composables/useTrackCover";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import { getLogger } from "@/lib/logger";
 import { useCurrentPlayerTrack } from "./useCurrentPlayerTrack";
-import { isLibraryTrack } from "../types";
+import { isEphemeralTrack, isLibraryTrack } from "../types";
 import { formatError } from "@/lib/errors";
 
 const POSITION_UPDATE_INTERVAL = 1000;
@@ -24,6 +24,8 @@ const ARTWORK_ENCODE_DELAY_MS = 400;
 // the placeholder up for the whole track. Metadata waits for the current
 // owner's artwork this long and goes out with it in one push.
 export const ARTWORK_WAIT_MS = 1500;
+const EPHEMERAL_COVER_TIMEOUT_MS = 10_000;
+const MEDIA_DURATION_TOLERANCE_MS = 1000;
 
 /**
  * Native bridge injected by MainActivity on Android (Tauri). The WebView
@@ -32,11 +34,10 @@ export const ARTWORK_WAIT_MS = 1500;
  * into a native MediaSession through this object.
  */
 interface AndroidMediaSessionBridge {
-  setMetadata: (title: string, artist: string, album: string, artworkBase64: string) => void;
+  setMetadata: (title: string, artist: string, album: string, artworkBase64: string, durationMs: number) => void;
   setPlaybackState: (
     playing: boolean,
     positionMs: number,
-    durationMs: number,
     canSeek: boolean,
     hasNext: boolean,
     hasPrevious: boolean,
@@ -76,18 +77,34 @@ const coverArtworkBase64 = async (blob: Blob): Promise<string> => {
     const scale = Math.min(1, ANDROID_ARTWORK_SIZE / Math.max(bitmap.width, bitmap.height));
     const width = Math.max(1, Math.round(bitmap.width * scale));
     const height = Math.max(1, Math.round(bitmap.height * scale));
-    const canvas = new OffscreenCanvas(width, height);
+    // OffscreenCanvas.convertToBlob waits for idle time and takes ~4 s in a hidden page.
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
     const context = canvas.getContext("2d");
     if (!context) return await blobToBase64(blob);
     context.drawImage(bitmap, 0, 0, width, height);
     bitmap.close();
-    const jpeg = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.85 });
-    return await blobToBase64(jpeg);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    return dataUrl.slice(dataUrl.indexOf(",") + 1);
   }
   catch {
     return blobToBase64(blob);
   }
 };
+
+const fetchCoverBlob = async (url: string): Promise<Blob | null> => {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(EPHEMERAL_COVER_TIMEOUT_MS) });
+    return response.ok ? await response.blob() : null;
+  }
+  catch {
+    return null;
+  }
+};
+
+const positiveDurationMs = (seconds: number | null | undefined) =>
+  typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 0;
 
 export const useMediaSession = () => {
   const isSupported = "mediaSession" in navigator;
@@ -108,11 +125,36 @@ export const useMediaSession = () => {
 
   const { libraryTrack } = useCurrentPlayerTrack();
 
-  const { url: coverBlobUrl, blob: coverBlob, isLoading: coverLoading } = useTrackCover(libraryTrack);
-  const coverOwnerId = computed(() => {
-    const owner = trackCoverOwner(libraryTrack.value);
-    return owner ? `${owner.ownerType}:${owner.ownerId}` : null;
+  const { url: coverBlobUrl, blob: libraryCoverBlob, isLoading: libraryCoverLoading } = useTrackCover(libraryTrack);
+
+  const ephemeralCoverUrl = computed(() => {
+    const track = player.currentTrack;
+    return isEphemeralTrack(track) && track.cover ? track.cover : null;
   });
+
+  const artworkKey = computed(() => {
+    const owner = trackCoverOwner(libraryTrack.value);
+    if (owner) return `${owner.ownerType}:${owner.ownerId}`;
+    return ephemeralCoverUrl.value ? `url:${ephemeralCoverUrl.value}` : null;
+  });
+
+  let ephemeralCoverToken = 0;
+  const fetchedEphemeralCover = shallowRef<{ url: string; blob: Blob | null } | null>(null);
+
+  const artworkBlob = computed(() => {
+    if (libraryTrack.value) return libraryCoverBlob.value;
+    const fetched = fetchedEphemeralCover.value;
+    return fetched && fetched.url === ephemeralCoverUrl.value ? fetched.blob : null;
+  });
+
+  const artworkLoading = computed(() => {
+    if (libraryTrack.value) return libraryCoverLoading.value;
+    const url = ephemeralCoverUrl.value;
+    return url !== null && fetchedEphemeralCover.value?.url !== url;
+  });
+
+  const browserArtworkSrc = computed(() =>
+    (libraryTrack.value ? coverBlobUrl.value : ephemeralCoverUrl.value) ?? null);
 
   const updateMetadata = () => {
     const track = player.currentTrack;
@@ -122,8 +164,8 @@ export const useMediaSession = () => {
         navigator.mediaSession.metadata = null;
       }
       else {
-        const artwork = coverBlobUrl.value
-          ? [{ src: coverBlobUrl.value, sizes: "512x512", type: "image/jpeg" }]
+        const artwork = browserArtworkSrc.value
+          ? [{ src: browserArtworkSrc.value, sizes: "512x512", type: "image/jpeg" }]
           : [];
 
         navigator.mediaSession.metadata = new MediaMetadata({
@@ -195,7 +237,6 @@ export const useMediaSession = () => {
     androidBridge.setPlaybackState(
       player.isPlaybackIntended,
       positionMs,
-      Math.max(0, (player.duration ?? 0) * 1000),
       player.canSeek,
       queue.hasNext,
       queue.hasPrevious,
@@ -206,23 +247,24 @@ export const useMediaSession = () => {
   };
 
   let androidArtworkToken = 0;
-  // Encoded artwork keyed to the cover owner (album, or the track itself for
-  // album-less files). At track-change time the cover query for a NEW owner
-  // hasn't resolved yet, and pushing whatever blob is currently around pins
-  // the previous art on the lock screen; the cache makes "matches this track"
-  // checkable.
-  const artworkOwnerId = ref<string | null>(null);
+  // Encoded artwork tagged with its artwork key (cover owner: album, or the
+  // track itself for album-less files; or an ephemeral track's cover URL).
+  // At track-change time the artwork for a NEW key hasn't resolved yet, and
+  // pushing whatever blob is currently around pins the previous art on the
+  // lock screen; the tag makes "matches this track" checkable.
+  const encodedArtworkKey = ref<string | null>(null);
   let artworkBase64 = "";
   let artworkWaitTimer: ReturnType<typeof setTimeout> | null = null;
-  // Owner whose artwork wait ran out: its metadata goes without art.
+  // Key whose artwork wait ran out: its metadata goes without art.
   let artworkWaitExpiredFor: string | null = null;
+  let mediaDurationMs = 0;
 
-  // True once the artwork question for the current owner is settled: encoded
+  // True once the artwork question for the current key is settled: encoded
   // for it, or known to have no cover.
   const artworkReady = computed(() => {
-    const owner = coverOwnerId.value;
-    if (owner === null || artworkOwnerId.value === owner) return true;
-    return !coverLoading.value && coverBlob.value === null;
+    const key = artworkKey.value;
+    if (key === null || encodedArtworkKey.value === key) return true;
+    return !artworkLoading.value && artworkBlob.value === null;
   });
 
   const cancelArtworkWait = () => {
@@ -234,7 +276,7 @@ export const useMediaSession = () => {
     if (artworkWaitTimer !== null) return;
     artworkWaitTimer = setTimeout(() => {
       artworkWaitTimer = null;
-      artworkWaitExpiredFor = coverOwnerId.value;
+      artworkWaitExpiredFor = artworkKey.value;
       updateAndroidMetadata();
     }, ARTWORK_WAIT_MS);
   };
@@ -260,14 +302,14 @@ export const useMediaSession = () => {
     const track = player.currentTrack;
     if (!track) return;
 
-    if (!artworkReady.value && artworkWaitExpiredFor !== coverOwnerId.value) {
+    if (!artworkReady.value && artworkWaitExpiredFor !== artworkKey.value) {
       metadataStale = true;
       startArtworkWait();
       return;
     }
     cancelArtworkWait();
 
-    const artwork = coverOwnerId.value !== null && coverOwnerId.value === artworkOwnerId.value
+    const artwork = artworkKey.value !== null && artworkKey.value === encodedArtworkKey.value
       ? artworkBase64
       : "";
 
@@ -276,6 +318,7 @@ export const useMediaSession = () => {
       track.artist || "Unknown Artist",
       track.albumName || "",
       artwork,
+      positiveDurationMs(track.duration) || mediaDurationMs,
     );
     // The flush pushes playback right after metadata.
     playbackStale = true;
@@ -499,7 +542,8 @@ export const useMediaSession = () => {
 
   watch(
     () => player.currentTrack,
-    () => {
+    (track, previous) => {
+      if (track?.id !== previous?.id) mediaDurationMs = 0;
       updateMetadata();
       updateAvailableActions();
 
@@ -556,19 +600,42 @@ export const useMediaSession = () => {
   );
 
   watch(
-    coverBlobUrl,
+    () => player.duration,
+    (seconds) => {
+      const track = player.currentTrack;
+      if (!androidBridge || !track || positiveDurationMs(track.duration) > 0) return;
+      const ms = positiveDurationMs(seconds);
+      if (ms === 0 || Math.abs(ms - mediaDurationMs) <= MEDIA_DURATION_TOLERANCE_MS) return;
+      mediaDurationMs = ms;
+      updateAndroidMetadata();
+    },
+  );
+
+  watch(
+    browserArtworkSrc,
     () => {
       updateMetadata();
     },
   );
 
-  // The blob arriving means the cover query for the CURRENT owner resolved —
-  // encode it, remember which owner it belongs to, and re-push metadata.
   watch(
-    coverBlob,
+    ephemeralCoverUrl,
+    async (url) => {
+      const token = ++ephemeralCoverToken;
+      if (!androidBridge || url === null) return;
+      const blob = await fetchCoverBlob(url);
+      if (token === ephemeralCoverToken) fetchedEphemeralCover.value = { url, blob };
+    },
+    { immediate: true },
+  );
+
+  // The blob arriving means the artwork for the CURRENT key resolved: encode
+  // it, remember which key it belongs to, and re-push metadata.
+  watch(
+    artworkBlob,
     async (blob) => {
       if (!androidBridge) return;
-      const owner = coverOwnerId.value;
+      const key = artworkKey.value;
       const token = ++androidArtworkToken;
       // Decoding and re-encoding the cover is main-thread work that would
       // otherwise land inside the cover slide that follows a track change;
@@ -580,13 +647,13 @@ export const useMediaSession = () => {
       if (token !== androidArtworkToken) return;
       const encoded = blob ? await coverArtworkBase64(blob) : "";
       if (token !== androidArtworkToken) return;
-      artworkOwnerId.value = blob && owner ? owner : null;
+      encodedArtworkKey.value = blob && key ? key : null;
       artworkBase64 = encoded;
       updateAndroidMetadata();
     },
   );
 
-  watch(coverOwnerId, () => {
+  watch(artworkKey, () => {
     cancelArtworkWait();
     artworkWaitExpiredFor = null;
   });

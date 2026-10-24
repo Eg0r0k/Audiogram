@@ -16,6 +16,7 @@ import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Base64
+import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.core.app.NotificationCompat
@@ -48,9 +49,18 @@ class MediaSessionBridge(
     private const val PLACEHOLDER_BACKGROUND = 0xFF202124.toInt()
     private const val PLACEHOLDER_GLYPH = 0xFF9AA0A6.toInt()
     private const val PLACEHOLDER_GLYPH_FRACTION = 0.42f
+
+    private const val WAKE_WINDOW_MS = 2000L
   }
 
   private val mainHandler = Handler(Looper.getMainLooper())
+
+  private var wakePending = false
+
+  private val restoreWindowVisibility = Runnable {
+    wakePending = false
+    webView.dispatchWindowVisibilityChanged(webView.windowVisibility)
+  }
 
   private var session: MediaSessionCompat? = null
   private var buttonReceiver: android.content.BroadcastReceiver? = null
@@ -74,19 +84,22 @@ class MediaSessionBridge(
   // ── JS-facing API (called on the WebView "JavaBridge" thread) ─────────────
 
   @JavascriptInterface
-  fun setMetadata(title: String, artist: String, album: String, artworkBase64: String) {
+  fun setMetadata(
+    title: String,
+    artist: String,
+    album: String,
+    artworkBase64: String,
+    durationMs: Double,
+  ) {
     val bitmap = decodeArtwork(artworkBase64)
     mainHandler.post {
-      val trackChanged = this.title != title || this.artist != artist
       this.title = title
       this.artist = artist
       this.album = album
       // No recycle(): the session/notification hold parcel copies, but the
       // original may still be referenced by an in-flight publish.
       this.artwork = bitmap
-      // A fresh track's duration is unknown until the media loads; publishing
-      // the previous track's value would draw its seek bar length here.
-      if (trackChanged) this.durationMs = 0L
+      this.durationMs = safeMs(durationMs)
       publishMetadata()
       publishNotification()
     }
@@ -96,7 +109,6 @@ class MediaSessionBridge(
   fun setPlaybackState(
     playing: Boolean,
     positionMs: Double,
-    durationMs: Double,
     canSeek: Boolean,
     hasNext: Boolean,
     hasPrevious: Boolean,
@@ -109,11 +121,8 @@ class MediaSessionBridge(
       val actionsChanged = this.canSeek != canSeek || this.hasNext != hasNext ||
         this.hasPrevious != hasPrevious || this.repeatMode != repeatMode ||
         this.liked != liked || this.canLike != canLike
-      val newDurationMs = safeMs(durationMs)
-      val durationChanged = this.durationMs != newDurationMs
       this.playing = playing
       this.positionMs = safeMs(positionMs)
-      this.durationMs = newDurationMs
       this.canSeek = canSeek
       this.hasNext = hasNext
       this.hasPrevious = hasPrevious
@@ -121,9 +130,6 @@ class MediaSessionBridge(
       this.liked = liked
       this.canLike = canLike
       publishPlaybackState()
-      // Metadata is the only channel that carries duration to the seek bar,
-      // and it settles after the track-change metadata push.
-      if (durationChanged) publishMetadata()
       // Re-posting the notification every position tick makes it flicker;
       // only the play/pause icon and action row depend on these flags.
       if (playStateChanged || actionsChanged) publishNotification()
@@ -142,6 +148,10 @@ class MediaSessionBridge(
   }
 
   private fun tearDown() {
+    if (wakePending) {
+      mainHandler.removeCallbacks(restoreWindowVisibility)
+      restoreWindowVisibility.run()
+    }
     PlaybackService.stop(activity)
     notificationManager().cancel(NOTIFICATION_ID)
     session?.run {
@@ -417,6 +427,14 @@ class MediaSessionBridge(
 
   private fun dispatch(action: String, positionMs: Long = -1L) {
     mainHandler.post {
+      // Chromium freezes a hidden silent page: it still runs this script but not the
+      // continuations play() awaits. A brief VISIBLE unfreezes it; a playing page stays unfrozen.
+      if (webView.windowVisibility != View.VISIBLE) {
+        webView.dispatchWindowVisibilityChanged(View.VISIBLE)
+        mainHandler.removeCallbacks(restoreWindowVisibility)
+        mainHandler.postDelayed(restoreWindowVisibility, WAKE_WINDOW_MS)
+        wakePending = true
+      }
       val detail =
         if (positionMs >= 0) "{\"action\":\"$action\",\"positionMs\":$positionMs}"
         else "{\"action\":\"$action\"}"
