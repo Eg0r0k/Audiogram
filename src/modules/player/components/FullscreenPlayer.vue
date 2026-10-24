@@ -46,7 +46,7 @@
 
       <Scrollable class="min-h-0 min-w-0 flex-1">
         <div class="mx-auto flex min-h-full max-w-3xl flex-col items-center justify-center px-6 pb-12 pt-4 xl:px-10">
-          <CurrentTrackLyrics />
+          <FullscreenLyrics />
         </div>
       </Scrollable>
     </div>
@@ -59,7 +59,7 @@ import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import { Scrollable } from "@/components/ui/scrollable";
 import IconX from "~icons/tabler/x";
 import { useCurrentTrackCover } from "../composables/useCurrentTrackCover";
-import CurrentTrackLyrics from "./CurrentTrackLyrics.vue";
+import FullscreenLyrics from "./lyrics/FullscreenLyrics.vue";
 
 const emit = defineEmits<{
   close: [];

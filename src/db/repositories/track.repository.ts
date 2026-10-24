@@ -15,6 +15,12 @@ import { toDbError } from "@/db/errors/db.errors";
 const FIELD_FLOOR: unknown = Dexie.minKey;
 const FIELD_CEILING: unknown = Dexie.maxKey;
 
+export interface TrackLyricsChanges {
+  lyricsPath: string | null;
+  lyricsFileName: string | null;
+  lyricsOffsetMs?: number;
+}
+
 class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   constructor() {
     super(db.tracks);
@@ -424,12 +430,25 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     }
   }
 
-  async setLyricsPath(id: TrackId, lyricsPath: string): Promise<Result<void, Error>> {
+  async setLyrics(id: TrackId, lyrics: TrackLyricsChanges): Promise<Result<void, Error>> {
     try {
+      // Dexie 4 deletes a key whose new value is undefined.
       await this.table.update(id, {
-        lyricsPath,
+        lyricsPath: lyrics.lyricsPath ?? undefined,
+        lyricsFileName: lyrics.lyricsFileName ?? undefined,
+        ...(lyrics.lyricsOffsetMs === undefined ? {} : { lyricsOffsetMs: lyrics.lyricsOffsetMs }),
       });
 
+      return ok(undefined);
+    }
+    catch (error) {
+      return err(toDbError(error));
+    }
+  }
+
+  async setLyricsOffset(id: TrackId, offsetMs: number): Promise<Result<void, Error>> {
+    try {
+      await this.table.update(id, { lyricsOffsetMs: offsetMs });
       return ok(undefined);
     }
     catch (error) {

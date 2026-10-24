@@ -35,3 +35,9 @@ export const deleteOwnedFiles = async (tracks: readonly TrackEntity[]): Promise<
     if (result.isErr()) getLogger().warn(`[Tracks] Deleting ${path} failed: ${result.error.message}`);
   }
 };
+
+export const deleteOwnedLyricsFile = async (path: string): Promise<void> => {
+  if (!path.startsWith(LYRICS_DIR)) return;
+  const result = await storageService.deleteFile(path);
+  if (result.isErr()) getLogger().warn(`[Tracks] Deleting ${path} failed: ${result.error.message}`);
+};

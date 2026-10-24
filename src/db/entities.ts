@@ -108,6 +108,9 @@ export interface TrackEntity {
   addedAt: number;
   fingerprint?: string;
   lyricsPath?: string;
+  /** Name of the .lrc the user attached; absent for lyrics written in the app. */
+  lyricsFileName?: string;
+  lyricsOffsetMs?: number;
   /**
    * Remote id this local file was downloaded from ("ym:123"). Only set on
    * LOCAL_INTERNAL rows created by the download manager; the playback

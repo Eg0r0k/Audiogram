@@ -31,6 +31,8 @@ export function mapTrack(
     trackNo: entity.trackNo,
     diskNo: entity.diskNo,
     lyricsPath: entity.lyricsPath,
+    lyricsFileName: entity.lyricsFileName,
+    lyricsOffsetMs: entity.lyricsOffsetMs,
     integratedLufs: entity.integratedLufs,
     truePeakDbtp: entity.truePeakDbtp,
     replayGainDb: entity.replayGainDb,

@@ -5,5 +5,61 @@
   "emptyHint": "Write or paste the lyrics, or attach an .lrc file.",
   "add": "Add lyrics",
   "loadFailed": "Couldn't load lyrics",
-  "retry": "Try again"
+  "retry": "Try again",
+  "trackLine": "{title} · {artist}",
+  "edit": "Edit lyrics",
+  "write": "Write lyrics",
+  "attachFile": "Attach file",
+  "adjustTiming": "Adjust timing",
+  "delete": "Delete lyrics",
+  "remove": "Remove lyrics",
+  "save": "Save lyrics",
+  "syncLineByLine": "Sync line by line",
+  "notSynced": "These lyrics aren't synced to the music.",
+  "source": {
+    "file": "Your file",
+    "namedFile": "Your file · {name}",
+    "lrclib": "From LRCLIB"
+  },
+  "menu": {
+    "attachFile": "Attach file…",
+    "replaceFile": "Replace with file…"
+  },
+  "editor": {
+    "placeholder": "Paste or type the lyrics. Plain text works; lines with [01:23.45] follow the music.",
+    "synced": "Synced · {count} line with timestamps | Synced · {count} lines with timestamps",
+    "plain": "Plain text · shown without sync. You can sync it line by line later."
+  },
+  "adjust": {
+    "earlier": "Show lines 0.1 s earlier",
+    "later": "Show lines 0.1 s later",
+    "value": "{value} s",
+    "reset": "Reset",
+    "hint": "Tap the line you hear right now to sync to it.",
+    "save": "Save timing"
+  },
+  "sync": {
+    "title": "Sync lyrics",
+    "progress": "Line {n} of {total}",
+    "hint": "Press when the highlighted line starts. Space works too.",
+    "mark": "Mark line · {time}"
+  },
+  "emptyState": {
+    "libraryHint": "Nothing found on LRCLIB. Write or paste the lyrics, or attach an .lrc file.",
+    "notFound": "No lyrics found",
+    "notFoundHint": "LRCLIB has nothing for this track.",
+    "notFoundImportHint": "LRCLIB has nothing for this track. Add it to your library to write or attach lyrics.",
+    "fileMissing": "Lyrics file not found",
+    "fileMissingHint": "{name} was moved or deleted. Attach it again or remove the lyrics from the track.",
+    "fileMissingUnnamedHint": "The lyrics file was moved or deleted. Attach it again or remove the lyrics from the track.",
+    "network": "Couldn't reach LRCLIB",
+    "networkHint": "Check the connection and try again, or write the lyrics yourself."
+  },
+  "saved": "Lyrics saved",
+  "saveFailed": "Couldn't save lyrics",
+  "deleted": "Lyrics deleted",
+  "deleteFailed": "Couldn't delete lyrics",
+  "restoreFailed": "Couldn't restore lyrics",
+  "removeFailed": "Couldn't remove lyrics",
+  "timingSaveFailed": "Couldn't save the timing"
 }

@@ -422,6 +422,8 @@ export const useRecoStand = () => {
       const copy: Partial<TrackEntity> = { ...t };
       delete copy.storagePath;
       delete copy.lyricsPath;
+      delete copy.lyricsFileName;
+      delete copy.lyricsOffsetMs;
       delete copy.fingerprint;
       return copy;
     });

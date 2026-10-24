@@ -91,8 +91,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { tintedSurface } from "@/lib/color/tinted-surface";
 import { useAttachCurrentTrackLyrics } from "@/modules/player/composables/useAttachCurrentTrackLyrics";
+import { useCurrentLyrics } from "@/modules/player/composables/useCurrentLyrics";
 import { useLyricsStore } from "@/modules/player/store/lyrics.store";
-import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 
 const props = defineProps<{
@@ -103,37 +103,39 @@ const VISIBLE_LINES = 4;
 const SKELETON_WIDTHS = ["72%", "56%", "64%", "44%"];
 
 const lyricsStore = useLyricsStore();
-const playerStore = usePlayerStore();
 const rightPanel = useRightPanelStore();
+const { track, kind, lines, plainLines, status, activeLineIndex } = useCurrentLyrics();
 const { attachableTrack } = useAttachCurrentTrackLyrics();
 
 const surface = computed(() => tintedSurface(props.coverColor));
 
-// Blank LRC lines are verse separators, not lines to show.
-const textLines = computed(() => lyricsStore.lines.flatMap((line, index) =>
-  line.text.trim() ? [{ text: line.text, index }] : []));
+// Blank lines are verse separators, not lines to show.
+const textLines = computed(() => {
+  const texts = kind.value === "plain" ? plainLines.value : lines.value.map(line => line.text);
+  return texts.flatMap((text, index) => (text.trim() ? [{ text, index }] : []));
+});
 
 const state = computed(() => {
-  if (lyricsStore.status === "loading") return "loading";
-  if (lyricsStore.status === "error") return "error";
-  if (lyricsStore.status === "ready" && textLines.value.length > 0) return "lines";
+  if (status.value === "loading") return "loading";
+  if (status.value === "error") return "error";
+  if (status.value === "ready" && textLines.value.length > 0) return "lines";
   return attachableTrack.value ? "empty" : "hidden";
 });
 
 const rows = computed(() => {
-  const lines = textLines.value;
+  const visible = textLines.value;
   let current = -1;
-  lines.forEach((line, position) => {
-    if (line.index <= lyricsStore.activeLineIndex) current = position;
+  visible.forEach((line, position) => {
+    if (line.index <= activeLineIndex.value) current = position;
   });
-  const start = Math.min(Math.max(current - 1, 0), Math.max(lines.length - VISIBLE_LINES, 0));
-  return lines
+  const start = Math.min(Math.max(current - 1, 0), Math.max(visible.length - VISIBLE_LINES, 0));
+  return visible
     .slice(start, start + VISIBLE_LINES)
     .map((line, offset) => ({ ...line, current: start + offset === current }));
 });
 
 const retry = () => {
-  lyricsStore.loadFor(playerStore.currentTrack)
+  lyricsStore.loadFor(track.value)
     .catch(() => {});
 };
 </script>

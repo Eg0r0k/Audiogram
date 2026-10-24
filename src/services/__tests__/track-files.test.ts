@@ -13,7 +13,7 @@ vi.mock("@/db/storage", () => ({ storageService: storageMock }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => logger }));
 
 import { db } from "@/db";
-import { deleteOwnedFiles } from "../track-files";
+import { deleteOwnedFiles, deleteOwnedLyricsFile } from "../track-files";
 
 const row = (id: string, overrides: Partial<TrackEntity> = {}): TrackEntity => ({
   id: TrackId(id),
@@ -77,6 +77,26 @@ describe("deleteOwnedFiles", () => {
     await expect(deleteOwnedFiles([row("t-1"), row("t-2")])).resolves.toBeUndefined();
 
     expect(deleted()).toEqual(["tracks/t-1.mp3", "tracks/t-2.mp3"]);
+    expect(logger.warn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("deleteOwnedLyricsFile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    storageMock.deleteFile.mockReturnValue(okAsync(undefined));
+  });
+
+  it("deletes an owned lyrics file and ignores paths outside the lyrics folder", async () => {
+    await deleteOwnedLyricsFile("lyrics/t-1.lrc");
+    await deleteOwnedLyricsFile("D:/Music/song.lrc");
+    await deleteOwnedLyricsFile("tracks/t-1.mp3");
+
+    expect(deleted()).toEqual(["lyrics/t-1.lrc"]);
+
+    storageMock.deleteFile.mockReturnValueOnce(errAsync(StorageError.deleteFailed("lyrics/t-2.lrc", new Error("busy"))));
+
+    await expect(deleteOwnedLyricsFile("lyrics/t-2.lrc")).resolves.toBeUndefined();
     expect(logger.warn).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,5 +1,5 @@
-import { computed, inject, nextTick, onUnmounted, ref, watch } from "vue";
-import type { ComponentPublicInstance } from "vue";
+import { computed, inject, nextTick, onUnmounted, ref, toValue, watch } from "vue";
+import type { ComponentPublicInstance, MaybeRefOrGetter } from "vue";
 import { useEventListener, useResizeObserver } from "@vueuse/core";
 import { scrollableInjectionKey } from "@/components/ui/scrollable/injection";
 import { REDUCED_MOTION_QUERY } from "@/app/reduced-motion";
@@ -13,8 +13,9 @@ import {
 } from "../lib/lyrics-follow";
 
 interface LyricsFollowSource {
-  lines: () => LyricsLine[];
+  lines: () => readonly LyricsLine[];
   activeLineIndex: () => number;
+  anchorRatio?: MaybeRefOrGetter<number>;
 }
 
 /** Idle shows only the sung line; reading lifts the whole text so it can be read. */
@@ -22,7 +23,7 @@ export type LyricsMode = "idle" | "hover" | "reading";
 
 const SCROLL_MS = 300;
 
-const ANCHOR_RATIO = 0.1;
+const DEFAULT_ANCHOR_RATIO = 0.1;
 
 /**
  * Chat-like follow behavior for a lyrics list.
@@ -40,6 +41,7 @@ export const useLyricsFollow = (source: LyricsFollowSource) => {
   let lastActiveIndex = -1;
   let scrollEndTimer: ReturnType<typeof setTimeout> | null = null;
   let scrollFrame: number | null = null;
+  const anchorRatio = () => toValue(source.anchorRatio ?? DEFAULT_ANCHOR_RATIO);
 
   const follow = ref<FollowState>(INITIAL_FOLLOW_STATE);
   const dispatch = (event: FollowEvent) => {
@@ -78,7 +80,7 @@ export const useLyricsFollow = (source: LyricsFollowSource) => {
     if (!container || !line) return null;
     const c = container.getBoundingClientRect();
     const r = line.getBoundingClientRect();
-    return (r.top + r.bottom) / 2 - (c.top + c.height * ANCHOR_RATIO);
+    return (r.top + r.bottom) / 2 - (c.top + c.height * anchorRatio());
   };
 
   // The last lines of a song can only reach an anchor this high up if there is
@@ -86,9 +88,9 @@ export const useLyricsFollow = (source: LyricsFollowSource) => {
   const tailSpace = ref(0);
   const measureTail = () => {
     const container = scrollParent.value;
-    tailSpace.value = container ? Math.round(container.clientHeight * (1 - ANCHOR_RATIO)) : 0;
+    tailSpace.value = container ? Math.round(container.clientHeight * (1 - anchorRatio())) : 0;
   };
-  watch(scrollParent, measureTail, { immediate: true });
+  watch([scrollParent, anchorRatio], measureTail, { immediate: true });
   useResizeObserver(scrollParent, measureTail);
 
   const cancelScroll = () => {

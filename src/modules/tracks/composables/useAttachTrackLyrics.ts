@@ -6,7 +6,11 @@ import { useI18n } from "vue-i18n";
 import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
 import { platformCaps } from "@/lib/environment/platformCaps";
-import type { Track } from "@/modules/player/types";
+import { formatError } from "@/lib/errors";
+import { getLogger } from "@/lib/logger";
+import { useLyricsStore } from "@/modules/player/store/lyrics.store";
+import { usePlayerStore } from "@/modules/player/store/player.store";
+import { isLibraryTrack, type Track } from "@/modules/player/types";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { attachTrackLyricsAndSync } from "@/queries/track.queries";
 
@@ -93,9 +97,14 @@ async function saveLyricsFile(trackId: string, selected: SelectedLyricsFile): Pr
   return result.value;
 }
 
-export function useAttachTrackLyrics() {
+const pickedFileName = (selected: SelectedLyricsFile): string | null =>
+  selected.file?.name ?? selected.path?.split(/[\\/]/).pop() ?? null;
+
+export const useAttachTrackLyrics = () => {
   const queryClient = useQueryClient();
   const queueStore = useQueueStore();
+  const playerStore = usePlayerStore();
+  const lyricsStore = useLyricsStore();
   const { t } = useI18n();
 
   const mutation = useMutation({
@@ -106,12 +115,25 @@ export function useAttachTrackLyrics() {
       }
 
       const lyricsPath = await saveLyricsFile(track.id, selected);
-      const nextTrack = await attachTrackLyricsAndSync(queryClient, track, lyricsPath);
+      const nextTrack = await attachTrackLyricsAndSync(queryClient, track, {
+        lyricsPath,
+        lyricsFileName: pickedFileName(selected),
+        lyricsOffsetMs: 0,
+      });
 
       track.lyricsPath = nextTrack.lyricsPath;
+      track.lyricsFileName = nextTrack.lyricsFileName;
+      track.lyricsOffsetMs = nextTrack.lyricsOffsetMs;
 
       // The now-playing UI reads the queue's copy of the current track.
       queueStore.syncTrackMetadata(nextTrack);
+
+      // The queue patch announces no track change, and a replaced file keeps its path.
+      const current = playerStore.currentTrack;
+      if (isLibraryTrack(current) && current.id === track.id) {
+        lyricsStore.reload()
+          .catch(error => getLogger().error(`[Lyrics] Reloading lyrics failed: ${formatError(error)}`));
+      }
 
       toaster.add({ title: t("player.lyricsAttached"), color: "success" });
 
@@ -126,4 +148,4 @@ export function useAttachTrackLyrics() {
     attachTrackLyrics: mutation.mutateAsync,
     isAttachingLyrics: mutation.isPending,
   };
-}
+};

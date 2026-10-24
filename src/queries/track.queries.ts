@@ -6,6 +6,7 @@ import {
   playlistRepository,
   trackRepository,
 } from "@/db/repositories";
+import type { TrackLyricsChanges } from "@/db/repositories/track.repository";
 import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
 import { buildAlbumDocFromDb, buildArtistDoc, buildTrackDocFromDb } from "@/modules/search/service/buildDocuments";
@@ -589,33 +590,61 @@ export async function toggleTrackLikeAndSync(
   return nextTrack;
 }
 
-export async function attachTrackLyricsAndSync(
+const findTrackOrThrow = async (trackId: TrackId): Promise<TrackEntity> => {
+  const track = await unwrapResult(trackRepository.findById(trackId));
+  if (!track) throw new DbError("NOT_FOUND", "Track not found");
+  return track;
+};
+
+const syncTrackLyricsCaches = (
+  queryClient: QueryClient,
+  currentTrack: TrackEntity,
+  track: Track,
+  fields: Pick<TrackEntity, "lyricsPath" | "lyricsFileName" | "lyricsOffsetMs">,
+): Track => {
+  const nextTrack: Track = { ...track, ...fields };
+  syncTrackMetadataCaches(queryClient, { ...currentTrack, ...fields }, nextTrack);
+  return nextTrack;
+};
+
+const writeTrackLyrics = async (
   queryClient: QueryClient,
   track: Track,
-  lyricsPath: string,
-) {
-  const currentTrack = await unwrapResult(trackRepository.findById(track.id));
+  changes: TrackLyricsChanges,
+): Promise<Track> => {
+  const currentTrack = await findTrackOrThrow(track.id);
 
-  if (!currentTrack) {
-    throw new DbError("NOT_FOUND", "Track not found");
-  }
-
-  await unwrapResult(trackRepository.setLyricsPath(track.id, lyricsPath));
+  await unwrapResult(trackRepository.setLyrics(track.id, changes));
   await settleLibraryReads(queryClient);
 
-  const nextTrackEntity: TrackEntity = {
-    ...currentTrack,
-    lyricsPath,
-  };
-  const nextTrack: Track = {
-    ...track,
-    lyricsPath,
-  };
+  return syncTrackLyricsCaches(queryClient, currentTrack, track, {
+    lyricsPath: changes.lyricsPath ?? undefined,
+    lyricsFileName: changes.lyricsFileName ?? undefined,
+    lyricsOffsetMs: changes.lyricsOffsetMs ?? currentTrack.lyricsOffsetMs,
+  });
+};
 
-  syncTrackMetadataCaches(queryClient, nextTrackEntity, nextTrack);
+export const attachTrackLyricsAndSync = (
+  queryClient: QueryClient,
+  track: Track,
+  lyrics: { lyricsPath: string; lyricsFileName: string | null; lyricsOffsetMs?: number },
+): Promise<Track> => writeTrackLyrics(queryClient, track, lyrics);
 
-  return nextTrack;
-}
+export const detachTrackLyricsAndSync = (queryClient: QueryClient, track: Track): Promise<Track> =>
+  writeTrackLyrics(queryClient, track, { lyricsPath: null, lyricsFileName: null, lyricsOffsetMs: 0 });
+
+export const setTrackLyricsOffsetAndSync = async (
+  queryClient: QueryClient,
+  track: Track,
+  offsetMs: number,
+): Promise<Track> => {
+  const currentTrack = await findTrackOrThrow(track.id);
+
+  await unwrapResult(trackRepository.setLyricsOffset(track.id, offsetMs));
+  await settleLibraryReads(queryClient);
+
+  return syncTrackLyricsCaches(queryClient, currentTrack, track, { lyricsOffsetMs: offsetMs });
+};
 
 const resolveAlbumForChanges = async (
   queryClient: QueryClient,

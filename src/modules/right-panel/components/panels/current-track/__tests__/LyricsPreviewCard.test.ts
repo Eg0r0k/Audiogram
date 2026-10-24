@@ -1,34 +1,32 @@
 import { render, screen } from "@testing-library/vue";
 import userEvent from "@testing-library/user-event";
+import { flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { nextTick } from "vue";
+import { nextTick, reactive } from "vue";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { LyricsLine } from "@/modules/player/lib/lrc";
-import type { Track } from "@/modules/player/types";
-import { useAttachCurrentTrackLyrics } from "@/modules/player/composables/useAttachCurrentTrackLyrics";
-import { useLyricsStore } from "@/modules/player/store/lyrics.store";
-import { usePlayerStore } from "@/modules/player/store/player.store";
-import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { tintedSurface } from "@/lib/color/tinted-surface";
+import type { LyricsLine } from "@/modules/player/lib/lrc";
+import type { TrackLyricsLoadResult } from "@/modules/player/service/track-lyrics-loader.service";
+import type { EphemeralTrack, PlayerTrack, Track } from "@/modules/player/types";
+
+const mockPlayerState = reactive({
+  currentTime: 0,
+  currentTrack: null as PlayerTrack | null,
+  canSeek: true,
+  seekTo: vi.fn(),
+});
+
+vi.mock("@/modules/player/store/player.store", () => ({ usePlayerStore: () => mockPlayerState }));
+vi.mock("@/modules/player/service/track-lyrics-loader.service", () => ({ loadTrackLyrics: vi.fn() }));
+
+import { loadTrackLyrics } from "@/modules/player/service/track-lyrics-loader.service";
+import { useLyricsStore } from "@/modules/player/store/lyrics.store";
+import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import LyricsPreviewCard from "../LyricsPreviewCard.vue";
 
-vi.mock("@/modules/player/store/lyrics.store", async () => {
-  const { reactive } = await import("vue");
-  const state = reactive({
-    status: "idle" as "idle" | "loading" | "ready" | "error",
-    lines: [] as LyricsLine[],
-    activeLineIndex: -1,
-    loadFor: vi.fn(async () => {}),
-  });
-  return { useLyricsStore: () => state };
-});
-vi.mock("@/modules/player/composables/useAttachCurrentTrackLyrics", async () => {
-  const { ref } = await import("vue");
-  const attachableTrack = ref<unknown>(null);
-  return { useAttachCurrentTrackLyrics: () => ({ attachableTrack }) };
-});
+const loader = vi.mocked(loadTrackLyrics);
 
 const track: Track = {
   kind: "library",
@@ -45,22 +43,29 @@ const track: Track = {
   isLiked: false,
 };
 
-const linesOf = (texts: string[]): LyricsLine[] => texts.map((text, i) => ({ time: i * 5, text }));
+const stream: EphemeralTrack = {
+  kind: "ephemeral",
+  id: "yt-1",
+  title: "Stream",
+  artist: "Someone",
+  source: { type: "url", url: "https://example.com/a.m3u8" },
+};
+
+const linesOf = (texts: string[]): LyricsLine[] => texts.map((text, i) => ({ time: (i + 1) * 5, text }));
 
 const numbered = (count: number) => linesOf(Array.from({ length: count }, (_, i) => `Line ${i}`));
 
-const lyricsStore = useLyricsStore() as unknown as {
-  status: "idle" | "loading" | "ready" | "error";
-  lines: LyricsLine[];
-  activeLineIndex: number;
-  loadFor: ReturnType<typeof vi.fn>;
-};
-const { attachableTrack } = useAttachCurrentTrackLyrics();
+const timeOf = (lines: LyricsLine[], index: number) => (index < 0 ? 0 : lines[index].time + 0.1);
 
-const showLyrics = (lines: LyricsLine[], activeLineIndex: number) => {
-  lyricsStore.status = "ready";
-  lyricsStore.lines = lines;
-  lyricsStore.activeLineIndex = activeLineIndex;
+const load = async (result: TrackLyricsLoadResult, playing: PlayerTrack = track) => {
+  mockPlayerState.currentTrack = playing;
+  loader.mockResolvedValueOnce(result);
+  await useLyricsStore().loadFor(playing, { force: true });
+};
+
+const showLyrics = async (lines: LyricsLine[], activeLineIndex: number, playing: PlayerTrack = track) => {
+  mockPlayerState.currentTime = timeOf(lines, activeLineIndex);
+  await load({ status: "ready", lyrics: { kind: "synced", lines }, raw: "", source: { type: "lrclib" } }, playing);
 };
 
 const COVER_COLOR = "#3366cc";
@@ -70,10 +75,12 @@ const renderCard = () => render(LyricsPreviewCard, {
   global: { plugins: [i18n] },
 });
 
-const shownLines = () => {
+const shownRows = () => {
   const block = screen.getByText("Lyrics").closest("section")?.querySelector(".h-28");
-  return Array.from(block?.children ?? []).map(row => row.textContent?.trim());
+  return Array.from(block?.children ?? []);
 };
+
+const shownLines = () => shownRows().map(row => row.textContent?.trim());
 
 const currentLine = () => document.querySelector("[aria-current='true']")?.textContent?.trim() ?? null;
 
@@ -81,24 +88,21 @@ describe("LyricsPreviewCard", () => {
   beforeEach(() => {
     i18n.global.locale.value = "en";
     setActivePinia(createPinia());
-    usePlayerStore().currentTrack = track;
-    lyricsStore.status = "idle";
-    lyricsStore.lines = [];
-    lyricsStore.activeLineIndex = -1;
-    lyricsStore.loadFor.mockClear();
-    attachableTrack.value = null;
+    loader.mockReset();
+    mockPlayerState.currentTime = 0;
+    mockPlayerState.currentTrack = track;
   });
 
-  it("shows four lines around the active one: one sung, the current, two ahead", () => {
-    showLyrics(numbered(10), 5);
+  it("shows four lines around the active one: one sung, the current, two ahead", async () => {
+    await showLyrics(numbered(10), 5);
     renderCard();
 
     expect(shownLines()).toEqual(["Line 4", "Line 5", "Line 6", "Line 7"]);
     expect(currentLine()).toBe("Line 5");
   });
 
-  it("skips blank verse separators", () => {
-    showLyrics(linesOf(["Line 0", "", "Line 1", "Line 2", "", "Line 3", "Line 4"]), 4);
+  it("skips blank verse separators", async () => {
+    await showLyrics(linesOf(["Line 0", "", "Line 1", "Line 2", "", "Line 3", "Line 4"]), 4);
     renderCard();
 
     expect(shownLines()).toEqual(["Line 1", "Line 2", "Line 3", "Line 4"]);
@@ -106,19 +110,20 @@ describe("LyricsPreviewCard", () => {
   });
 
   it("shows the first four lines before the first one starts and the last four at the end", async () => {
-    showLyrics(numbered(10), -1);
+    const lines = numbered(10);
+    await showLyrics(lines, -1);
     renderCard();
 
     expect(shownLines()).toEqual(["Line 0", "Line 1", "Line 2", "Line 3"]);
     expect(currentLine()).toBeNull();
 
-    lyricsStore.activeLineIndex = 9;
+    mockPlayerState.currentTime = timeOf(lines, 9);
     await vi.waitFor(() => expect(shownLines()).toEqual(["Line 6", "Line 7", "Line 8", "Line 9"]));
     expect(currentLine()).toBe("Line 9");
   });
 
-  it("keeps a fixed-height block with truncated lines", () => {
-    showLyrics(numbered(2), 0);
+  it("keeps a fixed-height block with truncated lines", async () => {
+    await showLyrics(numbered(2), 0);
     renderCard();
 
     const line = screen.getByText("Line 0");
@@ -130,7 +135,8 @@ describe("LyricsPreviewCard", () => {
   });
 
   it("shows four skeleton bars while loading", () => {
-    lyricsStore.status = "loading";
+    loader.mockReturnValueOnce(new Promise(() => {}));
+    void useLyricsStore().loadFor(track, { force: true });
     const { container } = renderCard();
 
     expect(screen.getByText("Lyrics").closest("section"))
@@ -143,7 +149,7 @@ describe("LyricsPreviewCard", () => {
   });
 
   it("offers Add lyrics on a neutral card when an attachable track has none", async () => {
-    attachableTrack.value = track;
+    await load({ status: "idle" });
     renderCard();
 
     const title = screen.getByText("No lyrics for this track");
@@ -154,34 +160,37 @@ describe("LyricsPreviewCard", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add lyrics" }));
     expect(useRightPanelStore().view).toBe("lyrics");
 
-    showLyrics(linesOf(["", "  "]), 1);
+    await showLyrics(linesOf(["", "  "]), 1);
     await nextTick();
     expect(screen.getByText("No lyrics for this track")).toBeInTheDocument();
   });
 
   it("renders nothing when the track has no lyrics and cannot get any", async () => {
+    await load({ status: "idle" }, stream);
     const { container } = renderCard();
 
     expect(container.querySelector("section")).toBeNull();
 
-    showLyrics(linesOf([""]), 0);
+    await showLyrics(linesOf([""]), 0, stream);
     await nextTick();
     expect(container.querySelector("section")).toBeNull();
   });
 
   it("retries the load from the error card", async () => {
-    lyricsStore.status = "error";
+    await load({ status: "error", reason: "network" });
     renderCard();
 
     expect(screen.getByText("Couldn't load lyrics").closest("section")).toHaveClass("bg-muted");
+    loader.mockResolvedValueOnce({ status: "idle" });
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await flushPromises();
 
-    expect(lyricsStore.loadFor).toHaveBeenCalledTimes(1);
-    expect(lyricsStore.loadFor).toHaveBeenCalledWith(track);
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(loader).toHaveBeenLastCalledWith(track);
   });
 
   it("opens the lyrics panel from Show lyrics", async () => {
-    showLyrics(numbered(6), 2);
+    await showLyrics(numbered(6), 2);
     renderCard();
 
     await userEvent.click(screen.getByRole("button", { name: "Show lyrics" }));
@@ -189,5 +198,38 @@ describe("LyricsPreviewCard", () => {
     const rightPanel = useRightPanelStore();
     expect(rightPanel.isOpen).toBe(true);
     expect(rightPanel.view).toBe("lyrics");
+  });
+
+  it("shows the first four lines of plain lyrics, none current", async () => {
+    mockPlayerState.currentTime = 120;
+    await load({
+      status: "ready",
+      lyrics: { kind: "plain", lines: ["First", "Second", "", "Third", "Fourth", "Fifth"] },
+      raw: "First\nSecond\n\nThird\nFourth\nFifth",
+      source: { type: "lrclib" },
+    });
+    renderCard();
+
+    expect(shownLines()).toEqual(["First", "Second", "Third", "Fourth"]);
+    expect(currentLine()).toBeNull();
+    for (const row of shownRows()) {
+      expect(row).not.toHaveClass("text-white");
+    }
+  });
+
+  it("follows the saved lyrics offset", async () => {
+    const lines = numbered(10);
+    const shifted: Track = { ...track, lyricsOffsetMs: 2000 };
+    mockPlayerState.currentTime = 31;
+    await load({ status: "ready", lyrics: { kind: "synced", lines }, raw: "", source: { type: "lrclib" } }, shifted);
+    renderCard();
+
+    expect(currentLine()).toBe("Line 4");
+    expect(shownLines()).toEqual(["Line 3", "Line 4", "Line 5", "Line 6"]);
+
+    mockPlayerState.currentTrack = { ...shifted, lyricsOffsetMs: -4000 };
+    await nextTick();
+
+    expect(currentLine()).toBe("Line 6");
   });
 });

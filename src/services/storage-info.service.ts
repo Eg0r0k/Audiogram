@@ -140,6 +140,8 @@ export async function clearLyricsData(): Promise<void> {
 
   await db.tracks.toCollection().modify((track) => {
     delete track.lyricsPath;
+    delete track.lyricsFileName;
+    delete track.lyricsOffsetMs;
   });
 }
 

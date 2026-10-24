@@ -31,7 +31,7 @@ import type {
 } from "@/modules/right-panel/types";
 import QueuePanel from "./panels/QueuePanel.vue";
 import CurrentTrackPanel from "./panels/CurrentTrackPanel.vue";
-import LyricsPanel from "./panels/LyricsPanel.vue";
+import LyricsPanel from "./panels/lyrics/LyricsPanel.vue";
 import TrackInfoPanel from "./panels/TrackInfoPanel.vue";
 import EditTrackPanel from "./panels/EditTrackPanel.vue";
 import AddTracksPanel from "@/modules/tracks/components/tracks-sheet/AddTracksPanel.vue";

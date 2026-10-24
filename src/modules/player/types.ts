@@ -45,6 +45,8 @@ export interface Track extends TrackLoudnessMetadata {
   trackNo?: number;
   diskNo?: number;
   lyricsPath?: string;
+  lyricsFileName?: string;
+  lyricsOffsetMs?: number;
 }
 
 //
