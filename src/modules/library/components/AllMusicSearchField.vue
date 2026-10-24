@@ -19,6 +19,7 @@
 
     <InputGroupAddon
       tabindex="-1"
+      class="gap-0"
       align="inline-end"
     >
       <InputGroupButton

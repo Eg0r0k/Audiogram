@@ -3,13 +3,12 @@
     :open="changelogStore.isDialogOpen"
     @update:open="handleOpenChange"
   >
-    <DialogContent class="flex flex-col max-h-[80vh] sm:max-w-2xl gap-0 p-0 overflow-hidden h-full">
-      <div class="border-b  px-6 py-5 shrink-0">
+    <DialogContent class="flex flex-col max-h-[70vh] sm:max-w-2xl gap-0 p-0 overflow-hidden h-full">
+      <div class="px-6 py-5 shrink-0">
         <DialogHeader class="gap-2 pr-10">
           <DialogTitle>
-            {{ t("update.whatsNewTitle") }} <span class="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-              v{{ activeVersion }}
-            </span>
+            {{ t("update.whatsNewTitle") }}
+            {{ activeVersion }}
           </DialogTitle>
           <DialogDescription>
             {{ t("update.whatsNewDescription") }}
@@ -19,7 +18,7 @@
 
       <Scrollable class="flex-1 min-h-0">
         <ReleaseNotesContent
-          class="p-4"
+          class="p-4 pt-0"
           :markdown="activeChangelog"
         />
       </Scrollable>

@@ -54,10 +54,6 @@
                   <h2 class="text-xl font-semibold">
                     {{ $t('album.album') }}
                   </h2>
-
-                  <p class="text-sm text-muted-foreground">
-                    {{ $t('common.albums', { count: albumCount }) }}
-                  </p>
                 </div>
 
                 <Button
@@ -220,7 +216,6 @@ const {
   artistData,
   coverUrl,
   trackCount,
-  albumCount,
   isLoading,
   error,
   isError,
