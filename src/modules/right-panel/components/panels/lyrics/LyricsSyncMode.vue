@@ -24,7 +24,6 @@
       <Button
         type="button"
         class="h-12 rounded-full px-5 tabular-nums shadow-lg has-[>svg]:px-5"
-        :style="accentStyle"
         :disabled="isPending"
         @click="isComplete ? save() : mark()"
       >
@@ -43,12 +42,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { useEventListener, useMutationObserver } from "@vueuse/core";
+import { computed } from "vue";
+import { useEventListener } from "@vueuse/core";
 import FloatingActionButton from "@/components/common/FloatingActionButton.vue";
 import { Button } from "@/components/ui/button";
 import { Scrollable } from "@/components/ui/scrollable";
-import { textSafeAccent } from "@/lib/color/text-safe-accent";
 import LyricsLines from "@/modules/player/components/lyrics/LyricsLines.vue";
 import { useLyricsActions } from "@/modules/player/composables/useLyricsActions";
 import { buildLrc, formatLyricsTime, type LyricsLine } from "@/modules/player/lib/lrc";
@@ -123,14 +121,4 @@ useEventListener(window, "keydown", (event: KeyboardEvent) => {
   if (!event.repeat) mark();
 }, { capture: true });
 
-const readAccent = () => textSafeAccent(getComputedStyle(document.documentElement).getPropertyValue("--primary"));
-
-const accent = ref(readAccent());
-
-// After a theme switch the accent is re-applied to the root's inline style a microtask later.
-useMutationObserver(document.documentElement, () => {
-  accent.value = readAccent();
-}, { attributes: true, attributeFilter: ["class", "style"] });
-
-const accentStyle = computed(() => (accent.value ? { "--tone": accent.value, "--tone-foreground": "#ffffff" } : undefined));
 </script>

@@ -1,40 +1,37 @@
 <template>
-  <div class="flex flex-col gap-3">
-    <div
-      class="flex items-center justify-between text-xs text-muted-foreground"
-    >
-      <span>{{ t("chapters.count", { count: chapters.length }) }}</span>
+  <PanelTextEditor
+    :model-value="textValue"
+    field-class="font-mono leading-relaxed tabular-nums"
+    :placeholder="t('chapters.editorPlaceholder')"
+    :label="t('chapters.editorPlaceholder')"
+    show-save
+    :save-label="t('chapters.save')"
+    :save-disabled="saveDisabled"
+    @update:model-value="onText"
+    @keydown.tab.prevent="onTab"
+    @save="emit('save')"
+  >
+    <template #status>
       <span
-        v-if="totalDuration"
-        class="tabular-nums"
-      >
-        {{ formatDuration(totalDuration) }}
-      </span>
-    </div>
-
-    <textarea
-      ref="textareaRef"
-      :value="textValue"
-      :aria-label="t('chapters.editorPlaceholder')"
-      class="min-h-[200px] w-full resize-y rounded-md border border-border bg-transparent px-3 py-2 font-mono text-sm leading-relaxed tabular-nums transition-[border-color,box-shadow] duration-200 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] placeholder:text-muted-foreground"
-      :placeholder="t('chapters.editorPlaceholder')"
-      @input="onInput"
-      @keydown.tab.prevent="onTab"
-    />
-
-    <div
-      v-if="parseError"
-      class="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive"
-    >
-      {{ parseError }}
-    </div>
-  </div>
+        v-if="parseError"
+        class="line-clamp-2 text-destructive"
+      >{{ parseError }}</span>
+      <template v-else>
+        <span>{{ t("chapters.count", { count: chapters.length }) }}</span>
+        <span
+          v-if="totalDuration"
+          class="ml-auto tabular-nums"
+        >{{ formatDuration(totalDuration) }}</span>
+      </template>
+    </template>
+  </PanelTextEditor>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { array, check, pipe, regex, safeParse, string } from "valibot";
+import PanelTextEditor from "@/components/common/PanelTextEditor.vue";
 import { formatDuration } from "@/lib/format/time";
 
 export interface DraftChapter {
@@ -46,15 +43,16 @@ export interface DraftChapter {
 const props = defineProps<{
   modelValue: DraftChapter[];
   duration: number;
+  saveDisabled?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: "update:modelValue", chapters: DraftChapter[]): void;
+  (e: "save"): void;
 }>();
 
 const { t } = useI18n();
 
-const textareaRef = useTemplateRef<HTMLTextAreaElement>("textareaRef");
 const textValue = ref("");
 const internalUpdate = ref(false);
 
@@ -144,14 +142,14 @@ function syncParent(): void {
   emit("update:modelValue", chapters.value);
 }
 
-function onInput(e: Event): void {
-  textValue.value = (e.target as HTMLTextAreaElement).value;
+const onText = (value: string): void => {
+  textValue.value = value;
   syncParent();
-}
+};
 
-function onTab(): void {
-  const ta = textareaRef.value;
-  if (!ta) return;
+function onTab(event: KeyboardEvent): void {
+  const ta = event.target;
+  if (!(ta instanceof HTMLTextAreaElement)) return;
   const start = ta.selectionStart;
   const end = ta.selectionEnd;
   textValue.value = textValue.value.slice(0, start) + "  " + textValue.value.slice(end);

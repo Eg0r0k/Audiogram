@@ -1,29 +1,19 @@
 <template>
-  <div class="flex h-full min-h-0 flex-col bg-card">
+  <div
+    class="relative flex h-full min-h-0 flex-col overflow-hidden! bg-card"
+    :style="keyboardInsetStyle"
+  >
     <RightPanelHeader
       class="bg-card"
       :show-close="true"
-      :show-back="rightPanel.depth > 0 && !isEditing"
-      :title="t('chapters.inThisTrack')"
+      :show-back="isEditing || rightPanel.depth > 0"
+      :title="isEditing ? t('chapters.edit') : t('chapters.inThisTrack')"
+      :description="isEditing ? trackLine : null"
       @close="rightPanel.close()"
-      @back="rightPanel.back()"
+      @back="handleBack"
     >
       <template #trailing>
-        <template v-if="isEditing">
-          <Button
-            variant="ghost"
-            color="muted"
-            size="icon-md"
-            class="shrink-0 rounded-full"
-            :aria-label="t('chapters.save')"
-            :disabled="!isFormValid || isSaving"
-            @click="handleSave()"
-          >
-            <IconCheck class="size-6 text-primary" />
-          </Button>
-        </template>
-
-        <template v-else>
+        <template v-if="!isEditing">
           <Button
             variant="ghost"
             color="muted"
@@ -60,18 +50,19 @@
       {{ importError }}
     </p>
 
-    <Scrollable class="flex-1">
-      <ChapterEditor
-        v-if="isEditing"
-        v-model="draft"
-        :duration="track.duration"
-        class="px-4 py-3"
-      />
+    <ChapterEditor
+      v-if="isEditing"
+      v-model="draft"
+      :duration="track.duration"
+      :save-disabled="!isFormValid || isSaving"
+      @save="handleSave"
+    />
 
-      <div
-        v-else
-        class="flex flex-col h-full"
-      >
+    <Scrollable
+      v-else
+      class="min-h-0 flex-1"
+    >
+      <div class="flex flex-col h-full">
         <Empty
           v-if="chapters.length === 0"
         >
@@ -160,7 +151,6 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import IconBookmarkOff from "~icons/tabler/bookmark-off";
-import IconCheck from "~icons/tabler/check";
 import IconPencil from "~icons/tabler/pencil";
 import IconUpload from "~icons/tabler/upload";
 import IconPlay from "~icons/audiogram/play-rounded";
@@ -175,6 +165,8 @@ import type { TrackChapterMark } from "@/db/entities";
 import type { DraftChapter } from "@/components/ChapterEditor.vue";
 import ChapterEditor from "@/components/ChapterEditor.vue";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
+import { usePanelUiBack } from "@/modules/right-panel/composables/usePanelUiBack";
+import { useKeyboardInset } from "@/composables/useKeyboardInset";
 import RightPanelHeader from "@/modules/right-panel/components/RightPanelHeader.vue";
 import Badge from "@/components/ui/badge/Badge.vue";
 
@@ -184,6 +176,13 @@ const props = defineProps<{ track: Track }>();
 
 const { t } = useI18n();
 const player = usePlayerStore();
+
+const { keyboardInset } = useKeyboardInset();
+const keyboardInsetStyle = computed(() => ({ "--keyboard-inset": `${keyboardInset.value}px` }));
+
+const trackLine = computed(() => (props.track.artist
+  ? t("chapters.trackLine", { title: props.track.title, artist: props.track.artist })
+  : props.track.title));
 
 const trackId = computed(() => props.track.id);
 const { data: savedChaptersData } = useTrackChapters(trackId);
@@ -307,6 +306,15 @@ function removeSavedChapter(index: number): void {
   const next = chapters.value.filter((_, i) => i !== index);
   saveMutation.mutate({ trackId: props.track.id, chapters: next });
 }
+
+const handleBack = (): void => {
+  if (isEditing.value) {
+    handleSave().catch(() => {});
+    return;
+  }
+  rightPanel.back();
+};
+usePanelUiBack(handleBack);
 
 async function handleSave(): Promise<void> {
   clearAutoSave();

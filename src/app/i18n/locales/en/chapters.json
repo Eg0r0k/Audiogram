@@ -13,5 +13,6 @@
   "edit": "Edit chapters",
   "save": "Save chapters",
   "cancelEdit": "Cancel editing",
-  "importCue": "Import CUE file"
+  "importCue": "Import CUE file",
+  "trackLine": "{title} · {artist}"
 }

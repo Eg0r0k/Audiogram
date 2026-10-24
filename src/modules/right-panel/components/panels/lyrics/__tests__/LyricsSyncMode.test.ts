@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick, reactive } from "vue";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState } from "@/db/entities";
-import { textSafeAccent } from "@/lib/color/text-safe-accent";
 import type { TrackLyricsLoadResult } from "@/modules/player/service/track-lyrics-loader.service";
 import type { PlayerTrack, Track } from "@/modules/player/types";
 
@@ -95,8 +94,6 @@ const plain: TrackLyricsLoadResult = {
   source: { type: "lrclib" },
 };
 
-const BLUE = "oklch(0.6444 0.1623 251.76)";
-const PINK = "oklch(0.6805 0.1983 348.87)";
 
 const play = async () => {
   mockPlayerState.currentTrack = track;
@@ -329,17 +326,12 @@ describe("LyricsSyncMode", () => {
     expect(dialog.summonDialog).not.toHaveBeenCalled();
   });
 
-  it("paints the extended button white on the darkened accent and follows accent changes", async () => {
-    document.documentElement.style.setProperty("--primary", BLUE);
+  it("fills the extended button with the primary colour like the other floating buttons", async () => {
     await enterSync();
 
     const button = fabButton();
-    expect(button.style.getPropertyValue("--tone")).toBe(textSafeAccent(BLUE));
-    expect(button.style.getPropertyValue("--tone-foreground")).toBe("#ffffff");
-
-    document.documentElement.style.setProperty("--primary", PINK);
-
-    await vi.waitFor(() => expect(button.style.getPropertyValue("--tone")).toBe(textSafeAccent(PINK)));
+    expect(button).toHaveAttribute("data-color", "primary");
+    expect(button.style.getPropertyValue("--tone")).toBe("");
   });
 
   it("returns to the lyrics and drops the marks when the track changes", async () => {
