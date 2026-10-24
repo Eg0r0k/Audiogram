@@ -164,6 +164,7 @@
       "dark": "Dark"
     },
     "contrast": "Contrast",
+    "contrastDescription": "Brighter text and borders",
     "contrastModes": {
       "system": "System",
       "off": "Off",

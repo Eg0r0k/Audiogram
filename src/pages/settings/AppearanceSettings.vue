@@ -8,54 +8,67 @@
       </div>
       <RadioGroup
         :model-value="theme"
+        :aria-label="$t('settings.appearance.colorTheme')"
+        class="grid grid-cols-1 gap-3 px-4 pt-2 pb-4 sm:grid-cols-3 sm:gap-4"
         @update:model-value="(val) => setTheme(val as any)"
       >
-        <Item
+        <label
           v-for="option in themes"
           :key="option.value"
-          class="cursor-pointer"
-          @click="setTheme(option.value)"
+          :for="`theme-${option.value}`"
+          class="group/theme flex min-w-0 cursor-pointer items-center gap-3 sm:flex-col sm:items-stretch"
         >
-          <Radio
-            :id="`theme-${option.value}`"
-            :value="option.value"
-          />
-          <ItemContent>
-            <ItemTitle>
+          <span
+            class="block w-28 shrink-0 overflow-hidden rounded-lg transition-shadow sm:w-auto"
+            :class="theme === option.value
+              ? 'ring-2 ring-primary'
+              : ''"
+          >
+            <ThemePreview
+              :theme="option.value"
+              :contrast="isHighContrast"
+            />
+          </span>
+          <span class="flex min-w-0 items-center gap-2">
+            <Radio
+              :id="`theme-${option.value}`"
+              :value="option.value"
+            />
+            <span class="truncate text-sm font-medium">
               {{ $t(`settings.appearance.themes.${option.value}`) }}
-            </ItemTitle>
-          </ItemContent>
-        </Item>
+            </span>
+          </span>
+        </label>
       </RadioGroup>
     </SettingsGroup>
 
     <SettingsGroup>
-      <div class="px-4">
-        <div class=" text-primary font-medium mb-1">
-          {{ $t("settings.appearance.contrast") }}
-        </div>
-      </div>
-      <RadioGroup
-        :model-value="contrast"
-        @update:model-value="(val) => setContrast(val as ContrastMode)"
-      >
-        <Item
-          v-for="option in contrastModes"
-          :key="option"
-          class="cursor-pointer"
-          @click="setContrast(option)"
-        >
-          <Radio
-            :id="`contrast-${option}`"
-            :value="option"
-          />
-          <ItemContent>
-            <ItemTitle>
-              {{ $t(`settings.appearance.contrastModes.${option}`) }}
-            </ItemTitle>
-          </ItemContent>
-        </Item>
-      </RadioGroup>
+      <Item>
+        <ItemContent>
+          <ItemTitle>{{ $t("settings.appearance.contrast") }}</ItemTitle>
+          <ItemDescription>{{ $t("settings.appearance.contrastDescription") }}</ItemDescription>
+        </ItemContent>
+        <ItemActions class="max-sm:w-full">
+          <Tabs
+            class="max-sm:w-full"
+            :model-value="contrast"
+            @update:model-value="(val) => setContrast(val as ContrastMode)"
+          >
+            <TabsList
+              class="gap-1 max-sm:w-full"
+              :aria-label="$t('settings.appearance.contrast')"
+            >
+              <TabsTrigger
+                v-for="option in contrastModes"
+                :key="option"
+                :value="option"
+              >
+                {{ $t(`settings.appearance.contrastModes.${option}`) }}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </ItemActions>
+      </Item>
     </SettingsGroup>
 
     <SettingsGroup>
@@ -117,8 +130,10 @@
               :model-value="String(zoom)"
               @update:model-value="(val) => setZoom(Number(val) as any)"
             >
-              <SelectTrigger variant="ghost"
-                class="w-[90px] h-8 font-medium pointer-events-auto"
+              <SelectTrigger
+                size="lg"
+                variant="soft"
+                class="w-22.5 font-medium pointer-events-auto"
                 :aria-label="$t('settings.appearance.zoom')"
               >
                 <SelectValue />
@@ -156,11 +171,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AccentColorPicker from "@/modules/settings/components/AccentColorPicker.vue";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
+import ThemePreview from "@/modules/settings/components/ThemePreview.vue";
 import { useAppearanceSettings } from "@/modules/settings/store/appearance";
-import type { ContrastMode } from "@/modules/settings/composables/useContrast";
+import { type ContrastMode, useContrast } from "@/modules/settings/composables/useContrast";
 import { useZoom } from "@/modules/settings/composables/useZoom";
 import { useFont } from "@/modules/settings/composables/useFont";
 import type { FontId } from "@/modules/settings/fonts";
@@ -173,6 +190,8 @@ const {
   accentColor, accentColors, setAccentColor,
   customAccentColor, setCustomAccentColor,
 } = useAppearanceSettings();
+
+const { isHighContrast } = useContrast();
 
 const {
   zoom, zoomLevels, setZoom,

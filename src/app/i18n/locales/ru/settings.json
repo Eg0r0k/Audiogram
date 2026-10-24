@@ -164,6 +164,7 @@
       "dark": "Тёмная"
     },
     "contrast": "Контрастность",
+    "contrastDescription": "Более яркий текст и границы",
     "contrastModes": {
       "system": "Системная",
       "off": "Выкл",
