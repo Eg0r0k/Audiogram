@@ -48,9 +48,14 @@
   "sleepTimerOff": "Timer is off",
   "sleepTimerScheduledIn": "Will stop in {time}",
   "nothingPlaying": "Nothing is playing right now.",
-  "upNextLabel": "Up Next",
   "moreOptions": "More options",
   "nothingPlayingTitle": "Nothing playing",
   "nothingPlayingSub": "Choose a track to start listening.",
-  "browseMusic": "Browse music"
+  "browseMusic": "Browse music",
+  "similarTracks": "Similar tracks",
+  "autoplayAddsSimilar": "Autoplay adds them when this track ends",
+  "lastInQueue": "Last track in queue",
+  "playbackStopsAfter": "Then playback stops",
+  "repeatQueue": "Repeat queue",
+  "repeatsThisTrack": "Repeats this track"
 }

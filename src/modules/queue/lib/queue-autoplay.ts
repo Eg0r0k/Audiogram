@@ -27,6 +27,8 @@ export const registerAutoplaySource = (source: AutoplaySource | null): void => {
   autoplaySource = source;
 };
 
+export const hasAutoplaySource = (): boolean => autoplaySource !== null;
+
 interface AutoplayDeps {
   repeatMode: () => RepeatMode;
   /** Playback order. */

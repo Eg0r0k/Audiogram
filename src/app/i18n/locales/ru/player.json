@@ -14,7 +14,7 @@
   "queue": "Очередь",
   "nowPlaying": "Сейчас играет",
   "herePlaying": "Играет здесь",
-  "upNext": "Следующий",
+  "upNext": "Далее",
   "previousTrack": "Предыдущий",
   "nextTrack": "Следующий",
   "like": "Добавить в избранное",
@@ -48,9 +48,14 @@
   "sleepTimerOff": "Таймер не активен",
   "sleepTimerScheduledIn": "Остановится через {time}",
   "nothingPlaying": "Сейчас ничего не играет.",
-  "upNextLabel": "Далее",
   "moreOptions": "Ещё",
   "nothingPlayingTitle": "Ничего не играет",
   "nothingPlayingSub": "Выберите трек, чтобы начать слушать.",
-  "browseMusic": "Перейти в медиатеку"
+  "browseMusic": "Перейти в медиатеку",
+  "similarTracks": "Похожие треки",
+  "autoplayAddsSimilar": "Автовоспроизведение добавит их, когда трек закончится",
+  "lastInQueue": "Последний в очереди",
+  "playbackStopsAfter": "Дальше тишина",
+  "repeatQueue": "Повтор очереди",
+  "repeatsThisTrack": "Этот трек повторится"
 }

@@ -1,0 +1,9 @@
+{
+  "title": "Lyrics",
+  "show": "Show lyrics",
+  "empty": "No lyrics for this track",
+  "emptyHint": "Write or paste the lyrics, or attach an .lrc file.",
+  "add": "Add lyrics",
+  "loadFailed": "Couldn't load lyrics",
+  "retry": "Try again"
+}

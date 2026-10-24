@@ -90,20 +90,26 @@
         >{{ $t("track.preview") }}</span>
       </div>
       <div :class="styles.artist">
-        <template
-          v-for="(artist, i) in artists"
-          :key="artist"
-        >
-          <span
-            role="link"
-            tabindex="0"
-            class="hover:text-foreground underline-offset-2 transition-colors duration-200 cursor-pointer truncate"
-            @click.stop="handleArtistClick(i)"
-            @keypress.enter.stop="handleArtistClick(i)"
+        <span
+          v-if="subtitle"
+          class="truncate"
+        >{{ subtitle }}</span>
+        <template v-else>
+          <template
+            v-for="(artist, i) in artists"
+            :key="artist"
           >
-            {{ artist }}
-          </span>
-          <span v-if="i < artists.length - 1">,&nbsp;</span>
+            <span
+              role="link"
+              tabindex="0"
+              class="hover:text-foreground underline-offset-2 transition-colors duration-200 cursor-pointer truncate"
+              @click.stop="handleArtistClick(i)"
+              @keypress.enter.stop="handleArtistClick(i)"
+            >
+              {{ artist }}
+            </span>
+            <span v-if="i < artists.length - 1">,&nbsp;</span>
+          </template>
         </template>
       </div>
     </div>
@@ -201,6 +207,7 @@ interface Props {
    * library — indexes match the comma-split artist list; null = not clickable.
    */
   artistRoutes?: (RouteLocationRaw | null)[];
+  subtitle?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -216,6 +223,7 @@ const props = withDefaults(defineProps<Props>(), {
   coverUrl: undefined,
   hideIndex: false,
   artistRoutes: undefined,
+  subtitle: undefined,
 });
 
 const emit = defineEmits<{

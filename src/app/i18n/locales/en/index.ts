@@ -20,6 +20,7 @@ import chapters from "./chapters.json";
 import youtube from "./youtube.json";
 import downloads from "./downloads.json";
 import home from "./home.json";
+import lyrics from "./lyrics.json";
 
 export default {
   common,
@@ -44,4 +45,5 @@ export default {
   youtube,
   downloads,
   home,
+  lyrics,
 };

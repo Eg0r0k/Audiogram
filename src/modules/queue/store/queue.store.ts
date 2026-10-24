@@ -26,7 +26,7 @@ import {
   type PersistedQueueCursor,
   type PersistedQueueSnapshot,
 } from "../service/queue-persistence";
-import { createAutoplayRecommender } from "../lib/queue-autoplay";
+import { createAutoplayRecommender, hasAutoplaySource } from "../lib/queue-autoplay";
 import { RADIO_LOOKAHEAD, type RadioSession } from "../lib/queue-radio";
 import { shadowPinRemoteTracks } from "../lib/shadow-pin";
 import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
@@ -105,6 +105,7 @@ export const useQueueStore = defineStore("queue", () => {
   const radio = shallowRef<RadioSession | null>(null);
   const isRadio = computed(() => radio.value !== null);
   let _radioTopUp: Promise<boolean> | null = null;
+  const isRestoring = ref(false);
 
   // Bumped by every commit. restorePersistedQueue captures it before its
   // async DB read and refuses to commit when the user acted in that gap
@@ -142,6 +143,10 @@ export const useQueueStore = defineStore("queue", () => {
   const currentTrack = computed<PlayerTrack | null>(
     () => currentItem.value?.track ?? null,
   );
+
+  // The recommender only extends the queue from a library entry.
+  const continuesAfterTail = computed(() =>
+    isRadio.value || (hasAutoplaySource() && currentItem.value?.track.kind === "library"));
 
   const hasNext = computed(() => {
     if (queue.value.length === 0) return false;
@@ -488,6 +493,7 @@ export const useQueueStore = defineStore("queue", () => {
 
   async function restorePersistedQueue(): Promise<void> {
     const epochAtStart = _mutationEpoch;
+    isRestoring.value = true;
 
     try {
       const snapshot = await loadPersistedQueue(persistedCursor.value);
@@ -521,6 +527,9 @@ export const useQueueStore = defineStore("queue", () => {
       // Infrastructure failure (DB hiccup): reset memory but keep the stored
       // snapshot untouched so the next healthy launch can still restore it.
       commit(EMPTY_STATE, { persist: false });
+    }
+    finally {
+      isRestoring.value = false;
     }
   }
 
@@ -882,12 +891,14 @@ export const useQueueStore = defineStore("queue", () => {
     currentIndex,
     isShuffled,
     isRadio,
+    isRestoring,
     persistedSnapshot,
     persistedCursor,
     repeatMode,
 
     currentItem,
     currentTrack,
+    continuesAfterTail,
     hasNext,
     hasPrevious,
     isEmpty,
