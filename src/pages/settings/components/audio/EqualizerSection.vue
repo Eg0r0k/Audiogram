@@ -18,16 +18,19 @@
       class="px-4 pb-4 pt-2 transition-[opacity,filter] duration-300 max-w-3xl mx-auto"
       :class="{ 'opacity-40 pointer-events-none grayscale': !isEqEnabled }"
     >
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-8">
         <div class="flex items-center gap-3">
           <Select
             :model-value="currentPreset"
             @update:model-value="(val) => applyPreset(val as string)"
           >
-            <SelectTrigger variant="ghost" class="w-[180px] h-8 font-medium">
+            <SelectTrigger
+              variant="soft"
+              class="w-45 h-8 font-medium"
+            >
               <SelectValue :placeholder="$t('settings.audio.selectPreset')" />
             </SelectTrigger>
-            <SelectContent class="max-h-[300px]">
+            <SelectContent class="max-h-75">
               <SelectGroup
                 v-for="(label, category) in presetCategories"
                 :key="category"
@@ -62,11 +65,11 @@
       </div>
 
       <div class="flex gap-4 h-48 select-none">
-        <div class="flex flex-col justify-between py-2  font-medium text-muted-foreground/60 text-right w-6">
+        <!-- <div class="flex flex-col justify-between py-2  font-medium text-muted-foreground/60 text-right w-6">
           <span>+15</span>
           <span>0</span>
           <span>-15</span>
-        </div>
+        </div> -->
 
         <div class="grid grid-cols-10 gap-1.5 flex-1">
           <div
@@ -83,7 +86,7 @@
               :title="$t('common.editHint')"
               @submit="(value) => submitGain(index, value)"
             >
-              <EditableArea class="bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+              <EditableArea class=" text-foreground   focus-within:opacity-100 transition-opacity">
                 <EditablePreview class="whitespace-nowrap">
                   {{ formatGain(band.gain) }}
                 </EditablePreview>

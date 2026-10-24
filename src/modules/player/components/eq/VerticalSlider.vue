@@ -7,6 +7,7 @@
 
     <Slider
       v-model="proxyValue"
+      color="neutral"
       :min="min"
       :max="max"
       :step="step"
