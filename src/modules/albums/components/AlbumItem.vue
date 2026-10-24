@@ -20,30 +20,6 @@
       />
 
       <Button
-        v-if="canPin"
-        size="icon-sm"
-        variant="soft"
-        color="neutral"
-        class="pin-button absolute left-2 top-2 rounded-full bg-card/80 text-foreground shadow-md backdrop-blur-sm hover:bg-card"
-        :class="item.isPinned
-          ? 'translate-y-0 opacity-100'
-          : '-translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 group-data-[menu-open]:translate-y-0 group-data-[menu-open]:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-100'"
-        :aria-label="pinLabel"
-        :aria-pressed="item.isPinned"
-        @click.prevent.stop="handleTogglePin"
-        @keydown.enter.stop
-      >
-        <IconPinFilled
-          v-if="item.isPinned"
-          class="size-4 text-primary"
-        />
-        <IconPin
-          v-else
-          class="size-4"
-        />
-      </Button>
-
-      <Button
         size="icon-lg"
         class="play-button absolute bottom-2 right-2 size-11 rounded-full shadow-lg"
         :class="isActiveSource
@@ -65,9 +41,16 @@
 
     <div class="mt-3 min-w-0">
       <div class="flex min-w-0 items-center gap-1.5">
-        <p class="truncate text-sm font-medium text-foreground">
+        <p class="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
           {{ item.title }}
         </p>
+
+        <IconPinFilled
+          v-if="item.isPinned"
+          role="img"
+          :aria-label="t('library.pinned')"
+          class="size-5 shrink-0 text-primary"
+        />
       </div>
 
       <p
@@ -90,7 +73,6 @@ import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";
 import { usePlaybackState } from "@/modules/player/composables/usePlaybackState";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useLibraryMenu } from "@/modules/library/composables/useLibraryMenu";
-import { useLibrary } from "@/modules/library/composables/useLibrary";
 import type { LibraryItem } from "@/modules/library/types";
 import type { QueueSource } from "@/modules/queue/types";
 import type { AlbumId, PlaylistId } from "@/types/ids";
@@ -98,11 +80,10 @@ import type { CoverOwnerType } from "@/db/entities";
 import IconPause from "~icons/audiogram/pause-rounded";
 import IconPlay from "~icons/audiogram/play-rounded";
 import IconPinFilled from "~icons/tabler/pin-filled";
-import IconPin from "~icons/tabler/pin";
 import { formatError } from "@/lib/errors";
 
-// A no-hover device (touch) can't reveal the play and pin buttons, so they stay
-// visible there; `fluid` lets a grid size the card instead of the slider width.
+// A no-hover device (touch) can't reveal the play button, so it stays visible
+// there; `fluid` lets a grid size the card instead of the slider width.
 const props = defineProps<{
   item: LibraryItem;
   fluid?: boolean;
@@ -116,21 +97,9 @@ const router = useRouter();
 const { t } = useI18n();
 const playerStore = usePlayerStore();
 const { openMenu, isMenuOpenFor } = useLibraryMenu();
-const { togglePin } = useLibrary();
 
 const isMenuSelected = computed(() => isMenuOpenFor(props.item));
 
-// Pins live in the local library store, so a catalog card has nothing to pin.
-const canPin = computed(() => !props.item.isCatalog);
-const pinLabel = computed(() => {
-  const kind = props.item.type === "playlist" ? "Playlist" : "Album";
-  return t(`library.contextMenu.${props.item.isPinned ? "unpin" : "pin"}${kind}`);
-});
-
-const handleTogglePin = () => {
-  if (props.item.type !== "album" && props.item.type !== "playlist") return;
-  togglePin(props.item.type, props.item.id);
-};
 // The card renders any collection that plays as a unit — albums on an
 // artist page, playlists on a catalog artist's shelf. Both the cover owner
 // and the queue source follow item.type rather than assuming "album".
@@ -165,7 +134,6 @@ function handlePlay() {
 <style scoped>
 /* Outranks Button's own scoped `transition: transform 160ms`, which would
    otherwise cancel every transition set on the button. */
-.pin-button[data-slot="button"],
 .play-button[data-slot="button"] {
   transition:
     opacity 0.2s var(--ease-standard),
@@ -176,34 +144,19 @@ function handlePlay() {
 }
 
 /* Keyboard focus is a repeated action: reveal without motion. */
-.pin-button[data-slot="button"]:focus-visible,
 .play-button[data-slot="button"]:focus-visible {
   transition-duration: 0s;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .pin-button[data-slot="button"]:hover,
   .play-button[data-slot="button"]:hover {
     scale: 1.05;
-  }
-
-  .pin-button svg {
-    transition: rotate 0.2s var(--ease-bounce);
-  }
-
-  .pin-button:hover svg {
-    rotate: -12deg;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pin-button[data-slot="button"]:hover,
   .play-button[data-slot="button"]:hover {
     scale: 1;
-  }
-
-  .pin-button:hover svg {
-    rotate: 0deg;
   }
 }
 </style>

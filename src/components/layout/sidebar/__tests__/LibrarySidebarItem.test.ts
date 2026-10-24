@@ -30,7 +30,6 @@ const createItem = (overrides: Partial<LibraryItem> = {}): LibraryItem => ({
   id: "p1",
   type: "playlist",
   title: "Road Trip",
-  subtitle: "12 tracks",
   isPinned: false,
   addedAt: 0,
   to: "/playlist/p1",
@@ -71,9 +70,33 @@ describe("LibrarySidebarItem", () => {
   });
 
   it("renders the subtitle together with the entity type label", async () => {
-    await renderItem(createItem({ subtitle: "12 tracks" }));
+    await renderItem(createItem({ id: "a1", type: "album", subtitle: "Nirvana", to: "/album/a1" }));
 
-    expect(screen.getByText(/12 tracks/)).toBeTruthy();
+    expect(screen.getByText("Album · Nirvana")).toBeTruthy();
+  });
+
+  it("shows a playlist's track count as a badge, not in the subtitle", async () => {
+    const { container } = await renderItem(createItem({ count: 12 }));
+
+    const badge = container.querySelector("[data-slot=item-description] [data-slot=badge]");
+    expect(badge?.textContent?.trim()).toBe("12");
+    expect(screen.getByTitle("Playlist")).toBeTruthy();
+  });
+
+  it("puts the pin on the title line and the count on the subtitle line", async () => {
+    const { container } = await renderItem(createItem({ isPinned: true, count: 12 }));
+
+    const title = container.querySelector("[data-slot=item-title]")!;
+    const description = container.querySelector("[data-slot=item-description]")!;
+    expect(title.querySelector("svg")).not.toBeNull();
+    expect(description.querySelector("svg")).toBeNull();
+    expect(description.querySelector("[data-slot=badge]")?.textContent?.trim()).toBe("12");
+  });
+
+  it("shows no count badge on a row without a count", async () => {
+    const { container } = await renderItem(createItem({ id: "a1", type: "album", to: "/album/a1" }));
+
+    expect(container.querySelector("[data-slot=badge]")).toBeNull();
   });
 
   it("navigates to the item's route on click", async () => {
@@ -112,7 +135,7 @@ describe("LibrarySidebarItem", () => {
       type: "folder",
       title: "Chill",
       to: "/",
-      folderItemCount: 3,
+      count: 3,
     }));
 
     await fireEvent.click(screen.getByRole("button"));
@@ -127,7 +150,7 @@ describe("LibrarySidebarItem", () => {
       type: "folder",
       title: "Chill",
       to: "/",
-      folderItemCount: 7,
+      count: 7,
     }));
 
     expect(screen.getByText("7")).toBeTruthy();
@@ -142,7 +165,7 @@ describe("LibrarySidebarItem", () => {
       type: "folder",
       title: "Chill",
       to: "/",
-      folderItemCount: 3,
+      count: 3,
     }));
 
     const title = container.querySelector("[data-slot=item-title]");

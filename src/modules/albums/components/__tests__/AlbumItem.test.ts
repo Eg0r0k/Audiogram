@@ -7,10 +7,6 @@ import { i18n } from "@/app/i18n";
 import type { LibraryItem } from "@/modules/library/types";
 import AlbumItem from "../AlbumItem.vue";
 
-const togglePinMock = vi.hoisted(() => vi.fn());
-vi.mock("@/modules/library/composables/useLibrary", () => ({
-  useLibrary: () => ({ togglePin: togglePinMock }),
-}));
 const libraryMenu = vi.hoisted(() => ({ openMenu: vi.fn(), isMenuOpenFor: vi.fn(() => false) }));
 vi.mock("@/modules/library/composables/useLibraryMenu", () => ({
   useLibraryMenu: () => libraryMenu,
@@ -49,7 +45,7 @@ const renderItem = async (item: LibraryItem) => {
   return utils;
 };
 
-describe("AlbumItem pin button", () => {
+describe("AlbumItem pin mark", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     router = createRouter({
@@ -59,28 +55,24 @@ describe("AlbumItem pin button", () => {
     await router.push("/");
   });
 
-  it("toggles the pin without opening the album", async () => {
-    const pushSpy = vi.spyOn(router, "push");
+  it("marks a pinned item next to its title", async () => {
+    await renderItem(createItem({ isPinned: true }));
+
+    const mark = screen.getByRole("img", { name: "Pinned" });
+
+    expect(mark.parentElement!.textContent).toContain("Blue Train");
+  });
+
+  it("shows no mark for an unpinned item", async () => {
     await renderItem(createItem());
 
-    await fireEvent.click(screen.getByRole("button", { name: "Pin album" }));
-
-    expect(togglePinMock).toHaveBeenCalledWith("album", "a1");
-    expect(pushSpy).not.toHaveBeenCalled();
+    expect(screen.queryByRole("img", { name: "Pinned" })).toBeNull();
   });
 
-  it("labels the button by the item's kind and pinned state", async () => {
-    await renderItem(createItem({ id: "p1", type: "playlist", isPinned: true, to: "/playlist/p1" }));
+  it("has no pin button: pinning lives in the context menu", async () => {
+    await renderItem(createItem({ isPinned: true }));
 
-    const button = screen.getByRole("button", { name: "Unpin playlist" });
-
-    expect(button.getAttribute("aria-pressed")).toBe("true");
-  });
-
-  it("has no pin button for catalog items", async () => {
-    await renderItem(createItem({ isCatalog: true }));
-
-    expect(screen.queryByRole("button", { name: /pin album/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^(un)?pin /i })).toBeNull();
   });
 });
 

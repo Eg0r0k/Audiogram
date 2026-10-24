@@ -40,7 +40,8 @@ export interface LibraryItem {
   to: RouteLocationRaw;
   rounded: boolean;
   trackCount?: number;
-  folderItemCount?: number;
+  /** Badge on the sidebar row, kept out of the subtitle: a folder's items, the tracks of Favorites or a local playlist. */
+  count?: number;
   /**
    * Live catalog row (ND browsing, albums on a catalog artist page): no Dexie
    * row behind it, so library actions (pin, folders, delete) have nothing to

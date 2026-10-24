@@ -32,11 +32,17 @@ defineProps<{
           class="size-5 shrink-0"
           :class="active ? 'text-white' : 'text-primary'"
         />
+
+        <IconPinFilled
+          v-if="item.isPinned"
+          class="ms-auto size-4 shrink-0"
+          :class="active ? 'text-white' : 'text-primary'"
+        />
       </span>
     </ItemTitle>
 
     <ItemDescription
-      class="block min-w-0"
+      class="block min-w-0 leading-5.5"
       :class="active ? 'text-primary-foreground' : ''"
     >
       <span class="flex items-center min-w-0 gap-1">
@@ -47,19 +53,13 @@ defineProps<{
           {{ subtitle }}
         </span>
 
-        <IconPinFilled
-          v-if="item.isPinned"
-          class="size-5 shrink-0"
-          :class="active ? 'text-white' : 'text-primary'"
-        />
-
         <Badge
-          v-if="item.type === 'folder'"
+          v-if="item.count !== undefined"
           variant="soft"
           color="neutral"
-          size="md"
-          class="shrink-0 h-5 min-w-5 px-1 py-0 font-medium! text-white!"
-        >{{ item.folderItemCount ?? 0 }}</Badge>
+          size="lg"
+          class="shrink-0 h-5.5 min-w-5.5 px-1.75 bg-accent text-white"
+        >{{ item.count }}</Badge>
       </span>
     </ItemDescription>
   </ItemContent>

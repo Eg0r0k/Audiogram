@@ -79,7 +79,7 @@ export const useLibrary = () => {
     id: "liked",
     type: "liked",
     title: t("common.favorite"),
-    subtitle: t("common.trackCount", { count: likedCount.value }),
+    count: likedCount.value,
     image: "/img/liked-fallback.svg",
     isPinned: true,
     isSystem: true,
@@ -140,13 +140,13 @@ export const useLibrary = () => {
         id: playlist.id,
         type: "playlist",
         title: playlist.name,
-        subtitle: t("common.trackCount", playlist.trackIds.length),
         isPinned: store.isPinned("playlist", playlist.id),
         addedAt: playlist.addedAt,
         updatedAt: playlist.updatedAt,
         to: routeLocation.playlist(playlist.id),
         rounded: false,
         trackCount: playlist.trackIds.length,
+        count: playlist.trackIds.length,
       });
     }
 
@@ -179,13 +179,12 @@ export const useLibrary = () => {
     id: folder.id,
     type: "folder",
     title: folder.name,
-    // The item count renders as a badge on the row, not in the subtitle.
     isPinned: false,
     addedAt: folder.addedAt,
     updatedAt: folder.updatedAt,
     to: routeLocation.home(),
     rounded: false,
-    folderItemCount: folder.items.length,
+    count: folder.items.length,
   })));
 
   const rootItems = computed<LibraryItem[]>(() => [

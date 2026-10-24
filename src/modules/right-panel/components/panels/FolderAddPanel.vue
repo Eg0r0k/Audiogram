@@ -174,7 +174,8 @@ watch(chips, (next) => {
 const rowSubtitle = (item: FolderPickerItem): string => {
   const typeLabel = t(`library.type.${item.type}`);
   if (item.folderName) return `${typeLabel} · ${t("library.folder.inFolder", { name: item.folderName })}`;
-  return item.subtitle ? `${typeLabel} · ${item.subtitle}` : typeLabel;
+  const detail = item.subtitle ?? (item.count !== undefined ? t("common.trackCount", item.count) : undefined);
+  return detail ? `${typeLabel} · ${detail}` : typeLabel;
 };
 
 const emptyLabel = computed(() => {
