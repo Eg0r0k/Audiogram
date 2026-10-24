@@ -35,7 +35,7 @@ describe("ChapterEditor", () => {
       },
     });
 
-    expect(screen.getByText("1 chapters")).toBeTruthy();
+    expect(screen.getByText("1 chapter")).toBeTruthy();
   });
 
   it("parses MM:SS - Title format", async () => {

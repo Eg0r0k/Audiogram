@@ -3,7 +3,7 @@
   "editorPlaceholder": "00:00 - Рамос\n05:18 - Глава 1\n10:40 - Глава 2",
   "empty": "Таймкоды ещё не добавлены",
   "untitled": "Без названия",
-  "count": "{count} таймкодов",
+  "count": "0 таймкодов | {count} таймкод | {count} таймкода | {count} таймкодов",
   "delete": "Удалить таймкод",
   "lineUnrecognized": "Не удалось распознать строку: «{line}»",
   "lineBeyondDuration": "Таймкод за пределами трека ({duration}): «{line}»",

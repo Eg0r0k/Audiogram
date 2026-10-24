@@ -17,7 +17,7 @@
         class="line-clamp-2 text-destructive"
       >{{ parseError }}</span>
       <template v-else>
-        <span>{{ t("chapters.count", { count: chapters.length }) }}</span>
+        <span>{{ t("chapters.count", chapters.length) }}</span>
         <span
           v-if="totalDuration"
           class="ml-auto tabular-nums"

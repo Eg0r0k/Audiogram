@@ -3,7 +3,7 @@
   "editorPlaceholder": "00:00 - Intro\n05:18 - Chapter 1\n10:40 - Chapter 2",
   "empty": "No chapters yet",
   "untitled": "Untitled",
-  "count": "{count} chapters",
+  "count": "{count} chapter | {count} chapters",
   "delete": "Delete chapter",
   "lineUnrecognized": "Could not read the line: \"{line}\"",
   "lineBeyondDuration": "Timestamp is past the end of the track ({duration}): \"{line}\"",

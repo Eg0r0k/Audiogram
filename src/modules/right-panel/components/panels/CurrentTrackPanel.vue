@@ -35,7 +35,7 @@
           <div class="mt-8 flex h-(--control-height-sm) items-center">
             <Skeleton class="h-4 w-16" />
           </div>
-          <div class="mt-3 flex flex-col gap-1">
+          <div class="mt-3 flex flex-col">
             <div
               v-for="row in 3"
               :key="row"
@@ -150,7 +150,7 @@
             </div>
 
             <TrackContextMenu context="queue">
-              <div class="mt-3 -mx-2.5 flex flex-col gap-1">
+              <div class="mt-3 -mx-2.5 flex flex-col">
                 <template v-if="upNext.kind === 'tracks'">
                   <TrackRow
                     v-for="entry in upNext.entries"
