@@ -2,21 +2,11 @@ import { db } from "@/db";
 import type { AlbumEntity } from "@/db/entities";
 import { tableOf, type TableSource } from "@/db/tables";
 import type { AlbumId, ArtistId } from "@/types/ids";
-import { BaseRepository, guarded } from "./base.repository";
+import { guarded, TimestampedRepository } from "./base.repository";
 
-export class AlbumRepository extends BaseRepository<AlbumEntity, AlbumId> {
+export class AlbumRepository extends TimestampedRepository<AlbumEntity, AlbumId> {
   constructor(source: TableSource = db) {
     super(tableOf(source, "albums"));
-  }
-
-  async update(id: AlbumId, changes: Partial<AlbumEntity>): Promise<number> {
-    return guarded(() => {
-      const withTimestamp: Partial<AlbumEntity> = {
-        ...changes,
-        updatedAt: Date.now(),
-      };
-      return this.table.update(id, withTimestamp);
-    });
   }
 
   /** Library members only (pinned = 1). */

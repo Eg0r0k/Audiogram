@@ -2,22 +2,12 @@ import { db } from "@/db";
 import type { PlaylistEntity } from "@/db/entities";
 import { tableOf, type TableSource } from "@/db/tables";
 import type { PlaylistId, TrackId } from "@/types/ids";
-import { BaseRepository, guarded } from "./base.repository";
+import { guarded, TimestampedRepository } from "./base.repository";
 import { DbError } from "@/db/errors/db.errors";
 
-export class PlaylistRepository extends BaseRepository<PlaylistEntity, PlaylistId> {
+export class PlaylistRepository extends TimestampedRepository<PlaylistEntity, PlaylistId> {
   constructor(source: TableSource = db) {
     super(tableOf(source, "playlists"));
-  }
-
-  async update(id: PlaylistId, changes: Partial<PlaylistEntity>): Promise<number> {
-    return guarded(() => {
-      const withTimestamp: Partial<PlaylistEntity> = {
-        ...changes,
-        updatedAt: Date.now(),
-      };
-      return this.table.update(id, withTimestamp);
-    });
   }
 
   async findByName(name: string): Promise<PlaylistEntity | undefined> {
@@ -42,7 +32,7 @@ export class PlaylistRepository extends BaseRepository<PlaylistEntity, PlaylistI
       .modify((playlist) => {
         if (!playlist.trackIds.includes(trackId)) {
           playlist.trackIds.push(trackId);
-          playlist.updatedAt = Date.now();
+          this.touch(playlist);
         }
       }));
   }
@@ -63,7 +53,7 @@ export class PlaylistRepository extends BaseRepository<PlaylistEntity, PlaylistI
           });
           if (added.length === 0) return;
           playlist.trackIds = [...playlist.trackIds, ...added];
-          playlist.updatedAt = Date.now();
+          this.touch(playlist);
         });
       return added;
     });
@@ -75,7 +65,7 @@ export class PlaylistRepository extends BaseRepository<PlaylistEntity, PlaylistI
       .equals(playlistId)
       .modify((playlist) => {
         playlist.trackIds = playlist.trackIds.filter(id => id !== trackId);
-        playlist.updatedAt = Date.now();
+        this.touch(playlist);
       }));
   }
 
@@ -87,7 +77,7 @@ export class PlaylistRepository extends BaseRepository<PlaylistEntity, PlaylistI
       .modify((playlist) => {
         if (playlist.trackIds.includes(trackId)) return;
         playlist.trackIds.splice(Math.min(index, playlist.trackIds.length), 0, trackId);
-        playlist.updatedAt = Date.now();
+        this.touch(playlist);
       }));
 
   async reorderTracks(playlistId: PlaylistId, trackIds: TrackId[]): Promise<number> {
@@ -96,7 +86,7 @@ export class PlaylistRepository extends BaseRepository<PlaylistEntity, PlaylistI
       .equals(playlistId)
       .modify((playlist) => {
         playlist.trackIds = trackIds;
-        playlist.updatedAt = Date.now();
+        this.touch(playlist);
       }));
   }
 

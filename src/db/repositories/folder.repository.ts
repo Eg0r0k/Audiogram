@@ -2,7 +2,7 @@ import { db } from "@/db";
 import type { SidebarFolderEntity, SidebarFolderEntryEntity } from "@/db/entities";
 import { tableOf, type TableSource } from "@/db/tables";
 import type { SidebarFolderId } from "@/types/ids";
-import { BaseRepository, guarded } from "./base.repository";
+import { guarded, TimestampedRepository } from "./base.repository";
 
 function folderItemKey(item: SidebarFolderEntryEntity) {
   return `${item.type}:${item.id}`;
@@ -27,7 +27,7 @@ function normalizeFolderItems(items: SidebarFolderEntryEntity[]) {
   return { normalizedItems, seen };
 }
 
-export class FolderRepository extends BaseRepository<SidebarFolderEntity, SidebarFolderId> {
+export class FolderRepository extends TimestampedRepository<SidebarFolderEntity, SidebarFolderId> {
   constructor(source: TableSource = db) {
     super(tableOf(source, "folders"));
   }
@@ -38,10 +38,7 @@ export class FolderRepository extends BaseRepository<SidebarFolderEntity, Sideba
       const notMoved = (item: SidebarFolderEntryEntity) => !seen.has(folderItemKey(item));
 
       await db.transaction("rw", "folders", async () => {
-        await this.table.update(folderId, {
-          items: normalizedItems,
-          updatedAt: Date.now(),
-        });
+        await this.update(folderId, { items: normalizedItems });
 
         const folders = await this.table.toArray();
         await Promise.all(folders.map(async (folder) => {
@@ -50,10 +47,7 @@ export class FolderRepository extends BaseRepository<SidebarFolderEntity, Sideba
           const filteredItems = folder.items.filter(notMoved);
           if (filteredItems.length === folder.items.length) return;
 
-          await this.table.update(folder.id, {
-            items: filteredItems,
-            updatedAt: Date.now(),
-          });
+          await this.update(folder.id, { items: filteredItems });
         }));
       });
     });
@@ -68,10 +62,7 @@ export class FolderRepository extends BaseRepository<SidebarFolderEntity, Sideba
           const filteredItems = folder.items.filter(notRemoved);
           if (filteredItems.length === folder.items.length) return;
 
-          await this.table.update(folder.id, {
-            items: filteredItems,
-            updatedAt: Date.now(),
-          });
+          await this.update(folder.id, { items: filteredItems });
         }));
       });
     });

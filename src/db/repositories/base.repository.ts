@@ -37,3 +37,26 @@ export abstract class BaseRepository<TEntity, TId> {
 
   deleteMany(ids: TId[]): Promise<void> { return guarded(() => this.table.bulkDelete(ids)); }
 }
+
+export interface Timestamped { updatedAt: number }
+
+// Partial writes stamp the row unless the caller set updatedAt; whole-row writes
+// (create, upsert) carry the caller's value, a restored snapshot included.
+export abstract class TimestampedRepository<TEntity extends Timestamped, TId> extends BaseRepository<TEntity, TId> {
+  protected stamp(changes: Partial<TEntity>, now = Date.now()): Partial<TEntity> {
+    return { updatedAt: now, ...changes };
+  }
+
+  protected touch(row: TEntity, now = Date.now()): void {
+    row.updatedAt = now;
+  }
+
+  override update(id: TId, changes: Partial<TEntity>): Promise<number> {
+    return super.update(id, this.stamp(changes));
+  }
+
+  override updateMany(updates: { key: TId; changes: UpdateSpec<TEntity> }[]): Promise<number> {
+    const now = Date.now();
+    return super.updateMany(updates.map(({ key, changes }) => ({ key, changes: { updatedAt: now, ...changes } as UpdateSpec<TEntity> })));
+  }
+}
