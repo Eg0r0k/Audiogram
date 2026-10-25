@@ -15,7 +15,10 @@
         hide-thumb
         class="shrink-0"
       >
-        <TabsList variant="line" class="inline-flex items-center gap-0 px-4">
+        <TabsList
+          variant="line"
+          class="inline-flex items-center gap-0 px-4"
+        >
           <TabsTrigger
             value="queue"
             class="text-base font-medium mb-0.5"

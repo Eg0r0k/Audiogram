@@ -149,11 +149,11 @@ describe("LyricsPanelEmpty", () => {
     expect(buttons()).toEqual(["Try again"]);
   });
 
-  it("uses the card fill for the empty-state actions", () => {
+  it("uses the surface fill for the empty-state actions", () => {
     const expectSilver = (name: string) => {
       const button = screen.getByRole("button", { name });
       expect(button).toHaveAttribute("data-variant", "solid");
-      expect(button).toHaveAttribute("data-color", "card");
+      expect(button).toHaveAttribute("data-color", "surface");
     };
     const expectGhost = (name: string) =>
       expect(screen.getByRole("button", { name })).toHaveAttribute("data-variant", "ghost");
