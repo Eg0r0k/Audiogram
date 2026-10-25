@@ -4,6 +4,7 @@
 // (quota, version mismatch, upgrade failure) instead of pattern-matching on
 // message strings.
 //
+import { err, ok, type Result } from "neverthrow";
 import { AppFailure, errorMessage, type DbAppError } from "@/lib/errors";
 import type { DbErrorCode } from "@/types/error-codes";
 
@@ -48,4 +49,13 @@ export const toDbError = (error: unknown): DbError => {
   const message = errorMessage(error);
 
   return new DbError(code, message, error);
+};
+
+export const attemptDb = async <T>(operation: () => Promise<T>): Promise<Result<T, DbError>> => {
+  try {
+    return ok(await operation());
+  }
+  catch (error) {
+    return err(toDbError(error));
+  }
 };

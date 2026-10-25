@@ -6,7 +6,7 @@ import Dexie, { type Collection } from "dexie";
 import type { Result } from "neverthrow";
 import { ok, err } from "neverthrow";
 import { BaseRepository } from "./base.repository";
-import { toDbError } from "@/db/errors/db.errors";
+import { attemptDb } from "@/db/errors/db.errors";
 import { unique } from "@/lib/math";
 
 // Dexie's own floor and ceiling of the IndexedDB key space. They span numbers
@@ -64,13 +64,7 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   }
 
   async findLikedSorted(sortKey: TrackSortKey): Promise<Result<TrackEntity[], Error>> {
-    try {
-      const tracks = await this.getSortedLikedCollection(sortKey).toArray();
-      return ok(tracks);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.getSortedLikedCollection(sortKey).toArray());
   }
 
   async findLikedSortedPaginated(
@@ -78,16 +72,10 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     offset: number,
     limit: number,
   ): Promise<Result<TrackEntity[], Error>> {
-    try {
-      const tracks = await this.getSortedLikedCollection(sortKey)
-        .offset(offset)
-        .limit(limit)
-        .toArray();
-      return ok(tracks);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.getSortedLikedCollection(sortKey)
+      .offset(offset)
+      .limit(limit)
+      .toArray());
   }
 
   async findAllSortedPaginated(
@@ -95,21 +83,14 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     offset: number,
     limit: number,
   ): Promise<Result<TrackEntity[], Error>> {
-    try {
-      const tracks = await this.getSortedCollection(sortKey)
-        .offset(offset)
-        .limit(limit)
-        .toArray();
-
-      return ok(tracks);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.getSortedCollection(sortKey)
+      .offset(offset)
+      .limit(limit)
+      .toArray());
   }
 
   async findByAlbumId(albumId: AlbumId): Promise<Result<TrackEntity[], Error>> {
-    try {
+    return attemptDb(async () => {
       const all = await this.table
         .where("albumId")
         .equals(albumId)
@@ -117,71 +98,44 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
       all.sort((a, b) =>
         (a.diskNo ?? 1) - (b.diskNo ?? 1) || (a.trackNo ?? 0) - (b.trackNo ?? 0),
       );
-      return ok(all);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return all;
+    });
   }
 
   async findByArtistId(artistId: ArtistId): Promise<Result<TrackEntity[], Error>> {
-    try {
-      const tracks = await this.table
-        .where("artistIds")
-        .equals(artistId)
-        .toArray();
-      return ok(tracks);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table
+      .where("artistIds")
+      .equals(artistId)
+      .toArray());
   }
 
   async deleteByAlbumId(albumId: AlbumId): Promise<Result<number, Error>> {
-    try {
-      const count = await this.table
-        .where("albumId")
-        .equals(albumId)
-        .delete();
-      return ok(count);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table
+      .where("albumId")
+      .equals(albumId)
+      .delete());
   }
 
   async deleteByArtistId(artistId: ArtistId): Promise<Result<number, Error>> {
-    try {
-      const count = await this.table
-        .where("artistIds")
-        .equals(artistId)
-        .delete();
-      return ok(count);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table
+      .where("artistIds")
+      .equals(artistId)
+      .delete());
   }
 
   /** Library members only — a shadow row under a library album is the streaming twin of a downloaded track. */
   async countByAlbumId(albumId: AlbumId): Promise<Result<number, Error>> {
-    try {
-      const count = await this.table
-        .where("[albumId+pinned]")
-        .equals([albumId, 1])
-        .count();
-      return ok(count);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table
+      .where("[albumId+pinned]")
+      .equals([albumId, 1])
+      .count());
   }
 
   async countByAlbumIds(albumIds: AlbumId[]): Promise<Result<Map<AlbumId, number>, Error>> {
-    try {
+    return attemptDb(async () => {
       const counts = new Map<AlbumId, number>();
       for (const albumId of albumIds) counts.set(albumId, 0);
-      if (albumIds.length === 0) return ok(counts);
+      if (albumIds.length === 0) return counts;
 
       // One transaction, so the counts share a snapshot instead of each
       // opening its own.
@@ -191,11 +145,8 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
         );
         albumIds.forEach((id, index) => counts.set(id, counted[index]));
       });
-      return ok(counts);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return counts;
+    });
   }
 
   /**
@@ -203,10 +154,10 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
    * keys: neither side deserializes a row.
    */
   async countByArtistIds(artistIds: ArtistId[]): Promise<Result<Map<ArtistId, number>, Error>> {
-    try {
+    return attemptDb(async () => {
       const counts = new Map<ArtistId, number>();
       for (const id of artistIds) counts.set(id, 0);
-      if (artistIds.length === 0) return ok(counts);
+      if (artistIds.length === 0) return counts;
 
       await db.transaction("r", this.table, async () => {
         const [shadowIds, perArtist] = await Promise.all([
@@ -223,32 +174,18 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
           counts.set(id, members);
         });
       });
-      return ok(counts);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return counts;
+    });
   }
 
   /** Keys only — the set a search inside the album is scoped to. Same rows `countByAlbumId` counts. */
   async findIdsByAlbumId(albumId: AlbumId): Promise<Result<TrackId[], Error>> {
-    try {
-      const ids = await this.table.where("albumId").equals(albumId).primaryKeys();
-      return ok(ids);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table.where("albumId").equals(albumId).primaryKeys());
   }
 
   /** Keys only; library members. The artist listing is cut from these. */
   async findIdsByArtistId(artistId: ArtistId): Promise<Result<TrackId[], Error>> {
-    try {
-      return ok(await this.memberIdsByArtistId(artistId));
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.memberIdsByArtistId(artistId));
   }
 
   /**
@@ -268,48 +205,39 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   }
 
   async sumDurationByAlbumId(albumId: AlbumId): Promise<Result<number, Error>> {
-    try {
+    return attemptDb(async () => {
       let total = 0;
       await this.table
         .where("[albumId+pinned]")
         .equals([albumId, 1])
         .each((track) => { total += track.duration; });
-      return ok(total);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return total;
+    });
   }
 
   async sumDurationByArtistId(artistId: ArtistId): Promise<Result<number, Error>> {
-    try {
+    return attemptDb(async () => {
       let total = 0;
       await this.table
         .where("artistIds")
         .equals(artistId)
         .each((track) => { total += track.duration; });
-      return ok(total);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return total;
+    });
   }
 
   async sumDurationByTrackIds(trackIds: TrackId[]): Promise<Result<number, Error>> {
-    try {
+    return attemptDb(async () => {
       if (trackIds.length === 0) {
-        return ok(0);
+        return 0;
       }
       let total = 0;
       await this.table
         .where("id")
         .anyOf(trackIds)
         .each((track) => { total += track.duration; });
-      return ok(total);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return total;
+    });
   }
 
   async findPaginated(offset: number, limit: number): Promise<Result<TrackEntity[], Error>> {
@@ -317,30 +245,18 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   }
 
   async findAllSorted(sortKey: TrackSortKey): Promise<Result<TrackEntity[], Error>> {
-    try {
-      const tracks = await this.getSortedCollection(sortKey).toArray();
-      return ok(tracks);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.getSortedCollection(sortKey).toArray());
   }
 
   /** Ids only, in the same order as `findAllSorted` — for whole-library selection. */
   async findAllIdsSorted(sortKey: TrackSortKey): Promise<Result<TrackId[], Error>> {
-    try {
-      const ids = await this.getSortedCollection(sortKey).primaryKeys();
-      return ok(ids);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.getSortedCollection(sortKey).primaryKeys());
   }
 
   async findSortedByIds(ids: TrackId[], sortKey: TrackSortKey): Promise<Result<TrackEntity[], Error>> {
-    try {
+    return attemptDb(async () => {
       if (ids.length === 0) {
-        return ok([]);
+        return [];
       }
 
       const field = trackSortField(sortKey);
@@ -355,271 +271,171 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
         tracks.reverse();
       }
 
-      return ok(tracks);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return tracks;
+    });
   }
 
   async countAll(): Promise<Result<number, Error>> {
-    try {
-      const count = await this.table.where("pinned").equals(1).count();
-      return ok(count);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table.where("pinned").equals(1).count());
   }
 
   async setLiked(id: TrackId, isLiked: boolean): Promise<Result<void, Error>> {
-    try {
+    return attemptDb(async () => {
       await this.table.update(id, {
         likedAt: isLiked ? Date.now() : undefined,
       });
-
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 
   /** Likes every listed track that is not liked yet, in one operation; returns how many changed. */
   async likeMany(ids: TrackId[], likedAt: number): Promise<Result<number, Error>> {
-    try {
-      if (ids.length === 0) return ok(0);
-      const count = await this.table
+    return attemptDb(async () => {
+      if (ids.length === 0) return 0;
+      return this.table
         .where("id")
         .anyOf(ids)
         .and(track => !track.likedAt)
         .modify({ likedAt });
-      return ok(count);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 
   /** Clears the like on every listed track that is liked, in one operation; returns how many changed. */
   async unlikeMany(ids: TrackId[]): Promise<Result<number, Error>> {
-    try {
-      if (ids.length === 0) return ok(0);
-      const count = await this.table
+    return attemptDb(async () => {
+      if (ids.length === 0) return 0;
+      return this.table
         .where("id")
         .anyOf(ids)
         .and(track => !!track.likedAt)
         .modify({ likedAt: undefined });
-      return ok(count);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 
   /** Rewrites the denormalized album title on every track of the album. */
   async setAlbumTitleByAlbumId(albumId: AlbumId, albumTitle: string): Promise<Result<number, Error>> {
-    try {
-      const count = await this.table
-        .where("albumId")
-        .equals(albumId)
-        .modify({ albumTitle });
-      return ok(count);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table
+      .where("albumId")
+      .equals(albumId)
+      .modify({ albumTitle }));
   }
 
   async setLyrics(id: TrackId, lyrics: TrackLyricsChanges): Promise<Result<void, Error>> {
-    try {
+    return attemptDb(async () => {
       // Dexie 4 deletes a key whose new value is undefined.
       await this.table.update(id, {
         lyricsPath: lyrics.lyricsPath ?? undefined,
         lyricsFileName: lyrics.lyricsFileName ?? undefined,
         ...(lyrics.lyricsOffsetMs === undefined ? {} : { lyricsOffsetMs: lyrics.lyricsOffsetMs }),
       });
-
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 
   async setLyricsOffset(id: TrackId, offsetMs: number): Promise<Result<void, Error>> {
-    try {
+    return attemptDb(async () => {
       await this.table.update(id, { lyricsOffsetMs: offsetMs });
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 
   async toggleLiked(id: TrackId, isLiked: boolean): Promise<Result<number | undefined, Error>> {
-    try {
+    return attemptDb(async () => {
       const nextLikedAt = isLiked ? undefined : Date.now();
 
       await this.table.update(id, {
         likedAt: nextLikedAt,
       });
 
-      return ok(nextLikedAt);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return nextLikedAt;
+    });
   }
 
   async findLiked(): Promise<Result<TrackEntity[], Error>> {
-    try {
-      const tracks = await this.table
-        .where("likedAt").above(0)
-        .reverse()
-        .toArray();
-      return ok(tracks);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table
+      .where("likedAt").above(0)
+      .reverse()
+      .toArray());
   }
 
   async sumDurationByLiked(): Promise<Result<number, Error>> {
-    try {
+    return attemptDb(async () => {
       let total = 0;
       await this.table
         .where("likedAt")
         .above(0)
         .each((track) => { total += track.duration; });
-      return ok(total);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return total;
+    });
   }
 
   /** Keys only — the set a search inside the liked list is scoped to. */
   async findLikedIds(): Promise<Result<TrackId[], Error>> {
-    try {
-      const ids = await this.table.where("likedAt").above(0).primaryKeys();
-      return ok(ids);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table.where("likedAt").above(0).primaryKeys());
   }
 
   async findLikedPaginated(offset: number, limit: number): Promise<Result<TrackEntity[], Error>> {
-    try {
-      const tracks = await this.table
-        .where("likedAt")
-        .above(0)
-        .reverse()
-        .offset(offset)
-        .limit(limit)
-        .toArray();
-      return ok(tracks);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table
+      .where("likedAt")
+      .above(0)
+      .reverse()
+      .offset(offset)
+      .limit(limit)
+      .toArray());
   }
 
   async countLiked(): Promise<Result<number, Error>> {
-    try {
-      const count = await this.table
-        .where("likedAt")
-        .above(0)
-        .count();
-      return ok(count);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table
+      .where("likedAt")
+      .above(0)
+      .count());
   }
 
   async addTagToTrack(trackId: TrackId, tagId: TagId): Promise<Result<void, Error>> {
-    try {
-      // modify() runs read + write in one transaction, so two tag additions
-      // racing on the same track cannot overwrite each other.
-      const modified = await this.table
-        .where("id")
-        .equals(trackId)
-        .modify((track) => {
-          const current = track.tagIds;
-          if (!current.includes(tagId)) track.tagIds = [...current, tagId];
-        });
-      if (modified === 0) {
-        return err(new Error(`Track not found: ${trackId}`));
-      }
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    // modify() runs read + write in one transaction, so two tag additions
+    // racing on the same track cannot overwrite each other.
+    const modified = await attemptDb(() => this.table
+      .where("id")
+      .equals(trackId)
+      .modify((track) => {
+        const current = track.tagIds;
+        if (!current.includes(tagId)) track.tagIds = [...current, tagId];
+      }));
+    return modified.andThen(count => count === 0
+      ? err(new Error(`Track not found: ${trackId}`))
+      : ok(undefined));
   }
 
   async removeTagFromTrack(trackId: TrackId, tagId: TagId): Promise<Result<void, Error>> {
-    try {
-      const modified = await this.table
-        .where("id")
-        .equals(trackId)
-        .modify((track) => {
-          track.tagIds = track.tagIds.filter(id => id !== tagId);
-        });
-      if (modified === 0) {
-        return err(new Error(`Track not found: ${trackId}`));
-      }
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    const modified = await attemptDb(() => this.table
+      .where("id")
+      .equals(trackId)
+      .modify((track) => {
+        track.tagIds = track.tagIds.filter(id => id !== tagId);
+      }));
+    return modified.andThen(count => count === 0
+      ? err(new Error(`Track not found: ${trackId}`))
+      : ok(undefined));
   }
 
   async findByTagId(tagId: TagId): Promise<Result<TrackEntity[], Error>> {
-    try {
-      const tracks = await this.table
-        .where("tagIds")
-        .equals(tagId)
-        .toArray();
-      return ok(tracks);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table
+      .where("tagIds")
+      .equals(tagId)
+      .toArray());
   }
 
   async findByStoragePath(path: string): Promise<Result<TrackEntity | undefined, Error>> {
-    try {
-      const track = await this.table.where("storagePath").equals(path).first();
-      return ok(track);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table.where("storagePath").equals(path).first());
   }
 
   /** The local row downloaded from `remoteId`, if any (see TrackEntity.sourceRef). */
   async findBySourceRef(remoteId: TrackId): Promise<Result<TrackEntity | undefined, Error>> {
-    try {
-      const track = await this.table.where("sourceRef").equals(remoteId).first();
-      return ok(track);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table.where("sourceRef").equals(remoteId).first());
   }
 
   async existsByFingerprint(fingerprint: string): Promise<Result<boolean, Error>> {
-    try {
+    return attemptDb(async () => {
       const count = await this.table.where("fingerprint").equals(fingerprint).count();
-      return ok(count > 0);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return count > 0;
+    });
   }
 
   /**
@@ -628,36 +444,21 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
    * batch being imported, not the library size.
    */
   async findExistingFingerprints(candidates: readonly string[]): Promise<Result<Set<string>, Error>> {
-    try {
+    return attemptDb(async () => {
       const fingerprints = unique(candidates);
-      if (fingerprints.length === 0) return ok(new Set());
+      if (fingerprints.length === 0) return new Set<string>();
       const counts = await db.transaction("r", this.table, () =>
         Promise.all(fingerprints.map(fingerprint => this.table.where("fingerprint").equals(fingerprint).count())));
-      return ok(new Set(fingerprints.filter((_, index) => counts[index] > 0)));
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return new Set(fingerprints.filter((_, index) => counts[index] > 0));
+    });
   }
 
   async findByStoragePathPrefix(prefix: string): Promise<Result<TrackEntity[], Error>> {
-    try {
-      const tracks = await this.table.where("storagePath").startsWith(prefix).toArray();
-      return ok(tracks);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table.where("storagePath").startsWith(prefix).toArray());
   }
 
   async findAllIds(): Promise<Result<TrackId[], Error>> {
-    try {
-      const ids = await this.table.toCollection().primaryKeys();
-      return ok(ids);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => this.table.toCollection().primaryKeys());
   }
 }
 

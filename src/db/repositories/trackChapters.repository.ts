@@ -1,9 +1,9 @@
 import { db } from "@/db";
 import type { TrackChapterEntity, TrackChapterMark } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
-import { err, ok, type Result } from "neverthrow";
+import { err, type Result } from "neverthrow";
 import { BaseRepository } from "./base.repository";
-import { toDbError } from "@/db/errors/db.errors";
+import { attemptDb } from "@/db/errors/db.errors";
 
 class TrackChaptersRepository extends BaseRepository<TrackChapterEntity, TrackId> {
   constructor() {
@@ -11,24 +11,20 @@ class TrackChaptersRepository extends BaseRepository<TrackChapterEntity, TrackId
   }
 
   async setForTrack(trackId: TrackId, chapters: TrackChapterMark[]): Promise<Result<void, Error>> {
-    try {
-      if (!trackId) {
-        return err(new Error("chapters require a library track id"));
-      }
+    if (!trackId) {
+      return err(new Error("chapters require a library track id"));
+    }
+    return attemptDb(async () => {
       if (chapters.length === 0) {
         await this.table.delete(trackId);
-        return ok(undefined);
+        return;
       }
       const clean: TrackChapterMark[] = chapters.map(c => ({
         time: c.time,
         ...(c.title !== undefined ? { title: c.title } : {}),
       }));
       await this.table.put({ trackId, chapters: clean, updatedAt: Date.now() });
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 }
 

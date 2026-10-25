@@ -1,25 +1,18 @@
 import { db } from "@/db";
 import type { CoverEntity, CoverOwnerType } from "@/db/entities";
 import type { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
-import { err, ok, type Result } from "neverthrow";
-import { toDbError } from "@/db/errors/db.errors";
+import { ok, type Result } from "neverthrow";
+import { attemptDb } from "@/db/errors/db.errors";
 
 class CoverRepository {
   async findByOwner(
     ownerType: CoverOwnerType,
     ownerId: string,
   ): Promise<Result<CoverEntity | undefined, Error>> {
-    try {
-      const cover = await db.covers
-        .where("[ownerType+ownerId]")
-        .equals([ownerType, ownerId])
-        .first();
-
-      return ok(cover);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => db.covers
+      .where("[ownerType+ownerId]")
+      .equals([ownerType, ownerId])
+      .first());
   }
 
   async findByOwners(
@@ -27,17 +20,10 @@ class CoverRepository {
     ownerIds: readonly string[],
   ): Promise<Result<CoverEntity[], Error>> {
     if (ownerIds.length === 0) return ok([]);
-    try {
-      const covers = await db.covers
-        .where("[ownerType+ownerId]")
-        .anyOf(ownerIds.map(id => [ownerType, id]))
-        .toArray();
-
-      return ok(covers);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    return attemptDb(() => db.covers
+      .where("[ownerType+ownerId]")
+      .anyOf(ownerIds.map(id => [ownerType, id]))
+      .toArray());
   }
 
   async getAlbumCover(
@@ -63,41 +49,34 @@ class CoverRepository {
     ownerId: string,
     blob: Blob,
   ): Promise<Result<CoverEntity, Error>> {
-    try {
-      // find + write inside one transaction: two concurrent upserts for the
-      // same owner would otherwise both miss and the second add() would hit
-      // the unique [ownerType+ownerId] key.
-      const stored = await db.transaction("rw", db.covers, async (): Promise<CoverEntity> => {
-        const now = Date.now();
-        const mimeType = blob.type || "image/jpeg";
-        const existing = await db.covers
-          .where("[ownerType+ownerId]")
-          .equals([ownerType, ownerId])
-          .first();
+    // find + write inside one transaction: two concurrent upserts for the
+    // same owner would otherwise both miss and the second add() would hit
+    // the unique [ownerType+ownerId] key.
+    return attemptDb(() => db.transaction("rw", db.covers, async (): Promise<CoverEntity> => {
+      const now = Date.now();
+      const mimeType = blob.type || "image/jpeg";
+      const existing = await db.covers
+        .where("[ownerType+ownerId]")
+        .equals([ownerType, ownerId])
+        .first();
 
-        if (existing) {
-          await db.covers.update(existing.id, { blob, mimeType, updatedAt: now });
-          return { ...existing, blob, mimeType, updatedAt: now };
-        }
+      if (existing) {
+        await db.covers.update(existing.id, { blob, mimeType, updatedAt: now });
+        return { ...existing, blob, mimeType, updatedAt: now };
+      }
 
-        const fresh: CoverEntity = {
-          id: crypto.randomUUID(),
-          ownerType,
-          ownerId,
-          blob,
-          mimeType,
-          addedAt: now,
-          updatedAt: now,
-        };
-        await db.covers.add(fresh);
-        return fresh;
-      });
-
-      return ok(stored);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      const fresh: CoverEntity = {
+        id: crypto.randomUUID(),
+        ownerType,
+        ownerId,
+        blob,
+        mimeType,
+        addedAt: now,
+        updatedAt: now,
+      };
+      await db.covers.add(fresh);
+      return fresh;
+    }));
   }
 
   async upsertAlbumCover(
@@ -122,30 +101,22 @@ class CoverRepository {
   }
 
   async createMany(covers: CoverEntity[]): Promise<Result<void, Error>> {
-    try {
+    return attemptDb(async () => {
       await db.covers.bulkAdd(covers);
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 
   async upsertMany(covers: CoverEntity[]): Promise<Result<void, Error>> {
-    try {
+    return attemptDb(async () => {
       await db.covers.bulkPut(covers);
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 
   async deleteByOwner(
     ownerType: CoverOwnerType,
     ownerId: string,
   ): Promise<Result<void, Error>> {
-    try {
+    return attemptDb(async () => {
       const existing = await db.covers
         .where("[ownerType+ownerId]")
         .equals([ownerType, ownerId])
@@ -154,12 +125,7 @@ class CoverRepository {
       if (existing) {
         await db.covers.delete(existing.id);
       }
-
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 
   async deleteAlbumCover(albumId: AlbumId): Promise<Result<void, Error>> {

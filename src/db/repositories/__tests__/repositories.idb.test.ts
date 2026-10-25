@@ -1,7 +1,8 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { TrackSource, TrackState, type AlbumEntity, type ArtistEntity, type TrackEntity } from "@/db/entities";
+import { TrackSource, TrackState, type AlbumEntity, type ArtistEntity, type PlaylistEntity, type TrackEntity } from "@/db/entities";
+import { DbError } from "@/db/errors/db.errors";
 import type { AlbumId, ArtistId, PlaylistId, TagId, TrackId } from "@/types/ids";
 import { albumRepository } from "../album.repository";
 import { artistRepository } from "../artist.repository";
@@ -257,6 +258,20 @@ describe("playlistRepository.addTracks", () => {
     expect(added).toEqual(["t2", "t3"]);
     expect((await db.playlists.get("p1" as PlaylistId))?.trackIds).toEqual(["t1", "t2", "t3"]);
     expect(modifySpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("playlistRepository.findTrackIdsPaginated", () => {
+  it("reports a playlist row without track ids as a db error", async () => {
+    const withoutTrackIds = { id: "p1", name: "P", addedAt: 1, updatedAt: 1 } as unknown as PlaylistEntity;
+    await db.playlists.add(withoutTrackIds);
+
+    const result = await playlistRepository.findTrackIdsPaginated("p1" as PlaylistId, 0, 10);
+
+    expect(result.isErr()).toBe(true);
+    const error = result._unsafeUnwrapErr();
+    expect(error).toBeInstanceOf(DbError);
+    expect((error as DbError).code).toBe("UNKNOWN");
   });
 });
 

@@ -1,9 +1,9 @@
 import { db } from "@/db";
 import type { ListenEventEntity } from "@/db/entities";
 import type { TagId, TrackId } from "@/types/ids";
-import { toDbError } from "@/db/errors/db.errors";
+import { attemptDb } from "@/db/errors/db.errors";
 import { unique } from "@/lib/math";
-import { err, ok, type Result } from "neverthrow";
+import { err, type Result } from "neverthrow";
 import {
   aggregateHourly,
   aggregateRecords,
@@ -36,22 +36,13 @@ export interface StreakInfo {
   best: number;
 }
 
-async function runSafe<T>(fn: () => Promise<T>): Promise<Result<T, Error>> {
-  try {
-    return ok(await fn());
-  }
-  catch (error) {
-    return err(toDbError(error));
-  }
-}
-
 class StatsRepository {
   /**
    * A native count over the store: "is there any history" must not load a
    * history that has no ceiling — only a chosen period is worth rows.
    */
   async hasEvents(): Promise<Result<boolean, Error>> {
-    return runSafe(async () => (await db.listenEvents.count()) > 0);
+    return attemptDb(async () => (await db.listenEvents.count()) > 0);
   }
 
   /**
@@ -59,7 +50,7 @@ class StatsRepository {
    * (see stats.queries). `since` undefined = all time.
    */
   async eventsSince(since?: number): Promise<Result<ListenEventEntity[], Error>> {
-    return runSafe(() => since
+    return attemptDb(() => since
       ? db.listenEvents.where("startedAt").aboveOrEqual(since).toArray()
       : db.listenEvents.toArray());
   }
@@ -71,7 +62,7 @@ class StatsRepository {
    * как это обычно устроено в "Recently played").
    */
   async recentHistory(limit = 100): Promise<Result<ListenEventEntity[], Error>> {
-    return runSafe(async () => {
+    return attemptDb(async () => {
       const seenTrackIds = new Set<TrackId>();
       const result: ListenEventEntity[] = [];
 
@@ -112,7 +103,7 @@ class StatsRepository {
   }
 
   async artistPlaysCount(artistId: string): Promise<Result<number, Error>> {
-    return runSafe(() =>
+    return attemptDb(() =>
       db.listenEvents.where("artistId").equals(artistId).and(e => !e.skipped).count(),
     );
   }
@@ -125,7 +116,7 @@ class StatsRepository {
 
   /** Genre ranking over already-loaded events (needs the tracks' tags from the DB). */
   async topGenresOf(events: readonly ListenEventEntity[], limit = 8): Promise<Result<TopGenreEntry[], Error>> {
-    return runSafe(async () => {
+    return attemptDb(async () => {
       const played = events.filter(e => !e.skipped);
       if (played.length === 0) return [];
 
@@ -164,13 +155,13 @@ class StatsRepository {
   }
 
   async deleteAllEvents(): Promise<Result<void, Error>> {
-    return runSafe(async () => {
+    return attemptDb(async () => {
       await db.listenEvents.clear();
     });
   }
 
   async dailyActivity(days = 30): Promise<Result<DailyActivityPoint[], Error>> {
-    return runSafe(async () => {
+    return attemptDb(async () => {
       const since = Date.now() - days * 86_400_000;
       const events = await db.listenEvents.where("startedAt").aboveOrEqual(since).toArray();
 
@@ -190,19 +181,19 @@ class StatsRepository {
   }
 
   async deleteEvent(eventId: string): Promise<Result<void, Error>> {
-    return runSafe(() => db.listenEvents.delete(eventId));
+    return attemptDb(() => db.listenEvents.delete(eventId));
   }
 
   eventsForTrack = async (trackId: TrackId): Promise<Result<ListenEventEntity[], Error>> =>
-    runSafe(() => db.listenEvents.where("trackId").equals(trackId).toArray());
+    attemptDb(() => db.listenEvents.where("trackId").equals(trackId).toArray());
 
   restoreEvents = async (events: readonly ListenEventEntity[]): Promise<Result<void, Error>> =>
-    runSafe(async () => {
+    attemptDb(async () => {
       await db.listenEvents.bulkPut([...events]);
     });
 
   async deleteEventsForTrack(trackId: TrackId): Promise<Result<void, Error>> {
-    return runSafe(async () => {
+    return attemptDb(async () => {
       await db.listenEvents.where("trackId").equals(trackId).delete();
     });
   }
@@ -216,7 +207,7 @@ class StatsRepository {
   }
 
   async streaks(now = Date.now()): Promise<Result<StreakInfo, Error>> {
-    return runSafe(async () => {
+    return attemptDb(async () => {
       const DAYS = 365;
       const since = now - DAYS * 86_400_000;
       const events = await db.listenEvents.where("startedAt").aboveOrEqual(since).toArray();

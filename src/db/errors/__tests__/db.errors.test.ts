@@ -1,6 +1,6 @@
 import Dexie from "dexie";
 import { describe, expect, it } from "vitest";
-import { DbError, toDbError } from "../db.errors";
+import { DbError, attemptDb, toDbError } from "../db.errors";
 
 describe("toDbError", () => {
   it("maps Dexie error names to codes", () => {
@@ -35,5 +35,32 @@ describe("toDbError", () => {
 
   it("stringifies non-Error throwables", () => {
     expect(toDbError("nope").message).toBe("nope");
+  });
+});
+
+describe("attemptDb", () => {
+  it("returns the operation's value as ok", async () => {
+    const value = { id: "t1" };
+
+    const result = await attemptDb(() => Promise.resolve(value));
+
+    expect(result.isOk()).toBe(true);
+    expect(result._unsafeUnwrap()).toBe(value);
+  });
+
+  it("maps a thrown Dexie error to a DbError", async () => {
+    const thrown = new Dexie.QuotaExceededError("disk full");
+
+    const result = await attemptDb(async () => {
+      await Promise.resolve();
+      throw thrown;
+    });
+
+    expect(result.isErr()).toBe(true);
+    const error = result._unsafeUnwrapErr();
+    expect(error).toBeInstanceOf(DbError);
+    expect(error.code).toBe("QUOTA");
+    expect(error.message).toBe(thrown.message);
+    expect(error.cause).toBe(thrown);
   });
 });
