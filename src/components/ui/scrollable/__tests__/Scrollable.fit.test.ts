@@ -1,3 +1,5 @@
+import path from "node:path";
+import { readFileSync } from "node:fs";
 import { mount, type VueWrapper } from "@vue/test-utils";
 import { h } from "vue";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +16,8 @@ const VIEWPORT = 400;
 const CONTENT = 4000;
 const THUMB_SIZE = VIEWPORT ** 2 / CONTENT;
 
-// Vitest does not load SFC styles, and the layout of both modes lives there.
+// Vitest loads neither SFC styles nor CSS imports (.css?raw is empty too), and the layout of both modes lives there.
+const sharedCss = readFileSync(path.resolve(process.cwd(), "src/components/ui/scrollable/scrollable.css"), "utf8");
 let styleElement: HTMLStyleElement | null = null;
 let mounted: VueWrapper | null = null;
 
@@ -31,7 +34,7 @@ const mountScrollable = (props: { fitContent?: boolean } = {}) => {
 
 beforeAll(() => {
   styleElement = document.createElement("style");
-  styleElement.textContent = /<style>([\s\S]*?)<\/style>/.exec(scrollableSource)?.[1] ?? "";
+  styleElement.textContent = sharedCss + (/<style>([\s\S]*?)<\/style>/.exec(scrollableSource)?.[1] ?? "");
   document.head.append(styleElement);
 });
 
