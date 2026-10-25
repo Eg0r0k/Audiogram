@@ -173,49 +173,10 @@
                   :subtitle="$t('player.repeatsThisTrack')"
                   @play="queueStore.jumpTo(upNext.entry.index)"
                 />
-                <div
-                  v-else-if="upNext.kind === 'autoplay'"
-                  class="flex h-16 items-center gap-3 px-2.5"
-                >
-                  <div class="flex size-10 shrink-0 items-center justify-center rounded bg-muted">
-                    <IconSparkles class="size-5 text-muted-foreground" />
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <p class="truncate text-base font-medium">
-                      {{ $t('player.similarTracks') }}
-                    </p>
-                    <p class="truncate text-sm text-muted-foreground">
-                      {{ $t('player.autoplayAddsSimilar') }}
-                    </p>
-                  </div>
-                </div>
-                <div
+                <QueueTailRow
                   v-else
-                  class="flex h-16 items-center gap-3 px-2.5"
-                >
-                  <div class="flex size-10 shrink-0 items-center justify-center rounded bg-muted">
-                    <IconPlaylistX class="size-5 text-muted-foreground" />
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <p class="truncate text-base font-medium">
-                      {{ $t('player.lastInQueue') }}
-                    </p>
-                    <p class="truncate text-sm text-muted-foreground">
-                      {{ $t('player.playbackStopsAfter') }}
-                    </p>
-                  </div>
-                  <Button
-                    v-if="!queueStore.isRadio"
-                    variant="solid"
-                    color="card"
-                    size="sm"
-                    class="shrink-0"
-                    @click="repeatQueue"
-                  >
-                    <IconRepeat />
-                    {{ $t('player.repeatQueue') }}
-                  </Button>
-                </div>
+                  :kind="upNext.kind"
+                />
               </div>
             </TrackContextMenu>
           </template>
@@ -271,6 +232,7 @@ import { useCurrentTrackCover } from "@/modules/player/composables/useCurrentTra
 import type { Track } from "@/types/track";
 import { resolveUpNext } from "@/modules/queue/lib/up-next";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
+import QueueTailRow from "@/modules/queue/components/QueueTailRow.vue";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
@@ -279,9 +241,6 @@ import IconHeart from "~icons/tabler/heart";
 import IconHeartFilled from "~icons/tabler/heart-filled";
 import IconDots from "~icons/tabler/dots";
 import IconFileImport from "~icons/tabler/file-import";
-import IconPlaylistX from "~icons/tabler/playlist-x";
-import IconRepeat from "~icons/tabler/repeat";
-import IconSparkles from "~icons/tabler/sparkles";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
 import RightPanelHeader from "../RightPanelHeader.vue";
 import CurrentTrackCover from "./current-track/CurrentTrackCover.vue";
@@ -324,10 +283,6 @@ const upNext = computed(() => resolveUpNext(
   queueStore.repeatMode,
   queueStore.continuesAfterTail,
 ));
-
-const repeatQueue = () => {
-  queueStore.repeatMode = "all";
-};
 
 async function toggleLike(): Promise<void> {
   if (!libraryTrack.value) return;

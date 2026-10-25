@@ -15,14 +15,14 @@
         class="flex min-h-0 flex-col"
       >
         <div class="flex items-center justify-between gap-2 px-4 pt-2 mt-2 bg-card font-medium">
-          <span class="min-w-0 truncate">{{ t("queue.tabHistory") }}</span>
+          <span class="min-w-0 truncate text-sm text-muted-foreground">{{ t("common.tracks", entries.length) }}</span>
           <Button
             variant="ghost"
+            color="destructive"
             size="sm"
             class="shrink-0"
             @click="clearHistory"
           >
-            <IconTrash />
             {{ t("queue.clearHistory") }}
           </Button>
         </div>
@@ -72,7 +72,6 @@ import HistoryEmpty from "./HistoryEmpty.vue";
 import { useHistoryList } from "../composables/useHistoryList";
 import { useQueueStore } from "../store/queue.store";
 import type { RecentHistoryEntry } from "@/queries/stats.queries";
-import IconTrash from "~icons/tabler/trash";
 const ITEM_HEIGHT = 64;
 
 const { t } = useI18n();
