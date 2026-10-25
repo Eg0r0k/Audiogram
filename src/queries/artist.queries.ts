@@ -9,12 +9,7 @@ import { db } from "@/db";
 import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
 import { queryKeys } from "@/queries/query-keys";
-import {
-  buildAlbumDocFromDb,
-  buildArtistDoc,
-  buildTrackDocFromDb,
-} from "@/modules/search/service/buildDocuments";
-import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/service/searchIndex";
+import { syncSearchIndex } from "@/services/search/searchIndex";
 import { mapTracks } from "@/types/track";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { ArtistId as createArtistId } from "@/types/ids";
@@ -235,7 +230,7 @@ export async function createArtistAndSync(
   await unwrapResult(artistRepository.create(artist));
   await settleLibraryReads(queryClient);
   syncArtistCaches(queryClient, artist);
-  await upsertSearchDocuments([buildArtistDoc(artist)]);
+  await syncSearchIndex({ artists: [artist.id] });
 
   return artist;
 }
@@ -312,13 +307,11 @@ export async function updateArtistAndSync(
       unwrapResult(trackRepository.findByArtistId(currentArtist.id)),
     ]);
 
-    const searchDocuments = [
-      buildArtistDoc(nextArtist),
-      ...await Promise.all(albums.filter(a => a.pinned !== 0).map(album => buildAlbumDocFromDb(album))),
-      ...await Promise.all(tracks.filter(t => t.pinned !== 0).map(track => buildTrackDocFromDb(track))),
-    ];
-
-    await upsertSearchDocuments(searchDocuments);
+    await syncSearchIndex({
+      artists: [currentArtist.id],
+      albums: albums.map(album => album.id),
+      tracks: tracks.map(track => track.id),
+    });
   }
 
   invalidateForArtistMutation(queryClient, {
@@ -418,16 +411,11 @@ export async function deleteArtistAndSync(
     removeAlbumCaches(queryClient, album.id, artistEntity.id);
     removeCoverCache("album", album.id);
   }
-  await removeSearchDocuments([
-    `artist:${artistEntity.id}`,
-    ...albums.map(album => `album:${album.id}`),
-  ]);
-  if (!cascadeTracks) {
-    const updatedTracks = await unwrapResult(trackRepository.findByIds(affectedTrackIds));
-    await upsertSearchDocuments(await Promise.all(
-      updatedTracks.filter(t => t.pinned !== 0).map(track => buildTrackDocFromDb(track)),
-    ));
-  }
+  await syncSearchIndex({
+    artists: [artistEntity.id],
+    albums: albums.map(album => album.id),
+    tracks: cascadeTracks ? [] : affectedTrackIds,
+  });
 
   removeArtistCaches(queryClient, artistEntity.id);
   removeCoverCache("artist", artistEntity.id);

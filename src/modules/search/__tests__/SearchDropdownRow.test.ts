@@ -1,7 +1,7 @@
 import { render } from "@testing-library/vue";
 import { describe, expect, it, vi } from "vitest";
 import type { LibraryItem } from "@/modules/library/types";
-import type { SearchResultItem } from "@/modules/search/types";
+import type { SearchResultItem } from "@/services/search/types";
 import SearchDropdownRow from "../components/SearchDropdownRow.vue";
 
 //

@@ -7,23 +7,16 @@ import { TrackSource, TrackState } from "@/db/entities";
 import { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 
 const storageMock = vi.hoisted(() => ({ deleteFile: vi.fn() }));
-const searchMock = vi.hoisted(() => ({ removeSearchDocuments: vi.fn(async () => {}) }));
+const searchMock = vi.hoisted(() => ({ syncSearchIndex: vi.fn(async () => {}) }));
 
 vi.mock("@/db/storage", () => ({ storageService: storageMock }));
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
 }));
-vi.mock("@/modules/search/service/searchIndex", () => ({
-  removeSearchDocuments: searchMock.removeSearchDocuments,
-  upsertSearchDocuments: vi.fn(async () => {}),
+vi.mock("@/services/search/searchIndex", () => ({
+  syncSearchIndex: searchMock.syncSearchIndex,
   searchTracks: vi.fn(),
   searchDocuments: vi.fn(),
-}));
-vi.mock("@/modules/search/service/buildDocuments", () => ({
-  buildAlbumDocFromDb: vi.fn(async () => ({})),
-  buildArtistDoc: vi.fn(() => ({})),
-  buildPlaylistDoc: vi.fn(() => ({})),
-  buildTrackDocFromDb: vi.fn(async () => ({})),
 }));
 
 import { db } from "@/db";
@@ -91,8 +84,8 @@ describe("deleteTracksAndSync (integration)", () => {
 
     await deleteTracksAndSync(queryClient, [TrackId("t-1"), TrackId("t-2")]);
 
-    expect(searchMock.removeSearchDocuments).toHaveBeenCalledTimes(1);
-    expect(searchMock.removeSearchDocuments).toHaveBeenCalledWith(["track:t-1", "track:t-2"]);
+    expect(searchMock.syncSearchIndex).toHaveBeenCalledTimes(1);
+    expect(searchMock.syncSearchIndex).toHaveBeenCalledWith({ tracks: [TrackId("t-1"), TrackId("t-2")] });
     expect(invalidate).toHaveBeenCalledTimes(1);
     expect(invalidate.mock.calls[0][1]).toEqual({
       kind: "removal",

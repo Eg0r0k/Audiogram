@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AlbumEntity, ArtistEntity, PlaylistEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
-import { buildAlbumDoc, buildPlaylistDoc, buildTrackDoc } from "../service/buildDocuments";
+import { buildAlbumDoc, buildPlaylistDoc, buildTrackDoc } from "../buildDocuments";
 
 vi.mock("@/db", () => ({ db: {} }));
 

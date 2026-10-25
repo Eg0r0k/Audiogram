@@ -22,13 +22,8 @@ vi.mock("@/db/storage", () => ({ storageService: storageMock }));
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
 }));
-vi.mock("@/modules/search/service/searchIndex", () => ({
-  removeSearchDocuments: vi.fn(async () => {}),
-  upsertSearchDocuments: vi.fn(async () => {}),
-}));
-vi.mock("@/modules/search/service/buildDocuments", () => ({
-  buildAlbumDocFromDb: vi.fn(async () => ({})),
-  buildTrackDocFromDb: vi.fn(async () => ({})),
+vi.mock("@/services/search/searchIndex", () => ({
+  syncSearchIndex: vi.fn(async () => {}),
 }));
 
 import { db } from "@/db";

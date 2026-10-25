@@ -11,7 +11,7 @@ const repos = vi.hoisted(() => ({
 
 const uow = vi.hoisted(() => ({ runScoped: vi.fn() }));
 const searchIndex = vi.hoisted(() => ({
-  indexImportedTracks: vi.fn(async () => {}),
+  syncSearchIndex: vi.fn(async () => {}),
 }));
 const shadowCover = vi.hoisted(() => ({ ensureShadowCover: vi.fn(async () => {}) }));
 
@@ -22,7 +22,7 @@ vi.mock("@/db/repositories", () => ({
   artistRepository: repos.artist,
 }));
 vi.mock("@/db/unit-of-work", () => ({ unitOfWork: uow }));
-vi.mock("@/modules/search/service/searchIndex", () => searchIndex);
+vi.mock("@/services/search/searchIndex", () => searchIndex);
 vi.mock("../shadowAlbumCover", () => shadowCover);
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),

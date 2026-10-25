@@ -108,7 +108,7 @@ import IconCloudOff from "~icons/tabler/cloud-off";
 import SearchDropdownRow from "@/modules/search/components/SearchDropdownRow.vue";
 import SearchEmptyPlaceholder from "@/modules/search/components/SearchEmptyPlaceholder.vue";
 import SearchRecentQueries from "@/modules/search/components/SearchRecentQueries.vue";
-import type { SearchResultItem } from "@/modules/search/types";
+import type { SearchResultItem } from "@/services/search/types";
 import { routeLocation } from "@/app/router/route-locations";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";

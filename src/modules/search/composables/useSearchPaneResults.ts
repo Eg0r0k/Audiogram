@@ -14,7 +14,7 @@ import {
   playlistResultItem,
   trackResultItem,
 } from "../lib/resultItems";
-import type { SearchResultItem, SearchEntityType } from "../types";
+import type { SearchResultItem, SearchEntityType } from "@/services/search/types";
 import { useSearch } from "./useSearch";
 
 //

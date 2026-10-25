@@ -29,7 +29,7 @@
 import { Button } from "@/components/ui/button";
 import SearchDropdownRow from "@/modules/search/components/SearchDropdownRow.vue";
 import { searchResultRoute } from "@/modules/search/lib/resultItems";
-import type { SearchResultItem } from "@/modules/search/types";
+import type { SearchResultItem } from "@/services/search/types";
 
 // A search result opens the source's view of the entity, not a library row
 // that may exist under the same branded id.

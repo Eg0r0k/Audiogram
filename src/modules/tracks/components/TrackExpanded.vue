@@ -245,7 +245,7 @@ import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackL
 import SourceDownloadButton from "@/modules/downloads/components/SourceDownloadButton.vue";
 import DownloadedMark from "@/modules/downloads/components/DownloadedMark.vue";
 import HighlightedText from "@/modules/search/components/HighlightedText";
-import type { SearchMatch } from "@/modules/search/types";
+import type { SearchMatch } from "@/services/search/types";
 import type { ArtistId, TrackId } from "@/types/ids";
 import { useI18n } from "vue-i18n";
 import { useRouter, type RouteLocationRaw } from "vue-router";

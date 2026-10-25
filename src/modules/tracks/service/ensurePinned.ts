@@ -6,7 +6,7 @@ import { albumRepository, artistRepository, trackRepository } from "@/db/reposit
 import { unitOfWork } from "@/db/unit-of-work";
 import { getLogger } from "@/lib/logger";
 import { chunk } from "@/lib/math";
-import { indexImportedTracks } from "@/modules/search/service/searchIndex";
+import { syncSearchIndex } from "@/services/search/searchIndex";
 import type { SourceTrackDTO } from "@/types/source-dto";
 import {
   alignArtists,
@@ -257,7 +257,7 @@ export async function ensurePinnedMany(
   // Best-effort: search sync must not fail the action that triggered the pin.
   if (ctx.requestedPinned === 1) {
     const ids = pinned.map(({ rows }) => rows.track.id);
-    indexImportedTracks(ids).catch((error) => {
+    syncSearchIndex({ tracks: ids }).catch((error) => {
       getLogger().warn(`[Search] Indexing ${ids.length} pinned track(s) failed: ${formatError(error)}`);
     });
   }

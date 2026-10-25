@@ -9,8 +9,7 @@ import {
 import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
 import { queryKeys } from "@/queries/query-keys";
-import { buildPlaylistDoc } from "@/modules/search/service/buildDocuments";
-import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/service/searchIndex";
+import { syncSearchIndex } from "@/services/search/searchIndex";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { mapTracks, type Track } from "@/types/track";
 import type { PlaylistId, TrackId } from "@/types/ids";
@@ -198,7 +197,7 @@ export async function createPlaylistAndSync(queryClient: QueryClient, name = "Ne
   await unwrapResult(playlistRepository.create(playlist));
   await settleLibraryReads(queryClient);
   syncPlaylistCaches(queryClient, playlist);
-  await upsertSearchDocuments([buildPlaylistDoc(playlist)]);
+  await syncSearchIndex({ playlists: [playlist.id] });
 
   return playlist;
 }
@@ -247,7 +246,7 @@ export async function updatePlaylistAndSync(
   }
 
   if (didUpdatePlaylist) {
-    await upsertSearchDocuments([buildPlaylistDoc(nextPlaylist)]);
+    await syncSearchIndex({ playlists: [currentPlaylist.id] });
   }
 
   return nextPlaylist;
@@ -288,7 +287,7 @@ export async function deletePlaylistAndSync(
   await settleLibraryReads(queryClient);
   // This playlist is gone — re-syncing its caches would put it back.
   await syncAfterTrackPurge(queryClient, trackIds, txResult.value, [currentPlaylist.id]);
-  await removeSearchDocuments([`playlist:${currentPlaylist.id}`]);
+  await syncSearchIndex({ playlists: [currentPlaylist.id] });
 
   removePlaylistCaches(queryClient, currentPlaylist.id);
   removeCoverCache("playlist", currentPlaylist.id);

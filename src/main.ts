@@ -27,7 +27,7 @@ import { initFont } from "@/modules/settings/composables/useFont";
 import { statsService } from "@/services/stats.service";
 import { invalidateStatsQueries } from "@/queries/stats.queries";
 import { onAllDataCleared } from "@/services/storage-info.service";
-import { resetSearchIndex } from "@/modules/search/service/searchIndex";
+import { resetSearchIndex } from "@/services/search/searchIndex";
 import { openDatabase } from "@/db";
 import { sources } from "@/modules/sources/registry";
 import { ytSourceProvider } from "@/modules/youtube/source-provider";

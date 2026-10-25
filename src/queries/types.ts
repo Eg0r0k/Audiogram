@@ -5,7 +5,7 @@ import type {
   SidebarFolderEntity,
 } from "@/db/entities";
 import type { Track } from "@/types/track";
-import type { SearchMatch } from "@/modules/search/types";
+import type { SearchMatch } from "@/services/search/types";
 
 export interface LibrarySummaryData {
   artists: ArtistEntity[];

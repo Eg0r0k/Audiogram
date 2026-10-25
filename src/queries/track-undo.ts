@@ -8,7 +8,7 @@ import {
   trackRepository,
 } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
-import { indexImportedTracks } from "@/modules/search/service/searchIndex";
+import { syncSearchIndex } from "@/services/search/searchIndex";
 import { deleteOwnedFiles } from "@/services/track-files";
 import type { TrackId } from "@/types/ids";
 import { invalidateForTrackMutation, removeCoverCache, settleLibraryReads } from "./cache";
@@ -112,7 +112,7 @@ export const deleteTracksWithUndo = async (
     if (tx.isErr()) throw tx.error;
 
     await settleLibraryReads(queryClient);
-    await indexImportedTracks(trackIds);
+    await syncSearchIndex({ tracks: trackIds });
     // Only the restored owners re-read their covers; a library-wide cover
     // invalidation would make every visible cover blink.
     for (const cover of covers) removeCoverCache(cover.ownerType, cover.ownerId);

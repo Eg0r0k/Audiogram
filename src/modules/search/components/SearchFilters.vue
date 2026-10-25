@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
-import type { SearchFilter } from "@/modules/search/types";
+import type { SearchFilter } from "@/services/search/types";
 import { Scrollable } from "@/components/ui/scrollable";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 

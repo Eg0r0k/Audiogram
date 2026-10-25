@@ -1,7 +1,7 @@
 import { render } from "@testing-library/vue";
 import { describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
-import type { SearchResultItem } from "@/modules/search/types";
+import type { SearchResultItem } from "@/services/search/types";
 import SearchResults from "../components/SearchResults.vue";
 
 // Регрессия: строки артистов/альбомов/плейлистов вызывают openMenu по правому

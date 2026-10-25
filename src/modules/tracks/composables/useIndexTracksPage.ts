@@ -3,7 +3,7 @@ import { computed, type Ref } from "vue";
 import { queryKeys } from "@/queries/query-keys";
 import { getTracksPaginated } from "@/queries/track.queries";
 import type { TrackSortKey } from "@/modules/tracks/types";
-import type { SearchMatch } from "@/modules/search/types";
+import type { SearchMatch } from "@/services/search/types";
 import { DEFAULT_TRACK_SORT_KEY } from "@/types/track-sort";
 
 export function useIndexTracksPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) {

@@ -7,8 +7,8 @@ import { ArtistId, AlbumId, TrackId } from "@/types/ids";
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
 }));
-vi.mock("@/modules/search/service/searchIndex", () => ({
-  indexImportedTracks: vi.fn(async () => {}),
+vi.mock("@/services/search/searchIndex", () => ({
+  syncSearchIndex: vi.fn(async () => {}),
 }));
 
 import { db } from "@/db";

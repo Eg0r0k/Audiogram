@@ -1,7 +1,7 @@
 import type { PlaylistEntity, TrackEntity } from "@/db/entities";
 import { db } from "@/db";
 import { playlistRepository, trackRepository } from "@/db/repositories";
-import { removeSearchDocuments } from "@/modules/search/service/searchIndex";
+import { syncSearchIndex } from "@/services/search/searchIndex";
 import { cleanupAfterTrackRemoval } from "@/services/library-gc";
 import type { PlaylistId, TrackId } from "@/types/ids";
 import type { QueryClient } from "@tanstack/vue-query";
@@ -91,5 +91,5 @@ export const syncAfterTrackPurge = async (
   if (trackIds.length === 0) return;
 
   removeTracksFromCaches(queryClient, trackIds);
-  await removeSearchDocuments(trackIds.map(id => `track:${id}`));
+  await syncSearchIndex({ tracks: trackIds });
 };

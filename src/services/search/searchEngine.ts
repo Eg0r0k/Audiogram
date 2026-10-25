@@ -5,8 +5,8 @@ import type {
   SearchOptions,
   SearchResponse,
   SearchResultItem,
-} from "../types";
-import { buildSearchAliases, termProcessor, unicodeTokenizer } from "../searchNormalization";
+} from "./types";
+import { buildSearchAliases, termProcessor, unicodeTokenizer } from "./searchNormalization";
 
 interface IndexedSearchDocument extends SearchDocument {
   searchAliases: string;

@@ -28,8 +28,8 @@ vi.mock("@/services/importer.service", () => ({
   },
 }));
 
-vi.mock("@/modules/search/service/searchIndex", () => ({
-  indexImportedTracks: vi.fn().mockResolvedValue(undefined),
+vi.mock("@/services/search/searchIndex", () => ({
+  syncSearchIndex: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));

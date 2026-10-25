@@ -10,16 +10,10 @@ const repositories = vi.hoisted(() => ({
 }));
 
 vi.mock("@/db/repositories", () => repositories);
-vi.mock("@/modules/search/service/searchIndex", () => ({
+vi.mock("@/services/search/searchIndex", () => ({
   searchDocuments: vi.fn(),
   searchTracks: vi.fn(),
-  removeSearchDocuments: vi.fn(async () => {}),
-  upsertSearchDocuments: vi.fn(async () => {}),
-}));
-vi.mock("@/modules/search/service/buildDocuments", () => ({
-  buildArtistDoc: vi.fn(),
-  buildAlbumDocFromDb: vi.fn(),
-  buildTrackDocFromDb: vi.fn(),
+  syncSearchIndex: vi.fn(async () => {}),
 }));
 
 import { searchArtists } from "../artist.queries";

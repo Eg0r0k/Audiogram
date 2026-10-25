@@ -1,4 +1,4 @@
-import type { AlbumEntity, TrackEntity } from "@/db/entities";
+import type { AlbumEntity } from "@/db/entities";
 import {
   albumRepository,
   artistRepository,
@@ -9,12 +9,11 @@ import { db } from "@/db";
 import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
 import { queryKeys } from "@/queries/query-keys";
-import { buildAlbumDocFromDb, buildTrackDocFromDb } from "@/modules/search/service/buildDocuments";
-import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/service/searchIndex";
+import { syncSearchIndex } from "@/services/search/searchIndex";
 import { mapTracks } from "@/types/track";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { AlbumId as createAlbumId } from "@/types/ids";
-import type { AlbumId, ArtistId } from "@/types/ids";
+import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { queryOptions, skipToken, type QueryClient } from "@tanstack/vue-query";
 import {
   invalidateForAlbumMutation,
@@ -224,7 +223,7 @@ export async function createAlbumAndSync(
   await settleLibraryReads(queryClient);
   syncAlbumCaches(queryClient, album);
   invalidateForAlbumMutation(queryClient, { kind: "creation", artistId });
-  await upsertSearchDocuments([await buildAlbumDocFromDb(album)]);
+  await syncSearchIndex({ albums: [album.id] });
 
   return album;
 }
@@ -236,7 +235,7 @@ export async function updateAlbumAndSync(
 ) {
   let nextAlbum = currentAlbum;
   let didUpdateAlbum = false;
-  let updatedTracks: TrackEntity[] = [];
+  let updatedTrackIds: TrackId[] = [];
 
   if (changes.coverBlob) {
     const stored = await unwrapResult(coverRepository.upsertAlbumCover(currentAlbum.id, changes.coverBlob));
@@ -262,7 +261,7 @@ export async function updateAlbumAndSync(
     });
     if (txResult.isErr()) throw txResult.error;
 
-    updatedTracks = await unwrapResult(trackRepository.findByAlbumId(currentAlbum.id));
+    updatedTrackIds = await unwrapResult(trackRepository.findIdsByAlbumId(currentAlbum.id));
 
     await settleLibraryReads(queryClient);
     syncAlbumCaches(queryClient, nextAlbum);
@@ -270,14 +269,7 @@ export async function updateAlbumAndSync(
   }
 
   if (didUpdateAlbum) {
-    const searchDocuments = [
-      await buildAlbumDocFromDb(nextAlbum),
-      ...await Promise.all(
-        updatedTracks.filter(t => t.pinned !== 0).map(track => buildTrackDocFromDb(track)),
-      ),
-    ];
-
-    await upsertSearchDocuments(searchDocuments);
+    await syncSearchIndex({ albums: [currentAlbum.id], tracks: updatedTrackIds });
 
     invalidateForAlbumMutation(queryClient, {
       kind: "titleChange",
@@ -340,13 +332,7 @@ export async function deleteAlbumAndSync(
     cascadeTracks ? trackIds : [],
     txResult.value,
   );
-  await removeSearchDocuments([`album:${albumEntity.id}`]);
-  if (!cascadeTracks) {
-    const updatedTracks = await unwrapResult(trackRepository.findByIds(rawTracks.map(track => track.id)));
-    await upsertSearchDocuments(await Promise.all(
-      updatedTracks.filter(t => t.pinned !== 0).map(track => buildTrackDocFromDb(track)),
-    ));
-  }
+  await syncSearchIndex({ albums: [albumEntity.id], tracks: cascadeTracks ? [] : trackIds });
 
   removeAlbumCaches(queryClient, albumEntity.id, albumEntity.artistId);
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSearchEngine } from "../service/searchEngine";
+import { createSearchEngine } from "../searchEngine";
 import type { SearchDocument } from "../types";
 
 const track = (id: string, title: string, extra: Partial<SearchDocument> = {}): SearchDocument => ({

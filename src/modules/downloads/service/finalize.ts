@@ -2,13 +2,13 @@ import type { DownloadJobEntity, TrackEntity } from "@/db/entities";
 import { albumRepository, coverRepository, trackRepository } from "@/db/repositories";
 import { getLogger } from "@/lib/logger";
 import { trackCoverOwner } from "@/modules/covers/composables/useTrackCover";
-import { indexImportedTracks } from "@/modules/search/service/searchIndex";
 import { queryClient } from "@/queries/client";
 import { invalidateLibraryData } from "@/queries/library.queries";
 import { syncLocalCopyCache } from "@/queries/localCopy.queries";
 import { unwrapResult } from "@/lib/errors/unwrap";
 import { extensionOf } from "@/services/import/item-io";
 import { musicLibraryEngine } from "@/services/importer.service";
+import { syncSearchIndex } from "@/services/search/searchIndex";
 import type { ImportItem, KnownMetadata } from "@/services/types";
 import type { TrackId } from "@/types/ids";
 import { formatError } from "@/lib/errors";
@@ -64,7 +64,7 @@ export const importDownloadedFile = async (remoteId: TrackId, absolutePath: stri
   // feeds it by hand). Best-effort: a failed index update never fails the
   // download itself.
   try {
-    await indexImportedTracks([localId]);
+    await syncSearchIndex({ tracks: [localId] });
   }
   catch (error) {
     getLogger().warn(`[Search] Indexing the downloaded ${localId} failed: ${formatError(error)}`);

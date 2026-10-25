@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type * as SearchIndexModule from "../service/searchIndex";
+import type * as SearchIndexModule from "../searchIndex";
 import type { SearchDocument } from "../types";
 import { ok } from "neverthrow";
 import { TrackSource, TrackState } from "@/db/entities";
+import { TrackId } from "@/types/ids";
 
 const { buildAllSearchDocuments, repositories } = vi.hoisted(() => ({
   buildAllSearchDocuments: vi.fn(),
@@ -10,10 +11,14 @@ const { buildAllSearchDocuments, repositories } = vi.hoisted(() => ({
     trackRepository: { findByIds: vi.fn() },
     artistRepository: { findByIds: vi.fn() },
     albumRepository: { findByIds: vi.fn() },
+    playlistRepository: { findByIds: vi.fn() },
   },
 }));
 
-vi.mock("../service/buildDocuments", () => ({ buildAllSearchDocuments }));
+vi.mock("../buildDocuments", async importOriginal => ({
+  ...await importOriginal<typeof import("../buildDocuments")>(),
+  buildAllSearchDocuments,
+}));
 vi.mock("@/db/repositories", () => repositories);
 vi.mock("@/db", () => ({ db: { tracks: { where: () => ({ equals: () => ({ count: async () => 0 }) }) } } }));
 vi.mock("@/lib/logger", () => ({
@@ -36,7 +41,7 @@ beforeEach(async () => {
   buildAllSearchDocuments.mockReset().mockResolvedValue([]);
   vi.resetModules();
   // Dynamic import on purpose: the module holds the live index, recreated per test.
-  searchIndex = await import("../service/searchIndex");
+  searchIndex = await import("../searchIndex");
 });
 
 afterEach(() => {
@@ -76,12 +81,32 @@ describe("searchIndex lifecycle", () => {
   });
 });
 
-describe("searchIndex mutations", () => {
-  it("upserted documents are searchable and removed ones are not", async () => {
-    await searchIndex.upsertSearchDocuments([alphaDoc]);
+describe("syncSearchIndex", () => {
+  it("indexes a synced track row and drops it once the row is gone", async () => {
+    const row = {
+      id: "t1",
+      title: "Alpha Song",
+      artistIds: [],
+      artistName: "Some Artist",
+      albumId: "",
+      albumTitle: "",
+      tagIds: [],
+      source: TrackSource.LOCAL_INTERNAL,
+      pinned: 1,
+      state: TrackState.READY,
+      duration: 100,
+      format: {},
+      playCount: 0,
+      addedAt: 1,
+    };
+    repositories.trackRepository.findByIds
+      .mockResolvedValueOnce(ok([row]))
+      .mockResolvedValueOnce(ok([]));
+
+    await searchIndex.syncSearchIndex({ tracks: [TrackId("t1")] });
     expect((await searchIndex.searchDocuments("alpha", "all")).total).toBe(1);
 
-    await searchIndex.removeSearchDocuments(["track:t1"]);
+    await searchIndex.syncSearchIndex({ tracks: [TrackId("t1")] });
     expect((await searchIndex.searchDocuments("alpha", "all")).total).toBe(0);
   });
 });

@@ -1,8 +1,12 @@
 import { db } from "@/db";
-import type { AlbumEntity, ArtistEntity, PlaylistEntity, TrackEntity } from "@/db/entities";
-import type { SearchDocument } from "../types";
+import type { AlbumEntity, ArtistEntity, PinnedFlag, PlaylistEntity, TrackEntity } from "@/db/entities";
+import type { SearchDocument, SearchEntityType } from "./types";
 
 const FILE_EXTENSION_REGEX = /\.[^./\\]+$/u;
+
+export const documentId = (type: SearchEntityType, entityId: string): string => `${type}:${entityId}`;
+
+export const isLibraryMember = (row: { pinned: PinnedFlag }): boolean => row.pinned !== 0;
 
 const fileNameOf = (storagePath: string | undefined): string | undefined => {
   if (!storagePath) return undefined;
@@ -12,7 +16,7 @@ const fileNameOf = (storagePath: string | undefined): string | undefined => {
 
 export function buildArtistDoc(artist: ArtistEntity): SearchDocument {
   return {
-    id: `artist:${artist.id}`,
+    id: documentId("artist", artist.id),
     type: "artist",
     title: artist.name,
     entityId: artist.id,
@@ -24,7 +28,7 @@ export function buildAlbumDoc(
   artistMap: Map<string, ArtistEntity>,
 ): SearchDocument {
   return {
-    id: `album:${album.id}`,
+    id: documentId("album", album.id),
     type: "album",
     title: album.title,
     artist: artistMap.get(album.artistId)?.name,
@@ -44,7 +48,7 @@ export function buildTrackDoc(
   const album = albumMap.get(track.albumId);
 
   return {
-    id: `track:${track.id}`,
+    id: documentId("track", track.id),
     type: "track",
     title: track.title,
     artist: artists.length > 0 ? artists.map(a => a.name).join(", ") : track.artistName,
@@ -58,44 +62,11 @@ export function buildTrackDoc(
 
 export function buildPlaylistDoc(playlist: PlaylistEntity): SearchDocument {
   return {
-    id: `playlist:${playlist.id}`,
+    id: documentId("playlist", playlist.id),
     type: "playlist",
     title: playlist.name,
     entityId: playlist.id,
     description: playlist.description,
-  };
-}
-
-export async function buildTrackDocFromDb(track: TrackEntity): Promise<SearchDocument> {
-  const [artists, album] = await Promise.all([
-    db.artists.bulkGet(track.artistIds),
-    db.albums.get(track.albumId),
-  ]);
-  const artistEntities = artists.filter((artist): artist is ArtistEntity => !!artist);
-
-  return {
-    id: `track:${track.id}`,
-    type: "track",
-    title: track.title,
-    artist: artistEntities.length > 0 ? artistEntities.map(a => a.name).join(", ") : track.artistName,
-    album: album?.title ?? track.albumTitle,
-    entityId: track.id,
-    duration: track.duration,
-    year: album?.year,
-    fileName: fileNameOf(track.storagePath),
-  };
-}
-
-export async function buildAlbumDocFromDb(album: AlbumEntity): Promise<SearchDocument> {
-  const artist = await db.artists.get(album.artistId);
-
-  return {
-    id: `album:${album.id}`,
-    type: "album",
-    title: album.title,
-    artist: artist?.name,
-    entityId: album.id,
-    year: album.year,
   };
 }
 
@@ -111,11 +82,11 @@ export async function buildAllSearchDocuments(): Promise<SearchDocument[]> {
   // only library members become documents.
   const artistMap = new Map(artists.map(a => [a.id, a]));
   const albumMap = new Map(albums.map(a => [a.id, a]));
-  const tracks = allTracks.filter(t => t.pinned !== 0);
+  const tracks = allTracks.filter(isLibraryMember);
 
   return [
-    ...artists.filter(a => a.pinned !== 0).map(a => buildArtistDoc(a)),
-    ...albums.filter(a => a.pinned !== 0).map(a => buildAlbumDoc(a, artistMap)),
+    ...artists.filter(isLibraryMember).map(a => buildArtistDoc(a)),
+    ...albums.filter(isLibraryMember).map(a => buildAlbumDoc(a, artistMap)),
     ...tracks.map(t => buildTrackDoc(t, artistMap, albumMap)),
     ...playlists.map(p => buildPlaylistDoc(p)),
   ];

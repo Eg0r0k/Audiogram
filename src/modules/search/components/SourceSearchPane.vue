@@ -70,7 +70,7 @@ import SearchResults from "./SearchResults.vue";
 import SourceHealthNotice from "@/modules/sources/components/SourceHealthNotice.vue";
 import { useSearch } from "../composables/useSearch";
 import { useSearchPaneResults } from "../composables/useSearchPaneResults";
-import type { SearchResultItem } from "../types";
+import type { SearchResultItem } from "@/services/search/types";
 import { formatError } from "@/lib/errors";
 
 //

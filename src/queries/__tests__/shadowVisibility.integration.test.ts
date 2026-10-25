@@ -11,16 +11,14 @@ import type { SourceTrackDTO } from "@/modules/sources/types";
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
 }));
-vi.mock("@/modules/search/service/searchIndex", () => ({
-  indexImportedTracks: vi.fn(async () => {}),
-  removeSearchDocuments: vi.fn(async () => {}),
-  upsertSearchDocuments: vi.fn(async () => {}),
+vi.mock("@/services/search/searchIndex", () => ({
+  syncSearchIndex: vi.fn(async () => {}),
   searchTracks: vi.fn(async () => ({ tracks: [], total: 0, totalDuration: 0 })),
 }));
 
 import { db } from "@/db";
 import { ensurePinned } from "@/modules/tracks/service/ensurePinned";
-import { buildAllSearchDocuments } from "@/modules/search/service/buildDocuments";
+import { buildAllSearchDocuments } from "@/services/search/buildDocuments";
 import { getLibraryItemTrackCount, getLibrarySummary } from "../library.queries";
 import { getTracksPaginated } from "../track.queries";
 import { getArtistPageData } from "../artist.queries";

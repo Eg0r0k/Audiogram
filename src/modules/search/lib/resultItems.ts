@@ -10,7 +10,7 @@ import type {
   SourceTrackDTO,
 } from "@/modules/sources/types";
 import type { SourceKind } from "@/types/track-ref";
-import type { SearchResultItem } from "../types";
+import type { SearchResultItem } from "@/services/search/types";
 
 //
 // Source DTO → the row the search pane renders. One place, because every

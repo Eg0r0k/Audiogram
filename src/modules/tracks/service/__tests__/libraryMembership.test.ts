@@ -10,10 +10,9 @@ vi.mock("@/lib/logger", () => ({ getLogger: () => ({ warn: vi.fn(), info: vi.fn(
 vi.mock("../shadowAlbumCover", () => ({ ensureShadowCover: vi.fn(async () => {}) }));
 
 const searchIndex = vi.hoisted(() => ({
-  indexImportedTracks: vi.fn(async () => {}),
-  removeSearchDocuments: vi.fn(async () => {}),
+  syncSearchIndex: vi.fn(async () => {}),
 }));
-vi.mock("@/modules/search/service/searchIndex", () => searchIndex);
+vi.mock("@/services/search/searchIndex", () => searchIndex);
 
 import { db } from "@/db";
 import { ensurePinned } from "../ensurePinned";
@@ -54,7 +53,7 @@ describe("promoteTrackToLibrary", () => {
   it("mirrors the promoted track into the search index", async () => {
     await promoteTrackToLibrary(TRACK_ID);
 
-    expect(searchIndex.indexImportedTracks).toHaveBeenCalledWith([TRACK_ID]);
+    expect(searchIndex.syncSearchIndex).toHaveBeenCalledWith({ tracks: [TRACK_ID] });
   });
 
   it("throws when the track does not exist", async () => {
@@ -111,19 +110,23 @@ describe("removeTrackFromLibrary", () => {
   it("de-indexes the track and every deleted album/artist", async () => {
     await removeTrackFromLibrary(TRACK_ID);
 
-    expect(searchIndex.removeSearchDocuments).toHaveBeenCalledWith([
-      `track:${TRACK_ID}`,
-      `album:${ndAlbumId("album1")}`,
-      `artist:${ndArtistId("artist1")}`,
-      `artist:${ndArtistId("artist2")}`,
-    ]);
+    expect(searchIndex.syncSearchIndex).toHaveBeenCalledWith({
+      tracks: [TRACK_ID],
+      albums: [ndAlbumId("album1")],
+      artists: [ndArtistId("artist1"), ndArtistId("artist2")],
+    });
   });
 
-  it("de-indexes only the track while the album/artist stay", async () => {
+  it("syncs the album/artist that stay too, so the index keeps them current", async () => {
     await pinSibling();
+    vi.clearAllMocks();
 
     await removeTrackFromLibrary(TRACK_ID);
 
-    expect(searchIndex.removeSearchDocuments).toHaveBeenCalledWith([`track:${TRACK_ID}`]);
+    expect(searchIndex.syncSearchIndex).toHaveBeenCalledExactlyOnceWith({
+      tracks: [TRACK_ID],
+      albums: [ndAlbumId("album1")],
+      artists: [ndArtistId("artist1"), ndArtistId("artist2")],
+    });
   });
 });

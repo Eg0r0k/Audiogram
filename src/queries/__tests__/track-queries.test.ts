@@ -43,27 +43,12 @@ const repositories = vi.hoisted(() => ({
 }));
 
 vi.mock("@/db/repositories", () => repositories);
-vi.mock("@/modules/search/service/searchIndex", () => ({
+vi.mock("@/services/search/searchIndex", () => ({
   searchTracks: vi.fn(),
-  upsertSearchDocuments: vi.fn(async () => {}),
-}));
-vi.mock("@/modules/search/service/buildDocuments", () => ({
-  buildArtistDoc: vi.fn((artist: ArtistEntity) => ({
-    id: `artist:${artist.id}`,
-    type: "artist",
-    title: artist.name,
-    entityId: artist.id,
-  })),
-  buildAlbumDocFromDb: vi.fn(async (album: AlbumEntity) => ({
-    id: `album:${album.id}`,
-    type: "album",
-    title: album.title,
-    entityId: album.id,
-  })),
-  buildTrackDocFromDb: vi.fn(async () => ({})),
+  syncSearchIndex: vi.fn(async () => {}),
 }));
 
-import { upsertSearchDocuments } from "@/modules/search/service/searchIndex";
+import { syncSearchIndex } from "@/services/search/searchIndex";
 import { queryKeys } from "@/queries/query-keys";
 import * as cache from "../cache";
 import type { LibrarySummaryData } from "../types";
@@ -470,15 +455,10 @@ describe("track.queries", () => {
       expect(summaryAlbums(queryClient)).toEqual([existingAlbum, created]);
 
       // And it must be searchable without waiting for a full reindex.
-      expect(upsertSearchDocuments).toHaveBeenCalledWith([{
-        id: `album:${created.id}`,
-        type: "album",
-        title: "Brand New Album",
-        entityId: created.id,
-      }]);
+      expect(syncSearchIndex).toHaveBeenCalledWith({ albums: [created.id] });
     });
 
-    it("does not upsert an album search document or list cache when reusing an existing album", async () => {
+    it("does not sync an album into the search index or list cache when reusing an existing album", async () => {
       repositories.albumRepository.findByArtistId.mockResolvedValue(ok([existingAlbum]));
       queryClient.setQueryData(queryKeys.library.summary(), summaryWith([existingAlbum]));
 
@@ -489,7 +469,7 @@ describe("track.queries", () => {
       });
 
       expect(repositories.albumRepository.create).not.toHaveBeenCalled();
-      expect(upsertSearchDocuments).not.toHaveBeenCalledWith([expect.objectContaining({ type: "album" })]);
+      expect(syncSearchIndex).not.toHaveBeenCalledWith(expect.objectContaining({ albums: expect.anything() }));
       expect(summaryAlbums(queryClient)).toEqual([existingAlbum]);
     });
 

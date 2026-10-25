@@ -1,17 +1,16 @@
 import { computed, readonly, ref, shallowRef, watch } from "vue";
 import { useDebounceFn, useLocalStorage } from "@vueuse/core";
+import { createEmptyResults, type GroupedResults } from "../types";
 import {
   SEARCH_ENTITY_TYPES,
-  createEmptyResults,
-  type GroupedResults,
   type SearchFilter,
   type SearchResultItem,
-} from "../types";
+} from "@/services/search/types";
 import {
   initSearchIndex,
   rebuildSearchIndex,
   searchDocuments,
-} from "../service/searchIndex";
+} from "@/services/search/searchIndex";
 import { getLogger } from "@/lib/logger";
 import { sources } from "@/modules/sources/registry";
 import type { SourceKind } from "@/types/track-ref";

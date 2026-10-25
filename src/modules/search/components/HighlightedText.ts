@@ -1,6 +1,6 @@
 import { type FunctionalComponent, h } from "vue";
 import { highlightSegments } from "../lib/highlight";
-import type { SearchMatch } from "../types";
+import type { SearchMatch } from "@/services/search/types";
 
 interface Props {
   text: string;

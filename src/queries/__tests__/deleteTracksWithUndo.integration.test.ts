@@ -7,27 +7,16 @@ import { TrackSource, TrackState } from "@/db/entities";
 import { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 
 const storageMock = vi.hoisted(() => ({ deleteFile: vi.fn() }));
-const searchMock = vi.hoisted(() => ({
-  removeSearchDocuments: vi.fn(async () => {}),
-  indexImportedTracks: vi.fn(async () => {}),
-}));
+const searchMock = vi.hoisted(() => ({ syncSearchIndex: vi.fn(async () => {}) }));
 
 vi.mock("@/db/storage", () => ({ storageService: storageMock }));
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
 }));
-vi.mock("@/modules/search/service/searchIndex", () => ({
-  removeSearchDocuments: searchMock.removeSearchDocuments,
-  indexImportedTracks: searchMock.indexImportedTracks,
-  upsertSearchDocuments: vi.fn(async () => {}),
+vi.mock("@/services/search/searchIndex", () => ({
+  syncSearchIndex: searchMock.syncSearchIndex,
   searchTracks: vi.fn(),
   searchDocuments: vi.fn(),
-}));
-vi.mock("@/modules/search/service/buildDocuments", () => ({
-  buildAlbumDocFromDb: vi.fn(async () => ({})),
-  buildArtistDoc: vi.fn(() => ({})),
-  buildPlaylistDoc: vi.fn(() => ({})),
-  buildTrackDocFromDb: vi.fn(async () => ({})),
 }));
 
 import { db } from "@/db";
@@ -112,13 +101,14 @@ describe("deleteTracksWithUndo (integration)", () => {
 
   it("restore brings back rows, covers and the playlist order, never touching files", async () => {
     const undo = await deleteTracksWithUndo(queryClient, [TrackId("t-1"), TrackId("t-2")]);
+    searchMock.syncSearchIndex.mockClear();
 
     await undo.restore();
 
     expect(ids(await db.tracks.toArray())).toEqual(["t-1", "t-2", "t-3"]);
     expect(ids(await db.covers.toArray())).toEqual(["c-a1", "c-al1", "c-t1"]);
     expect((await db.playlists.get(playlistId))?.trackIds).toEqual([TrackId("t-1"), TrackId("t-3"), TrackId("t-2")]);
-    expect(searchMock.indexImportedTracks).toHaveBeenCalledWith([TrackId("t-1"), TrackId("t-2")]);
+    expect(searchMock.syncSearchIndex).toHaveBeenCalledWith({ tracks: [TrackId("t-1"), TrackId("t-2")] });
 
     await undo.finalize();
     expect(storageMock.deleteFile).not.toHaveBeenCalled();

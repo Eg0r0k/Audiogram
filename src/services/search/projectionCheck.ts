@@ -1,6 +1,6 @@
 import type { SearchDocument } from "./types";
 
-// Dev-only invariant: the index is synced by explicit upsert/remove calls,
+// Dev-only invariant: the index is synced by explicit syncSearchIndex calls,
 // so a missed call silently diverges it — verify on every full build.
 
 export function countTrackDocuments(documents: readonly SearchDocument[]): number {

@@ -79,7 +79,7 @@ import { getLogger } from "@/lib/logger";
 import type { Track } from "@/types/track";
 import { useSearch, type YtChip } from "@/modules/search/composables/useSearch";
 import { hitResultItem, searchResultRoute, trackArtistRoutes } from "@/modules/search/lib/resultItems";
-import type { SearchResultItem } from "@/modules/search/types";
+import type { SearchResultItem } from "@/services/search/types";
 import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
 import { useYtSearchResults } from "../../composables/useYtSearchResults";
 import { youtubeErrorMessage } from "../../lib/errors";

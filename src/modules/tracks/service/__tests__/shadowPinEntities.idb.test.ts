@@ -5,9 +5,8 @@ import { ArtistId } from "@/types/ids";
 import { ndAlbumId, ndArtistId, ndTrackId, ytArtistId, ytTrackId } from "@/types/track-ref";
 import type { SourceTrackDTO } from "@/modules/sources";
 
-vi.mock("@/modules/search/service/searchIndex", () => ({
-  indexImportedTracks: vi.fn(async () => {}),
-  removeSearchDocuments: vi.fn(async () => {}),
+vi.mock("@/services/search/searchIndex", () => ({
+  syncSearchIndex: vi.fn(async () => {}),
 }));
 vi.mock("../shadowAlbumCover", () => ({ ensureShadowCover: vi.fn(async () => {}) }));
 vi.mock("@/lib/logger", () => ({

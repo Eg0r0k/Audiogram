@@ -17,8 +17,7 @@ const repositories = vi.hoisted(() => ({
 const search = vi.hoisted(() => ({ searchDocuments: vi.fn() }));
 
 vi.mock("@/db/repositories", () => repositories);
-vi.mock("@/modules/search/service/searchIndex", () => search);
-vi.mock("@/modules/search/service/buildDocuments", () => ({}));
+vi.mock("@/services/search/searchIndex", () => search);
 
 import { searchTracksWithin } from "../track.queries";
 

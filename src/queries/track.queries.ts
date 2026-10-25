@@ -9,16 +9,15 @@ import {
 import type { TrackLyricsChanges } from "@/db/repositories/track.repository";
 import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
-import { buildAlbumDocFromDb, buildArtistDoc, buildTrackDocFromDb } from "@/modules/search/service/buildDocuments";
 import {
   searchDocuments,
   searchTracks as searchIndexedTracks,
-  upsertSearchDocuments,
-} from "@/modules/search/service/searchIndex";
+  syncSearchIndex,
+} from "@/services/search/searchIndex";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { DEFAULT_TRACK_SORT_KEY } from "@/types/track-sort";
-import type { SearchDocument, SearchMatch } from "@/modules/search/types";
-import { matchesByEntity } from "@/modules/search/lib/highlight";
+import type { SearchMatch } from "@/services/search/types";
+import { matchesByEntity } from "@/services/search/searchMatches";
 import { queryKeys } from "@/queries/query-keys";
 import { mapTracks, type Track } from "@/types/track";
 import { AlbumId as createAlbumId, ArtistId as createArtistId } from "@/types/ids";
@@ -96,7 +95,7 @@ async function loadArtistNames(artistIds: readonly ArtistId[]): Promise<Map<Arti
 
 async function findOrCreateArtists(queryClient: QueryClient, names: string[]) {
   const artists: ArtistEntity[] = [];
-  const createdDocuments: SearchDocument[] = [];
+  const createdIds: ArtistId[] = [];
   const now = Date.now();
 
   for (const name of names) {
@@ -118,12 +117,10 @@ async function findOrCreateArtists(queryClient: QueryClient, names: string[]) {
     await unwrapResult(artistRepository.create(artist));
     syncArtistCaches(queryClient, artist);
     artists.push(artist);
-    createdDocuments.push(buildArtistDoc(artist));
+    createdIds.push(artist.id);
   }
 
-  if (createdDocuments.length > 0) {
-    await upsertSearchDocuments(createdDocuments);
-  }
+  await syncSearchIndex({ artists: createdIds });
 
   return artists;
 }
@@ -502,11 +499,8 @@ export async function addTracksToAlbumAndSync(
     await unwrapResult(trackRepository.updateMany(updates));
   }
 
-  const updatedTracks = await unwrapResult(trackRepository.findByIds(trackIds));
-  const searchDocuments = await Promise.all(updatedTracks.map(track => buildTrackDocFromDb(track)));
-
   await invalidateTrackRelations(queryClient);
-  await upsertSearchDocuments(searchDocuments);
+  await syncSearchIndex({ tracks: trackIds });
 }
 
 export async function addTracksToArtistAndSync(
@@ -542,11 +536,8 @@ export async function addTracksToArtistAndSync(
     await unwrapResult(trackRepository.updateMany(updates));
   }
 
-  const updatedTracks = await unwrapResult(trackRepository.findByIds(trackIds));
-  const searchDocuments = await Promise.all(updatedTracks.map(track => buildTrackDocFromDb(track)));
-
   await invalidateTrackRelations(queryClient);
-  await upsertSearchDocuments(searchDocuments);
+  await syncSearchIndex({ tracks: trackIds });
 }
 
 export async function favoriteTracksAndSync(
@@ -674,7 +665,7 @@ const resolveAlbumForChanges = async (
   // Mirror findOrCreateArtists: a brand-new row needs a point-sync into the
   // list cache and a search document, or it stays invisible until reload.
   syncAlbumCaches(queryClient, created);
-  await upsertSearchDocuments([await buildAlbumDocFromDb(created)]);
+  await syncSearchIndex({ albums: [created.id] });
   return created;
 };
 
@@ -777,7 +768,7 @@ export async function updateTrackMetadataAndSync(
 
   syncTrackMetadataCaches(queryClient, nextTrackEntity, nextTrack);
 
-  await upsertSearchDocuments([await buildTrackDocFromDb(nextTrackEntity)]);
+  await syncSearchIndex({ tracks: [currentTrack.id] });
 
   invalidateForTrackMutation(queryClient, {
     kind: "metadata",

@@ -1,57 +1,8 @@
-export const SEARCH_ENTITY_TYPES = ["track", "artist", "album", "playlist"] as const;
-export type SearchEntityType = (typeof SEARCH_ENTITY_TYPES)[number];
-export type SearchFilter = "all" | SearchEntityType;
-
-export interface SearchDocument {
-  id: string;
-  type: SearchEntityType;
-  title: string;
-  artist?: string;
-  album?: string;
-  entityId: string;
-  coverPath?: string;
-  duration?: number;
-  year?: number;
-  /** Track file name without extension: a fallback for files with bare tags. */
-  fileName?: string;
-  description?: string;
-}
-
-/** Why a hit matched, both lists normalized: the indexed words it matched and the query words that reached them. */
-export interface SearchMatch {
-  terms: string[];
-  queryTerms: string[];
-}
-
-export interface SearchResultItem {
-  id: string;
-  type: SearchEntityType;
-  title: string;
-  artist?: string;
-  album?: string;
-  entityId: string;
-  score: number;
-  coverPath?: string;
-  duration?: number;
-  matched?: SearchMatch;
-}
+import type { SearchEntityType, SearchResultItem } from "@/services/search/types";
 
 export interface GroupedResults {
   topResults: SearchResultItem[];
   groups: Record<SearchEntityType, SearchResultItem[]>;
-}
-
-export interface SearchResponse {
-  results: SearchResultItem[];
-  total: number;
-  totalDuration: number;
-}
-
-export interface SearchOptions {
-  limit?: number;
-  offset?: number;
-  /** Entity ids the hits must belong to — a search scoped to one album, artist or playlist. */
-  within?: ReadonlySet<string>;
 }
 
 export function createEmptyGroups(): Record<SearchEntityType, SearchResultItem[]> {

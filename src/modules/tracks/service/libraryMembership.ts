@@ -4,7 +4,7 @@ import { playlistRepository, trackRepository } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
 import { unwrapResult } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
-import { removeSearchDocuments } from "@/modules/search/service/searchIndex";
+import { syncSearchIndex } from "@/services/search/searchIndex";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import type { SourceTrackDTO } from "@/types/source-dto";
 import { sourceKindOfId } from "@/types/track-ref";
@@ -58,41 +58,43 @@ export async function removeTrackFromLibrary(trackId: TrackId): Promise<void> {
 
       // Album and artist rows exist only for library members, so the ones
       // this track was the last library reference of go with it.
-      const removedDocIds: string[] = [];
-      if (track?.albumId && await deleteAlbumIfUnreferenced(track.albumId)) {
-        removedDocIds.push(`album:${track.albumId}`);
-      }
+      if (track?.albumId) await deleteAlbumIfUnreferenced(track.albumId);
       for (const artistId of new Set(track?.artistIds ?? [])) {
-        if (await deleteArtistIfUnreferenced(artistId)) removedDocIds.push(`artist:${artistId}`);
+        await deleteArtistIfUnreferenced(artistId);
       }
-      return removedDocIds;
+      return track;
     },
   );
   if (result.isErr()) throw result.error;
 
-  removeSearchDocuments([`track:${trackId}`, ...result.value]).catch((error) => {
+  // The row as it was: a deleted local artist is no longer on the track.
+  const track = result.value;
+  syncSearchIndex({
+    tracks: [trackId],
+    albums: track?.albumId ? [track.albumId] : [],
+    artists: track?.artistIds ?? [],
+  }).catch((error) => {
     getLogger().warn(`[Search] De-indexing removed ${trackId} failed: ${formatError(error)}`);
   });
 }
 
-/** Runs inside the caller's transaction. True when a row was deleted. */
-const deleteAlbumIfUnreferenced = async (albumId: AlbumId): Promise<boolean> => {
+/** Runs inside the caller's transaction. */
+const deleteAlbumIfUnreferenced = async (albumId: AlbumId): Promise<void> => {
   const stillPinned = await db.tracks.where("[albumId+pinned]").equals([albumId, 1]).count();
-  if (stillPinned > 0 || !(await db.albums.get(albumId))) return false;
+  if (stillPinned > 0) return;
   await db.albums.delete(albumId);
-  return true;
 };
 
 /**
  * Runs inside the caller's transaction, after the album check, so an album
- * that just left no longer holds its artist. True when a row was deleted.
+ * that just left no longer holds its artist.
  */
-const deleteArtistIfUnreferenced = async (artistId: ArtistId): Promise<boolean> => {
+const deleteArtistIfUnreferenced = async (artistId: ArtistId): Promise<void> => {
   const [pinnedTracks, albums] = await Promise.all([
     db.tracks.where("artistIds").equals(artistId).and(candidate => candidate.pinned === 1).count(),
     db.albums.where("artistId").equals(artistId).count(),
   ]);
-  if (pinnedTracks > 0 || albums > 0) return false;
+  if (pinnedTracks > 0 || albums > 0) return;
 
   // A source id stays on the shadow rows as a link to the source's catalog;
   // an unprefixed one would point at a library page that no longer exists.
@@ -102,7 +104,5 @@ const deleteArtistIfUnreferenced = async (artistId: ArtistId): Promise<boolean> 
     });
   }
 
-  if (!(await db.artists.get(artistId))) return false;
   await db.artists.delete(artistId);
-  return true;
 };

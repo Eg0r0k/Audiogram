@@ -1,6 +1,6 @@
 import MiniSearch from "minisearch";
 import { describe, expect, it } from "vitest";
-import { buildSearchAliases, normalizeSearchText, termProcessor, unicodeTokenizer } from "./searchNormalization";
+import { buildSearchAliases, normalizeSearchText, termProcessor, unicodeTokenizer } from "../searchNormalization";
 
 describe("search normalization", () => {
   it("normalizes е and ё to the same token", () => {

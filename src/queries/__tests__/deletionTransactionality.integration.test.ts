@@ -18,14 +18,8 @@ vi.mock("@/db/storage", () => ({ storageService: storageMock }));
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
 }));
-vi.mock("@/modules/search/service/searchIndex", () => ({
-  removeSearchDocuments: vi.fn(async () => {}),
-  upsertSearchDocuments: vi.fn(async () => {}),
-}));
-vi.mock("@/modules/search/service/buildDocuments", () => ({
-  buildAlbumDocFromDb: vi.fn(async () => ({})),
-  buildTrackDocFromDb: vi.fn(async () => ({})),
-  buildArtistDoc: vi.fn(() => ({})),
+vi.mock("@/services/search/searchIndex", () => ({
+  syncSearchIndex: vi.fn(async () => {}),
 }));
 
 const gcMock = vi.hoisted(() => ({
@@ -41,7 +35,7 @@ vi.mock("@/services/library-gc", async (importOriginal) => {
 
 import { db } from "@/db";
 import { artistRepository, trackRepository } from "@/db/repositories";
-import { removeSearchDocuments } from "@/modules/search/service/searchIndex";
+import { syncSearchIndex } from "@/services/search/searchIndex";
 import { deleteAlbumAndSync } from "../album.queries";
 import { deleteArtistAndSync } from "../artist.queries";
 import { deleteTrackAndSync } from "../track.queries";
@@ -123,7 +117,7 @@ describe("deletion transactionality (integration)", () => {
     expect(playlist?.trackIds).toContain(ytTrackId("v1"));
     // Post-commit effects must not run for a rolled-back transaction.
     expect(storageMock.deleteFile).not.toHaveBeenCalled();
-    expect(vi.mocked(removeSearchDocuments)).not.toHaveBeenCalled();
+    expect(vi.mocked(syncSearchIndex)).not.toHaveBeenCalled();
   });
 
   it("deleteAlbumAndSync (remote): a crash mid-cascade rolls back every table", async () => {
@@ -139,7 +133,7 @@ describe("deletion transactionality (integration)", () => {
     const playlist = await db.playlists.get(playlistId);
     expect(playlist?.trackIds).toEqual([ytTrackId("v1"), ytTrackId("v2")]);
     expect(storageMock.deleteFile).not.toHaveBeenCalled();
-    expect(vi.mocked(removeSearchDocuments)).not.toHaveBeenCalled();
+    expect(vi.mocked(syncSearchIndex)).not.toHaveBeenCalled();
   });
 
   it("deleteArtistAndSync: a failing row delete rolls back track updates and album deletes", async () => {
@@ -181,7 +175,7 @@ describe("deletion transactionality (integration)", () => {
     expect(track?.artistIds).toEqual([artistId]);
     expect(track?.albumTitle).toBe("Local Album");
     expect(await db.albums.get(albumId)).toBeDefined();
-    expect(vi.mocked(removeSearchDocuments)).not.toHaveBeenCalled();
+    expect(vi.mocked(syncSearchIndex)).not.toHaveBeenCalled();
   });
 
   it("deleteTrackAndSync: a rename racing the cascade survives — the cascade owns only trackIds", async () => {

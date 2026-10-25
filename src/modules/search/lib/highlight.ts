@@ -1,5 +1,5 @@
-import { normalizeSearchText, relatedSearchTerms } from "../searchNormalization";
-import type { SearchMatch, SearchResultItem } from "../types";
+import { normalizeSearchText, relatedSearchTerms } from "@/services/search/searchNormalization";
+import type { SearchMatch } from "@/services/search/types";
 
 export interface HighlightSegment {
   text: string;
@@ -48,13 +48,4 @@ export const highlightSegments = (text: string, match: SearchMatch): HighlightSe
 
   if (cursor < text.length) segments.push({ text: text.slice(cursor), hit: false });
   return segments;
-};
-
-/** Each hit's match keyed by entity id, for rows rendered from hydrated entities. */
-export const matchesByEntity = (results: readonly SearchResultItem[]): Record<string, SearchMatch> => {
-  const matches: Record<string, SearchMatch> = {};
-  for (const item of results) {
-    if (item.matched) matches[item.entityId] = item.matched;
-  }
-  return matches;
 };

@@ -6,8 +6,8 @@ import type { ArtistEntity } from "@/db/entities";
 import type { ArtistId } from "@/types/ids";
 import { measureRecordReads } from "@/test/idb-meter";
 
-vi.mock("@/modules/search/service/searchIndex", () => ({
-  indexImportedTracks: vi.fn(async () => {}),
+vi.mock("@/services/search/searchIndex", () => ({
+  syncSearchIndex: vi.fn(async () => {}),
 }));
 vi.mock("../shadowAlbumCover", () => ({ ensureShadowCover: vi.fn(async () => {}) }));
 vi.mock("@/lib/logger", () => ({

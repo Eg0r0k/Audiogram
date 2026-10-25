@@ -3,7 +3,7 @@ import { nextTick } from "vue";
 import type { SourceProvider } from "@/modules/sources/types";
 import type { SourceKind } from "@/types/track-ref";
 
-vi.mock("../../service/searchIndex", () => ({
+vi.mock("@/services/search/searchIndex", () => ({
   initSearchIndex: vi.fn(async () => {}),
   rebuildSearchIndex: vi.fn(async () => {}),
   searchDocuments: vi.fn(async () => ({ results: [], total: 0, totalDuration: 0 })),
