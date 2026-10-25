@@ -43,8 +43,7 @@ import DefaultLayout from "@/layouts/DefaultLayout.vue";
 import BlankLayout from "@/layouts/BlankLayout.vue";
 import MobileLayout from "@/layouts/MobileLayout.vue";
 import { mobileDockHeight } from "@/layouts/mobileDock";
-import type { OpenedFile } from "@/lib/files/fileOpener";
-import { listenForOpenedFiles } from "@/lib/files/fileOpener";
+import { useOpenedFiles } from "@/composables/tauri/useOpenedFiles";
 import { useTheme } from "@/modules/settings/composables/useTheme";
 import { useSetupRootClasses } from "@/composables/useSetupRootClasses";
 import { usePreventPinchZoom } from "@/composables/usePreventPinchZoom";
@@ -121,7 +120,16 @@ const LayoutComponent = computed(() => {
   return layouts[layoutName] ?? DefaultLayout;
 });
 
-let unlisten: (() => void) | null = null;
+useOpenedFiles((files) => {
+  const tracks = files.map(file =>
+    ephemeralFromPath(file.path, {
+      title: file.name.replace(/\.[^.]+$/, ""),
+    }),
+  );
+  queueStore.setQueue(tracks, 0, { type: "external" })
+    .catch(error => log.error(`[App] Queueing opened files failed: ${formatError(error)}`));
+});
+
 const { init: initGeneral, launchMinimized, closeToTray } = useGeneralSettings();
 
 onMounted(async () => {
@@ -140,22 +148,9 @@ onMounted(async () => {
     useTauriGlobalShortcuts();
   }
 
-  unlisten = await listenForOpenedFiles((files: OpenedFile[]) => {
-    if (files.length === 0) return;
-
-    const tracks = files.map(file =>
-      ephemeralFromPath(file.path, {
-        title: file.name.replace(/\.[^.]+$/, ""),
-      }),
-    );
-    queueStore.setQueue(tracks, 0, { type: "external" })
-      .catch(error => log.error(`[App] Queueing opened files failed: ${formatError(error)}`));
-  });
-
   init().catch(error => log.error(`[App] Watched folders init failed: ${formatError(error)}`));
 });
 onUnmounted(() => {
-  unlisten?.();
   stopAllWatchers();
 });
 

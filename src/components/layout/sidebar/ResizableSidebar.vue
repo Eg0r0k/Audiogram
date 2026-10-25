@@ -27,15 +27,15 @@
 import { computed, provide, ref, watch, onUnmounted } from "vue";
 import { useEventListener } from "@vueuse/core";
 import { animate } from "motion-v";
-import { useSidebar } from "@/composables/useSidebar";
-import { useSearch } from "@/modules/search/composables/useSearch";
 import {
-  SIDEBAR_COMPACT_KEY,
   SIDEBAR_COMPACT_WIDTH,
   SIDEBAR_EXPANDED_MIN_WIDTH,
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_SNAP_THRESHOLD,
-} from "@/components/layout/sidebar/sidebarCompact";
+  useSidebar,
+} from "@/composables/useSidebar";
+import { useSearch } from "@/modules/search/composables/useSearch";
+import { SIDEBAR_COMPACT_KEY } from "@/components/layout/sidebar/sidebarCompact";
 
 const { leftSidebar: sidebar, setLeftSidebarWidth } = useSidebar();
 const { isSearchOpen } = useSearch();

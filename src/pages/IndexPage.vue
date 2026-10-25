@@ -66,7 +66,7 @@ import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { routeLocation } from "@/app/router/route-locations";
 import { reportError } from "@/app/error-feedback";
 import { platformCaps } from "@/lib/environment/platformCaps";
-import { IS_APPLE } from "@/lib/environment/userAgent";
+import { MOD_KEY_LABEL } from "@/lib/environment/keyboard";
 import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { SEEK_STEP } from "@/modules/hotkeys";
@@ -135,12 +135,10 @@ const quickActions = ([
   },
 ] satisfies QuickAction[]).filter(action => action.available ?? true);
 
-const MOD = IS_APPLE ? "⌘" : "Ctrl";
-
 const shortcuts: Shortcut[] = [
-  { labelKey: "nav.search", keys: [MOD, "F"] },
+  { labelKey: "nav.search", keys: [MOD_KEY_LABEL, "F"] },
   { labelKey: "nav.queue", keys: ["Q"] },
-  { labelKey: "home.shortcuts.previousNext", keys: [MOD, "← / →"] },
+  { labelKey: "home.shortcuts.previousNext", keys: [MOD_KEY_LABEL, "← / →"] },
   { labelKey: "home.shortcuts.seek", params: { seconds: SEEK_STEP }, keys: ["Shift", "← / →"] },
   { labelKey: "home.shortcuts.volume", keys: ["↑ / ↓"] },
   { labelKey: "home.shortcuts.mute", keys: ["M"] },

@@ -8,8 +8,7 @@ import { useHoldRepeat } from "./useHoldRepeat";
 import { useSeekHold } from "./useSeekHold";
 import { clamp } from "@/lib/math";
 import { useSearch } from "@/modules/search/composables/useSearch";
-import { useSidebar } from "@/composables/useSidebar";
-import { SIDEBAR_COMPACT_WIDTH, SIDEBAR_EXPANDED_MIN_WIDTH } from "@/components/layout/sidebar/sidebarCompact";
+import { SIDEBAR_COMPACT_WIDTH, SIDEBAR_EXPANDED_MIN_WIDTH, useSidebar } from "@/composables/useSidebar";
 
 const EDITABLE_TAGS = new Set(["INPUT", "SELECT", "TEXTAREA"]);
 const PREVENT_DEFAULT_KEYS = new Set([" ", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowUp", "f", "F"]);
