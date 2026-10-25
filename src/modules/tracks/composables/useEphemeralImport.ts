@@ -1,4 +1,4 @@
-﻿import { computed, toValue, type MaybeRefOrGetter } from "vue";
+import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { getLogger } from "@/lib/logger";
 import { mapTrack, type PlayerTrack } from "@/types/track";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
@@ -10,7 +10,7 @@ import { formatError } from "@/lib/errors";
 /**
  * "Import to library" CTA on an open-with ephemeral track (M3): runs the
  * import pipeline, then swaps the queue entries onto the imported library
- * track вЂ” like and history work immediately, playback never restarts.
+ * track - like and history work immediately, playback never restarts.
  */
 export function useEphemeralImport(track: MaybeRefOrGetter<PlayerTrack | null>) {
   const { importFromPaths, isRunning } = useImport();
@@ -24,7 +24,7 @@ export function useEphemeralImport(track: MaybeRefOrGetter<PlayerTrack | null>) 
     if (!subject || !path) return;
 
     const result = await importFromPaths([path]);
-    // Skipped or failed leaves the entry ephemeral вЂ” nothing to swap onto.
+    // Skipped or failed leaves the entry ephemeral - nothing to swap onto.
     const imported = result?.successful[0];
     if (!imported) return;
 

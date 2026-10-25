@@ -1,4 +1,4 @@
-﻿import { db } from "@/db";
+import { db } from "@/db";
 import type { ListenOrigin, ListenPick } from "@/db/entities";
 import { statsRepository } from "@/db/repositories/stats.repository";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";

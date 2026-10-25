@@ -1,4 +1,4 @@
-﻿import { createPinia, setActivePinia } from "pinia";
+import { createPinia, setActivePinia } from "pinia";
 import { ok } from "neverthrow";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";

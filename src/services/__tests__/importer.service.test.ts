@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MusicLibraryEngine } from "../importer.service";
 import type { ScannedFile } from "@/modules/watched-folders/types";
 import { ImportErrorCode } from "../types";

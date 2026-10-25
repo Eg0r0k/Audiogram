@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div
     ref="wrapperRef"
     class="relative w-full h-14 shrink-0 overflow-x-clip touch-none"
