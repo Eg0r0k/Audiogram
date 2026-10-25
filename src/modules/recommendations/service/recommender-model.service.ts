@@ -9,6 +9,7 @@ import { buildContextAtFactory, sampleCandidatesFactory } from "./recommender-tr
 import { formatError } from "@/lib/errors";
 import { chunk } from "@/lib/math";
 import { sleep } from "@/lib/sleep";
+import type { Nullish } from "@/types/utils";
 
 const FRESH_MS = 24 * 3_600_000;
 const RUN_CHUNK_SIZE = 20;
@@ -30,7 +31,7 @@ export const MAX_TRAINING_RUNS = 300;
 export const MODEL_FEATURE_VERSION = 2;
 
 /** `undefined` = not loaded yet; `null` = loaded, no stored model. */
-let cachedRow: RecommenderModelEntity | null | undefined;
+let cachedRow: Nullish<RecommenderModelEntity>;
 let loadingRow: Promise<RecommenderModelEntity | null> | null = null;
 // Bumped by every cache invalidation. A read that started before the bump
 // must not populate `cachedRow` — it would resurrect the row the wipe or the

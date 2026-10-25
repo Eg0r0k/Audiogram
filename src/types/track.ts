@@ -3,6 +3,7 @@ import type { SourceTrackDTO } from "@/types/source-dto";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { fileNameFromPath, stripExtension } from "@/lib/files/path";
 import { indexById } from "@/lib/math";
+import type { Nullish } from "@/types/utils";
 
 export interface TrackLoudnessMetadata {
   integratedLufs?: number;
@@ -144,7 +145,7 @@ export function ephemeralFromUrl(
 export const mapTrack = (
   entity: TrackEntity,
   artists: ArtistEntity[] = [],
-  album: AlbumEntity | null | undefined = null,
+  album: Nullish<AlbumEntity> = null,
 ): Track => {
   // A shadow row's ids are mostly links without a row; a caption built from
   // the rows that do exist would drop the other names.

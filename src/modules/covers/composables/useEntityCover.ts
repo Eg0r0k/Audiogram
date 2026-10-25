@@ -1,6 +1,7 @@
 import { computed, onScopeDispose, toValue, watch, type MaybeRefOrGetter } from "vue";
 import type { CoverOwnerType } from "@/db/entities";
 import { coverCache, type CoverOwnerRef } from "../lib/cover-cache";
+import type { Nullish } from "@/types/utils";
 
 /**
  * A Dexie-stored cover for one owner, from the shared cover cache: the URL
@@ -10,8 +11,8 @@ import { coverCache, type CoverOwnerRef } from "../lib/cover-cache";
  * A null owner resolves to nothing without touching the cache.
  */
 export function useEntityCover(
-  ownerType: MaybeRefOrGetter<CoverOwnerType | null | undefined>,
-  ownerId: MaybeRefOrGetter<string | null | undefined>,
+  ownerType: MaybeRefOrGetter<Nullish<CoverOwnerType>>,
+  ownerId: MaybeRefOrGetter<Nullish<string>>,
 ) {
   const owner = computed<CoverOwnerRef | null>(() => {
     const type = toValue(ownerType);

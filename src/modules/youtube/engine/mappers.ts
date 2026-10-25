@@ -10,6 +10,7 @@ import type {
   YtPlaylistDetail,
   YtSearchResult,
 } from "../types";
+import type { Nullish } from "@/types/utils";
 
 //
 // youtubei.js nodes → the DTOs the rest of the module has always consumed.
@@ -109,7 +110,7 @@ export interface ShelfLike {
 
 export type SearchSectionLike = CardShelfLike | ShelfLike;
 
-export const bestThumbnail = (thumbs: ThumbLike[] | undefined | null): string | null => {
+export const bestThumbnail = (thumbs: Nullish<ThumbLike[]>): string | null => {
   let best: ThumbLike | null = null;
   for (const thumb of thumbs ?? []) {
     if (!best || thumb.width > best.width) best = thumb;
@@ -118,7 +119,7 @@ export const bestThumbnail = (thumbs: ThumbLike[] | undefined | null): string | 
 };
 
 /** youtubei.js prints "N/A" for an empty Text; neither that nor "" is a value. */
-export const textOf = (text: TextLike | undefined | null): string | null => {
+export const textOf = (text: Nullish<TextLike>): string | null => {
   const value = text?.toString() ?? "";
   return value === "" || value === "N/A" ? null : value;
 };
@@ -126,7 +127,7 @@ export const textOf = (text: TextLike | undefined | null): string | null => {
 const COUNT_SCALES: Record<string, number | undefined> = { K: 1e3, M: 1e6, B: 1e9 };
 
 /** "83.5M", "1,234", "25 songs" → the number, or null when nothing numeric leads. */
-export const parseCount = (raw: string | null | undefined): number | null => {
+export const parseCount = (raw: Nullish<string>): number | null => {
   const match = /^\s*([\d,.]+)\s*([KMB])?/i.exec(raw ?? "");
   if (!match) return null;
   const base = Number(match[1].replace(/,/g, ""));
@@ -164,10 +165,10 @@ const ALBUM_TYPES: Record<string, string> = {
 };
 
 /** "Album" | "Single" | "EP" | … as the DTO spells it; anything else is an album. */
-export const albumTypeOf = (label: string | null | undefined): string =>
+export const albumTypeOf = (label: Nullish<string>): string =>
   ALBUM_TYPES[(label ?? "").trim().toLowerCase()] ?? "album";
 
-const yearOf = (raw: string | null | undefined): number | null => {
+const yearOf = (raw: Nullish<string>): number | null => {
   const year = Number(raw);
   return Number.isInteger(year) && year > 1000 ? year : null;
 };

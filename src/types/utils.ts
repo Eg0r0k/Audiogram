@@ -1,3 +1,3 @@
-import type { ComponentPublicInstance } from "vue";
+export type ValueOf<T> = T[keyof T];
 
-export type ElementOrComponent = HTMLElement | ComponentPublicInstance | null | undefined;
+export type Nullish<T> = T | null | undefined;

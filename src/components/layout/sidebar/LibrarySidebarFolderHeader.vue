@@ -43,6 +43,7 @@ import { Editable, EditableArea, EditableInput, EditablePreview } from "@/compon
 import type { SidebarFolderEntity } from "@/db/entities";
 import { FOLDER_NAME_MAX_LENGTH, validateFolderName } from "@/modules/library/lib/folderName";
 import IconArrowLeft from "~icons/tabler/arrow-left";
+import type { Nullish } from "@/types/utils";
 
 const props = defineProps<{
   folder: SidebarFolderEntity;
@@ -55,7 +56,7 @@ const emit = defineEmits<{
 }>();
 
 // The value stays bound to the stored name, so a rejected one reverts on its own.
-const rename = (value: string | null | undefined) => {
+const rename = (value: Nullish<string>) => {
   const name = value?.trim() ?? "";
   if (name === props.folder.name || validateFolderName(name) !== null) return;
   emit("rename", name);

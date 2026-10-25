@@ -3,6 +3,7 @@ import type { CoverOwnerType } from "@/db/entities";
 import { getCoversByOwners, type CoverRow } from "@/queries/cover.queries";
 import { getLogger } from "@/lib/logger";
 import { formatError } from "@/lib/errors";
+import type { Nullish } from "@/types/utils";
 
 //
 // The one place Dexie-stored covers live in memory. Every consumer — a list
@@ -101,7 +102,7 @@ export const createCoverCache = (options: { maxIdle?: number } = {}) => {
     if (previous) URL.revokeObjectURL(previous.url);
   };
 
-  const settle = (key: string, started: number, answer: CoverRow | null | undefined) => {
+  const settle = (key: string, started: number, answer: Nullish<CoverRow>) => {
     const current = versionOf(key);
     if (inflight.get(key) === started) inflight.delete(key);
     if (!inflight.has(key)) versions.delete(key);
@@ -205,7 +206,7 @@ export const createCoverCache = (options: { maxIdle?: number } = {}) => {
   };
 
   /** `undefined` while unresolved, `null` for an owner without a cover. */
-  const entryFor = (owner: CoverOwnerRef): CoverEntry | null | undefined => entries.get(keyOf(owner));
+  const entryFor = (owner: CoverOwnerRef): Nullish<CoverEntry> => entries.get(keyOf(owner));
 
   /** The owner's cover was written: publish the stored row right away, no re-read. */
   const set = (owner: CoverOwnerRef, row: CoverRow | null) => {

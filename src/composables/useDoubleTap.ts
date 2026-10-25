@@ -1,5 +1,6 @@
 import { useEventListener } from "@vueuse/core";
 import type { MaybeRefOrGetter } from "vue";
+import type { Nullish } from "@/types/utils";
 
 // A tap that drifts further than the slop is a swipe or a scrub; one that is
 // held longer than TAP_MAX_MS is a long press, which opens a context menu.
@@ -14,7 +15,7 @@ const distance = (ax: number, ay: number, bx: number, by: number) =>
   Math.hypot(ax - bx, ay - by);
 
 export const useDoubleTap = (
-  target: MaybeRefOrGetter<HTMLElement | null | undefined>,
+  target: MaybeRefOrGetter<Nullish<HTMLElement>>,
   onDoubleTap: (event: PointerEvent) => void,
 ) => {
   let downAt = 0;

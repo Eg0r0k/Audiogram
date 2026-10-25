@@ -18,6 +18,7 @@ import type {
 import { coverCache } from "@/modules/covers/lib/cover-cache";
 import type { CoverRow } from "./cover.queries";
 import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
+import type { Nullish } from "@/types/utils";
 
 //
 // Point-syncs write the outcome of a mutation into the caches a mounted view
@@ -74,7 +75,7 @@ const patchLikedAggregates = (queryClient: QueryClient, countDelta: number, dura
 // A matcher may be widened by mistake onto a key holding another shape (a
 // scalar aggregate, an entity row); a page patch must then leave it alone.
 const isPagedData = (data: unknown): boolean =>
-  Array.isArray((data as { pages?: unknown } | null | undefined)?.pages);
+  Array.isArray((data as Nullish<{ pages?: unknown }>)?.pages);
 
 /**
  * Pages are offset-paged over Dexie: a row added or dropped in place shifts

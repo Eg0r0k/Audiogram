@@ -14,6 +14,7 @@ import {
 } from "vue";
 import { useRoute, useRouter, onBeforeRouteLeave } from "vue-router";
 import type { ScrollAnchor } from "./scroll-anchor";
+import type { Nullish } from "@/types/utils";
 
 type NumberLike = number | Ref<number>;
 
@@ -55,7 +56,7 @@ function getScrollPosition(value: NumberLike | undefined): number {
 }
 
 export function useScrollRestoration(
-  scrollableRef: MaybeRefOrGetter<ScrollRestorationTarget | null | undefined>,
+  scrollableRef: MaybeRefOrGetter<Nullish<ScrollRestorationTarget>>,
   options: UseScrollRestorationOptions = {},
 ) {
   const route = useRoute();

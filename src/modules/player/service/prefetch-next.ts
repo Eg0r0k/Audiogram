@@ -12,6 +12,7 @@ import { isLibraryTrack, type PlayerTrack } from "@/types/track";
 import type { RepeatMode } from "@/modules/queue/types";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { usePlayerStore } from "../store/player.store";
+import type { Nullish } from "@/types/utils";
 
 //
 // Next-track prefetch coordinator: watches the queue/repeat state for what
@@ -57,7 +58,7 @@ export const nextPlaybackIndex = (
  * tracks. Local tracks pass through only when the media server may need to
  * transcode them (ALAC/APE) — the first request pays a full decode otherwise.
  */
-export const prefetchIdOf = (track: PlayerTrack | null | undefined): TrackId | null => {
+export const prefetchIdOf = (track: Nullish<PlayerTrack>): TrackId | null => {
   if (!track) return null;
 
   if (isLibraryTrack(track)) {

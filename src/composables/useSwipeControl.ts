@@ -2,6 +2,7 @@ import type { UseSwipeOptions } from "@vueuse/core";
 import { useSwipe } from "@vueuse/core";
 import type { MaybeRefOrGetter } from "vue";
 import { watch } from "vue";
+import type { Nullish } from "@/types/utils";
 
 interface SwipeControlOptions extends UseSwipeOptions {
   onSwipeLeft?: () => void;
@@ -12,7 +13,7 @@ interface SwipeControlOptions extends UseSwipeOptions {
 }
 
 export const useSwipeControl = (
-  target: MaybeRefOrGetter<HTMLElement | null | undefined>,
+  target: MaybeRefOrGetter<Nullish<HTMLElement>>,
   options: SwipeControlOptions = {},
 ) => {
   const {
