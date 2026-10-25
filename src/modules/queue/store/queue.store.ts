@@ -886,6 +886,9 @@ export const useQueueStore = defineStore("queue", () => {
     player.clearCurrentTrack();
   }
 
+  const clearExceptCurrent = (): Promise<void> =>
+    removeMultiple(queue.value.filter(item => item.id !== currentItemId.value).map(item => item.id));
+
   return {
     queue,
     originalQueue,
@@ -934,6 +937,7 @@ export const useQueueStore = defineStore("queue", () => {
     toggleShuffle,
     toggleRepeat,
     clear,
+    clearExceptCurrent,
   };
 }, {
   persist: {

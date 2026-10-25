@@ -69,7 +69,7 @@
               color="destructive"
               size="sm"
               class="shrink-0"
-              @click="queueStore.clear()"
+              @click="clearUpNext"
             >
               {{ t("queue.clear") }}
             </Button>
@@ -96,6 +96,8 @@ import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/components/ui/link";
 import { formatTotalDuration } from "@/lib/format/time";
+import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
 import { useQueueStore } from "../store/queue.store";
 import { useQueueSourceLink } from "../composables/useQueueSourceLink";
 import { resolveUpNext } from "../lib/up-next";
@@ -112,6 +114,11 @@ const { t } = useI18n();
 
 const queueStore = useQueueStore();
 const { link: sourceLink } = useQueueSourceLink();
+
+const clearUpNext = () => {
+  queueStore.clearExceptCurrent()
+    .catch(error => getLogger().error(`[Queue] Clearing the queue failed: ${formatError(error)}`));
+};
 
 const currentQueueItem = computed<QueueItem | null>(() => {
   if (queueStore.currentIndex < 0) return null;

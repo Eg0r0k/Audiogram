@@ -21,5 +21,8 @@
   "trackSkipped": "Skipped “{title}”: it could not be played",
   "playbackStalled": "Playback stopped: {count} tracks in a row failed to load. Check the connection.",
   "clearHistory": "Clear",
-  "historyEmptySub": "Tracks you listen to will show up here."
+  "historyEmptySub": "Tracks you listen to will show up here.",
+  "queueEmpty": "Your queue is empty",
+  "queueEmptySub": "Play an album, a playlist or any track to fill it.",
+  "openAllMusic": "Open All Music"
 }

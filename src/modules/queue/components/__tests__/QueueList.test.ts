@@ -124,7 +124,7 @@ describe("QueueList up next header", () => {
     expect(screen.queryByText(/From/)).toBeNull();
   });
 
-  it("clears the whole queue from the Up Next header", async () => {
+  it("clears everything but the current track from the Up Next header", async () => {
     const queueStore = renderQueue(queueWithUpcoming(), 1);
 
     const clear = screen.getByRole("button", { name: "Clear" });
@@ -134,9 +134,11 @@ describe("QueueList up next header", () => {
 
     await userEvent.click(clear);
 
-    expect(queueStore.queue).toEqual([]);
-    expect(port.stop).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId("queue-empty")).toBeInTheDocument();
+    expect(queueStore.queue.map(item => item.track.id)).toEqual(["t1"]);
+    expect(queueStore.currentIndex).toBe(0);
+    expect(port.stop).not.toHaveBeenCalled();
+    expect(port.playPlayerTrack).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Repeat queue" })).toBeInTheDocument();
   });
 });
 

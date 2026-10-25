@@ -732,6 +732,40 @@ describe("queue.store", () => {
     });
   });
 
+  describe("clearExceptCurrent", () => {
+    it("removes every entry but the current one and keeps it playing", async () => {
+      const store = useQueueStore();
+      const playerStore = usePlayerStore();
+      const stop = vi.spyOn(playerStore, "stop").mockReturnValue(undefined);
+      const play = vi.spyOn(playerStore, "playPlayerTrack").mockResolvedValue(undefined);
+      seedQueueItems(store, ["1", "2", "3", "4"].map(id => (
+        { id: `item-${id}` as any, track: createTrack(id), source: { type: "manual" }, addedAt: Date.now() }
+      )));
+      seedCurrentIndex(store, 1);
+
+      await store.clearExceptCurrent();
+
+      expect(store.queue.map(item => item.id)).toEqual(["item-2"]);
+      expect(store.currentIndex).toBe(0);
+      expect(stop).not.toHaveBeenCalled();
+      expect(play).not.toHaveBeenCalled();
+    });
+
+    it("keeps only the current entry of a shuffled queue", async () => {
+      const store = useQueueStore();
+      const playerStore = usePlayerStore();
+      vi.spyOn(playerStore, "playPlayerTrack").mockResolvedValue(undefined);
+      await store.setQueue(["1", "2", "3", "4"].map(id => createTrack(id)), 0, { type: "manual" });
+      store.shuffle();
+
+      await store.clearExceptCurrent();
+
+      expect(store.queue.map(item => item.track.id)).toEqual(["1"]);
+      expect(store.originalQueue.map(item => item.track.id)).toEqual(["1"]);
+      expect(store.isShuffled).toBe(true);
+    });
+  });
+
   describe("persistence", () => {
     it("should persist a compact queue snapshot", async () => {
       const store = useQueueStore();
