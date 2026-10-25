@@ -5,8 +5,9 @@ import { useTrackCover } from "@/modules/covers/composables/useTrackCover";
 import { useStickyCoverUrl } from "@/modules/covers/composables/useStickyCoverUrl";
 import { isLibraryTrack, type PlayerTrack } from "@/types/track";
 import type { QueueItem } from "@/modules/queue/types";
+import type { Nullish } from "@/types/utils";
 
-export const isSameTrack = (a: PlayerTrack | null | undefined, b: PlayerTrack | null | undefined) =>
+export const isSameTrack = (a: Nullish<PlayerTrack>, b: Nullish<PlayerTrack>) =>
   !!a && !!b && a.kind === b.kind && a.id === b.id;
 
 interface QueueNeighborsOptions {

@@ -145,6 +145,7 @@ import { useAudioSettings } from "@/modules/settings/composables/useAudioSetting
 
 import TrashIcon from "~icons/tabler/trash";
 import { formatFreq } from "@/lib/format";
+import type { Nullish } from "@/types/utils";
 
 const {
   isEqEnabled,
@@ -163,7 +164,7 @@ const GAIN_LIMIT = 15;
 const formatGain = (gain: number) => `${gain > 0 ? "+" : ""}${gain} dB`;
 
 // Unparsable input leaves the stored gain, and the bound value with it, as is.
-const submitGain = (index: number, value: string | null | undefined) => {
+const submitGain = (index: number, value: Nullish<string>) => {
   const gain = Math.round(Number.parseFloat(value ?? ""));
   if (Number.isNaN(gain)) return;
   setBandGain(index, Math.min(GAIN_LIMIT, Math.max(-GAIN_LIMIT, gain)));

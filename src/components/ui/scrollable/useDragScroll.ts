@@ -1,6 +1,7 @@
 import { useEventListener } from "@vueuse/core";
 import { animate, useMotionValue } from "motion-v";
 import { onUnmounted, ref, type Ref } from "vue";
+import { clamp } from "@/lib/math";
 
 // Distance (px) the mouse has to travel before a press turns into a drag.
 // Anything shorter is a click and is left alone.
@@ -10,9 +11,6 @@ const MIN_FLING_VELOCITY = 50;
 // getVelocity() only looks at the last two pointer samples, so a single
 // jittery event can produce absurd numbers — clamp before feeding inertia.
 const MAX_FLING_VELOCITY = 4000;
-
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
 
 const useDragScroll = (containerRef: Readonly<Ref<HTMLElement | null>>) => {
   const isDragging = ref(false);

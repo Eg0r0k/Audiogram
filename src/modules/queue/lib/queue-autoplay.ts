@@ -4,6 +4,7 @@ import type { ListenPick, TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
 import type { QueueItem, RepeatMode } from "../types";
 import { formatError } from "@/lib/errors";
+import { unique } from "@/lib/math";
 
 const AUTOPLAY_RECOMMENDATION_LIMIT = 5;
 
@@ -59,7 +60,7 @@ export const createAutoplayRecommender = (deps: AutoplayDeps) => {
     const upcomingLibraryIds = deps.queue()
       .slice(deps.currentIndex() + 1)
       .flatMap(item => item.track.kind === "library" ? [item.track.id] : []);
-    const additionalExcludeIds = [...new Set(upcomingLibraryIds)];
+    const additionalExcludeIds = unique(upcomingLibraryIds);
 
     let recommendations: Awaited<ReturnType<AutoplaySource>>;
     try {

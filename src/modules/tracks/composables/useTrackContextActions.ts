@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/vue-query";
 import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { formatError } from "@/lib/errors";
+import { valueOrThrow } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import { useI18n } from "vue-i18n";
 import { toValue, type MaybeRefOrGetter } from "vue";
@@ -17,6 +18,7 @@ import { writeFile } from "@tauri-apps/plugin-fs";
 import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
 import { platformCaps } from "@/lib/environment/platformCaps";
+import { fileNameFromPath } from "@/lib/files/path";
 import { routeLocation } from "@/app/router/route-locations";
 import { useAttachTrackLyrics } from "./useAttachTrackLyrics";
 import { useToggleTrackLike } from "./useToggleTrackLike";
@@ -232,7 +234,7 @@ export const useTrackContextActions = (
     if (!sourcePath) return;
 
     const fallbackExt = sourcePath.split(".").pop()?.toLowerCase() ?? "mp3";
-    const fileName = sourcePath.split(/[\\/]/).pop() ?? `${current.title}.${fallbackExt}`;
+    const fileName = fileNameFromPath(sourcePath);
 
     try {
       const fileBlob = await (async () => {
@@ -240,15 +242,11 @@ export const useTrackContextActions = (
           const isAbsolutePath = /^(?:[a-zA-Z]:[\\/]|\/)/.test(sourcePath);
 
           if (isAbsolutePath) {
-            const readResult = await storageService.readFile(sourcePath);
-            if (readResult.isErr()) throw readResult.error;
-            return new Blob([readResult.value]);
+            return new Blob([valueOrThrow(await storageService.readFile(sourcePath))]);
           }
         }
 
-        const fileResult = await storageService.getFile(sourcePath);
-        if (fileResult.isErr()) throw fileResult.error;
-        return fileResult.value;
+        return valueOrThrow(await storageService.getFile(sourcePath));
       })();
 
       if (platformCaps.hasFs) {

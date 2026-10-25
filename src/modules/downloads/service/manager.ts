@@ -4,7 +4,7 @@ import { i18n } from "@/app/i18n";
 import type { DownloadJobEntity } from "@/db/entities";
 import { downloadJobRepository, trackRepository } from "@/db/repositories";
 import { platformCaps } from "@/lib/environment/platformCaps";
-import { formatError } from "@/lib/errors";
+import { errorMessage, formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { sources } from "@/modules/sources";
 import type { SourceError } from "@/modules/sources";
@@ -240,7 +240,7 @@ async function runJob(jobId: string): Promise<void> {
     }
     catch (error) {
       getLogger().error(`[Downloads] Finalize failed for ${job.trackId}: ${formatError(error)}`);
-      await failJob(job, { kind: "UNKNOWN", message: `finalize failed: ${String(error)}` });
+      await failJob(job, { kind: "UNKNOWN", message: `finalize failed: ${errorMessage(error)}` });
       return;
     }
     // Done = deleted: the imported local row (sourceRef) is the ledger of

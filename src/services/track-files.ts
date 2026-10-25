@@ -2,6 +2,7 @@ import { db } from "@/db";
 import type { TrackEntity } from "@/db/entities";
 import { storageService } from "@/db/storage";
 import { getLogger } from "@/lib/logger";
+import { unique } from "@/lib/math";
 
 // Only relative paths under these folders live in app storage. A watched
 // folder's track keeps an absolute path to the user's own file.
@@ -21,7 +22,7 @@ const lyricsPathOf = (track: TrackEntity): string | null =>
  * skipped; the rows are gone either way, so this never throws.
  */
 export const deleteOwnedFiles = async (tracks: readonly TrackEntity[]): Promise<void> => {
-  const audioPaths = [...new Set(tracks.map(audioPathOf).filter(path => path !== null))];
+  const audioPaths = unique(tracks.map(audioPathOf).filter(path => path !== null));
   const stillUsed = new Set(audioPaths.length > 0
     ? (await db.tracks.where("storagePath").anyOf(audioPaths).toArray()).map(track => track.storagePath)
     : []);

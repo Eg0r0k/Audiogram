@@ -17,6 +17,7 @@ import type {
   YmDeviceCode,
   YmRequestPayload,
 } from "@/modules/sources/yandex/api/types";
+import type { ValueOf } from "@/types/utils";
 
 //
 // The one place the frontend names a Rust command or event (ARCHITECTURE.md
@@ -56,7 +57,7 @@ export const COMMANDS = {
   launchContext: "launch_context",
 } as const;
 
-export type CommandName = (typeof COMMANDS)[keyof typeof COMMANDS];
+export type CommandName = ValueOf<typeof COMMANDS>;
 
 /** Navidrome auth as the Rust proxy needs it; the raw password never crosses. */
 export interface NdConfigPayload {
@@ -153,7 +154,7 @@ export const EVENTS = {
   ymAuth: "ym:auth",
 } as const;
 
-export type EventName = (typeof EVENTS)[keyof typeof EVENTS];
+export type EventName = ValueOf<typeof EVENTS>;
 
 export interface EventMap {
   "files-opened": string[];

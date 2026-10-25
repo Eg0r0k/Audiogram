@@ -2,6 +2,7 @@ import { computed, watch, ref, type Ref } from "vue";
 import { useCurrentPlayerTrack } from "@/modules/player/composables/useCurrentPlayerTrack";
 import { useTrackCover } from "@/modules/covers/composables/useTrackCover";
 import { getColorFromImage, type ColorResult } from "@/composables/useImageColor";
+import { sleep } from "@/lib/sleep";
 
 // Longer than the cover slide (useTrackSwipe's SLIDE_TRANSITION).
 const COLOR_EXTRACTION_DELAY_MS = 300;
@@ -41,7 +42,7 @@ export function useMobilePlayerColor() {
       return;
     }
 
-    await new Promise(resolve => setTimeout(resolve, COLOR_EXTRACTION_DELAY_MS));
+    await sleep(COLOR_EXTRACTION_DELAY_MS);
     if (token !== extractionToken) return;
 
     let next: ColorResult;

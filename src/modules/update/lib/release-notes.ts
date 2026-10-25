@@ -1,4 +1,5 @@
 import { Marked, type Token, type Tokens } from "marked";
+import type { Nullish } from "@/types/utils";
 
 export type ReleaseSectionKind = "feat" | "impr" | "fix";
 
@@ -220,7 +221,7 @@ export const renderReleaseNotes = (markdown: string): RenderedReleaseNotes => {
 // Older builds stored this text in place of empty notes.
 const LEGACY_EMPTY_NOTES = "Release notes have not been published for this version yet.";
 
-export const normalizeReleaseNotes = (markdown: string | null | undefined): string => {
+export const normalizeReleaseNotes = (markdown: Nullish<string>): string => {
   const trimmed = markdown?.trim() ?? "";
   return trimmed === LEGACY_EMPTY_NOTES ? "" : trimmed;
 };

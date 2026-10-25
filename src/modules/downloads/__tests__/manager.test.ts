@@ -324,4 +324,18 @@ describe("download manager", () => {
       { path: "C:/tmp/s1.flac", format: { codec: "flac" } },
     );
   });
+
+  it("records a finalizer failure by its message, not as [object Object]", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    providerMock.downloadToFile.mockImplementation(() => okAsync({ path: "C:/tmp/s1.flac" }));
+    const manager = await freshManager();
+    manager.setDownloadFinalizer(() => Promise.reject({ kind: "x", message: "boom" }));
+
+    await manager.enqueueTrackDownload(ndTrackId("s1"));
+
+    await vi.waitFor(async () => {
+      const [job] = await db.downloadJobs.toArray();
+      expect(job).toMatchObject({ status: "queued", attempts: 1, error: "finalize failed: boom" });
+    });
+  });
 });

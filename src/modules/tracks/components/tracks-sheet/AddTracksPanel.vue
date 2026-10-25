@@ -62,7 +62,7 @@ import {
   getTracksByIds,
   getTracksPaginated,
 } from "@/queries/track.queries";
-import { unique } from "@/queries/shared";
+import { unique } from "@/lib/math";
 import { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div
     class="relative size-full rounded-lg overflow-hidden transition-colors duration-300"
     :style="{ background }"

@@ -1,6 +1,9 @@
 import type { AlbumEntity, ArtistEntity, PinnedFlag, TrackEntity, TrackSource, TrackState } from "@/db/entities";
 import type { SourceTrackDTO } from "@/types/source-dto";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
+import { fileNameFromPath, stripExtension } from "@/lib/files/path";
+import { indexById } from "@/lib/math";
+import type { Nullish } from "@/types/utils";
 
 export interface TrackLoudnessMetadata {
   integratedLufs?: number;
@@ -98,7 +101,7 @@ export function ephemeralFromFile(file: File, cover?: string): EphemeralTrack {
   return {
     kind: "ephemeral",
     id: crypto.randomUUID(),
-    title: file.name.replace(/\.[^.]+$/, ""),
+    title: stripExtension(file.name),
     cover,
     source: { type: "file", file },
   };
@@ -109,11 +112,11 @@ export function ephemeralFromPath(
   path: string,
   meta?: Pick<EphemeralTrack, "title" | "artist" | "albumName" | "duration" | "cover">,
 ): EphemeralTrack {
-  const filename = path.split(/[\\/]/).pop() ?? path;
+  const filename = fileNameFromPath(path);
   return {
     kind: "ephemeral",
     id: crypto.randomUUID(),
-    title: meta?.title ?? filename.replace(/\.[^.]+$/, ""),
+    title: meta?.title ?? stripExtension(filename),
     artist: meta?.artist,
     albumName: meta?.albumName,
     duration: meta?.duration,
@@ -142,7 +145,7 @@ export function ephemeralFromUrl(
 export const mapTrack = (
   entity: TrackEntity,
   artists: ArtistEntity[] = [],
-  album: AlbumEntity | null | undefined = null,
+  album: Nullish<AlbumEntity> = null,
 ): Track => {
   // A shadow row's ids are mostly links without a row; a caption built from
   // the rows that do exist would drop the other names.
@@ -183,8 +186,8 @@ export const mapTracks = (
   artists: ArtistEntity[],
   albums: AlbumEntity[],
 ): Track[] => {
-  const artistMap = new Map(artists.map(artist => [artist.id, artist]));
-  const albumMap = new Map(albums.map(album => [album.id, album]));
+  const artistMap = indexById(artists);
+  const albumMap = indexById(albums);
 
   return entities.map((entity) => {
     const artistList = entity.artistIds.map(id => artistMap.get(id)).filter((a): a is ArtistEntity => !!a);

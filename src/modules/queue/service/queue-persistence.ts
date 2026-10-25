@@ -2,13 +2,14 @@ import { PlaylistId, type QueueItemId } from "@/types/ids";
 import { mapTrack, type EphemeralTrack, type PlayerTrack, type Track } from "@/types/track";
 import { playlistRepository, queueSnapshotRepository, trackRepository } from "@/db/repositories";
 import { LEGACY_QUEUE_STORAGE_KEY, QUEUE_CURSOR_STORAGE_KEY } from "@/db/entities";
-import { unique } from "@/queries/shared";
+import { unique } from "@/lib/math";
 import { getLogger } from "@/lib/logger";
 import { migrateProxyUrl } from "@/lib/stream-url";
 import { ndPlaylistId, parseTrackRef } from "@/types/track-ref";
 import { REPEAT_MODES, type QueueItem, type QueueSource, type QueueState, type RepeatMode } from "../types";
 import { getItemsByOrder } from "../lib/queue-order";
 import { formatError } from "@/lib/errors";
+import type { Nullish } from "@/types/utils";
 
 export const QUEUE_STORAGE_KEY = QUEUE_CURSOR_STORAGE_KEY;
 const LEGACY_PLAYER_STORAGE_KEY = "lyra-player";
@@ -139,7 +140,7 @@ export const loadPersistedQueue = async (
 // proxy URL (playback or cover) must be re-pointed at the live base;
 // foreign URLs pass through. A retired cover route is dropped, not kept as
 // "": an empty string would stop the `??` fallback to the track's own cover.
-const migrateCover = (cover: string | null | undefined) =>
+const migrateCover = (cover: Nullish<string>) =>
   cover ? migrateProxyUrl(cover) || undefined : cover;
 
 // Queue items are never edited in place — every change is a new object — so

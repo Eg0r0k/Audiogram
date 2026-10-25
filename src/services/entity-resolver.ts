@@ -8,6 +8,7 @@ import {
   type TrackEntity,
 } from "@/db/entities";
 import { identityKey, splitArtistNames } from "@/lib/artist-names";
+import { unique } from "@/lib/math";
 import { AlbumId, ArtistId } from "@/types/ids";
 import { parseTrackRef, remoteTrackSource, sourceKindOfId } from "@/types/track-ref";
 import type { SourceTrackDTO } from "@/types/source-dto";
@@ -283,11 +284,9 @@ export class EntityResolver {
   }
 
   private async resolveArtists(metas: BaseMetadata[]): Promise<void> {
-    const uniqueKeys = [
-      ...new Set(
-        metas.flatMap(m => m.artists).filter(a => a.trim()).map(identityKey),
-      ),
-    ];
+    const uniqueKeys = unique(
+      metas.flatMap(m => m.artists).filter(a => a.trim()).map(identityKey),
+    );
 
     if (uniqueKeys.length === 0) return;
 
@@ -313,13 +312,11 @@ export class EntityResolver {
   }
 
   private async resolveAlbums(metas: BaseMetadata[]): Promise<void> {
-    const knownArtistIds = [
-      ...new Set(
-        metas.flatMap(m => m.artists)
-          .map(name => name && this.artists.get(identityKey(name)))
-          .filter((id): id is ArtistId => !!id),
-      ),
-    ];
+    const knownArtistIds = unique(
+      metas.flatMap(m => m.artists)
+        .map(name => name && this.artists.get(identityKey(name)))
+        .filter((id): id is ArtistId => !!id),
+    );
 
     if (knownArtistIds.length === 0) return;
 

@@ -24,6 +24,7 @@ import { loadFeedback, pairKey, saveFeedback, writeSnapshot, type FeedbackEntry,
 import { hitRate, pairAgreement, reach, sampleTransitions, type AgreementCase, type TransitionCase } from "../service/stand-metrics";
 import { createTuner } from "../service/stand-tuner";
 import { formatError } from "@/lib/errors";
+import { sleep } from "@/lib/sleep";
 
 export interface StandParams {
   limit: number;
@@ -79,8 +80,6 @@ let generation = 0;
 let ratedRanks = new Map<TrackId, SourceRanks>();
 let ratedRanksCtx: RecommenderContext | null = null;
 let ratedRanksWindow = -1;
-
-const yieldToUi = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 
 const now = () => performance.now();
 
@@ -138,7 +137,7 @@ const buildTransitionCases = async (c: RecommenderContext, gen: number) => {
     if (gen !== generation) return;
     hitProgress.value = { done: i + 1, total: transitions.length };
     if (i % CHUNK === CHUNK - 1) {
-      await yieldToUi();
+      await sleep();
       if (gen !== generation) return;
     }
   }
@@ -400,7 +399,7 @@ export const useRecoStand = () => {
     try {
       while (!tuner.step(10)) {
         tuneProgress.value = { done: tuner.done, total: tuner.total };
-        await yieldToUi();
+        await sleep();
       }
       Object.assign(weights, tuner.best.weights);
     }

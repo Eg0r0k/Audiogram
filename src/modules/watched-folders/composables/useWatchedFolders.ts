@@ -6,7 +6,7 @@ import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 
 import { useWatchedFoldersStore } from "../store/watched-folders.store";
-import { startWatching, type StopWatchFn } from "../service/folder-watcher";
+import { startWatching } from "../service/folder-watcher";
 import {
   countFolderTracks,
   deleteFolderTracks,
@@ -26,7 +26,7 @@ import {
 import { invalidateLibraryData } from "@/queries/library.queries";
 import { formatError } from "@/lib/errors";
 
-const activeWatchers = new Map<string, StopWatchFn>();
+const activeWatchers = new Map<string, VoidFunction>();
 
 /** Fallback when the SAF picker bridge is unavailable (outdated APK, web
  *  preview): the public Music directory, readable via direct paths. */

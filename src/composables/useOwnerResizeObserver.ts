@@ -1,4 +1,5 @@
 import { onScopeDispose, watch, type Ref } from "vue";
+import type { Nullish } from "@/types/utils";
 
 /**
  * ResizeObserver created by the window the element lives in. An element moved
@@ -6,7 +7,7 @@ import { onScopeDispose, watch, type Ref } from "vue";
  * observer (vueuse's useResizeObserver always uses the global one).
  */
 export const useOwnerResizeObserver = (
-  target: Readonly<Ref<HTMLElement | null | undefined>>,
+  target: Readonly<Ref<Nullish<HTMLElement>>>,
   callback: ResizeObserverCallback,
 ): void => {
   let observer: ResizeObserver | undefined;

@@ -15,16 +15,15 @@
       >
         <template #header>
           <TrackMenuSheetHeader
-            v-if="activeTrack"
-            :track="activeTrack"
+            v-if="input"
+            :input="input"
             :actions="actions"
-            :caps="caps"
           />
         </template>
-        <component
-          :is="contextComponent"
-          v-if="activeTrack"
-          v-bind="contextProps"
+        <TrackMenuEntries
+          v-if="input"
+          :input="input"
+          :actions="actions"
         />
       </ResponsiveMenuContent>
     </ResponsiveMenu>
@@ -45,6 +44,7 @@ import { provideTrackMenuComponents, responsiveTrackComponents } from "../useTra
 import type { TrackContext } from "../type";
 import type { PlaylistId, AlbumId } from "@/types/ids";
 import TrackMenuSheetHeader from "../TrackMenuSheetHeader.vue";
+import TrackMenuEntries from "../TrackMenuEntries.vue";
 
 provideTrackMenuComponents(responsiveTrackComponents);
 
@@ -91,7 +91,7 @@ const anchorStyle = computed(() => ({
   height: `${dropdownAnchor.value.height}px`,
 }));
 
-const { activeTrack, contextComponent, contextProps, actions, caps } = useTrackMenuContent({
+const { input, actions } = useTrackMenuContent({
   context: () => props.context,
   playlistId: () => props.playlistId,
   isPlaylistOwner: () => props.isPlaylistOwner,

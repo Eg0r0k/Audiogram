@@ -4,6 +4,7 @@ import type { EditEntitySubmitPayload } from "@/components/dialogs/editEntityDia
 import type { PlaylistEntity } from "@/db/entities";
 import { NAME_MAX_LENGTH, PLAYLIST_DESCRIPTION_MAX_LENGTH } from "@/lib/limits";
 import type { PlaylistChanges } from "@/queries/playlist.queries";
+import type { Nullish } from "@/types/utils";
 
 /**
  * Opens the shared entity editor for one Playlist. `save` receives only what
@@ -27,7 +28,7 @@ export const useEditPlaylistDialog = () => {
 
   return (
     playlist: PlaylistEntity,
-    currentCoverUrl: string | null | undefined,
+    currentCoverUrl: Nullish<string>,
     save: (changes: PlaylistChanges) => Promise<void>,
   ) => summonDialog("editEntity", {
     title: t("dialogs.editPlaylist.title"),

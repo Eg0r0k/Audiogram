@@ -16,6 +16,7 @@ import { appDataDir } from "@tauri-apps/api/path";
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 
 import type { IFileStorageWithNativeSupport } from "./IFileStorage";
+import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { localFileRawUrl, localFileStreamUrl } from "@/lib/stream-url";
 import { StorageError } from "../errors/storage.errors";
@@ -182,7 +183,7 @@ export class TauriStorage implements IFileStorageWithNativeSupport {
       return new Uint8Array(buffer.byteLength <= length ? buffer : buffer.slice(0, length));
     }
     catch (e) {
-      this.warnMediaServerFallbackOnce(String(e), absolutePath);
+      this.warnMediaServerFallbackOnce(formatError(e), absolutePath);
       return null;
     }
   }

@@ -1,5 +1,6 @@
 import { ResultAsync, err, ok, type Result } from "neverthrow";
 import { hasLyricsText, parseLyrics, type ParsedLyrics } from "@/modules/player/lib/lrc";
+import type { Nullish } from "@/types/utils";
 
 export type LyricsError = | { type: "NOT_FOUND" }
   | { type: "NETWORK"; cause: unknown };
@@ -110,7 +111,7 @@ const fetchFuzzyMatches = (title: string, artist: string): ResultAsync<LrclibTra
   });
 };
 
-const usableLyrics = (raw: string | null | undefined): LrcLibLyrics | null => {
+const usableLyrics = (raw: Nullish<string>): LrcLibLyrics | null => {
   if (!raw) return null;
   const lyrics = parseLyrics(raw);
   return hasLyricsText(lyrics) ? { raw, lyrics } : null;

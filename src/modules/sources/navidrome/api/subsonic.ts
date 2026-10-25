@@ -3,6 +3,7 @@ import { md5 } from "@noble/hashes/legacy.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { fetch } from "@tauri-apps/plugin-http";
 import type { SourceError } from "../../types";
+import type { Nullish } from "@/types/utils";
 
 //
 // Subsonic REST client for Navidrome. Transport is tauri-plugin-http: the
@@ -83,7 +84,7 @@ export function mapSubsonicErrorCode(code: number | undefined, message: string):
  * transport.
  */
 export function parseSubsonicBody<T>(body: unknown): { ok: true; value: T } | { ok: false; error: SourceError } {
-  const envelope = (body as SubsonicEnvelope | null | undefined)?.["subsonic-response"];
+  const envelope = (body as Nullish<SubsonicEnvelope>)?.["subsonic-response"];
   if (!envelope || typeof envelope !== "object") {
     return { ok: false, error: { kind: "PARSE", message: "Missing subsonic-response envelope" } };
   }

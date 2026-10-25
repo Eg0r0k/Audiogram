@@ -4,6 +4,7 @@ import { trackCoverOwner } from "@/modules/covers/composables/useTrackCover";
 import { coverCache } from "@/modules/covers/lib/cover-cache";
 import { THUMB_SIZE_ROW } from "@/lib/media/cover-sizes";
 import { sourceCoverUrl, sourceKindOf } from "@/modules/sources/lib/display";
+import type { Nullish } from "@/types/utils";
 
 const FALLBACK = "/img/fallback.svg";
 
@@ -27,7 +28,7 @@ const FALLBACK = "/img/fallback.svg";
  */
 export const useTrackRowCover = (
   track: MaybeRefOrGetter<Track>,
-  override?: MaybeRefOrGetter<string | null | undefined>,
+  override?: MaybeRefOrGetter<Nullish<string>>,
 ) => {
   // Only rows that resolve through Dexie hold a cache entry.
   const owner = computed(() => {

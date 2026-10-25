@@ -24,20 +24,18 @@ vi.mock("@/composables/useDeviceLayout", () => ({
   }),
 }));
 vi.mock("../../composables/useTrackMenuContent", async () => {
-  const { defineComponent: define, computed } = await import("vue");
+  const { computed } = await import("vue");
   const { useTrackMenu: menu } = await import("@/modules/tracks/composables/useTrackMenu");
   return {
     useTrackMenuContent: () => ({
-      activeTrack: menu().activeTrack,
-      contextComponent: computed(() => define({ template: "<div data-context>items</div>" })),
-      contextProps: computed(() => ({})),
+      input: computed(() => (menu().activeTrack.value ? {} : null)),
       actions: {},
-      caps: {},
     }),
   };
 });
 vi.mock("../../composables/useTrackMenuAutoClose", () => ({ useTrackMenuAutoClose: () => undefined }));
 vi.mock("../../TrackMenuSheetHeader.vue", () => ({ default: { template: "<div />" } }));
+vi.mock("../../TrackMenuEntries.vue", () => ({ default: { template: "<div data-context>items</div>" } }));
 
 const popper = vi.hoisted(() => ({ show: vi.fn() }));
 vi.mock("@/components/ui/menu", async (importOriginal) => {

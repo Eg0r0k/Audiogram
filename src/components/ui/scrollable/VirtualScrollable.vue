@@ -95,6 +95,7 @@ import { useSlideContentReady } from "@/components/transitions/slideContentReady
 import { isScrollLockedByOverlay } from "./scroll-lock";
 import ScrollableThumb from "./ScrollableThumb.vue";
 import useScrollable from "./useScrollable";
+import "./scrollable.css";
 
 interface Props {
   items: T[];
@@ -552,19 +553,6 @@ defineExpose({
 </script>
 
 <style>
-:root {
-  --z-thumb: 20;
-}
-
-html.is-firefox .scrollable-y {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0) rgba(0, 0, 0, 0);
-}
-
-html.overlay-scroll .scrollable-y:hover {
-  scrollbar-color: var(--scrollbar-color) transparent;
-}
-
 html.overlay-scroll .scrollable::-webkit-scrollbar {
   width: 0.375rem;
   opacity: 0;
@@ -577,41 +565,6 @@ html.overlay-scroll .scrollable::-webkit-scrollbar-thumb {
 
 html.overlay-scroll .scrollable::-webkit-scrollbar-button {
   display: none;
-}
-
-html.overlay-scroll .scrollable::-webkit-scrollbar-corner {
-  background-color: transparent;
-}
-
-html.overlay-scroll .scrollable:hover::-webkit-scrollbar {
-  opacity: 1;
-}
-
-html.overlay-scroll .scrollable:hover::-webkit-scrollbar-thumb {
-  min-height: 5rem;
-  max-height: 12.5rem;
-  border-radius: 3px;
-  background-color: var(--scrollbar-color);
-  opacity: 1;
-}
-
-html.custom-scroll .scrollable::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-.scrollable-wrapper {
-  position: relative;
-  overflow: hidden !important;
-  width: 100%;
-}
-
-.scrollable-direction-y {
-  height: 100%;
-}
-
-.scrollable-direction-x {
-  height: auto;
 }
 
 .scrollable {
@@ -652,14 +605,6 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
   display: none;
 }
 
-.scrollable::-webkit-scrollbar-corner {
-  background-color: transparent;
-}
-
-.scrollable:hover::-webkit-scrollbar {
-  opacity: 1;
-}
-
 .scrollable-y {
   overflow-x: hidden;
   overflow-y: auto;
@@ -679,39 +624,6 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
   white-space: nowrap;
 }
 
-.no-scrollbar,
-.scrollable.no-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.scrollable-x::-webkit-scrollbar,
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-/* Thumb */
-.scrollable-thumb-container {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-thumb);
-  pointer-events: none;
-  height: 0;
-  width: 0;
-}
-
-.scrollable-thumb-container-y {
-  float: right;
-  margin-right: 1px;
-}
-
-.scrollable-thumb-container-x {
-  left: 0;
-  right: 0;
-  bottom: 2px;
-  height: 6px;
-}
-
 .scrollable-thumb {
   position: absolute;
   width: 6px;
@@ -728,30 +640,6 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
 .scrollable-thumb-container-y .scrollable-thumb {
   top: 0;
   right: 0;
-}
-
-.scrollable-thumb-container-x .scrollable-thumb {
-  left: 0;
-  bottom: 0;
-  height: 6px;
-}
-
-.scrollable-wrapper:hover .scrollable-thumb,
-.scrollable-thumb.is-focused {
-  opacity: 1;
-}
-
-.scrollable-thumb:hover,
-.scrollable-thumb.is-focused {
-  background: rgba(0, 0, 0, 0.5);
-}
-
-.scrollable:hover::-webkit-scrollbar-thumb {
-  min-height: 5rem;
-  max-height: 12.5rem;
-  border-radius: 3px;
-  background-color: rgba(0, 0, 0, 0.5);
-  opacity: 1;
 }
 
 .scrollable-y-bordered::before,
@@ -774,13 +662,5 @@ html.custom-scroll .scrollable::-webkit-scrollbar {
 
 .scrollable-y-bordered::after {
   bottom: 0;
-}
-
-.scrollable-y-bordered:not(.scrolled-start)::before {
-  opacity: 1;
-}
-
-.scrollable-y-bordered:not(.scrolled-end)::after {
-  opacity: 1;
 }
 </style>

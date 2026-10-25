@@ -2,6 +2,7 @@ import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import type { TrackId } from "@/types/ids";
 import { ndTrackId, ymTrackId, ytTrackId } from "@/types/track-ref";
+import type { Nullish } from "@/types/utils";
 
 //
 // URL helpers for the loopback media server — the transport for all audio
@@ -111,7 +112,7 @@ export const ymTrackStreamUrl = (trackId: string): string => {
 const KNOWN_ROUTES = /^(yt|nd\/song|ym\/track|local|ytimg)\//;
 const RETIRED_COVER_ROUTES = /^(nd|ym)\/cover\//;
 
-const loopbackRoute = (url: string | null | undefined): string | null => {
+const loopbackRoute = (url: Nullish<string>): string | null => {
   if (!url) return null;
   try {
     const parsed = new URL(url);
@@ -135,7 +136,7 @@ const loopbackRoute = (url: string | null | undefined): string | null => {
  * decoded route path (`yt/<id>`, `nd/song/<id>`, `local/<abs path>`,
  * `ytimg/<https url>`), or null for anything that is not a proxy URL.
  */
-export const proxyPathFromUrl = (url: string | null | undefined): string | null => {
+export const proxyPathFromUrl = (url: Nullish<string>): string | null => {
   const route = loopbackRoute(url);
   return route !== null && KNOWN_ROUTES.test(route) ? route : null;
 };
@@ -145,7 +146,7 @@ export const proxyPathFromUrl = (url: string | null | undefined): string | null 
  * {@link proxyPathFromUrl}). Returns null for anything else (local files,
  * nd streams, arbitrary URLs).
  */
-export const ytVideoIdFromStreamUrl = (url: string | null | undefined): string | null => {
+export const ytVideoIdFromStreamUrl = (url: Nullish<string>): string | null => {
   const path = proxyPathFromUrl(url);
   if (!path) return null;
   const match = /^yt\/([^?#]+)/.exec(path);
@@ -157,7 +158,7 @@ export const ytVideoIdFromStreamUrl = (url: string | null | undefined): string |
  * {@link proxyPathFromUrl}) — what an ephemeral stream entry would be as a
  * library track. Null for local files, covers and anything not proxied.
  */
-export const trackIdFromStreamUrl = (url: string | null | undefined): TrackId | null => {
+export const trackIdFromStreamUrl = (url: Nullish<string>): TrackId | null => {
   const path = proxyPathFromUrl(url);
   if (!path) return null;
   const [route] = path.split("?", 1);

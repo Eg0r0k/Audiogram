@@ -1,6 +1,7 @@
 import type { InjectionKey, Ref, ShallowRef } from "vue";
 import type { QueueItemId } from "@/types/ids";
 import type { QueueItem } from "../types";
+import { clamp } from "@/lib/math";
 
 //
 // Drag-to-reorder over the virtualized "up next" list. The dragged row itself
@@ -46,7 +47,7 @@ export const rowShift = (index: number, from: number, to: number): -1 | 0 | 1 =>
  */
 export const dropIndexAt = (contentY: number, itemHeight: number, count: number): number => {
   if (count <= 0) return 0;
-  return Math.min(Math.max(Math.floor(contentY / itemHeight), 0), count - 1);
+  return clamp(Math.floor(contentY / itemHeight), 0, count - 1);
 };
 
 /**

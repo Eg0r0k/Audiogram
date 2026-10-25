@@ -134,6 +134,17 @@ describe("WorkerPool", () => {
     pool.dispose();
   });
 
+  it("rejects with the message of a plain-object postMessage failure, not [object Object]", async () => {
+    const post = vi.spyOn(FakeWorker.prototype, "postMessage").mockImplementationOnce(() => {
+      throw { kind: "x", message: "boom" };
+    });
+    const pool = new WorkerPool(1);
+
+    await expect(pool.parse("a.mp3", bytes())).rejects.toThrow(/^boom$/);
+    post.mockRestore();
+    pool.dispose();
+  });
+
   it("transfers the buffer instead of copying it", async () => {
     const pool = new WorkerPool(1);
     const data = bytes(64);

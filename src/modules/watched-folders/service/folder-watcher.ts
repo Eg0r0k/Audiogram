@@ -6,8 +6,6 @@ import { getLogger } from "@/lib/logger";
 import { formatError } from "@/lib/errors";
 
 export type FileChangeHandler = (paths: string[]) => void;
-export type FolderMissingHandler = () => void;
-export type StopWatchFn = () => void;
 
 const FLUSH_DEBOUNCE_MS = 1500;
 /**
@@ -21,9 +19,9 @@ const MAX_FLUSH_DELAY_MS = 5000;
 export async function startWatching(
   folderPath: string,
   onChange: FileChangeHandler,
-  onFolderMissing: FolderMissingHandler,
+  onFolderMissing: VoidFunction,
   excludedPaths?: string[],
-): Promise<StopWatchFn> {
+): Promise<VoidFunction> {
   // Every changed file arrives as its own watcher event, while useDebounceFn
   // keeps the arguments of the LAST call only — so the window's paths pile up
   // here and the flush drains them.

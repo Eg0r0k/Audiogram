@@ -6,6 +6,7 @@ import { queryClient } from "@/queries/client";
 import { invalidateLibraryData } from "@/queries/library.queries";
 import { syncLocalCopyCache } from "@/queries/localCopy.queries";
 import { extensionOf } from "@/services/import/item-io";
+import { fileNameFromPath } from "@/lib/files/path";
 import { musicLibraryEngine } from "@/services/importer.service";
 import { syncSearchIndex } from "@/services/search/searchIndex";
 import type { ImportItem, KnownMetadata } from "@/services/types";
@@ -41,7 +42,7 @@ export const importDownloadedFile = async (remoteId: TrackId, absolutePath: stri
   const row = await trackRepository.findById(remoteId);
   if (!row) throw new Error(`No row to import from for ${remoteId}`);
 
-  const name = absolutePath.split(/[\\/]/).pop() ?? `${remoteId}.bin`;
+  const name = fileNameFromPath(absolutePath);
   const item: ImportItem = {
     type: "native",
     name,

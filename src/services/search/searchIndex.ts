@@ -14,6 +14,7 @@ import { albumRepository, artistRepository, playlistRepository, trackRepository 
 import { countTrackDocuments, trackProjectionMismatch } from "./projectionCheck";
 import { matchesByEntity } from "./searchMatches";
 import { mapTracks, type Track } from "@/types/track";
+import { indexById, unique } from "@/lib/math";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 
 let engine: SearchEngine | null = null;
@@ -79,8 +80,8 @@ async function hydrateTracksByIds(ids: TrackId[]): Promise<Track[]> {
 
   const entities = await trackRepository.findByIds(ids);
 
-  const artistIds = [...new Set(entities.flatMap(entity => entity.artistIds))];
-  const albumIds = [...new Set(entities.map(entity => entity.albumId))];
+  const artistIds = unique(entities.flatMap(entity => entity.artistIds));
+  const albumIds = unique(entities.map(entity => entity.albumId));
 
   const [artists, albums] = await Promise.all([
     artistRepository.findByIds(artistIds),
@@ -132,8 +133,8 @@ const readRows = async <TEntity, TId>(
  * A track brings its artist and album rows along.
  */
 export const syncSearchIndex = async (changes: SearchIndexChanges): Promise<void> => {
-  const trackIds = [...new Set(changes.tracks ?? [])];
-  const playlistIds = [...new Set(changes.playlists ?? [])];
+  const trackIds = unique(changes.tracks ?? []);
+  const playlistIds = unique(changes.playlists ?? []);
   const requestedAlbumIds = changes.albums ?? [];
   const requestedArtistIds = changes.artists ?? [];
   if (trackIds.length + playlistIds.length + requestedAlbumIds.length + requestedArtistIds.length === 0) return;
@@ -142,15 +143,15 @@ export const syncSearchIndex = async (changes: SearchIndexChanges): Promise<void
     readRows(trackRepository, trackIds),
     readRows(playlistRepository, playlistIds),
   ]);
-  const albumIds = [...new Set([...requestedAlbumIds, ...tracks.map(track => track.albumId)])].filter(Boolean);
+  const albumIds = unique([...requestedAlbumIds, ...tracks.map(track => track.albumId)]).filter(Boolean);
   const albums = await readRows(albumRepository, albumIds);
-  const artistIds = [...new Set([...requestedArtistIds, ...tracks.flatMap(track => track.artistIds)])];
+  const artistIds = unique([...requestedArtistIds, ...tracks.flatMap(track => track.artistIds)]);
   // Album captions need the album's artist even when that artist is not synced.
-  const artists = await readRows(artistRepository, [...new Set([...artistIds, ...albums.map(album => album.artistId)])]);
-  const artistMap = new Map(artists.map(artist => [artist.id, artist]));
-  const albumMap = new Map(albums.map(album => [album.id, album]));
-  const trackMap = new Map(tracks.map(track => [track.id, track]));
-  const playlistMap = new Map(playlists.map(playlist => [playlist.id, playlist]));
+  const artists = await readRows(artistRepository, unique([...artistIds, ...albums.map(album => album.artistId)]));
+  const artistMap = indexById(artists);
+  const albumMap = indexById(albums);
+  const trackMap = indexById(tracks);
+  const playlistMap = indexById(playlists);
 
   const documents: SearchDocument[] = [];
   const dropped: string[] = [];

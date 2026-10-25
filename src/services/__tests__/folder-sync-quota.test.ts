@@ -45,4 +45,16 @@ describe("FolderSyncService.persistParsed", () => {
     expect(result.failed).toBe(120);
     expect(advance.mock.calls.reduce((sum, [n]) => sum + n, 0)).toBe(120);
   });
+
+  it("records a failed batch by the error's message, not as [object Object]", async () => {
+    mockPersistTracks.mockRejectedValue({ kind: "x", message: "boom" });
+    const service = new FolderSyncService({ metadataParser: {} as MetadataParser });
+    const result: SyncResult = { folderId: "f", added: 0, removed: 0, failed: 0, errors: [] };
+
+    await (service as unknown as {
+      persistParsed: (p: TrackToSave[], f: string, r: SyncResult, a: (n: number) => void) => Promise<void>;
+    }).persistParsed([item("t0")], "C:/music", result, vi.fn());
+
+    expect(result.errors).toEqual([{ path: "C:/music", message: "DB batch failed: boom" }]);
+  });
 });

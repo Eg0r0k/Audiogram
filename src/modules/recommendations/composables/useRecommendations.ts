@@ -3,9 +3,10 @@ import { useQuery } from "@tanstack/vue-query";
 import { toValue, type MaybeRef } from "vue";
 import type { TrackId } from "@/types/ids";
 import { recommendationsQueries } from "@/queries/recommendations.queries";
+import type { Nullish } from "@/types/utils";
 
 export function useTrackRecommendations(
-  trackId: MaybeRef<TrackId | null | undefined>,
+  trackId: MaybeRef<Nullish<TrackId>>,
   limit = 8,
 ) {
   const queryConfig = computed(() => {

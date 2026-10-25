@@ -1,4 +1,4 @@
-import { clamp } from "@/lib/math";
+import { clamp, indexById } from "@/lib/math";
 import { fisherYatesShuffle } from "@/lib/shuffle";
 
 export interface PlaybackQueue<T> {
@@ -29,7 +29,7 @@ export function getItemsByOrder<TItem extends { id: PropertyKey }>(
 ): TItem[] {
   if (ids.length === 0) return [];
 
-  const itemsById = new Map(items.map(item => [item.id, item]));
+  const itemsById = indexById(items);
 
   return ids.flatMap((id) => {
     const item = itemsById.get(id);

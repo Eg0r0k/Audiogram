@@ -1,4 +1,4 @@
-﻿import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
 
 vi.mock("@/services/search/searchIndex", () => ({
@@ -14,7 +14,7 @@ import { useSearch } from "../useSearch";
 // YT search auto-commits after a typing pause; only explicit submits write
 // the recent-queries history.
 
-describe("useSearch вЂ” debounced YouTube auto-commit", () => {
+describe("useSearch - debounced YouTube auto-commit", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     // Submit mode is the provider's declaration; main.ts registers the real one.
@@ -40,7 +40,7 @@ describe("useSearch вЂ” debounced YouTube auto-commit", () => {
 
     await vi.advanceTimersByTimeAsync(500);
     expect(search.submittedQuery.value).toBe("lofi beats");
-    // Auto-commits never write history вЂ” only explicit submits do.
+    // Auto-commits never write history - only explicit submits do.
     expect(search.recentQueries.value).toEqual([]);
   });
 

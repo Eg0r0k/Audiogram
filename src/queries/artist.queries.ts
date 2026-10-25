@@ -24,7 +24,8 @@ import {
   removeCoverCache,
 } from "./cache";
 import { assertValidName } from "@/lib/limits";
-import { sortTracks, unique } from "./shared";
+import { sortTracks } from "./shared";
+import { indexById, unique } from "@/lib/math";
 import {
   purgeTracksInTx,
   syncAfterTrackPurge,
@@ -340,9 +341,7 @@ export async function deleteArtistAndSync(
   const albumTracks = (await Promise.all(
     albums.map(album => trackRepository.findByAlbumId(album.id)),
   )).flat();
-  const affectedTracks = [...new Map(
-    [...rawTracks, ...albumTracks].map(track => [track.id, track]),
-  ).values()];
+  const affectedTracks = [...indexById([...rawTracks, ...albumTracks]).values()];
   const affectedTrackIds = affectedTracks.map(track => track.id);
   const now = Date.now();
   const remainingArtistIds = unique(

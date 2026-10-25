@@ -4,6 +4,7 @@ import type { EditEntitySubmitPayload } from "@/components/dialogs/editEntityDia
 import type { ArtistEntity } from "@/db/entities";
 import { ARTIST_BIO_MAX_LENGTH, NAME_MAX_LENGTH } from "@/lib/limits";
 import type { ArtistChanges } from "@/queries/artist.queries";
+import type { Nullish } from "@/types/utils";
 
 /**
  * Opens the shared entity editor for one Artist. `save` receives only what
@@ -27,7 +28,7 @@ export const useEditArtistDialog = () => {
 
   return (
     artist: ArtistEntity,
-    currentCoverUrl: string | null | undefined,
+    currentCoverUrl: Nullish<string>,
     save: (changes: ArtistChanges) => Promise<void>,
   ) => summonDialog("editEntity", {
     title: t("dialogs.editArtist.title"),

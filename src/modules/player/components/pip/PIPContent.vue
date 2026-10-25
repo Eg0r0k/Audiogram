@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="pip-root @container">
     <div class="pip-container">
       <div

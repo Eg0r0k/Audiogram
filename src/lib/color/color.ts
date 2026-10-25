@@ -1,3 +1,5 @@
+import { clamp } from "@/lib/math";
+
 export interface HSL {
   h: number;
   s: number;
@@ -174,7 +176,7 @@ export function clampChromaToGamut(L: number, C: number, h: number): number {
 export function oklchToHex(L: number, C: number, h: number): string {
   const { r, g, b } = oklchToSrgbRaw(L, C, h);
   const to = (v: number): string =>
-    Math.min(Math.max(Math.round(v * 255), 0), 255)
+    clamp(Math.round(v * 255), 0, 255)
       .toString(16)
       .padStart(2, "0");
   return `#${to(r)}${to(g)}${to(b)}`;

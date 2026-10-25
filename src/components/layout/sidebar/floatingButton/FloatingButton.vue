@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <FloatingActionButton
     :show="show"
     :inline="inline"

@@ -272,6 +272,17 @@ describe("NuxtImage", () => {
     expect(onError).not.toHaveBeenCalled();
   });
 
+  it("emits the message of a plain-object decode failure, not [object Object]", async () => {
+    mockImageDecode(() => Promise.reject({ kind: "x", message: "boom" }));
+    const onError = vi.fn();
+
+    renderWithPlugins(NuxtImage, {
+      props: { src: "/covers/album.png", alt: "Album cover", placeholder: true, onError },
+    });
+
+    await waitFor(() => expect(onError).toHaveBeenCalledWith("boom"));
+  });
+
   it("leaves a completed image untouched on unmount", async () => {
     const probes = mockImageDecode(() => Promise.resolve());
 

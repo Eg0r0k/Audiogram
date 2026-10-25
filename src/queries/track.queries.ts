@@ -33,7 +33,7 @@ import {
   updateCoverCache,
   removeCoverCache,
 } from "./cache";
-import { unique } from "./shared";
+import { unique } from "@/lib/math";
 import {
   purgeTracksInTx,
   syncAfterTrackPurge,
@@ -44,6 +44,7 @@ import { getAlbumByIdOrThrow } from "./album.queries";
 import { getArtistByIdOrThrow } from "./artist.queries";
 import { dedupeArtistNames, identityKey } from "@/lib/artist-names";
 import { assertValidName } from "@/lib/limits";
+import type { Nullish } from "@/types/utils";
 
 const PAGE_SIZE = 50;
 
@@ -62,7 +63,7 @@ export interface TrackMetadataChanges {
 
 // undefined = leave unchanged (keep current), null = clear (store undefined), number = set.
 const resolveNullableNumber = (
-  next: number | null | undefined,
+  next: Nullish<number>,
   current: number | undefined,
 ): number | undefined => {
   if (next === undefined) return current;

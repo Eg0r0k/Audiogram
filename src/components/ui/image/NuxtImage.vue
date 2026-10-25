@@ -20,6 +20,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, useAttrs, useTemplateRef, watch } from "vue";
 import type { ImgHTMLAttributes } from "vue";
+import { errorMessage } from "@/lib/errors";
 
 export interface ImageProps {
   src?: string;
@@ -226,7 +227,7 @@ function handleLoadError(error: unknown) {
   originalSrcFailed.value = true;
   useFallback.value = true;
   placeholderLoaded.value = Boolean(props.fallbackSrc);
-  emit("error", error instanceof Event ? error : String(error));
+  emit("error", error instanceof Event ? error : errorMessage(error));
 }
 function loadMainImage() {
   if (!isValidImageSrc.value || originalSrcFailed.value) {

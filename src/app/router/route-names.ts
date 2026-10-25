@@ -1,3 +1,5 @@
+import type { ValueOf } from "@/types/utils";
+
 export const ROUTE_NAMES = {
   HOME: "home",
   ALBUM: "album",
@@ -28,4 +30,4 @@ export const ROUTE_NAMES = {
   DEV_MASCOT_STAND: "dev-mascot-stand",
 } as const;
 
-export type AppRouteName = (typeof ROUTE_NAMES)[keyof typeof ROUTE_NAMES];
+export type AppRouteName = ValueOf<typeof ROUTE_NAMES>;

@@ -1,6 +1,7 @@
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { filterFilesByExtension } from "@/lib/files/filterFiles";
 import { getFilesFromEvent } from "@/lib/files/getFilesFromEvent";
+import { fileNameFromPath } from "@/lib/files/path";
 import { ref, onMounted } from "vue";
 import { useTauriDragDrop } from "./tauri/useTauriDragDrop";
 import { getLogger } from "@/lib/logger";
@@ -83,7 +84,7 @@ export function useFileDrop(options?: UseFileDropOptions) {
       const fs = await import("@tauri-apps/plugin-fs");
       const paths = await collectDroppedPaths(fs, droppedPaths, options?.acceptedExtensions);
       const files = paths.map((path) => {
-        const name = path.split(/[/\\]/).pop() || path;
+        const name = fileNameFromPath(path) || path;
         return Object.assign(new File([], name), {
           path,
           relativePath: path,

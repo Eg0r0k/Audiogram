@@ -1,4 +1,4 @@
-﻿import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { reactive, nextTick } from "vue";
 import { errAsync, okAsync } from "neverthrow";
 import { DbError } from "@/db/errors/db.errors";

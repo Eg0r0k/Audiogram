@@ -41,8 +41,6 @@ export const unwrapSourceResult = async <T>(
   return result.value;
 };
 
-export const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];
-
 export const upsertById = <T extends { id: string }>(items: readonly T[], item: T): T[] => {
   const index = items.findIndex(candidate => candidate.id === item.id);
 
