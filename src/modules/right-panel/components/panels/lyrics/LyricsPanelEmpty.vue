@@ -9,8 +9,7 @@
         <template v-if="reason === 'file-missing' && libraryTrack">
           <Button
             variant="solid"
-            color="card"
-            size="sm"
+            color="surface"
             :disabled="isPending"
             @click="attachFile(libraryTrack)"
           >
@@ -19,7 +18,6 @@
           <Button
             variant="ghost"
             color="destructive"
-            size="sm"
             :disabled="isPending"
             @click="removeMissing(libraryTrack)"
           >
@@ -29,8 +27,7 @@
         <template v-else-if="reason === 'network'">
           <Button
             variant="solid"
-            color="card"
-            size="sm"
+            color="surface"
             @click="retry"
           >
             <IconRefresh />
@@ -40,7 +37,6 @@
             v-if="libraryTrack"
             variant="ghost"
             color="neutral"
-            size="sm"
             @click="emit('write')"
           >
             {{ $t('lyrics.write') }}
@@ -49,8 +45,7 @@
         <template v-else-if="libraryTrack">
           <Button
             variant="solid"
-            color="card"
-            size="sm"
+            color="surface"
             @click="emit('write')"
           >
             <IconPencil />
@@ -59,7 +54,6 @@
           <Button
             variant="ghost"
             color="neutral"
-            size="sm"
             :disabled="isPending"
             @click="attachFile(libraryTrack)"
           >
@@ -69,8 +63,7 @@
         <Button
           v-else-if="importPath"
           variant="solid"
-          color="card"
-          size="sm"
+          color="surface"
           :disabled="isImportRunning"
           @click="importCurrent"
         >

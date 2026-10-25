@@ -3,7 +3,7 @@
     <CrossfadeTransition class="flex-1">
       <div
         v-if="isLoading"
-        class="flex items-center justify-center bg-card mt-2"
+        class="flex items-center justify-center bg-card"
       >
         <Spinner class="size-10 text-muted-foreground" />
       </div>
