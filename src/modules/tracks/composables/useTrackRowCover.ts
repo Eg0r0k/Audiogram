@@ -1,5 +1,5 @@
 import { computed, onScopeDispose, toValue, watch, type MaybeRefOrGetter } from "vue";
-import { isEphemeralTrack, type PlayerTrack, type Track } from "@/modules/player/types";
+import { isEphemeralTrack, type PlayerTrack, type Track } from "@/types/track";
 import { trackCoverOwner } from "@/modules/covers/composables/useTrackCover";
 import { coverCache } from "@/modules/covers/lib/cover-cache";
 import { THUMB_SIZE_ROW } from "@/lib/media/cover-sizes";

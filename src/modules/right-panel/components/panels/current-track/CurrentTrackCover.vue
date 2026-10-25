@@ -83,7 +83,7 @@ import {
   MorphingDialogContent,
   MorphingDialogTrigger,
 } from "@/components/ui/motion/dialog";
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 
 const props = defineProps<{

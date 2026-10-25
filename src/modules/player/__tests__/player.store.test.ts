@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { flushPromises } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "../types";
+import type { Track } from "@/types/track";
 import { nextTick } from "vue";
 
 let mockPlayer: Record<string, unknown>;

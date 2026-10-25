@@ -92,7 +92,7 @@ import { getLogger } from "@/lib/logger";
 import { useLyricsActions } from "@/modules/player/composables/useLyricsActions";
 import type { LyricsFailure } from "@/modules/player/service/track-lyrics-loader.service";
 import { useLyricsStore } from "@/modules/player/store/lyrics.store";
-import { isLibraryTrack, type PlayerTrack } from "@/modules/player/types";
+import { isLibraryTrack, type PlayerTrack } from "@/types/track";
 import { useEphemeralImport } from "@/modules/tracks/composables/useEphemeralImport";
 import IconFileImport from "~icons/tabler/file-import";
 import IconPencil from "~icons/tabler/pencil";

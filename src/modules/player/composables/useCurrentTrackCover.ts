@@ -1,7 +1,7 @@
 import { computed } from "vue";
 import { useTrackCover } from "@/modules/covers/composables/useTrackCover";
 import { useCurrentPlayerTrack } from "@/modules/player/composables/useCurrentPlayerTrack";
-import { isEphemeralTrack } from "@/modules/player/types";
+import { isEphemeralTrack } from "@/types/track";
 
 export const FALLBACK_COVER_URL = "/img/fallback.svg";
 

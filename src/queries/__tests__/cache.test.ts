@@ -14,7 +14,7 @@ import {
 } from "../cache";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { TrackEntity, ArtistEntity, AlbumEntity, PlaylistEntity } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { ArtistId, AlbumId, PlaylistId, TrackId } from "@/types/ids";
 
 const createMockQueryClient = (): QueryClient => {

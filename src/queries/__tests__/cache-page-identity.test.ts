@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { QueryClient, type InfiniteData } from "@tanstack/vue-query";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { queryKeys } from "../query-keys";
 import { syncTrackLikeCaches, syncTrackMetadataCaches } from "../cache";

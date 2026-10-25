@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { TrackContext } from "@/modules/tracks/components/menu/type";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";

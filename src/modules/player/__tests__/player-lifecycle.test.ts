@@ -39,7 +39,7 @@ import { TrackSource } from "@/db/entities";
 import { StorageError, StorageErrorCode } from "@/db/errors/storage.errors";
 import { initNextTrackPrefetch } from "../service/prefetch-next";
 import { statsService } from "@/services/stats.service";
-import type { PlayerTrack } from "../types";
+import type { PlayerTrack } from "@/types/track";
 
 // The event bus registry is global: register the handlers once, or every
 // test would multiply the reactions.

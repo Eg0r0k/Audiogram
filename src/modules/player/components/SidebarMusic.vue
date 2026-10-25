@@ -120,7 +120,7 @@ import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import { routeLocation } from "@/app/router/route-locations";
 import { getLogger } from "@/lib/logger";
-import { isEphemeralTrack } from "../types";
+import { isEphemeralTrack } from "@/types/track";
 import { formatError } from "@/lib/errors";
 
 const { toggleTrackLike } = useToggleTrackLike();

@@ -59,7 +59,7 @@ import { Scrollable } from "@/components/ui/scrollable";
 import { getLogger } from "@/lib/logger";
 import { searchResultRoute } from "../lib/resultItems";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { SourceKind } from "@/types/track-ref";
 import SearchFilters from "./SearchFilters.vue";
 import SearchLoading from "./SearchLoading.vue";

@@ -136,7 +136,7 @@ import { useMobilePlayerColor } from "@/modules/player/composables/useMobilePlay
 import { Button } from "@/components/ui/button";
 import PlayButton from "@/modules/player/components/PlayButton.vue";
 import MarqueeBlock from "@/components/ui/marquee/MarqueeBlock.vue";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import IconLike from "~icons/tabler/heart";
 import IconLikedFilled from "~icons/tabler/heart-filled";
 import IconArrowsShuffle2 from "~icons/tabler/arrows-shuffle-2";

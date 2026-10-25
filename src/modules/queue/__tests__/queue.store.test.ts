@@ -12,7 +12,7 @@ import { registerAutoplaySource } from "../lib/queue-autoplay";
 import { registerPlaybackPort } from "../lib/playback-port";
 import { createPlayerPlaybackPort } from "@/modules/player/lib/queue-playback-port";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { setMediaServerBaseForTests } from "@/lib/stream-url";
 import { useEventBus } from "@vueuse/core";
 import { PlaybackFailure } from "@/modules/player/service/playback-resolver.service";

@@ -1,7 +1,7 @@
 import { render } from "@testing-library/vue";
 import { describe, expect, it } from "vitest";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import TrackRowsList from "../TrackRowsList.vue";
 
 // Регрессия: строка достаёт меню оболочки через inject, то есть только изнутри

@@ -98,7 +98,7 @@ vi.mock("@/services/stats.service", () => ({
 import { db } from "@/db";
 import { downloadSubject } from "../service/enqueue";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 
 const dto: SourceTrackDTO = {
   id: ndTrackId("song1"),

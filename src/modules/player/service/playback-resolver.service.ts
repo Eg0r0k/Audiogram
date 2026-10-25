@@ -17,7 +17,7 @@ import {
   type Track,
   isEphemeralTrack,
   isLibraryTrack,
-} from "../types";
+} from "@/types/track";
 import { formatError } from "@/lib/errors";
 
 /**

@@ -5,7 +5,7 @@ import { trackCoverOwner, useTrackCover } from "@/modules/covers/composables/use
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import { getLogger } from "@/lib/logger";
 import { useCurrentPlayerTrack } from "./useCurrentPlayerTrack";
-import { isEphemeralTrack, isLibraryTrack } from "../types";
+import { isEphemeralTrack, isLibraryTrack } from "@/types/track";
 import { formatError } from "@/lib/errors";
 
 const POSITION_UPDATE_INTERVAL = 1000;

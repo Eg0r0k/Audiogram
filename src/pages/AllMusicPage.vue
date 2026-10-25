@@ -183,7 +183,7 @@ import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback
 import type { QueueSource } from "@/modules/queue/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useImport } from "@/modules/library/composables/useImport";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { getLogger } from "@/lib/logger";
 import TrackSelectionBar from "@/modules/tracks/components/TrackSelectionBar.vue";
 import { useTrackSelectionMode } from "@/modules/tracks/composables/useTrackSelectionMode";

@@ -18,7 +18,7 @@ import { keepPreviousData, queryOptions } from "@tanstack/vue-query";
 import type { QueryClient } from "@tanstack/vue-query";
 import { splitArtistNames } from "@/lib/artist-names";
 import { unwrapResult } from "./shared";
-import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
+import { mapTrack } from "@/types/track";
 
 export interface RecentHistoryEntry {
   eventId: string;
@@ -26,14 +26,14 @@ export interface RecentHistoryEntry {
   secondsListened: number;
   completed: boolean;
   skipped: boolean;
-  track: ReturnType<typeof mapTrackEntityToPlayerTrack>;
+  track: ReturnType<typeof mapTrack>;
 }
 
 export interface TopTrackEntry {
   id: string;
   count: number;
   secondsListened: number;
-  track: ReturnType<typeof mapTrackEntityToPlayerTrack>;
+  track: ReturnType<typeof mapTrack>;
 }
 
 const STATS_STALE_TIME = 5 * 60 * 1000;
@@ -107,7 +107,7 @@ export const statsQueries = {
           trackRepository.findByIds(entries.map(entry => entry.id as TrackId)),
         );
         const tracksById = new Map(
-          tracks.map(track => [track.id as string, mapTrackEntityToPlayerTrack(track)]),
+          tracks.map(track => [track.id as string, mapTrack(track)]),
         );
 
         return entries.flatMap((entry) => {
@@ -219,7 +219,7 @@ export const statsQueries = {
         const events = await unwrapResult(statsRepository.recentHistory(limit));
         const trackIds = events.map(event => event.trackId);
         const tracks = await unwrapResult(trackRepository.findByIds(trackIds));
-        const tracksById = new Map(tracks.map(track => [track.id, mapTrackEntityToPlayerTrack(track)]));
+        const tracksById = new Map(tracks.map(track => [track.id, mapTrack(track)]));
 
         return events.flatMap((event) => {
           const track = tracksById.get(event.trackId);

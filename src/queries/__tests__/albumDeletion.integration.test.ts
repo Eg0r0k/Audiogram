@@ -34,7 +34,7 @@ vi.mock("@/modules/search/service/buildDocuments", () => ({
 import { db } from "@/db";
 import { deleteAlbumAndSync } from "../album.queries";
 import { deleteTrackAndSync } from "../track.queries";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 
 const ytArtist = ytArtistId("UC1");
 const ytAlbum = ytAlbumId("MPREb1");

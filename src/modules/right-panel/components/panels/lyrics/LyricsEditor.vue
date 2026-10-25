@@ -21,7 +21,7 @@ import { useI18n } from "vue-i18n";
 import PanelTextEditor from "@/components/common/PanelTextEditor.vue";
 import { useLyricsActions } from "@/modules/player/composables/useLyricsActions";
 import { hasLyricsText, parseLyrics } from "@/modules/player/lib/lrc";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 
 const props = defineProps<{
   track: Track;

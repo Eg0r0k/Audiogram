@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { EphemeralTrack, Track } from "../types";
+import type { EphemeralTrack, Track } from "@/types/track";
 
 const sourcesMock = vi.hoisted(() => ({ forTrack: vi.fn() }));
 

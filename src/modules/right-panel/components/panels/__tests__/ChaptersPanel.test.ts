@@ -5,7 +5,7 @@ import { VueQueryPlugin } from "@tanstack/vue-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState, type TrackChapterMark } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import * as chaptersModule from "@/modules/tracks/composables/useTrackChapters";
 import ChaptersPanel from "../ChaptersPanel.vue";
 

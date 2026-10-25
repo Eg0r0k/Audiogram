@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import type { QueueItemId, TrackId } from "@/types/ids";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { QueueItem } from "../../types";
 
 vi.mock("@/db/repositories", () => ({ playlistRepository: {}, trackRepository: {} }));
-vi.mock("@/modules/player/utils/trackEntity", () => ({ mapTrackEntityToPlayerTrack: (e: unknown) => e }));
+vi.mock("@/types/track", async importOriginal => ({
+  ...await importOriginal<typeof import("@/types/track")>(),
+  mapTrack: (e: unknown) => e,
+}));
 vi.mock("@/lib/stream-url", () => ({ migrateProxyUrl: (url: string) => url }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ warn: vi.fn() }) }));
 

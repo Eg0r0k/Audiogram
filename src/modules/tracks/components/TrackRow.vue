@@ -174,7 +174,7 @@ import IconPause from "~icons/audiogram/pause-rounded";
 
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import { formatDuration } from "@/lib/format/time";
-import { isEphemeralTrack, type PlayerTrack, type Track } from "@/modules/player/types";
+import { isEphemeralTrack, type PlayerTrack, type Track } from "@/types/track";
 import type { TrackContext } from "@/modules/tracks/components/menu/type";
 import { Button } from "@/components/ui/button";
 import { usePlayerStore } from "@/modules/player/store/player.store";

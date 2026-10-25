@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { SearchResultItem } from "@/modules/search/types";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { LibraryItem } from "@/modules/library/types";
 import type { RouteLocationRaw } from "vue-router";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";

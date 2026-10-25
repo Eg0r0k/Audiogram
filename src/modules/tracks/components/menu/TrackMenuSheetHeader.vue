@@ -58,7 +58,7 @@ import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { useDownloadsStore } from "@/modules/downloads/store/downloads.store";
-import { isLibraryTrack, type PlayerTrack, type Track } from "@/modules/player/types";
+import { isLibraryTrack, type PlayerTrack, type Track } from "@/types/track";
 import { useTrackRowCover } from "@/modules/tracks/composables/useTrackRowCover";
 import type { TrackMenuCaps } from "@/modules/tracks/composables/useTrackMenuCaps";
 import { trackHasLyrics } from "@/modules/tracks/lib/trackPredicates";

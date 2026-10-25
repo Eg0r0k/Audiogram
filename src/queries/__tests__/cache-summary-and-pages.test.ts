@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { QueryClient } from "@tanstack/vue-query";
 import type { AlbumEntity, ArtistEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { queryKeys } from "../query-keys";
 import {

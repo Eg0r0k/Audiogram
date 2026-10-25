@@ -160,7 +160,7 @@ import { formatDuration } from "@/lib/format/time";
 import { object, number, string, pipe, minValue, maxValue, safeParse } from "valibot";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useSaveTrackChapters, useTrackChapters } from "@/modules/tracks/composables/useTrackChapters";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { TrackChapterMark } from "@/db/entities";
 import type { DraftChapter } from "@/components/ChapterEditor.vue";
 import ChapterEditor from "@/components/ChapterEditor.vue";

@@ -6,7 +6,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import { registerOverlayBackHandler, useOverlayBackButton } from "@/composables/useOverlayBackButton";
 import { useRightPanelStore } from "../store/right-panel.store";
 import { panelBackDepth } from "../lib/backChain";
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 
 vi.mock("@/composables/useDeviceLayout", () => ({
   useDeviceLayout: () => ({

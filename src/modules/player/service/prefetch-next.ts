@@ -8,7 +8,8 @@ import { storageService } from "@/db/storage";
 import { sources } from "@/modules/sources/registry";
 import { parseTrackRef } from "@/types/track-ref";
 import type { TrackId } from "@/types/ids";
-import { isLibraryTrack, type PlayerTrack, type RepeatMode } from "../types";
+import { isLibraryTrack, type PlayerTrack } from "@/types/track";
+import type { RepeatMode } from "../types";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { usePlayerStore } from "../store/player.store";
 

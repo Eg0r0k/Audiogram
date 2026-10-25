@@ -4,7 +4,7 @@ import { createPinia } from "pinia";
 import { createI18n } from "vue-i18n";
 import { defineComponent, h, nextTick, ref, type PropType } from "vue";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import TrackContextMenu from "../TrackContextMenu.vue";
 import { useTrackContextMenu } from "../useTrackContextMenu";

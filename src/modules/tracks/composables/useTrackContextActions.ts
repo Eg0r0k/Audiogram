@@ -1,4 +1,4 @@
-import { isLibraryTrack, type PlayerTrack, type Track } from "@/modules/player/types";
+import { isLibraryTrack, type PlayerTrack, type Track } from "@/types/track";
 import type { ContextActions, TrackMenuSubject } from "@/modules/tracks/components/menu/type";
 import { ensurePinned } from "@/modules/tracks/service/ensurePinned";
 import { useQueueStore } from "@/modules/queue/store/queue.store";

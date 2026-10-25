@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { computed, reactive, toValue } from "vue";
 import type { QueueItem, QueueSource } from "@/modules/queue/types";
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 
 const mockQueueState = reactive({
   currentItem: null as QueueItem | null,

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { computed, effectScope, ref } from "vue";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { TrackId } from "@/types/ids";
 import { shownToasts } from "@/test/toasts";
 

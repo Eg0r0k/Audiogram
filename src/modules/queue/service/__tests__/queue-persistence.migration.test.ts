@@ -16,8 +16,9 @@ vi.mock("@/db/repositories", () => ({
     findByIds: (ids: string[]) => okAsync(ids.map(id => ({ id }))),
   },
 }));
-vi.mock("@/modules/player/utils/trackEntity", () => ({
-  mapTrackEntityToPlayerTrack: (entity: { id: string }) => ({ kind: "library", ...entity }),
+vi.mock("@/types/track", async importOriginal => ({
+  ...await importOriginal<typeof import("@/types/track")>(),
+  mapTrack: (entity: { id: string }) => ({ kind: "library", ...entity }),
 }));
 vi.mock("@/lib/stream-url", () => ({ migrateProxyUrl: (url: string) => url }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ warn: vi.fn() }) }));

@@ -1,5 +1,5 @@
-import type { PlayerTrack, RepeatMode } from "@/modules/player/types";
-import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
+import { mapTrack, type PlayerTrack } from "@/types/track";
+import type { RepeatMode } from "@/modules/player/types";
 import { getLogger } from "@/lib/logger";
 import type { ListenPick, TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
@@ -81,7 +81,7 @@ export const createAutoplayRecommender = (deps: AutoplayDeps) => {
     if (deps.currentItem()?.id !== sourceItemId) return false;
     if (!isAtTail()) return false;
 
-    const entries = recommendations.map(({ track, pick }) => ({ track: mapTrackEntityToPlayerTrack(track), pick }));
+    const entries = recommendations.map(({ track, pick }) => ({ track: mapTrack(track), pick }));
     if (entries.length === 0) return false;
 
     deps.append(entries);

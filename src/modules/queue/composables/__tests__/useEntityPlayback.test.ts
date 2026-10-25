@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { QueueSource } from "@/modules/queue/types";
 
 const queue = vi.hoisted(() => ({

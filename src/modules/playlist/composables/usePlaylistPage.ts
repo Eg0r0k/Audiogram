@@ -20,7 +20,7 @@ import {
 import { searchPlaylistTracks } from "@/queries/track.queries";
 import { fetchSourcePlaylist } from "@/queries/source.queries";
 import { routeLocation } from "@/app/router/route-locations";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { useSourcePlaylist, useSourcePlaylistPages } from "@/modules/sources/composables/useSourceCatalog";
 import { useCatalogEntity } from "@/modules/sources/composables/useCatalogEntity";

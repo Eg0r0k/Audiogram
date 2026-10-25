@@ -67,7 +67,7 @@ import { useProxySync } from "@/modules/settings/composables/useProxySync";
 import { useNdSourceSync } from "@/modules/settings/composables/useNdSourceSync";
 import { useYmSourceSync } from "@/modules/sources/yandex/composables/useYmSourceSync";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
-import { ephemeralFromPath } from "@/modules/player/types";
+import { ephemeralFromPath } from "@/types/track";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { useNowPlayingTitle } from "@/modules/player/composables/useNowPlayingTitle";
 import { useExternalLinkInterceptor } from "@/composables/useExternalLinkInterceptor";

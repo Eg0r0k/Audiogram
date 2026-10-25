@@ -4,7 +4,7 @@ import { MotionGlobalConfig } from "motion-utils";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { isSameTrack, useQueueNeighbors } from "@/modules/queue/composables/useQueueNeighbors";
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 
 export type SwipeDirection = 1 | -1;
 export type SwipeSlotRole = "previous" | "center" | "next";

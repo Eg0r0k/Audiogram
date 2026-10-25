@@ -1,5 +1,5 @@
 import { inject, provide, type InjectionKey } from "vue";
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 import type { QueueItemId } from "@/types/ids";
 import type { TrackMenuSubject } from "../type";
 

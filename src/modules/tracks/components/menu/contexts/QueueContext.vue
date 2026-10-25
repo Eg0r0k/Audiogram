@@ -77,7 +77,7 @@ import { useTrackMenuComponents } from "../useTrackMenuComponents";
 import { trackHasLyrics } from "@/modules/tracks/lib/trackPredicates";
 import type { ContextActions } from "../type";
 import type { TrackMenuCaps } from "@/modules/tracks/composables/useTrackMenuCaps";
-import { isLibraryTrack, type PlayerTrack } from "@/modules/player/types";
+import { isLibraryTrack, type PlayerTrack } from "@/types/track";
 import IconTrash from "~icons/tabler/trash";
 
 const props = defineProps<{

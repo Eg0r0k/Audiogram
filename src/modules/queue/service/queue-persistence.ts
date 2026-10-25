@@ -1,8 +1,8 @@
 import { PlaylistId, type QueueItemId } from "@/types/ids";
-import { REPEAT_MODES, type EphemeralTrack, type PlayerTrack, type RepeatMode, type Track } from "@/modules/player/types";
+import { mapTrack, type EphemeralTrack, type PlayerTrack, type Track } from "@/types/track";
+import { REPEAT_MODES, type RepeatMode } from "@/modules/player/types";
 import { playlistRepository, queueSnapshotRepository, trackRepository } from "@/db/repositories";
 import { LEGACY_QUEUE_STORAGE_KEY, QUEUE_CURSOR_STORAGE_KEY } from "@/db/entities";
-import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
 import { unique } from "@/queries/shared";
 import { unwrapResult } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
@@ -336,7 +336,7 @@ export const rehydratePersistedQueue = async (
   const libraryTracks = libraryTrackIds.length > 0
     ? await unwrapResult(trackRepository.findByIds(libraryTrackIds))
     : [];
-  const libraryTracksById = new Map(libraryTracks.map(track => [track.id, mapTrackEntityToPlayerTrack(track)]));
+  const libraryTracksById = new Map(libraryTracks.map(track => [track.id, mapTrack(track)]));
   const playlistSourceRewrites = await ndPlaylistSourceRewrites(snapshot.queue);
 
   // In the snapshot's playback order; library rows gone from the DB drop out.

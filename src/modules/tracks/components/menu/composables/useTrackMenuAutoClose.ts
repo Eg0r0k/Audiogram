@@ -2,7 +2,7 @@ import { computed, toValue, watch, type MaybeRefOrGetter, type Ref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
-import { isLibraryTrack } from "@/modules/player/types";
+import { isLibraryTrack } from "@/types/track";
 import { playlistQueries } from "@/queries/playlist.queries";
 import { PlaylistId } from "@/types/ids";
 import type { TrackContext } from "../type";

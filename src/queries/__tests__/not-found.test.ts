@@ -21,7 +21,7 @@ vi.mock("@/modules/search/service/buildDocuments", () => ({
 import { db } from "@/db";
 import { playlistRepository } from "@/db/repositories";
 import { unwrapResult } from "@/lib/errors/unwrap";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { getAlbumByIdOrThrow, getAlbumPageData } from "../album.queries";
 import { getArtistByIdOrThrow } from "../artist.queries";
 import { getPlaylistByIdOrThrow } from "../playlist.queries";

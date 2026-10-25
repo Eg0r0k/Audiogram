@@ -245,7 +245,7 @@ import { Label } from "@/components/ui/label";
 import { Scrollable } from "@/components/ui/scrollable";
 import FloatingActionButton from "@/components/common/FloatingActionButton.vue";
 import { useKeyboardInset } from "@/composables/useKeyboardInset";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { usePanelUiBack } from "@/modules/right-panel/composables/usePanelUiBack";

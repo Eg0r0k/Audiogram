@@ -1,6 +1,6 @@
 import { computed } from "vue";
 import { usePlayerStore } from "../store/player.store";
-import { isLibraryTrack, type PlayerTrack, type Track } from "../types";
+import { isLibraryTrack, type PlayerTrack, type Track } from "@/types/track";
 
 /**
  * The track the player is showing, split by what it is allowed to offer.

@@ -1,5 +1,5 @@
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 import { SEEK_REPEAT_MS, SEEK_STEP } from "../constants";
 import { useHoldRepeat } from "./useHoldRepeat";
 

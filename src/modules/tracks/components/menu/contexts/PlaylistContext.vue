@@ -64,7 +64,7 @@ import { useTrackMenuComponents } from "../useTrackMenuComponents";
 import { trackHasLyrics } from "@/modules/tracks/lib/trackPredicates";
 import type { ContextActions } from "../type";
 import type { TrackMenuCaps } from "@/modules/tracks/composables/useTrackMenuCaps";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { PlaylistId } from "@/types/ids";
 import IconTrash from "~icons/tabler/trash";
 

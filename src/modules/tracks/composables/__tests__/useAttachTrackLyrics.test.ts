@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { flushPromises } from "@vue/test-utils";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { TrackLyricsLoadResult } from "@/modules/player/service/track-lyrics-loader.service";
 
 const caps = vi.hoisted(() => ({ hasFs: false }));

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { computed, effectScope, nextTick, ref } from "vue";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { TrackId } from "@/types/ids";
 import { useTrackSelectionMode } from "../useTrackSelectionMode";
 

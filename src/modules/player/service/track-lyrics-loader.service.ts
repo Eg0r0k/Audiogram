@@ -1,6 +1,6 @@
 import { storageService } from "@/db/storage";
 import { hasLyricsText, parseLyrics, type ParsedLyrics } from "../lib/lrc";
-import { isLibraryTrack, type PlayerTrack, type Track } from "../types";
+import { isLibraryTrack, type PlayerTrack, type Track } from "@/types/track";
 import { fetchLrcLibLyrics } from "./lyrics.service";
 
 export type LyricsSource = { type: "file"; fileName: string | null } | { type: "lrclib" };

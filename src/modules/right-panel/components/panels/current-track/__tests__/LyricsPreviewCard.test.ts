@@ -9,7 +9,7 @@ import { TrackSource, TrackState } from "@/db/entities";
 import { tintedSurface } from "@/lib/color/tinted-surface";
 import type { LyricsLine } from "@/modules/player/lib/lrc";
 import type { TrackLyricsLoadResult } from "@/modules/player/service/track-lyrics-loader.service";
-import type { EphemeralTrack, PlayerTrack, Track } from "@/modules/player/types";
+import type { EphemeralTrack, PlayerTrack, Track } from "@/types/track";
 
 const mockPlayerState = reactive({
   currentTime: 0,

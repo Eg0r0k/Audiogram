@@ -13,7 +13,7 @@ vi.mock("@/modules/tracks/service/ensurePinned", () => ({ ensurePinned: vi.fn() 
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ warn: vi.fn(), error: vi.fn(), debug: vi.fn() }) }));
 
 import { setMediaServerBaseForTests, ytStreamUrl } from "@/lib/stream-url";
-import { ephemeralFromUrl } from "@/modules/player/types";
+import { ephemeralFromUrl } from "@/types/track";
 import { resolvePlaybackSource } from "../playback-resolver.service";
 
 const BASE = "http://127.0.0.1:4321/tokentokentokentokentokentokento";

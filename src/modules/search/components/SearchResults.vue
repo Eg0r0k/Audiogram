@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import type { SearchResultItem, SearchFilter } from "@/modules/search/types";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { LibraryItem } from "@/modules/library/types";
 import SearchDropdownRow from "@/modules/search/components/SearchDropdownRow.vue";
 import TrackRowsList from "@/modules/tracks/components/TrackRowsList.vue";

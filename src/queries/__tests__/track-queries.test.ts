@@ -4,7 +4,7 @@ import type { AlbumEntity, ArtistEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import { QueryClient } from "@tanstack/vue-query";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 
 const repositories = vi.hoisted(() => ({
   albumRepository: {

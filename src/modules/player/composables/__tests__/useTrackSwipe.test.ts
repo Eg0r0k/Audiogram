@@ -3,7 +3,7 @@ import { nextTick, ref } from "vue";
 import { createPinia, setActivePinia } from "pinia";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { QueueItem } from "@/modules/queue/types";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 
 vi.mock("@/db/repositories", () => ({
   trackRepository: { findByIds: vi.fn() },

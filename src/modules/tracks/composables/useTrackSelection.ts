@@ -1,6 +1,6 @@
 import { watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { useSelection, type SelectionDragOptions, type UseSelectionOptions } from "@/composables/useSelection";
 
 export type TrackSelectionTouchOptions = Pick<SelectionDragOptions, "canStartTouch" | "suppressContextMenu">;

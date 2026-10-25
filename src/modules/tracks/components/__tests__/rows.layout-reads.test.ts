@@ -5,7 +5,7 @@ import { createPinia } from "pinia";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { SourceTrackDTO } from "@/modules/sources/types";
 
 // A list mounts rows on every scroll step. Anything in a row that reads

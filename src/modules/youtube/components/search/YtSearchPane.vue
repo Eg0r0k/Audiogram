@@ -113,7 +113,7 @@ import { routeLocation } from "@/app/router/route-locations";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
 import { getLogger } from "@/lib/logger";

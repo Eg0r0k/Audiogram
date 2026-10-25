@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { EphemeralTrack, Track } from "@/modules/player/types";
+import type { EphemeralTrack, Track } from "@/types/track";
 import { TrackId } from "@/types/ids";
 import { ytTrackId } from "@/types/track-ref";
 import {

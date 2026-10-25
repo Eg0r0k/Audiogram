@@ -4,7 +4,7 @@ import { createPinia } from "pinia";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState } from "@/db/entities";
 import { setMediaServerBaseForTests } from "@/lib/stream-url";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { SourceTrackDTO } from "@/types/source-dto";
 import TrackRow from "../TrackRow.vue";
 import { sources } from "@/modules/sources/registry";

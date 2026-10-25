@@ -17,7 +17,7 @@ import {
 import { deleteOwnedLyricsFile } from "@/services/track-files";
 import { useLyricsStore } from "../store/lyrics.store";
 import { usePlayerStore } from "../store/player.store";
-import { isLibraryTrack, type Track } from "../types";
+import { isLibraryTrack, type Track } from "@/types/track";
 
 let deletions = 0;
 

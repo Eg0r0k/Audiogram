@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { reportError } from "@/app/error-feedback";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { toggleTrackLike, type ToggleTrackLikeDeps } from "@/modules/tracks/service/toggleTrackLike";

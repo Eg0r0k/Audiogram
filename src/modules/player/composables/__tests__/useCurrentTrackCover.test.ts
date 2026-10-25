@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { reactive, ref } from "vue";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { PlayerTrack, Track } from "@/modules/player/types";
+import type { PlayerTrack, Track } from "@/types/track";
 
 const mockPlayerState = reactive({
   currentTrack: null as PlayerTrack | null,

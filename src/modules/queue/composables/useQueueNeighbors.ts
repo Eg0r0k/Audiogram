@@ -3,7 +3,7 @@ import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useTrackCover } from "@/modules/covers/composables/useTrackCover";
 import { useStickyCoverUrl } from "@/modules/covers/composables/useStickyCoverUrl";
-import { isLibraryTrack, type PlayerTrack } from "@/modules/player/types";
+import { isLibraryTrack, type PlayerTrack } from "@/types/track";
 import type { QueueItem } from "@/modules/queue/types";
 
 export const isSameTrack = (a: PlayerTrack | null | undefined, b: PlayerTrack | null | undefined) =>

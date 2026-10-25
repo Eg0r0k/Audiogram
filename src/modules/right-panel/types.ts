@@ -1,4 +1,4 @@
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 
 export type RightPanelView = "queue" | "current-track" | "lyrics" | "track-info" | "edit-track" | "add-tracks" | "chapters" | "downloads" | "import" | "entity-select" | "folder-add" | "none";
 export type RightPanelBackView = "queue" | "current-track" | "none";

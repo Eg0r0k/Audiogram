@@ -51,7 +51,7 @@ import LyricsLines from "@/modules/player/components/lyrics/LyricsLines.vue";
 import { useLyricsActions } from "@/modules/player/composables/useLyricsActions";
 import { buildLrc, formatLyricsTime, type LyricsLine } from "@/modules/player/lib/lrc";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import IconCheck from "~icons/tabler/check";
 import IconSave from "~icons/tabler/device-floppy";
 

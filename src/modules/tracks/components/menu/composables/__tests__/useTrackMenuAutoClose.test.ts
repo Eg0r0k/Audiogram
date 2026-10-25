@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, nextTick, reactive, shallowRef, type Ref } from "vue";
 import { mount } from "@vue/test-utils";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { queryKeys } from "@/queries/query-keys";
 import { PlaylistId, QueueItemId, TrackId } from "@/types/ids";
 

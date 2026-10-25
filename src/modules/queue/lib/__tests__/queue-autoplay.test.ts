@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { TrackId } from "@/types/ids";
 import type { TrackEntity } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { QueueItem } from "../../types";
 import { createAutoplayRecommender, registerAutoplaySource, type AutoplayEntry, type AutoplaySource } from "../queue-autoplay";
 

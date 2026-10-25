@@ -7,7 +7,7 @@ import { queueSnapshotRepository, trackRepository } from "@/db/repositories";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { createPlayerPlaybackPort } from "@/modules/player/lib/queue-playback-port";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { registerPlaybackPort } from "../lib/playback-port";
 import { useQueueStore } from "../store/queue.store";
 

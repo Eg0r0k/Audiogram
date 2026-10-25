@@ -11,7 +11,7 @@ import { unitOfWork } from "@/db/unit-of-work";
 import { queryKeys } from "@/queries/query-keys";
 import { buildAlbumDocFromDb, buildTrackDocFromDb } from "@/modules/search/service/buildDocuments";
 import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/service/searchIndex";
-import { mapTracks } from "@/modules/tracks/lib/mappers";
+import { mapTracks } from "@/types/track";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { AlbumId as createAlbumId } from "@/types/ids";
 import type { AlbumId, ArtistId } from "@/types/ids";

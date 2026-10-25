@@ -5,8 +5,7 @@ import { db } from "@/db";
 import { albumRepository, artistRepository, trackRepository } from "@/db/repositories";
 import { countTrackDocuments, trackProjectionMismatch } from "../projectionCheck";
 import { matchesByEntity } from "../lib/highlight";
-import { mapTracks } from "@/modules/tracks/lib/mappers";
-import type { Track } from "@/modules/player/types";
+import { mapTracks, type Track } from "@/types/track";
 import type { TrackId } from "@/types/ids";
 
 export type { SearchResponse } from "../types";

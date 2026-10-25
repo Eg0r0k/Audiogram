@@ -7,7 +7,10 @@ vi.mock("@/db/repositories", () => ({
   trackRepository: {},
   queueSnapshotRepository: { get: vi.fn() },
 }));
-vi.mock("@/modules/player/utils/trackEntity", () => ({ mapTrackEntityToPlayerTrack: (e: unknown) => e }));
+vi.mock("@/types/track", async importOriginal => ({
+  ...await importOriginal<typeof import("@/types/track")>(),
+  mapTrack: (e: unknown) => e,
+}));
 vi.mock("@/lib/stream-url", () => ({ migrateProxyUrl: (url: string) => url }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ warn: vi.fn(), error: vi.fn() }) }));
 

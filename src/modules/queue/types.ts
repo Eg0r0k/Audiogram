@@ -1,6 +1,6 @@
 import type { ListenPick } from "@/db/entities";
 import type { AlbumId, ArtistId, PlaylistId, QueueItemId } from "@/types/ids";
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 
 export type QueueSource
   = | { type: "album"; albumId: AlbumId }

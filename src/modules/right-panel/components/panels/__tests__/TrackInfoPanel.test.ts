@@ -5,7 +5,7 @@ import { VueQueryPlugin } from "@tanstack/vue-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import TrackInfoPanel from "../TrackInfoPanel.vue";
 
 const queries = vi.hoisted(() => ({ getTrackEntityById: vi.fn() }));

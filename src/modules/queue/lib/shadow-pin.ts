@@ -1,4 +1,4 @@
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 import { ensurePinnedMany } from "@/modules/tracks/service/ensurePinned";
 import type { TrackMenuSubject } from "@/modules/tracks/components/menu/type";
 import { getLogger } from "@/lib/logger";

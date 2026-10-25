@@ -4,7 +4,7 @@ import { render } from "@testing-library/vue";
 import { createI18n } from "vue-i18n";
 import { VueQueryPlugin } from "@tanstack/vue-query";
 import { messages } from "@/app/i18n/messages";
-import type { EphemeralTrack } from "@/modules/player/types";
+import type { EphemeralTrack } from "@/types/track";
 import type { QueueItem } from "../types";
 import { QueueItemId } from "@/types/ids";
 import QueueItemRow from "../components/QueueItem.vue";

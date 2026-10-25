@@ -57,7 +57,7 @@ import { computed } from "vue";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatDuration } from "@/lib/format/time";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { useTrackCover } from "@/modules/covers/composables/useTrackCover";
 
 interface Props {

@@ -6,7 +6,7 @@ import { getLogger } from "@/lib/logger";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useToggleTrackLike } from "@/modules/tracks/composables/useToggleTrackLike";
 import { usePlayerStore } from "../store/player.store";
-import { isLibraryTrack } from "../types";
+import { isLibraryTrack } from "@/types/track";
 import { COMMANDS, EVENTS } from "@/app/tauri-commands";
 import { setThumbbarState, type ThumbbarState } from "../api/thumbbarApi";
 import { formatError } from "@/lib/errors";

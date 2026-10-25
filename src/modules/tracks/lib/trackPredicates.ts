@@ -1,4 +1,4 @@
-import { isEphemeralTrack, type EphemeralTrack, type PlayerTrack, type Track } from "@/modules/player/types";
+import { isEphemeralTrack, type EphemeralTrack, type PlayerTrack, type Track } from "@/types/track";
 import type { SourceTrackDTO } from "@/modules/sources/types";
 import { proxyPathFromUrl, trackIdFromStreamUrl } from "@/lib/stream-url";
 import { parseTrackRef, type SourceKind } from "@/types/track-ref";

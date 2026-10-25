@@ -41,7 +41,7 @@ import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdo
 import { useTopTracks } from "@/composables/useStatsQueries";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 
 const props = defineProps<{ since?: number }>();
 

@@ -2,7 +2,7 @@ import { computed, type ComputedRef } from "vue";
 import { refDebounced } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
 import { useQuery } from "@tanstack/vue-query";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { SourceKind } from "@/types/track-ref";
 import type { TrackId } from "@/types/ids";
 import { trackQueries } from "@/queries/track.queries";

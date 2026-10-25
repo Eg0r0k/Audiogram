@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/vue-query";
 import { TrackSource, TrackState, type AlbumEntity, type ArtistEntity, type PlaylistEntity, type TrackEntity } from "@/db/entities";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 
 //
 // Mutations that touch many rows must do it as one indexed write inside a

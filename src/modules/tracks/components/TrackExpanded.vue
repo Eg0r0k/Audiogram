@@ -236,7 +236,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import { formatDuration, formatRelativeTime } from "@/lib/format/time";
 import { useTrackRowCover } from "@/modules/tracks/composables/useTrackRowCover";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { TrackContext } from "@/modules/tracks/components/menu/type";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";

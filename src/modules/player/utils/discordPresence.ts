@@ -1,4 +1,4 @@
-import type { PlayerTrack } from "../types";
+import type { PlayerTrack } from "@/types/track";
 
 export const DISCORD_POSITION_BUCKET_SECONDS = 15;
 

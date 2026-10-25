@@ -1,7 +1,6 @@
 ﻿import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { getLogger } from "@/lib/logger";
-import type { PlayerTrack } from "@/modules/player/types";
-import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
+import { mapTrack, type PlayerTrack } from "@/types/track";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { ephemeralFilePath } from "@/modules/tracks/lib/trackPredicates";
 import { useImport } from "@/modules/library/composables/useImport";
@@ -32,7 +31,7 @@ export function useEphemeralImport(track: MaybeRefOrGetter<PlayerTrack | null>) 
     try {
       const entity = await getTrackEntityById(imported.trackId);
       if (entity) {
-        queueStore.swapEphemeralForLibrary(subject.id, mapTrackEntityToPlayerTrack(entity));
+        queueStore.swapEphemeralForLibrary(subject.id, mapTrack(entity));
       }
     }
     catch (error) {

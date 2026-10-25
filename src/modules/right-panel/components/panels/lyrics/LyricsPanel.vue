@@ -204,7 +204,7 @@ import { useAttachCurrentTrackLyrics } from "@/modules/player/composables/useAtt
 import { useCurrentLyrics } from "@/modules/player/composables/useCurrentLyrics";
 import { useLyricsActions } from "@/modules/player/composables/useLyricsActions";
 import { hasLyricsText, type LyricsLine } from "@/modules/player/lib/lrc";
-import { isLibraryTrack, type PlayerTrack, type Track } from "@/modules/player/types";
+import { isLibraryTrack, type PlayerTrack, type Track } from "@/types/track";
 import RightPanelHeader from "@/modules/right-panel/components/RightPanelHeader.vue";
 import { usePanelUiBack } from "@/modules/right-panel/composables/usePanelUiBack";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";

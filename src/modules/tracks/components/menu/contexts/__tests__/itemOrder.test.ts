@@ -3,7 +3,7 @@ import { defineComponent, h, type Component } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { provideTrackMenuComponents } from "../../useTrackMenuComponents";
 import type { ContextActions } from "../../type";
 import HistoryContext from "../HistoryContext.vue";

@@ -10,7 +10,7 @@ import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { useLyricsStore } from "@/modules/player/store/lyrics.store";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import { isLibraryTrack, type Track } from "@/modules/player/types";
+import { isLibraryTrack, type Track } from "@/types/track";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { attachTrackLyricsAndSync } from "@/queries/track.queries";
 

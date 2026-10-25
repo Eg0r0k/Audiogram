@@ -1,6 +1,6 @@
 import { computed } from "vue";
 import { usePlayerStore } from "../store/player.store";
-import { isLibraryTrack } from "../types";
+import { isLibraryTrack } from "@/types/track";
 
 export const useAttachCurrentTrackLyrics = () => {
   const playerStore = usePlayerStore();

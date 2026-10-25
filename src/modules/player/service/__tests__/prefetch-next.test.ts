@@ -3,7 +3,7 @@ import { reactive, nextTick } from "vue";
 import { errAsync, ok, okAsync } from "neverthrow";
 import { TrackId } from "@/types/ids";
 import { ndTrackId, ytTrackId } from "@/types/track-ref";
-import type { PlayerTrack } from "../../types";
+import type { PlayerTrack } from "@/types/track";
 
 const platformCapsMock = vi.hoisted(() => ({ canProxyStream: true }));
 const trackFindByIdMock = vi.hoisted(() => vi.fn());

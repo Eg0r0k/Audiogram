@@ -29,7 +29,7 @@
 <script setup lang="ts">
 import { SwipeAction, SwipeActions, SwipeContent, SwipeItem } from "@/components/ui/swipe-actions";
 import { getLogger } from "@/lib/logger";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import IconTrash from "~icons/tabler/trash";
 import { useQueueStore } from "../store/queue.store";

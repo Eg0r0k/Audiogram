@@ -1,5 +1,5 @@
 import type { EventBusKey } from "@vueuse/core";
-import type { PlayerTrack } from "../types";
+import type { PlayerTrack } from "@/types/track";
 
 /**
  * Player lifecycle events, carried over VueUse's useEventBus. These are

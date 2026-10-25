@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/vue-query";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { toggleTrackLikeAndSync } from "@/queries/track.queries";
 import { invalidateLibraryData } from "@/queries/library.queries";
 import { unwrapSourceResult } from "@/queries/shared";

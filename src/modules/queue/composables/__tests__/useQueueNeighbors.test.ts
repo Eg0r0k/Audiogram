@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { QueueItem } from "../../types";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 
 vi.mock("@/db/repositories", () => ({
   trackRepository: { findByIds: vi.fn() },

@@ -1,5 +1,5 @@
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useQueueShuffle } from "@/modules/queue/composables/useQueueShuffle";

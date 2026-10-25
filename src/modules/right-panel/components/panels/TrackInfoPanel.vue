@@ -228,10 +228,9 @@ import { getLogger } from "@/lib/logger";
 import { trackQueries } from "@/queries/track.queries";
 import { useTrackDeletion } from "@/modules/tracks/composables/useTrackDeletion";
 import { localCopyQueries } from "@/queries/localCopy.queries";
-import type { Track } from "@/modules/player/types";
+import { mapTrack, type Track } from "@/types/track";
 import { isRemoteTrack } from "@/modules/tracks/lib/trackPredicates";
 import { resolveTrackFormat, trackSourceLabelKey, trackStateLabelKey } from "@/modules/tracks/lib/trackDetails";
-import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import type { RightPanelTrackInfoPayload } from "@/modules/right-panel/types";
 import DetailField from "@/modules/tracks/components/TrackDetailsField.vue";
@@ -269,7 +268,7 @@ const payloadTrack = computed(() => props.payload.track);
 const { data: entity } = useQuery(computed(() => trackQueries.detail(payloadTrack.value.id)));
 
 const track = computed<Track>(() =>
-  entity.value ? mapTrackEntityToPlayerTrack(entity.value) : payloadTrack.value);
+  entity.value ? mapTrack(entity.value) : payloadTrack.value);
 
 const { data: localCopy } = useQuery(computed(() =>
   localCopyQueries.byRemoteId(isRemoteTrack(track.value) ? track.value.id : null),

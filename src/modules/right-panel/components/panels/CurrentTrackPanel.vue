@@ -268,7 +268,7 @@ import { getLogger } from "@/lib/logger";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { mascotCoverUrl } from "@/modules/covers/lib/placeholder";
 import { useCurrentTrackCover } from "@/modules/player/composables/useCurrentTrackCover";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { resolveUpNext } from "@/modules/queue/lib/up-next";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";

@@ -1,5 +1,5 @@
 import type { ArtistId, PlaylistId } from "@/types/ids";
-import type { EphemeralTrack, PlayerTrack, Track } from "@/modules/player/types";
+import type { EphemeralTrack, PlayerTrack, Track } from "@/types/track";
 import type { SourceTrackDTO } from "@/modules/sources";
 
 // A context names WHERE the menu is mounted, not what it shows: the YT search

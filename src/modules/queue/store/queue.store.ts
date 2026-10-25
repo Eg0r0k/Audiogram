@@ -4,12 +4,8 @@ import { useEventBus } from "@vueuse/core";
 import { ok, err, type Result } from "neverthrow";
 import { checkPlayable, toPlaybackFailure, type PlaybackError } from "@/modules/player/service/playback-resolver.service";
 import { QueueItemId } from "@/types/ids";
-import {
-  isEphemeralTrack,
-  type PlayerTrack,
-  REPEAT_MODES,
-  type RepeatMode,
-} from "@/modules/player/types";
+import { isEphemeralTrack, type PlayerTrack } from "@/types/track";
+import { REPEAT_MODES, type RepeatMode } from "@/modules/player/types";
 import { isSameQueueSource, type QueueItem, type QueueSource, type QueueState } from "../types";
 import { playback } from "../lib/playback-port";
 import { getLogger } from "@/lib/logger";

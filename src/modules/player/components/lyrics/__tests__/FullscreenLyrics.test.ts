@@ -5,7 +5,7 @@ import { reactive } from "vue";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { TrackLyricsLoadResult } from "@/modules/player/service/track-lyrics-loader.service";
-import type { PlayerTrack, Track } from "@/modules/player/types";
+import type { PlayerTrack, Track } from "@/types/track";
 
 const mockPlayerState = reactive({
   currentTime: 0,

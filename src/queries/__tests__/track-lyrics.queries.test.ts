@@ -22,8 +22,7 @@ vi.mock("@/modules/search/service/buildDocuments", () => ({
 }));
 
 import { db } from "@/db";
-import type { Track } from "@/modules/player/types";
-import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
+import { mapTrack, type Track } from "@/types/track";
 import { queryKeys } from "../query-keys";
 import type { PaginatedTracksResult } from "../types";
 import {
@@ -59,7 +58,7 @@ const indexKey = queryKeys.tracks.indexInfinite(null, "");
 const byIdsKey = queryKeys.tracks.byIds([trackId]);
 
 const primeCaches = (queryClient: QueryClient, row: TrackEntity) => {
-  const track = mapTrackEntityToPlayerTrack(row);
+  const track = mapTrack(row);
   queryClient.setQueryData(queryKeys.tracks.detail(row.id), row);
   queryClient.setQueryData<InfiniteData<PaginatedTracksResult>>(indexKey, {
     pages: [{ tracks: [track], nextOffset: null, total: 1 }],
@@ -128,7 +127,7 @@ describe("track lyrics mutations (integration)", () => {
   it("detaching leaves the lyrics file in storage", async () => {
     await db.tracks.put(withLyrics);
 
-    await detachTrackLyricsAndSync(queryClient, mapTrackEntityToPlayerTrack(withLyrics));
+    await detachTrackLyricsAndSync(queryClient, mapTrack(withLyrics));
 
     expect(await db.tracks.get(trackId)).not.toHaveProperty("lyricsPath");
     expect(storageMock.deleteFile).not.toHaveBeenCalled();

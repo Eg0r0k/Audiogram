@@ -1,7 +1,7 @@
 import { errAsync, type ResultAsync } from "neverthrow";
 import { useEventBus } from "@vueuse/core";
 import { listenEndedEvent, trackChangedEvent, type ListenEndedPayload } from "@/modules/player/lib/player-events";
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 import type { RadioSession } from "@/modules/queue/lib/queue-radio";
 import { getLogger } from "@/lib/logger";
 import type { SourceError, SourceTrackDTO } from "@/types/source-dto";

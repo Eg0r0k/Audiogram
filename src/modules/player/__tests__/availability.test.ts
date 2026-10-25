@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { SourceTrackDTO } from "@/types/source-dto";
-import type { Track } from "../types";
+import type { Track } from "@/types/track";
 
 vi.mock("@/db/storage", () => ({ storageService: { getAudioUrl: vi.fn() } }));
 vi.mock("@/db/repositories", () => ({ trackRepository: { findBySourceRef: vi.fn() } }));

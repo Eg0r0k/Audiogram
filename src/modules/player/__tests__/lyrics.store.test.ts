@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { reactive } from "vue";
 import type { LyricsLine } from "../lib/lrc";
 import type { TrackLyricsLoadResult } from "../service/track-lyrics-loader.service";
-import type { PlayerTrack, Track } from "../types";
+import type { PlayerTrack, Track } from "@/types/track";
 
 const mockPlayerState = reactive({ currentTime: 0, currentTrack: null as PlayerTrack | null });
 

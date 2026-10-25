@@ -4,7 +4,7 @@ import { mount } from "@vue/test-utils";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { ok } from "neverthrow";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { TrackId } from "@/types/ids";
 import { ytTrackId } from "@/types/track-ref";
 import type { TrackMenuSubject } from "../../components/menu/type";

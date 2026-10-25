@@ -1,7 +1,7 @@
 import { computed, reactive, ref, shallowRef, watch } from "vue";
 import type { TrackEntity } from "@/db/entities";
 import { getLogger } from "@/lib/logger";
-import { mapTrackEntityToPlayerTrack } from "@/modules/player/utils/trackEntity";
+import { mapTrack } from "@/types/track";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { TrackId } from "@/types/ids";
@@ -256,7 +256,7 @@ export const useRecoStand = () => {
     }
     feed.value = next;
     queueStore.appendItems(picks.map(p => ({
-      track: mapTrackEntityToPlayerTrack(p.track),
+      track: mapTrack(p.track),
       source: { type: "autoplay", pick: p.pick },
     })));
   };
@@ -303,7 +303,7 @@ export const useRecoStand = () => {
     if (!track) return;
     seedId.value = id;
     feed.value = new Map([[id, { track, sourceId: null, score: 0, breakdown: null, pick: "rank" }]]);
-    await queueStore.setQueue([mapTrackEntityToPlayerTrack(track)], 0, { type: "manual" });
+    await queueStore.setQueue([mapTrack(track)], 0, { type: "manual" });
   };
 
   const pickCurrent = () => {

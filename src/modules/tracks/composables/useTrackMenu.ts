@@ -1,4 +1,4 @@
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 import {
   isTrackMenuSubject,
   toTrackMenuSubject,

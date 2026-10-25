@@ -4,7 +4,7 @@ import { createApp, effectScope } from "vue";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { flushPromises } from "@vue/test-utils";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { shownToasts } from "@/test/toasts";
 
 const storage = vi.hoisted(() => ({ saveFile: vi.fn() }));

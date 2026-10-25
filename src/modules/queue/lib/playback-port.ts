@@ -1,4 +1,4 @@
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 
 /**
  * What the queue needs from whatever plays tracks. The player registers an

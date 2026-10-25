@@ -29,7 +29,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { ensurePinned } from "../ensurePinned";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 
 const dto: SourceTrackDTO = {
   id: ndTrackId("song1"),

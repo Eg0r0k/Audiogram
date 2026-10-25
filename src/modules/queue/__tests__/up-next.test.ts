@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { QueueItemId } from "@/types/ids";
 import type { QueueItem } from "../types";
 import { resolveUpNext, type UpNext } from "../lib/up-next";

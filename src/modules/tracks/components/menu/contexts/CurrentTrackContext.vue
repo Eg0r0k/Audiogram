@@ -86,7 +86,7 @@ import { trackHasLyrics } from "@/modules/tracks/lib/trackPredicates";
 import { useEphemeralImport } from "@/modules/tracks/composables/useEphemeralImport";
 import type { ContextActions } from "../type";
 import type { TrackMenuCaps } from "@/modules/tracks/composables/useTrackMenuCaps";
-import { isLibraryTrack, type PlayerTrack } from "@/modules/player/types";
+import { isLibraryTrack, type PlayerTrack } from "@/types/track";
 import IconFileImport from "~icons/tabler/file-import";
 
 const props = defineProps<{

@@ -16,11 +16,10 @@ import {
   type RemotePinExisting,
   type RemotePinRows,
 } from "@/services/entity-resolver";
-import type { Track } from "@/modules/player/types";
+import { mapTrack, type Track } from "@/types/track";
 import { unwrapResult } from "@/lib/errors/unwrap";
 import type { TrackMenuSubject } from "../components/menu/type";
 import { trackCoverOwner } from "@/modules/covers/composables/useTrackCover";
-import { mapTrack } from "../lib/mappers";
 import { ensureShadowCover } from "./shadowAlbumCover";
 import { formatError } from "@/lib/errors";
 

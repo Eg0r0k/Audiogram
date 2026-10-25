@@ -67,7 +67,7 @@ import { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { RightPanelAddTracksPayload } from "@/modules/right-panel/types";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { useSelection } from "@/composables/useSelection";
 import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";

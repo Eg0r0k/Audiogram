@@ -1,7 +1,7 @@
 import { getSecureRandomIndex } from "@/lib/random";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { isSameQueueSource, type QueueSource } from "@/modules/queue/types";
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 
 export function useQueueShuffle() {
   const queueStore = useQueueStore();

@@ -1,5 +1,5 @@
 import type { EventBusKey } from "@vueuse/core";
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 import type { PlaybackError } from "@/modules/player/service/playback-resolver.service";
 
 /**

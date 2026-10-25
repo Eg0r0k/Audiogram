@@ -1,7 +1,7 @@
 import { computed, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import { onKeyStroke } from "@vueuse/core";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { TrackId } from "@/types/ids";
 import { useTrackSelection } from "./useTrackSelection";
 

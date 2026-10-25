@@ -77,7 +77,7 @@ import { useLyricsActions } from "@/modules/player/composables/useLyricsActions"
 import type { LyricsLine } from "@/modules/player/lib/lrc";
 import { useLyricsStore } from "@/modules/player/store/lyrics.store";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import IconSave from "~icons/tabler/device-floppy";
 
 const props = defineProps<{

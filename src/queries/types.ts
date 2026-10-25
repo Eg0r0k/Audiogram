@@ -4,7 +4,7 @@ import type {
   PlaylistEntity,
   SidebarFolderEntity,
 } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { SearchMatch } from "@/modules/search/types";
 
 export interface LibrarySummaryData {

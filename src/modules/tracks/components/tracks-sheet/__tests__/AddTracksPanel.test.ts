@@ -4,7 +4,7 @@ import { VueQueryPlugin } from "@tanstack/vue-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { RightPanelAddTracksPayload } from "@/modules/right-panel/types";
 import AddTracksPanel from "../AddTracksPanel.vue";
 

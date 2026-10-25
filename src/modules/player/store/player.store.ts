@@ -5,7 +5,7 @@ import { useAudioSettingsStore } from "@/modules/settings/store/audio";
 import {
   type PlayerTrack,
   isLibraryTrack,
-} from "../types";
+} from "@/types/track";
 import { statsService } from "@/services/stats.service";
 import { useEventBus } from "@vueuse/core";
 import { listenEndedEvent, trackChangedEvent, trackEndedEvent } from "../lib/player-events";

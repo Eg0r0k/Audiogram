@@ -215,7 +215,7 @@ import { useQueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { useSleepTimer } from "../composables/useSleepTimer";
 import { useDisplayedPlaybackTime } from "../composables/useDisplayedPlaybackTime";
 import { useTrackChapters } from "@/modules/tracks/composables/useTrackChapters";
-import { isLibraryTrack } from "@/modules/player/types";
+import { isLibraryTrack } from "@/types/track";
 import type { TrackId } from "@/types/ids";
 const router = useRouter();
 

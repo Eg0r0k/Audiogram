@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { LyricsFailure } from "@/modules/player/service/track-lyrics-loader.service";
-import type { EphemeralTrack, PlayerTrack, Track } from "@/modules/player/types";
+import type { EphemeralTrack, PlayerTrack, Track } from "@/types/track";
 
 const actions = vi.hoisted(() => ({ attachFile: vi.fn(), removeMissing: vi.fn() }));
 const lyrics = vi.hoisted(() => ({ reload: vi.fn() }));

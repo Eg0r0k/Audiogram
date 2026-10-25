@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { errAsync, okAsync } from "neverthrow";
 import { useEventBus } from "@vueuse/core";
 import { listenEndedEvent, trackChangedEvent } from "@/modules/player/lib/player-events";
-import type { PlayerTrack } from "@/modules/player/types";
+import type { PlayerTrack } from "@/types/track";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { RadioSession } from "@/modules/queue/lib/queue-radio";
 import tracksFixture from "../../__fixtures__/tracks-batch.json";

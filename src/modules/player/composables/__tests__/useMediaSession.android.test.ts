@@ -6,7 +6,7 @@ import { VueQueryPlugin } from "@tanstack/vue-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { EphemeralTrack, Track } from "../../types";
+import type { EphemeralTrack, Track } from "@/types/track";
 
 vi.mock("@/db/repositories", () => ({
   trackRepository: { findByIds: vi.fn() },

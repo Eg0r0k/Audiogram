@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ok, okAsync, errAsync } from "neverthrow";
 import { TrackSource, TrackState } from "@/db/entities";
 import { StorageError } from "@/db/errors/storage.errors";
-import type { Track } from "../types";
+import type { Track } from "@/types/track";
 
 const storageMock = vi.hoisted(() => ({ getAudioUrl: vi.fn() }));
 const trackRepositoryMock = vi.hoisted(() => ({ findBySourceRef: vi.fn() }));

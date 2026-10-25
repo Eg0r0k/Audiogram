@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/vue-query";
 import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { addTracksToPlaylistAndSync, createPlaylistAndSync } from "@/queries/playlist.queries";

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/vue-query";
 import type { PlaylistEntity } from "@/db/entities";
 import type { PlaylistId, TrackId } from "@/types/ids";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { LibrarySummaryData } from "../types";
 
 //

@@ -57,7 +57,7 @@ import { Link } from "@/components/ui/link";
 import { useQueueStore } from "../store/queue.store";
 import { useQueueSourceLink } from "../composables/useQueueSourceLink";
 import type { QueueItem } from "../types";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";

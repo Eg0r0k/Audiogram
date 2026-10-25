@@ -4,7 +4,7 @@ import { defineComponent, h } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { PlayerTrack, Track } from "@/modules/player/types";
+import type { PlayerTrack, Track } from "@/types/track";
 import { provideTrackMenuComponents } from "../../useTrackMenuComponents";
 import CurrentTrackContext from "../CurrentTrackContext.vue";
 

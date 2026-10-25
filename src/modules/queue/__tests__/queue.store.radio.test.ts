@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { errAsync, okAsync } from "neverthrow";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { PlayerTrack, Track } from "@/modules/player/types";
+import type { PlayerTrack, Track } from "@/types/track";
 import type { SourceTrackDTO } from "@/types/source-dto";
 import { registerPlaybackPort, type PlaybackPort } from "../lib/playback-port";
 import type { RadioSession } from "../lib/queue-radio";

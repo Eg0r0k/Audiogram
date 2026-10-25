@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { createApp } from "vue";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { SourceProvider } from "@/modules/sources/types";
 import { shownToasts } from "@/test/toasts";
 

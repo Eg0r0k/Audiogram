@@ -1,5 +1,5 @@
 import { TrackSource, TrackState } from "@/db/entities";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { AlbumData, ArtistData, PlaylistData } from "@/types/media-data";
 import type { PlaylistId } from "@/types/ids";
 import { AlbumId } from "@/types/ids";

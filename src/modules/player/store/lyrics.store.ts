@@ -3,7 +3,7 @@ import { computed, ref, shallowRef } from "vue";
 import { usePlayerStore } from "./player.store";
 import { findActiveLyricsIndex, type LyricsLine } from "../lib/lrc";
 import { loadTrackLyrics, type TrackLyricsLoadResult } from "../service/track-lyrics-loader.service";
-import { isLibraryTrack, type PlayerTrack } from "../types";
+import { isLibraryTrack, type PlayerTrack } from "@/types/track";
 
 export type LyricsStatus = "idle" | "loading" | "ready" | "error";
 

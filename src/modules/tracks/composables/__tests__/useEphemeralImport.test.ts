@@ -3,7 +3,7 @@ import { ok } from "neverthrow";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
 import { trackRepository } from "@/db/repositories";
-import type { EphemeralTrack } from "@/modules/player/types";
+import type { EphemeralTrack } from "@/types/track";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { registerPlaybackPort } from "@/modules/queue/lib/playback-port";
 import { createPlayerPlaybackPort } from "@/modules/player/lib/queue-playback-port";

@@ -6,7 +6,7 @@ import type {
   TrackEntity,
 } from "@/db/entities";
 import { keyMatchers, queryKeys } from "@/queries/query-keys";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 import type { InfiniteData, InvalidateQueryFilters, Query, QueryClient } from "@tanstack/vue-query";
 import { removeById, upsertById } from "./shared";

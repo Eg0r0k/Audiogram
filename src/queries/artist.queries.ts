@@ -15,7 +15,7 @@ import {
   buildTrackDocFromDb,
 } from "@/modules/search/service/buildDocuments";
 import { removeSearchDocuments, upsertSearchDocuments } from "@/modules/search/service/searchIndex";
-import { mapTracks } from "@/modules/tracks/lib/mappers";
+import { mapTracks } from "@/types/track";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { ArtistId as createArtistId } from "@/types/ids";
 import type { ArtistId, TrackId } from "@/types/ids";

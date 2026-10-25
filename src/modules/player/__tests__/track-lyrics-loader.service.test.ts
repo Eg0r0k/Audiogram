@@ -2,7 +2,7 @@ import { err, ok } from "neverthrow";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TrackSource, TrackState } from "@/db/entities";
 import { StorageError } from "@/db/errors/storage.errors";
-import type { PlayerTrack, Track } from "../types";
+import type { PlayerTrack, Track } from "@/types/track";
 import { loadTrackLyrics } from "../service/track-lyrics-loader.service";
 import { fetchLrcLibLyrics } from "../service/lyrics.service";
 import { storageService } from "@/db/storage";

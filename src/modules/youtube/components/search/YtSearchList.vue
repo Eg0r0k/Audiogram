@@ -76,7 +76,7 @@ import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdo
 import TrackRow from "@/modules/tracks/components/TrackRow.vue";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { getLogger } from "@/lib/logger";
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import { useSearch, type YtChip } from "@/modules/search/composables/useSearch";
 import { hitResultItem, searchResultRoute, trackArtistRoutes } from "@/modules/search/lib/resultItems";
 import type { SearchResultItem } from "@/modules/search/types";

@@ -7,7 +7,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Track } from "@/modules/player/types";
+import type { Track } from "@/types/track";
 import type { ContextActions } from "../type";
 import type { TrackMenuCaps } from "@/modules/tracks/composables/useTrackMenuCaps";
 import DefaultContext from "./DefaultContext.vue";

@@ -10,7 +10,7 @@ import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { registerPlaybackPort } from "@/modules/queue/lib/playback-port";
 import { createPlayerPlaybackPort } from "./lib/queue-playback-port";
 import { playbackStalledEvent, trackSkippedEvent } from "@/modules/queue/lib/queue-events";
-import { isLibraryTrack } from "./types";
+import { isLibraryTrack } from "@/types/track";
 import { listenEndedEvent, trackChangedEvent, trackEndedEvent } from "./lib/player-events";
 import { resolveListenOrigin, resolveListenPick } from "./lib/listen-origin";
 import { initNextTrackPrefetch } from "./service/prefetch-next";
