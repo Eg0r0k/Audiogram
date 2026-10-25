@@ -15,6 +15,12 @@ describe("errorMessage", () => {
     expect(errorMessage("cancelled", "fallback")).toBe("cancelled");
   });
 
+  it("takes the message of a plain error object", () => {
+    expect(errorMessage({ kind: "x", message: "boom" })).toBe("boom");
+    expect(errorMessage({ domain: "native", kind: "IO", message: "denied" }, "fallback")).toBe("denied");
+    expect(errorMessage({ message: 42 }, "fallback")).toBe("fallback");
+  });
+
   it("falls back on anything else instead of stringifying it", () => {
     expect(errorMessage({ code: 12 }, "Scan failed")).toBe("Scan failed");
     expect(errorMessage(undefined, "Scan failed")).toBe("Scan failed");

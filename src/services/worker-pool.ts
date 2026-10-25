@@ -1,5 +1,6 @@
 import MetaWorker from "@/workers/meta.worker?worker";
 import type { BaseMetadata, ParseRequest, ParseResponse } from "@/workers/types";
+import { errorMessage } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { ImportError } from "./types";
 
@@ -146,7 +147,7 @@ export class WorkerPool {
       clearTimeout(timeoutId);
       this.pending.delete(id);
       this.release(entry);
-      job.reject(e instanceof Error ? e : new Error(String(e)));
+      job.reject(e instanceof Error ? e : new Error(errorMessage(e)));
     }
   }
 

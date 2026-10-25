@@ -77,6 +77,14 @@ describe("checkUpdateAndroid", () => {
     expect(result.isErr()).toBe(true);
     expect(result._unsafeUnwrapErr().kind).toBe("NETWORK");
   });
+
+  it("keeps the message of a plain-object failure, not [object Object]", async () => {
+    mocks.getVersion.mockRejectedValue({ kind: "x", message: "boom" });
+
+    const result = await checkUpdateAndroid();
+
+    expect(result._unsafeUnwrapErr()).toEqual({ kind: "NETWORK", message: "boom" });
+  });
 });
 
 describe("installUpdateAndroid", () => {
@@ -105,5 +113,15 @@ describe("installUpdateAndroid", () => {
     expect(result.isErr()).toBe(true);
     expect(result._unsafeUnwrapErr().kind).toBe("INSTALL_FAILED");
     expect(mocks.openUrl).not.toHaveBeenCalled();
+  });
+
+  it("keeps the message of a plain-object opener failure, not [object Object]", async () => {
+    mocks.fetch.mockResolvedValue(manifest("0.3.0", "https://example/app.apk"));
+    mocks.openUrl.mockRejectedValue({ kind: "x", message: "boom" });
+    await checkUpdateAndroid();
+
+    const result = await installUpdateAndroid();
+
+    expect(result._unsafeUnwrapErr()).toEqual({ kind: "INSTALL_FAILED", message: "boom" });
   });
 });

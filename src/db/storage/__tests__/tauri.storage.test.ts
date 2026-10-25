@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   appDataDir: vi.fn(),
   convertFileSrc: vi.fn(),
   invoke: vi.fn(),
+  warn: vi.fn(),
   fileHandle: {
     read: vi.fn(),
     close: vi.fn(),
@@ -24,7 +25,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/logger", () => ({
-  getLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+  getLogger: () => ({ info: vi.fn(), warn: mocks.warn, error: vi.fn() }),
 }));
 vi.mock("@tauri-apps/plugin-fs", () => ({
   writeFile: mocks.writeFile,
@@ -283,6 +284,18 @@ describe("TauriStorage", () => {
         { headers: { Range: "bytes=0-2" } },
       );
       expect(mocks.open).not.toHaveBeenCalled();
+    });
+
+    it("logs a rejected error envelope by its message, not as [object Object]", async () => {
+      fetchMock.mockRejectedValueOnce({ domain: "native", kind: "IO", message: "boom" });
+      mocks.fileHandle.read.mockResolvedValue(0);
+
+      await storage.readBytes(PATH, 3);
+
+      expect(mocks.warn).toHaveBeenCalledTimes(1);
+      const [line] = mocks.warn.mock.calls[0] as [string];
+      expect(line).toContain("native/IO: boom");
+      expect(line).not.toContain("[object Object]");
     });
   });
 

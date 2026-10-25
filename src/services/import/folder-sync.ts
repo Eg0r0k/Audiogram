@@ -28,7 +28,7 @@ import type { MetadataParser } from "./metadata-parser";
 import { persistTracks } from "./track-persister";
 import { chunk } from "@/lib/math";
 import { normalizePath } from "@/lib/files/filterFiles";
-import { formatError } from "@/lib/errors";
+import { errorMessage, formatError } from "@/lib/errors";
 
 export interface FolderSyncDeps {
   metadataParser: MetadataParser;
@@ -264,7 +264,7 @@ export class FolderSyncService {
       }
       catch (e) {
         result.failed += batch.length;
-        result.errors.push({ path: folderPath, message: `DB batch failed: ${String(e)}` });
+        result.errors.push({ path: folderPath, message: `DB batch failed: ${errorMessage(e)}` });
         getLogger().error(`[FolderSync] DB batch of ${batch.length} tracks failed: ${formatError(e)}`);
 
         if (e instanceof DbError && e.code === "QUOTA") {

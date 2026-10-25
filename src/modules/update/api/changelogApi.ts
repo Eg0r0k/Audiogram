@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/vue-query";
 import { $fetch, FetchError } from "ofetch";
 import { ResultAsync } from "neverthrow";
+import { errorMessage } from "@/lib/errors";
 
 const GITHUB_REPO = import.meta.env.VITE_GITHUB_REPO as string;
 
@@ -44,7 +45,7 @@ function toChangelogError(e: unknown): ChangelogError {
       message: e.message,
     };
   }
-  return { kind: "NETWORK", message: String(e) };
+  return { kind: "NETWORK", message: errorMessage(e) };
 }
 
 export const changelogKeys = {

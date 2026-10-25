@@ -2,6 +2,7 @@ import { ResultAsync } from "neverthrow";
 import { fetch } from "@tauri-apps/plugin-http";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { errorMessage } from "@/lib/errors";
 import type { UpdateError, UpdateInfo } from "../types";
 
 /**
@@ -75,10 +76,10 @@ export const checkUpdateAndroid = (): ResultAsync<UpdateInfo | null, UpdateError
       body: manifest.notes ?? null,
       date: manifest.pub_date ?? null,
     };
-  })(), (e): UpdateError => ({ kind: "NETWORK", message: String(e) }));
+  })(), (e): UpdateError => ({ kind: "NETWORK", message: errorMessage(e) }));
 
 export const installUpdateAndroid = (): ResultAsync<void, UpdateError> =>
   ResultAsync.fromPromise((async () => {
     if (!stagedApkUrl) throw new Error("no update staged — check first");
     await openUrl(stagedApkUrl);
-  })(), (e): UpdateError => ({ kind: "INSTALL_FAILED", message: String(e) }));
+  })(), (e): UpdateError => ({ kind: "INSTALL_FAILED", message: errorMessage(e) }));

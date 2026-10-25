@@ -31,7 +31,8 @@ export type AppErrorDomain = AppError["domain"];
 
 export const errorMessage = (cause: unknown, fallback = "Unknown error"): string => {
   if (cause instanceof Error) return cause.message;
-  return typeof cause === "string" ? cause : fallback;
+  if (typeof cause === "string") return cause;
+  return isRecord(cause) && typeof cause.message === "string" ? cause.message : fallback;
 };
 
 export const TERMINAL_SOURCE_ERRORS: ReadonlySet<SourceErrorKind> = new Set<SourceErrorKind>([
