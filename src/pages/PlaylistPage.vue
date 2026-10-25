@@ -111,7 +111,7 @@ import { catalogViewRoute } from "@/app/router/route-locations";
 import { useScrollRestoration } from "@/components/ui/scrollable/useScrollRestoration";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import PageErrorState from "@/components/common/PageErrorState.vue";
-import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback";
+import { useEntityPlayback } from "@/modules/player/composables/useEntityPlayback";
 import type { QueueSource } from "@/modules/queue/types";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";

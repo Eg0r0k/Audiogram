@@ -2,12 +2,17 @@ import { defineStore } from "pinia";
 import { computed, markRaw, ref, shallowRef } from "vue";
 import { useEventBus } from "@vueuse/core";
 import { ok, err, type Result } from "neverthrow";
-import { checkPlayable, toPlaybackFailure, type PlaybackError } from "@/modules/player/service/playback-resolver.service";
 import { QueueItemId } from "@/types/ids";
 import { isEphemeralTrack, type PlayerTrack } from "@/types/track";
-import { REPEAT_MODES, type RepeatMode } from "@/modules/player/types";
-import { isSameQueueSource, type QueueItem, type QueueSource, type QueueState } from "../types";
-import { playback } from "../lib/playback-port";
+import {
+  REPEAT_MODES,
+  isSameQueueSource,
+  type QueueItem,
+  type QueueSource,
+  type QueueState,
+  type RepeatMode,
+} from "../types";
+import { playback, toPlaybackFailure, type PlaybackError } from "../lib/playback-port";
 import { getLogger } from "@/lib/logger";
 import { createDebouncedLocalStorage } from "@/lib/storage/debounced-storage";
 import { buildPlaybackQueue, getItemsByOrder, moveItem } from "../lib/queue-order";
@@ -442,7 +447,7 @@ export const useQueueStore = defineStore("queue", () => {
       const item = itemAt(index);
       if (!item) break;
 
-      const playable = checkPlayable(item.track);
+      const playable = playback().checkPlayable(item.track);
       const result = playable.isErr() ? playable : await playAtIndex(index);
       if (result.isOk()) return;
       if (!reactToFailure(item.track, result.error)) break;

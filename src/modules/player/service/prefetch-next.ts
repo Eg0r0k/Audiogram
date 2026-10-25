@@ -9,7 +9,7 @@ import { sources } from "@/modules/sources/registry";
 import { parseTrackRef } from "@/types/track-ref";
 import type { TrackId } from "@/types/ids";
 import { isLibraryTrack, type PlayerTrack } from "@/types/track";
-import type { RepeatMode } from "../types";
+import type { RepeatMode } from "@/modules/queue/types";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { usePlayerStore } from "../store/player.store";
 

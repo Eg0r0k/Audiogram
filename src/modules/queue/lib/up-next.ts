@@ -1,5 +1,4 @@
-import type { RepeatMode } from "@/modules/player/types";
-import type { QueueItem } from "../types";
+import type { QueueItem, RepeatMode } from "../types";
 
 export type UpNextEntry = { item: QueueItem; index: number };
 

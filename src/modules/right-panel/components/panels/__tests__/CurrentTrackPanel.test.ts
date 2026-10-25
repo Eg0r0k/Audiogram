@@ -6,12 +6,11 @@ import { nextTick } from "vue";
 import { i18n } from "@/app/i18n";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { PlayerTrack, Track } from "@/types/track";
-import type { RepeatMode } from "@/modules/player/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { mascotCoverUrl } from "@/modules/covers/lib/placeholder";
 import { registerAutoplaySource } from "@/modules/queue/lib/queue-autoplay";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
-import type { QueueItem } from "@/modules/queue/types";
+import type { QueueItem, RepeatMode } from "@/modules/queue/types";
 import { QueueItemId } from "@/types/ids";
 import CurrentTrackPanel from "../CurrentTrackPanel.vue";
 

@@ -132,7 +132,7 @@ import { useEventBus } from "@vueuse/core";
 import { ok, okAsync, errAsync, ResultAsync } from "neverthrow";
 import { usePlayerStore } from "../store/player.store";
 import { trackChangedEvent, trackEndedEvent } from "../lib/player-events";
-import { PlaybackFailure } from "../service/playback-resolver.service";
+import { PlaybackFailure } from "@/modules/queue/lib/playback-port";
 import { StorageError, StorageErrorCode } from "@/db/errors/storage.errors";
 
 function createLibraryTrack(overrides: Partial<Track> = {}): Track {

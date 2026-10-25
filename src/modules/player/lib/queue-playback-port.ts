@@ -1,4 +1,5 @@
 import type { PlaybackPort } from "@/modules/queue/lib/playback-port";
+import { checkPlayable } from "../service/playback-resolver.service";
 import { usePlayerStore } from "../store/player.store";
 
 // Resolves the store per call so registering the port instantiates nothing
@@ -16,6 +17,7 @@ export const createPlayerPlaybackPort = (): PlaybackPort => ({
   get isPlaybackIntended() {
     return usePlayerStore().isPlaybackIntended;
   },
+  checkPlayable,
   presentTrack: track => usePlayerStore().presentTrack(track),
   selectTrack: track => usePlayerStore().selectTrack(track),
   playPlayerTrack: track => usePlayerStore().playPlayerTrack(track),

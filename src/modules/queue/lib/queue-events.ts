@@ -1,6 +1,6 @@
 import type { EventBusKey } from "@vueuse/core";
 import type { PlayerTrack } from "@/types/track";
-import type { PlaybackError } from "@/modules/player/service/playback-resolver.service";
+import type { PlaybackError } from "./playback-port";
 
 /**
  * Queue playback events, carried over VueUse's useEventBus like the player's

@@ -1,7 +1,5 @@
 import { ResultAsync, errAsync, okAsync, ok, err, type Result } from "neverthrow";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { StorageError } from "@/db/errors/storage.errors";
-import type { SourceError } from "@/types/source-dto";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { storageService } from "@/db/storage";
 import { trackRepository } from "@/db/repositories";
@@ -19,46 +17,13 @@ import {
   isLibraryTrack,
 } from "@/types/track";
 import { formatError } from "@/lib/errors";
-
-/**
- * Why playback could not start, as data. The store turns this into a
- * {@link PlaybackFailure} for callers that skip on failure (queue.store);
- * the kind is what lets them tell "skip this track" from "stop everything".
- */
-export type PlaybackError
-  = | { kind: "broken"; trackId: string }
-    | { kind: "unavailable"; reason: string }
-    | { kind: "storage"; cause: StorageError }
-    | { kind: "source"; cause: SourceError }
-    | { kind: "engine"; cause: Error }
-    | { kind: "timeout"; phase: "resolving" | "loading" };
+import type { PlaybackError } from "@/modules/queue/lib/playback-port";
 
 /** What the engine should load. HLS is decided here, not at load time. */
 export type PlaybackSource
   = | { kind: "url"; url: string; corsFallback?: boolean }
     | { kind: "hls"; url: string }
     | { kind: "file"; file: File };
-
-export class PlaybackFailure extends Error {
-  constructor(
-    public readonly error: PlaybackError,
-    track: PlayerTrack,
-  ) {
-    super(describePlaybackError(error, track));
-    this.name = "PlaybackFailure";
-  }
-}
-
-export const describePlaybackError = (error: PlaybackError, track: PlayerTrack): string => {
-  switch (error.kind) {
-    case "broken": return `Track is marked as broken: "${track.title}"`;
-    case "unavailable": return `Cannot resolve audio source for "${track.title}": ${error.reason}`;
-    case "storage": return error.cause.message;
-    case "source": return `[${error.cause.kind}] ${error.cause.message}`;
-    case "engine": return error.cause.message;
-    case "timeout": return `Timed out while ${error.phase} "${track.title}"`;
-  }
-};
 
 /**
  * Worth one more attempt: a stream URL that failed to resolve or an engine
@@ -90,13 +55,6 @@ export const resolveTimeoutMsFor = (track: PlayerTrack): number => {
   const id = trackIdOf(track);
   if (!id || parseTrackRef(id).kind === "local") return RESOLVE_TIMEOUT_MS;
   return sources.forTrack(id).resolveTimeoutMs ?? RESOLVE_TIMEOUT_MS;
-};
-
-/** Wraps whatever the engine threw so every failure leaving the store carries a kind. */
-export const toPlaybackFailure = (thrown: unknown, track: PlayerTrack): PlaybackFailure => {
-  if (thrown instanceof PlaybackFailure) return thrown;
-  const cause = thrown instanceof Error ? thrown : new Error(String(thrown));
-  return new PlaybackFailure({ kind: "engine", cause }, track);
 };
 
 /** Precondition for switching to a track — checked before the switch starts, so a refusal changes nothing. */

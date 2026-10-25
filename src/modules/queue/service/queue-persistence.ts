@@ -1,6 +1,5 @@
 import { PlaylistId, type QueueItemId } from "@/types/ids";
 import { mapTrack, type EphemeralTrack, type PlayerTrack, type Track } from "@/types/track";
-import { REPEAT_MODES, type RepeatMode } from "@/modules/player/types";
 import { playlistRepository, queueSnapshotRepository, trackRepository } from "@/db/repositories";
 import { LEGACY_QUEUE_STORAGE_KEY, QUEUE_CURSOR_STORAGE_KEY } from "@/db/entities";
 import { unique } from "@/queries/shared";
@@ -8,7 +7,7 @@ import { unwrapResult } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import { migrateProxyUrl } from "@/lib/stream-url";
 import { ndPlaylistId, parseTrackRef } from "@/types/track-ref";
-import type { QueueItem, QueueSource, QueueState } from "../types";
+import { REPEAT_MODES, type QueueItem, type QueueSource, type QueueState, type RepeatMode } from "../types";
 import { getItemsByOrder } from "../lib/queue-order";
 import { formatError } from "@/lib/errors";
 

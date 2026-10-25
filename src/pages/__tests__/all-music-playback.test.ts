@@ -9,7 +9,7 @@ import { i18n } from "@/app/i18n";
 const playback = vi.hoisted(() => ({
   options: null as null | { source: unknown; isComplete: unknown; loadAll: () => Promise<unknown[]> },
 }));
-vi.mock("@/modules/queue/composables/useEntityPlayback", () => ({
+vi.mock("@/modules/player/composables/useEntityPlayback", () => ({
   useEntityPlayback: (options: typeof playback.options) => {
     playback.options = options;
     return { playAll: vi.fn(), playTrack: vi.fn(), shuffle: vi.fn(), addToQueue: vi.fn() };

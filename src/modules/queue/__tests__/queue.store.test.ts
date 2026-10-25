@@ -3,19 +3,18 @@ import { createApp, isReactive, nextTick, watch } from "vue";
 import type { QueueItem } from "../types";
 import { createPinia, setActivePinia } from "pinia";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
-import { ok } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { queueSnapshotRepository, trackRepository } from "@/db/repositories";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
 import { getRecommendations } from "@/modules/recommendations/service/recommender.service";
 import { registerAutoplaySource } from "../lib/queue-autoplay";
-import { registerPlaybackPort } from "../lib/playback-port";
+import { PlaybackFailure, registerPlaybackPort, type PlaybackPort } from "../lib/playback-port";
 import { createPlayerPlaybackPort } from "@/modules/player/lib/queue-playback-port";
 import { usePlayerStore } from "@/modules/player/store/player.store";
-import type { Track } from "@/types/track";
+import type { PlayerTrack, Track } from "@/types/track";
 import { setMediaServerBaseForTests } from "@/lib/stream-url";
 import { useEventBus } from "@vueuse/core";
-import { PlaybackFailure } from "@/modules/player/service/playback-resolver.service";
 import { playbackStalledEvent, trackSkippedEvent } from "../lib/queue-events";
 import { shadowPinRemoteTracks } from "../lib/shadow-pin";
 import { useQueueStore } from "../store/queue.store";
@@ -2080,6 +2079,43 @@ describe("queue.store", () => {
         expect(stopSpy).toHaveBeenCalled();
         expect(store.currentIndex).toBe(-1);
         offStalled();
+        offSkipped();
+      });
+
+      it("does not switch to a track the playback port refuses", async () => {
+        const store = useQueueStore();
+        const played: string[] = [];
+        const refusing: PlaybackPort = {
+          currentTrack: null,
+          currentTime: 0,
+          canSeek: true,
+          isPlaybackIntended: true,
+          checkPlayable: track => (track.id === "2" ? err({ kind: "unavailable", reason: "refused" }) : ok(undefined)),
+          presentTrack: vi.fn(),
+          selectTrack: vi.fn(),
+          playPlayerTrack: vi.fn(async (track: PlayerTrack) => { played.push(track.id); }),
+          restartCurrent: vi.fn(async () => true),
+          stop: vi.fn(),
+          clearCurrentTrack: vi.fn(),
+          seekTo: vi.fn(),
+        };
+        registerPlaybackPort(refusing);
+        seedQueue(store, ["1", "2", "3"], 0);
+        const selected: (string | undefined)[] = [];
+        watch(() => store.currentTrack?.id, id => selected.push(id), { flush: "sync" });
+        const skipped = vi.fn();
+        const offSkipped = useEventBus(trackSkippedEvent).on(skipped);
+
+        await store.next();
+
+        expect(played).toEqual(["3"]);
+        expect(selected).toEqual(["3"]);
+        expect(refusing.selectTrack).not.toHaveBeenCalled();
+        expect(skipped).toHaveBeenCalledTimes(1);
+        expect(skipped.mock.calls[0][0]).toMatchObject({
+          track: { id: "2" },
+          error: { kind: "unavailable", reason: "refused" },
+        });
         offSkipped();
       });
     });

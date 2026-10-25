@@ -1,9 +1,8 @@
 import { mapTrack, type PlayerTrack } from "@/types/track";
-import type { RepeatMode } from "@/modules/player/types";
 import { getLogger } from "@/lib/logger";
 import type { ListenPick, TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
-import type { QueueItem } from "../types";
+import type { QueueItem, RepeatMode } from "../types";
 import { formatError } from "@/lib/errors";
 
 const AUTOPLAY_RECOMMENDATION_LIMIT = 5;

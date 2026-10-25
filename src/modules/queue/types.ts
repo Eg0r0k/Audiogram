@@ -2,6 +2,9 @@ import type { ListenPick } from "@/db/entities";
 import type { AlbumId, ArtistId, PlaylistId, QueueItemId } from "@/types/ids";
 import type { PlayerTrack } from "@/types/track";
 
+export const REPEAT_MODES = ["off", "all", "one"] as const;
+export type RepeatMode = typeof REPEAT_MODES[number];
+
 export type QueueSource
   = | { type: "album"; albumId: AlbumId }
     | { type: "playlist"; playlistId: PlaylistId }

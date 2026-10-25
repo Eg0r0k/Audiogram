@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ok } from "neverthrow";
 import { playback, registerPlaybackPort, type PlaybackPort } from "../playback-port";
 
 const fakePort = (): PlaybackPort => ({
@@ -6,6 +7,7 @@ const fakePort = (): PlaybackPort => ({
   currentTime: 0,
   canSeek: false,
   isPlaybackIntended: false,
+  checkPlayable: () => ok(undefined),
   presentTrack: () => {},
   selectTrack: () => {},
   playPlayerTrack: async () => {},

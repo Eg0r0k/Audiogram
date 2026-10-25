@@ -16,10 +16,9 @@ import { useDelayedIndicator } from "../composables/useDelayedIndicator";
 import { useCountdown } from "../composables/useCountdown";
 import { getLogger } from "@/lib/logger";
 import { createDebouncedLocalStorage } from "@/lib/storage/debounced-storage";
+import { PlaybackFailure, toPlaybackFailure } from "@/modules/queue/lib/playback-port";
 import {
   type PlaybackSource,
-  PlaybackFailure,
-  toPlaybackFailure,
   isRetryablePlaybackError,
   isEngineFailure,
   checkPlayable,

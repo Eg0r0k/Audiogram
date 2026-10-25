@@ -179,7 +179,7 @@ import { computed, ref, useTemplateRef } from "vue";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { useIndexTracksPage } from "@/modules/tracks/composables/useIndexTracksPage";
 import { getAllTrackIds, getAllTracksForQueue } from "@/queries/track.queries";
-import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback";
+import { useEntityPlayback } from "@/modules/player/composables/useEntityPlayback";
 import type { QueueSource } from "@/modules/queue/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useImport } from "@/modules/library/composables/useImport";

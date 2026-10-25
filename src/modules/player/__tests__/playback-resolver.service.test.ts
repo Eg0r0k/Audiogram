@@ -18,13 +18,11 @@ vi.mock("@/modules/tracks/service/ensurePinned", () => ({ ensurePinned: ensurePi
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ warn: vi.fn(), error: vi.fn() }) }));
 
 import {
-  PlaybackFailure,
   checkPlayable,
-  describePlaybackError,
   isStreamingTrack,
   resolvePlaybackSource,
-  toPlaybackFailure,
 } from "../service/playback-resolver.service";
+import { PlaybackFailure, describePlaybackError, toPlaybackFailure } from "@/modules/queue/lib/playback-port";
 
 const libraryTrack = (overrides: Partial<Track> = {}): Track => ({
   id: "track-1" as never,

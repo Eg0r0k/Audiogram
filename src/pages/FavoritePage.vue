@@ -106,7 +106,7 @@ import type { TrackSortKey } from "@/modules/tracks/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import LibrarySortHeader from "@/modules/library/components/LibrarySortHeader.vue";
 import TrackExpanded from "@/modules/tracks/components/TrackExpanded.vue";
-import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback";
+import { useEntityPlayback } from "@/modules/player/composables/useEntityPlayback";
 import { getLogger } from "@/lib/logger";
 import TrackRowLoading from "@/modules/tracks/components/TrackRowLoading.vue";
 import { formatError } from "@/lib/errors";

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { errAsync, okAsync } from "neverthrow";
+import { errAsync, ok, okAsync } from "neverthrow";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { PlayerTrack, Track } from "@/types/track";
 import type { SourceTrackDTO } from "@/types/source-dto";
@@ -20,6 +20,7 @@ const port: PlaybackPort & { played: string[] } = {
   currentTime: 0,
   canSeek: true,
   isPlaybackIntended: true,
+  checkPlayable: () => ok(undefined),
   presentTrack: vi.fn(),
   selectTrack: vi.fn(),
   playPlayerTrack: vi.fn(async (track: PlayerTrack) => { port.played.push(track.id); }),

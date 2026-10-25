@@ -156,7 +156,7 @@ import { loadErrorText, reportError } from "@/app/error-feedback";
 import { useI18n } from "vue-i18n";
 import VirtualScrollable from "@/components/ui/scrollable/VirtualScrollable.vue";
 import PageErrorState from "@/components/common/PageErrorState.vue";
-import { useEntityPlayback } from "@/modules/queue/composables/useEntityPlayback";
+import { useEntityPlayback } from "@/modules/player/composables/useEntityPlayback";
 import type { QueueSource } from "@/modules/queue/types";
 import TrackContextMenu from "@/modules/tracks/components/menu/context-menu/TrackContextMenu.vue";
 import TrackDropdown from "@/modules/tracks/components/menu/dropdown/TrackDropdown.vue";

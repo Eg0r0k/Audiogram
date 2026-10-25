@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { TrackSource, TrackState } from "@/db/entities";
-import type { QueueItem } from "../../types";
+import type { QueueItem } from "@/modules/queue/types";
 import type { Track } from "@/types/track";
 
 vi.mock("@/db/repositories", () => ({
@@ -12,7 +12,7 @@ vi.mock("@/modules/covers/composables/useTrackCover", () => ({
   useTrackCover: () => ({ url: { value: undefined }, isLoading: { value: false } }),
 }));
 
-import { useQueueStore } from "../../store/queue.store";
+import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useQueueNeighbors } from "../useQueueNeighbors";
 
