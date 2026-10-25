@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { okAsync } from "neverthrow";
 import { ndTrackId } from "@/types/track-ref";
 import type { QueueItemId, TrackId } from "@/types/ids";
 
@@ -10,10 +9,10 @@ const repoMock = vi.hoisted(() => ({
 
 vi.mock("@/db/repositories", () => ({
   playlistRepository: {
-    findById: (id: string) => okAsync(repoMock.localPlaylistIds.has(id) ? { id, name: "Local" } : undefined),
+    findById: async (id: string) => (repoMock.localPlaylistIds.has(id) ? { id, name: "Local" } : undefined),
   },
   trackRepository: {
-    findByIds: (ids: string[]) => okAsync(ids.map(id => ({ id }))),
+    findByIds: async (ids: string[]) => ids.map(id => ({ id })),
   },
 }));
 vi.mock("@/types/track", async importOriginal => ({

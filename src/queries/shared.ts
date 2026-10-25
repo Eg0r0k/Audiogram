@@ -7,8 +7,6 @@ import type { SourceKind } from "@/types/track-ref";
 import { isDescendingSort, trackSortField, type TrackSortKey } from "@/types/track-sort";
 import type { Result } from "neverthrow";
 
-export { unwrapResult } from "@/lib/errors/unwrap";
-
 export class SourceQueryError extends AppFailure<SourceAppError> {
   constructor(
     public readonly kind: SourceErrorKind,
@@ -22,7 +20,7 @@ export class SourceQueryError extends AppFailure<SourceAppError> {
 }
 
 /**
- * unwrapResult's counterpart for the source-provider boundary. `kind` is what
+ * Turns a source-provider Result into a value or a SourceQueryError. `kind` is what
  * makes a live request double as a health probe: the source that answered (or
  * refused) is the one the verdict is recorded against, so a view can say
  * "the password was rejected" instead of showing an empty list.

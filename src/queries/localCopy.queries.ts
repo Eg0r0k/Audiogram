@@ -4,13 +4,12 @@ import type { TrackEntity } from "@/db/entities";
 import { TrackId } from "@/types/ids";
 import { settleLibraryReads } from "./cache";
 import { queryKeys } from "./query-keys";
-import { unwrapResult } from "./shared";
 
 const NO_REMOTE_ID = TrackId("__local-copy-none__");
 
 /** Imperative read for callers outside a component's query (menus, exports). */
 export const getLocalCopy = async (remoteId: TrackId): Promise<TrackEntity | null> =>
-  (await unwrapResult(trackRepository.findBySourceRef(remoteId))) ?? null;
+  (await trackRepository.findBySourceRef(remoteId)) ?? null;
 
 /** The copy row appeared (`null`: was deleted); publishes it without a re-read. */
 export const syncLocalCopyCache = async (

@@ -18,28 +18,31 @@ import { DbError } from "@/db/errors/db.errors";
 
 const {
   mockFindExistingFingerprints,
-  mockUnitOfWorkRunScoped,
+  mockUnitOfWorkRun,
   mockTrackCreateMany,
   mockArtistCreateMany,
   mockAlbumCreateMany,
   mockCoverCreateMany,
 } = vi.hoisted(() => ({
   mockFindExistingFingerprints: vi.fn(),
-  mockUnitOfWorkRunScoped: vi.fn(),
+  mockUnitOfWorkRun: vi.fn(),
   mockTrackCreateMany: vi.fn(),
   mockArtistCreateMany: vi.fn(),
   mockAlbumCreateMany: vi.fn(),
   mockCoverCreateMany: vi.fn(),
 }));
 
-function okResult<T>(value: T) {
-  return { isOk: () => true, isErr: () => false, value };
-}
-
 /** The library's fingerprints, as the repository reports them for a batch. */
 const holdsFingerprints = (...held: string[]) =>
   mockFindExistingFingerprints.mockImplementation(async (candidates: readonly string[]) =>
-    okResult(new Set(candidates.filter(fingerprint => held.includes(fingerprint)))));
+    new Set(candidates.filter(fingerprint => held.includes(fingerprint))));
+
+const uowScope = {
+  tracks: { createMany: mockTrackCreateMany },
+  artists: { createMany: mockArtistCreateMany },
+  albums: { createMany: mockAlbumCreateMany },
+  covers: { createMany: mockCoverCreateMany },
+};
 
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
@@ -48,21 +51,21 @@ vi.mock("@/db/repositories", () => ({
   trackRepository: {
     findExistingFingerprints: mockFindExistingFingerprints,
     createMany: mockTrackCreateMany,
-    findByIds: vi.fn().mockResolvedValue(okResult([])),
+    findByIds: vi.fn().mockResolvedValue([]),
   },
   artistRepository: {
-    findByIds: vi.fn().mockResolvedValue(okResult([])),
+    findByIds: vi.fn().mockResolvedValue([]),
     createMany: mockArtistCreateMany,
   },
   albumRepository: {
-    findByIds: vi.fn().mockResolvedValue(okResult([])),
+    findByIds: vi.fn().mockResolvedValue([]),
     createMany: mockAlbumCreateMany,
   },
   coverRepository: { createMany: mockCoverCreateMany },
 }));
 
 vi.mock("@/db/unit-of-work", () => ({
-  unitOfWork: { runScoped: mockUnitOfWorkRunScoped },
+  unitOfWork: { run: mockUnitOfWorkRun },
 }));
 
 vi.mock("@/db", () => {
@@ -149,14 +152,11 @@ describe("ImportPipeline", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     holdsFingerprints();
-    mockTrackCreateMany.mockResolvedValue(okResult([]));
-    mockArtistCreateMany.mockResolvedValue(okResult([]));
-    mockAlbumCreateMany.mockResolvedValue(okResult([]));
-    mockCoverCreateMany.mockResolvedValue(okResult([]));
-    mockUnitOfWorkRunScoped.mockImplementation(async (_tables: unknown, cb: () => Promise<void>) => {
-      await cb();
-      return okResult(undefined);
-    });
+    mockTrackCreateMany.mockResolvedValue([]);
+    mockArtistCreateMany.mockResolvedValue([]);
+    mockAlbumCreateMany.mockResolvedValue([]);
+    mockCoverCreateMany.mockResolvedValue(undefined);
+    mockUnitOfWorkRun.mockImplementation(async (_tables: unknown, work: (uow: typeof uowScope) => Promise<void>) => work(uowScope));
     fakes = makeFakes();
   });
 
@@ -354,23 +354,19 @@ describe("ImportPipeline", () => {
 
       expect(result.successful).toHaveLength(count);
       // 100-item pipeline batch → 2 transactions, then 5 → 1 more.
-      expect(mockUnitOfWorkRunScoped).toHaveBeenCalledTimes(3);
+      expect(mockUnitOfWorkRun).toHaveBeenCalledTimes(3);
     });
 
     it("stops persisting after a quota failure and fails the remaining items", async () => {
       const count = DB_BATCH_SIZE * 3;
       const items = nativeItems(...Array.from({ length: count }, (_, i) => `s${i}.mp3`));
-      mockUnitOfWorkRunScoped.mockResolvedValue({
-        isOk: () => false,
-        isErr: () => true,
-        error: new DbError("QUOTA", "storage full"),
-      });
+      mockUnitOfWorkRun.mockRejectedValue(new DbError("QUOTA", "storage full"));
 
       const result = await makePipeline(fakes).run(items);
 
       // The first transaction hit the quota; retrying the next two would
       // only fail the same way, so they are never attempted.
-      expect(mockUnitOfWorkRunScoped).toHaveBeenCalledTimes(1);
+      expect(mockUnitOfWorkRun).toHaveBeenCalledTimes(1);
       expect(result.successful).toHaveLength(0);
       expect(result.failed).toHaveLength(count);
       expect(result.failed.every(f => f.error.code === ImportErrorCode.DATABASE_FAILED)).toBe(true);
@@ -403,7 +399,7 @@ describe("ImportPipeline", () => {
       const result = await makePipeline(fakes).run([]);
 
       expect(result).toMatchObject({ successful: [], failed: [], skipped: 0, total: 0 });
-      expect(mockUnitOfWorkRunScoped).not.toHaveBeenCalled();
+      expect(mockUnitOfWorkRun).not.toHaveBeenCalled();
     });
   });
 
@@ -466,7 +462,7 @@ describe("ImportPipeline", () => {
 
       expect(result.cancelled).toBe(true);
       expect(fakes.copyToStorage).not.toHaveBeenCalled();
-      expect(mockUnitOfWorkRunScoped).not.toHaveBeenCalled();
+      expect(mockUnitOfWorkRun).not.toHaveBeenCalled();
     });
 
     it("does not report a cancelled item as a failure", async () => {
@@ -511,10 +507,9 @@ describe("ImportPipeline", () => {
     it("keeps the tracks it already persisted when cancelled mid-run", async () => {
       const items = nativeItems(...Array.from({ length: PIPELINE_BATCH_SIZE * 2 }, (_, i) => `s${i}.mp3`));
       let batches = 0;
-      mockUnitOfWorkRunScoped.mockImplementation(async (_t: unknown, cb: () => Promise<void>) => {
+      mockUnitOfWorkRun.mockImplementation(async (_t: unknown, work: (uow: typeof uowScope) => Promise<void>) => {
         batches++;
-        await cb();
-        return okResult(undefined);
+        return work(uowScope);
       });
       const control: ImportControl = { isCancelled: () => batches >= 2 };
 
@@ -566,11 +561,7 @@ describe("ImportPipeline", () => {
     });
 
     it("marks the whole transaction as failed when the DB write throws", async () => {
-      mockUnitOfWorkRunScoped.mockResolvedValue({
-        isOk: () => false,
-        isErr: () => true,
-        error: new Error("tx failed"),
-      });
+      mockUnitOfWorkRun.mockRejectedValue(new Error("tx failed"));
 
       const result = await makePipeline(fakes).run(nativeItems("a.mp3", "b.mp3"));
 

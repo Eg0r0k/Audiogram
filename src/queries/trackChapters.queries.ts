@@ -2,7 +2,6 @@ import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import { trackChaptersRepository } from "@/db/repositories/trackChapters.repository";
 import type { TrackChapterMark } from "@/db/entities";
 import { queryKeys } from "@/queries/query-keys";
-import { unwrapResult } from "./shared";
 import type { TrackId } from "@/types/ids";
 
 export const trackChaptersQueries = {
@@ -12,7 +11,7 @@ export const trackChaptersQueries = {
       queryFn: async (): Promise<TrackChapterMark[]> => {
         // Ephemeral tracks all map to the empty id never any chapters.
         if (!trackId) return [];
-        const entity = await unwrapResult(trackChaptersRepository.findById(trackId));
+        const entity = await trackChaptersRepository.findById(trackId);
         return entity?.chapters ?? [];
       },
       staleTime: Infinity,
@@ -28,6 +27,6 @@ export async function saveTrackChapters(
     time: c.time,
     ...(c.title !== undefined ? { title: c.title } : {}),
   }));
-  await unwrapResult(trackChaptersRepository.setForTrack(trackId, clean));
+  await trackChaptersRepository.setForTrack(trackId, clean);
   queryClient.setQueryData(queryKeys.trackChapters.detail(trackId), clean);
 }

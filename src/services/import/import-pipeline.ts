@@ -5,7 +5,6 @@ import { getLogger } from "@/lib/logger";
 import { TrackId } from "@/types/ids";
 import { trackRepository } from "@/db/repositories";
 import { TrackSource } from "@/db/entities";
-import { unwrapResult } from "@/lib/errors/unwrap";
 import { EntityResolver } from "../entity-resolver";
 import type {
   ImportBatchResult,
@@ -40,8 +39,10 @@ interface PersistOutcome {
   storageFull: boolean;
 }
 
-const isQuotaError = (error: ImportError): boolean =>
-  error.cause instanceof DbError && error.cause.code === "QUOTA";
+const isQuotaError = (error: unknown): boolean =>
+  error instanceof DbError
+    ? error.code === "QUOTA"
+    : error instanceof ImportError && error.cause instanceof DbError && error.cause.code === "QUOTA";
 
 interface BatchOutcome {
   tracksToSave: TrackToSave[];
@@ -297,9 +298,9 @@ export class ImportPipeline {
         this.fpLimit(() => this.deps.itemIO.computeFingerprint(item).then(fp => ({ item, fp }))),
       ),
     );
-    const inLibrary = await unwrapResult(trackRepository.findExistingFingerprints(
+    const inLibrary = await trackRepository.findExistingFingerprints(
       fpResults.flatMap(({ fp }) => (fp === null ? [] : [fp])),
-    ));
+    );
 
     const toProcess: ImportItem[] = [];
     const seenInBatch = new Set<string>();

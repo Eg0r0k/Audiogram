@@ -47,22 +47,22 @@ describe("trackRepository bulk helpers (idb)", () => {
   it("unlikeMany clears likedAt only on liked rows and reports the count", async () => {
     const result = await trackRepository.unlikeMany([TrackId("t-1"), TrackId("t-2"), TrackId("t-3")]);
 
-    expect(result._unsafeUnwrap()).toBe(2);
+    expect(result).toBe(2);
     const rows = await db.tracks.toArray();
     expect(rows.every(row => row.likedAt === undefined)).toBe(true);
   });
 
   it("unlikeMany with no ids touches nothing", async () => {
     const result = await trackRepository.unlikeMany([]);
-    expect(result._unsafeUnwrap()).toBe(0);
+    expect(result).toBe(0);
     expect((await db.tracks.get(TrackId("t-1")))?.likedAt).toBe(10);
   });
 
   it("findAllIdsSorted returns ids in sort order without entities", async () => {
     const byTitle = await trackRepository.findAllIdsSorted("title_asc");
-    expect(byTitle._unsafeUnwrap()).toEqual([TrackId("t-2"), TrackId("t-1"), TrackId("t-3")]);
+    expect(byTitle).toEqual([TrackId("t-2"), TrackId("t-1"), TrackId("t-3")]);
 
     const newestFirst = await trackRepository.findAllIdsSorted("date_added_desc");
-    expect(newestFirst._unsafeUnwrap()).toEqual([TrackId("t-3"), TrackId("t-2"), TrackId("t-1")]);
+    expect(newestFirst).toEqual([TrackId("t-3"), TrackId("t-2"), TrackId("t-1")]);
   });
 });

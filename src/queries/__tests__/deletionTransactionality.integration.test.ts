@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { err, ok, okAsync } from "neverthrow";
+import { okAsync } from "neverthrow";
 import { QueryClient } from "@tanstack/vue-query";
 import type { AlbumEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
@@ -34,7 +34,10 @@ vi.mock("@/services/library-gc", async (importOriginal) => {
 });
 
 import { db } from "@/db";
-import { artistRepository, trackRepository } from "@/db/repositories";
+import { DbError } from "@/db/errors/db.errors";
+import { trackRepository } from "@/db/repositories";
+import { ArtistRepository } from "@/db/repositories/artist.repository";
+import { PlaylistRepository } from "@/db/repositories/playlist.repository";
 import { syncSearchIndex } from "@/services/search/searchIndex";
 import { deleteAlbumAndSync } from "../album.queries";
 import { deleteArtistAndSync } from "../artist.queries";
@@ -120,6 +123,30 @@ describe("deletion transactionality (integration)", () => {
     expect(vi.mocked(syncSearchIndex)).not.toHaveBeenCalled();
   });
 
+  it("a failing playlist write inside the purge leaves the track rows in place", async () => {
+    await seedRemoteAlbum();
+    const before = await snapshotCounts();
+    const writeFailure = new Error("playlist write failed");
+    const updateSpy = vi.spyOn(PlaylistRepository.prototype, "updateMany").mockRejectedValueOnce(writeFailure);
+
+    let failure: unknown;
+    try {
+      failure = await deleteTrackAndSync(queryClient, { id: ytTrackId("v1") } as unknown as Track)
+        .catch((error: unknown) => error);
+    }
+    finally {
+      updateSpy.mockRestore();
+    }
+
+    expect(failure).toBeInstanceOf(DbError);
+    expect((failure as DbError).cause).toBe(writeFailure);
+    expect(await snapshotCounts()).toEqual(before);
+    expect((await db.tracks.get(ytTrackId("v1")))?.title).toBe("One");
+    expect((await db.playlists.get(playlistId))?.trackIds).toEqual([ytTrackId("v1"), ytTrackId("v2")]);
+    expect(storageMock.deleteFile).not.toHaveBeenCalled();
+    expect(vi.mocked(syncSearchIndex)).not.toHaveBeenCalled();
+  });
+
   it("deleteAlbumAndSync (remote): a crash mid-cascade rolls back every table", async () => {
     const album = await seedRemoteAlbum();
     const before = await snapshotCounts();
@@ -159,8 +186,8 @@ describe("deletion transactionality (integration)", () => {
     } as unknown as TrackEntity);
     const before = await snapshotCounts();
 
-    const deleteSpy = vi.spyOn(artistRepository, "delete")
-      .mockResolvedValueOnce(err(new Error("boom mid-transaction")));
+    const deleteSpy = vi.spyOn(ArtistRepository.prototype, "delete")
+      .mockRejectedValueOnce(new Error("boom mid-transaction"));
     try {
       await expect(
         deleteArtistAndSync(queryClient, (await db.artists.get(artistId))!),
@@ -187,7 +214,7 @@ describe("deletion transactionality (integration)", () => {
     const spy = vi.spyOn(trackRepository, "findByIds")
       .mockImplementationOnce(async (ids) => {
         await db.playlists.update(playlistId, { name: "Renamed mid-flight" });
-        return ok((await db.tracks.bulkGet([...ids])).filter(track => track !== undefined));
+        return (await db.tracks.bulkGet([...ids])).filter(track => track !== undefined);
       });
     try {
       await deleteTrackAndSync(queryClient, { id: ytTrackId("v1") } as unknown as Track);
@@ -207,7 +234,7 @@ describe("deletion transactionality (integration)", () => {
     const spy = vi.spyOn(trackRepository, "findByAlbumId")
       .mockImplementationOnce(async (id) => {
         await db.playlists.update(playlistId, { name: "Renamed mid-flight" });
-        return ok((await db.tracks.toArray()).filter(track => track.albumId === id));
+        return (await db.tracks.toArray()).filter(track => track.albumId === id);
       });
     try {
       await deleteAlbumAndSync(queryClient, album, { deleteTracks: true });

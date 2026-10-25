@@ -1,7 +1,6 @@
 import { createApp } from "vue";
 import { createPinia, setActivePinia } from "pinia";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
-import { ok } from "neverthrow";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { queueSnapshotRepository, trackRepository } from "@/db/repositories";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
@@ -19,14 +18,12 @@ const stored = vi.hoisted(() => ({ body: null as unknown }));
 vi.mock("@/db/repositories", () => ({
   trackRepository: { findByIds: vi.fn() },
   queueSnapshotRepository: {
-    get: vi.fn(async () => ({ isErr: () => false, isOk: () => true, value: stored.body })),
+    get: vi.fn(async () => stored.body),
     put: vi.fn(async (body: unknown) => {
       stored.body = structuredClone(body);
-      return { isErr: () => false, isOk: () => true, value: undefined };
     }),
     clear: vi.fn(async () => {
       stored.body = null;
-      return { isErr: () => false, isOk: () => true, value: undefined };
     }),
   },
 }));
@@ -92,7 +89,7 @@ describe("queue persistence at library scale", () => {
     localStorage.clear();
     stored.body = null;
     vi.clearAllMocks();
-    vi.mocked(trackRepository.findByIds).mockImplementation(async ids => ok(ids.map(id => entity(id))));
+    vi.mocked(trackRepository.findByIds).mockImplementation(async ids => ids.map(id => entity(id)));
   });
 
   afterEach(() => {

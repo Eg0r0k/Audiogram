@@ -1,8 +1,7 @@
 import { db } from "@/db";
 import type { TrackEntity } from "@/db/entities";
-import { playlistRepository, trackRepository } from "@/db/repositories";
+import { trackRepository } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
-import { unwrapResult } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import { syncSearchIndex } from "@/services/search/searchIndex";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
@@ -30,7 +29,7 @@ const dtoFromRow = (track: TrackEntity): SourceTrackDTO => ({
  * album/artist rows, so this runs the same cascade as adding from a DTO.
  */
 export async function promoteTrackToLibrary(trackId: TrackId): Promise<void> {
-  const track = await unwrapResult(trackRepository.findById(trackId));
+  const track = await trackRepository.findById(trackId);
   if (!track) throw new Error(`Track not found: ${trackId}`);
 
   await ensurePinned({ kind: "remote", dto: dtoFromRow(track) });
@@ -41,20 +40,20 @@ export async function promoteTrackToLibrary(trackId: TrackId): Promise<void> {
  * unitOfWork; the row degrades to a shadow so history survives.
  */
 export async function removeTrackFromLibrary(trackId: TrackId): Promise<void> {
-  const result = await unitOfWork.runScoped(
-    [db.tracks, db.albums, db.artists, db.playlists],
-    async () => {
-      const track = await unwrapResult(trackRepository.findById(trackId));
+  const track = await unitOfWork.run(
+    ["tracks", "albums", "artists", "playlists"],
+    async (uow) => {
+      const track = await uow.tracks.findById(trackId);
 
-      const playlists = await unwrapResult(playlistRepository.findAll());
+      const playlists = await uow.playlists.findAll();
       for (const playlist of playlists) {
         if (!playlist.trackIds.includes(trackId)) continue;
-        await unwrapResult(playlistRepository.update(playlist.id, {
+        await uow.playlists.update(playlist.id, {
           trackIds: playlist.trackIds.filter(id => id !== trackId),
-        }));
+        });
       }
 
-      await unwrapResult(trackRepository.update(trackId, { pinned: 0, likedAt: undefined }));
+      await uow.tracks.update(trackId, { pinned: 0, likedAt: undefined });
 
       // Album and artist rows exist only for library members, so the ones
       // this track was the last library reference of go with it.
@@ -65,10 +64,8 @@ export async function removeTrackFromLibrary(trackId: TrackId): Promise<void> {
       return track;
     },
   );
-  if (result.isErr()) throw result.error;
 
   // The row as it was: a deleted local artist is no longer on the track.
-  const track = result.value;
   syncSearchIndex({
     tracks: [trackId],
     albums: track?.albumId ? [track.albumId] : [],

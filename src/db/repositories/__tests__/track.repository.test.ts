@@ -14,9 +14,7 @@ const table = vi.hoisted(() => {
 
 vi.mock("@/db", () => ({
   db: {
-    tracks: {
-      where: table.whereMock,
-    },
+    table: () => ({ where: table.whereMock }),
   },
 }));
 
@@ -37,8 +35,7 @@ describe("trackRepository.findByAlbumId", () => {
 
     const result = await trackRepository.findByAlbumId("album-1" as AlbumId);
 
-    expect(result.isOk()).toBe(true);
-    expect(result._unsafeUnwrap().map(t => t.id)).toEqual(["noNo", "t1", "t2", "d2t1"]);
+    expect(result.map(t => t.id)).toEqual(["noNo", "t1", "t2", "d2t1"]);
 
     expect(table.whereMock).toHaveBeenCalledWith("albumId");
     expect(table.equalsMock).toHaveBeenCalledWith("album-1");

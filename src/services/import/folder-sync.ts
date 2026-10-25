@@ -1,7 +1,6 @@
 import pLimit from "p-limit";
 import type { Result } from "neverthrow";
 import { ok, err } from "neverthrow";
-import { db } from "@/db";
 import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
 import { storageService } from "@/db/storage";
@@ -13,7 +12,6 @@ import {
 import { trackRepository } from "@/db/repositories";
 import { TrackSource } from "@/db/entities";
 import { TrackId } from "@/types/ids";
-import { unwrapResult } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import type { ScannedFile, SyncResult, WatchedFolder } from "@/types/watched-folders";
 import { computeFileFingerprint } from "./file-fingerprint";
@@ -74,15 +72,14 @@ export class FolderSyncService {
     }
 
     if (removedTracks.length > 0) {
-      const txResult = await unitOfWork.runScoped(
-        [db.tracks, db.albums, db.artists, db.covers],
-        async () => {
-          await unwrapResult(trackRepository.deleteMany(removedTracks.map(t => t.id)));
+      await unitOfWork.run(
+        ["tracks", "albums", "artists", "covers"],
+        async (uow) => {
+          await uow.tracks.deleteMany(removedTracks.map(t => t.id));
           // Cascade: albums/artists that lost their last reference die with them.
           await cleanupAfterTrackRemoval(removedTracks);
         },
       );
-      if (txResult.isErr()) throw txResult.error;
       result.removed = removedTracks.length;
       advance(removedTracks.length);
     }
@@ -102,8 +99,8 @@ export class FolderSyncService {
 
     const fp = await computeFileFingerprint(file.absolutePath, file.size);
     const [existsByPath, existsByFp] = await Promise.all([
-      unwrapResult(trackRepository.findByStoragePath(file.absolutePath)),
-      unwrapResult(trackRepository.existsByFingerprint(fp)),
+      trackRepository.findByStoragePath(file.absolutePath),
+      trackRepository.existsByFingerprint(fp),
     ]);
     if (existsByPath || existsByFp) return false;
 
@@ -124,16 +121,15 @@ export class FolderSyncService {
   }
 
   async removeSingleFile(absolutePath: string): Promise<boolean> {
-    const track = await unwrapResult(trackRepository.findByStoragePath(absolutePath));
+    const track = await trackRepository.findByStoragePath(absolutePath);
     if (!track) return false;
-    const txResult = await unitOfWork.runScoped(
-      [db.tracks, db.albums, db.artists, db.covers],
-      async () => {
-        await unwrapResult(trackRepository.delete(track.id));
+    await unitOfWork.run(
+      ["tracks", "albums", "artists", "covers"],
+      async (uow) => {
+        await uow.tracks.delete(track.id);
         await cleanupAfterTrackRemoval([track]);
       },
     );
-    if (txResult.isErr()) throw txResult.error;
     return true;
   }
 
@@ -146,7 +142,7 @@ export class FolderSyncService {
     if (listResult.isErr()) return 0;
 
     const storedPaths = new Set(listResult.value);
-    const allTracks = await unwrapResult(trackRepository.findAll());
+    const allTracks = await trackRepository.findAll();
     const dbPaths = new Set(allTracks.map(t => t.storagePath));
 
     let removed = 0;
@@ -168,7 +164,7 @@ export class FolderSyncService {
     const scanned = await scanFolder(folderPath, undefined, excludeSet);
     const scannedPaths = new Set(scanned.map(f => f.absolutePath));
 
-    let existingTracks = await unwrapResult(trackRepository.findByStoragePathPrefix(folderPath + "/"));
+    let existingTracks = await trackRepository.findByStoragePathPrefix(folderPath + "/");
     if (normalizedExcluded.length) {
       existingTracks = existingTracks.filter(
         t => !normalizedExcluded.some(ep => t.storagePath?.startsWith(ep + "/")),
@@ -207,9 +203,9 @@ export class FolderSyncService {
       ),
     );
     // Grows as the sync claims files, so a duplicate within it is dropped too.
-    const knownFingerprints = await unwrapResult(trackRepository.findExistingFingerprints(
+    const knownFingerprints = await trackRepository.findExistingFingerprints(
       fpResults.flatMap(({ fp }) => (fp === null ? [] : [fp])),
-    ));
+    );
 
     const filesToImport: Array<{ file: ScannedFile; fingerprint: string }> = [];
     for (const { file, fp } of fpResults) {

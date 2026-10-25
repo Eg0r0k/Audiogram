@@ -122,23 +122,26 @@ export const markRecommenderContextDirty = (): void => {
 
 interface LoadResult { ctx: RecommenderContext; hadError: boolean }
 
+const rowsOrEmpty = <T>(read: PromiseSettledResult<T[]>, what: string): T[] => {
+  if (read.status === "fulfilled") return read.value;
+  getLogger().error(`[Recommendations] Reading ${what} failed: ${formatError(read.reason)}`);
+  return [];
+};
+
 const loadRecommenderContext = async (): Promise<LoadResult> => {
   const now = Date.now();
-  const [tracksResult, eventsResult, featuresResult] = await Promise.all([
+  const reads = await Promise.allSettled([
     trackRepository.findAll(),
     statsRepository.eventsSince(now - EVENT_HORIZON_MS),
     audioFeaturesRepository.findAll(),
   ]);
+  const [tracks, events, features] = reads;
 
-  const hadError = tracksResult.isErr() || eventsResult.isErr() || featuresResult.isErr();
-  if (tracksResult.isErr()) getLogger().error(`[Recommendations] Reading tracks failed: ${formatError(tracksResult.error)}`);
-  if (eventsResult.isErr()) getLogger().error(`[Recommendations] Reading listen events failed: ${formatError(eventsResult.error)}`);
-  if (featuresResult.isErr()) getLogger().error(`[Recommendations] Reading audio features failed: ${formatError(featuresResult.error)}`);
-
+  const hadError = reads.some(read => read.status === "rejected");
   const ctx = buildRecommenderContext({
-    tracks: tracksResult.isOk() ? tracksResult.value : [],
-    events: eventsResult.isOk() ? eventsResult.value : [],
-    features: featuresResult.isOk() ? featuresResult.value : [],
+    tracks: rowsOrEmpty(tracks, "tracks"),
+    events: rowsOrEmpty(events, "listen events"),
+    features: rowsOrEmpty(features, "audio features"),
     now,
   });
   return { ctx, hadError };

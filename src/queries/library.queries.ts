@@ -11,18 +11,17 @@ import { markRecommenderContextDirty } from "@/modules/recommendations/service/r
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import type { AlbumId, ArtistId } from "@/types/ids";
 import { settleLibraryReads } from "./cache";
-import { unwrapResult } from "./shared";
 import type { LibrarySummaryData } from "./types";
 
 export const getLibrarySummary = async (): Promise<LibrarySummaryData> => {
   // Playing from ND/YT browsing must not grow the library — shadow rows
   // (pinned = 0) are excluded by the pinned index.
   const [artists, albums, playlists, folders, likedCount] = await Promise.all([
-    unwrapResult(artistRepository.findPinned()),
-    unwrapResult(albumRepository.findPinned()),
-    unwrapResult(playlistRepository.findAll()),
-    unwrapResult(folderRepository.findAll()),
-    unwrapResult(trackRepository.countLiked()),
+    artistRepository.findPinned(),
+    albumRepository.findPinned(),
+    playlistRepository.findAll(),
+    folderRepository.findAll(),
+    trackRepository.countLiked(),
   ]);
 
   return {
@@ -37,8 +36,8 @@ export const getLibrarySummary = async (): Promise<LibrarySummaryData> => {
 // Per-item, for the delete dialog: the summary used to count every album
 // and artist up front, one IndexedDB read each, for this one number.
 export const getLibraryItemTrackCount = async (type: "album" | "artist", id: AlbumId | ArtistId): Promise<number> => {
-  if (type === "album") return unwrapResult(trackRepository.countByAlbumId(id as AlbumId));
-  const counts = await unwrapResult(trackRepository.countByArtistIds([id as ArtistId]));
+  if (type === "album") return trackRepository.countByAlbumId(id as AlbumId);
+  const counts = await trackRepository.countByArtistIds([id as ArtistId]);
   return counts.get(id as ArtistId) ?? 0;
 };
 

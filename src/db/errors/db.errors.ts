@@ -1,6 +1,6 @@
 //
-// Typed wrapper over Dexie/IndexedDB failures. Repositories return this in
-// their `err` branch so callers can react to the few cases that matter
+// Typed wrapper over Dexie/IndexedDB failures. Repositories throw this (and
+// openDatabase returns it) so callers can react to the few cases that matter
 // (quota, version mismatch, upgrade failure) instead of pattern-matching on
 // message strings.
 //

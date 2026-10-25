@@ -1,65 +1,41 @@
 import { db } from "@/db";
 import type { ArtistEntity } from "@/db/entities";
+import { tableOf, type TableSource } from "@/db/tables";
 import type { ArtistId } from "@/types/ids";
-import type { Result } from "neverthrow";
-import { ok, err } from "neverthrow";
-import { BaseRepository } from "./base.repository";
-import { toDbError } from "@/db/errors/db.errors";
+import { BaseRepository, guarded } from "./base.repository";
 
-class ArtistRepository extends BaseRepository<ArtistEntity, ArtistId> {
-  constructor() {
-    super(db.artists);
+export class ArtistRepository extends BaseRepository<ArtistEntity, ArtistId> {
+  constructor(source: TableSource = db) {
+    super(tableOf(source, "artists"));
   }
 
-  async update(id: ArtistId, changes: Partial<ArtistEntity>): Promise<Result<number, Error>> {
-    try {
+  async update(id: ArtistId, changes: Partial<ArtistEntity>): Promise<number> {
+    return guarded(() => {
       const withTimestamp: Partial<ArtistEntity> = {
         ...changes,
         updatedAt: Date.now(),
       };
-      const count = await this.table.update(id, withTimestamp);
-      return ok(count);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return this.table.update(id, withTimestamp);
+    });
   }
 
   /** Library members only (pinned = 1). */
-  async findPinned(): Promise<Result<ArtistEntity[], Error>> {
-    try {
-      const artists = await this.table.where("pinned").equals(1).toArray();
-      return ok(artists);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+  async findPinned(): Promise<ArtistEntity[]> {
+    return guarded(() => this.table.where("pinned").equals(1).toArray());
   }
 
-  async findByName(name: string): Promise<Result<ArtistEntity | undefined, Error>> {
-    try {
-      const artist = await this.table
-        .where("name")
-        .equalsIgnoreCase(name)
-        .first();
-      return ok(artist);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+  async findByName(name: string): Promise<ArtistEntity | undefined> {
+    return guarded(() => this.table
+      .where("name")
+      .equalsIgnoreCase(name)
+      .first());
   }
 
-  async search(query: string, limit = 20): Promise<Result<ArtistEntity[], Error>> {
-    try {
-      const artists = await this.table
-        .filter(a => a.name.toLowerCase().includes(query.toLowerCase()))
-        .limit(limit)
-        .toArray();
-      return ok(artists);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+  async search(query: string, limit = 20): Promise<ArtistEntity[]> {
+    return guarded(() => this.table
+      .filter(a => a.name.toLowerCase().includes(query.toLowerCase()))
+      .limit(limit)
+      .toArray());
   }
 }
 

@@ -1,6 +1,5 @@
 import type { TrackMenuSubject } from "@/modules/tracks/components/menu/type";
 import { ensurePinned } from "@/modules/tracks/service/ensurePinned";
-import { unwrapResult } from "@/lib/errors/unwrap";
 import { sources } from "@/modules/sources";
 import type { SourceTrackDTO } from "@/modules/sources/types";
 import { playlistRepository, trackRepository } from "@/db/repositories";
@@ -119,9 +118,9 @@ export async function enqueueCollectionDownload(
  * Filtered-out local tracks never enter the batch.
  */
 export async function enqueueLocalPlaylistDownload(playlistId: PlaylistId): Promise<string | null> {
-  const playlist = await unwrapResult(playlistRepository.findById(playlistId));
+  const playlist = await playlistRepository.findById(playlistId);
   if (!playlist) return null;
-  const tracks = await unwrapResult(trackRepository.findByIds(playlist.trackIds));
+  const tracks = await trackRepository.findByIds(playlist.trackIds);
   const downloadable = tracks.filter(track => parseTrackRef(track.id).kind !== "local");
   if (downloadable.length === 0) return null;
 

@@ -1,8 +1,8 @@
 import { db } from "@/db";
 import type { ListenEventEntity } from "@/db/entities";
+import { tableOf, type TableMap, type TableSource } from "@/db/tables";
 import type { TagId, TrackId } from "@/types/ids";
-import { toDbError } from "@/db/errors/db.errors";
-import { err, ok, type Result } from "neverthrow";
+import { guarded } from "./base.repository";
 import {
   aggregateHourly,
   aggregateRecords,
@@ -35,32 +35,33 @@ export interface StreakInfo {
   best: number;
 }
 
-async function runSafe<T>(fn: () => Promise<T>): Promise<Result<T, Error>> {
-  try {
-    return ok(await fn());
-  }
-  catch (error) {
-    return err(toDbError(error));
-  }
-}
+export class StatsRepository {
+  private readonly listenEvents: TableMap["listenEvents"];
+  private readonly tracks: TableMap["tracks"];
+  private readonly tags: TableMap["tags"];
 
-class StatsRepository {
+  constructor(source: TableSource = db) {
+    this.listenEvents = tableOf(source, "listenEvents");
+    this.tracks = tableOf(source, "tracks");
+    this.tags = tableOf(source, "tags");
+  }
+
   /**
    * A native count over the store: "is there any history" must not load a
    * history that has no ceiling — only a chosen period is worth rows.
    */
-  async hasEvents(): Promise<Result<boolean, Error>> {
-    return runSafe(async () => (await db.listenEvents.count()) > 0);
+  async hasEvents(): Promise<boolean> {
+    return guarded(async () => (await this.listenEvents.count()) > 0);
   }
 
   /**
    * Events of a period — the single read the stats page aggregates share
    * (see stats.queries). `since` undefined = all time.
    */
-  async eventsSince(since?: number): Promise<Result<ListenEventEntity[], Error>> {
-    return runSafe(() => since
-      ? db.listenEvents.where("startedAt").aboveOrEqual(since).toArray()
-      : db.listenEvents.toArray());
+  async eventsSince(since?: number): Promise<ListenEventEntity[]> {
+    return guarded(() => since
+      ? this.listenEvents.where("startedAt").aboveOrEqual(since).toArray()
+      : this.listenEvents.toArray());
   }
 
   /**
@@ -69,8 +70,8 @@ class StatsRepository {
    * (трек просто "поднимается" наверх при повторном воспроизведении —
    * как это обычно устроено в "Recently played").
    */
-  async recentHistory(limit = 100): Promise<Result<ListenEventEntity[], Error>> {
-    return runSafe(async () => {
+  async recentHistory(limit = 100): Promise<ListenEventEntity[]> {
+    return guarded(async () => {
       const seenTrackIds = new Set<TrackId>();
       const result: ListenEventEntity[] = [];
 
@@ -78,7 +79,7 @@ class StatsRepository {
       let offset = 0;
 
       while (result.length < limit) {
-        const batch = await db.listenEvents
+        const batch = await this.listenEvents
           .orderBy("startedAt")
           .reverse()
           .offset(offset)
@@ -102,38 +103,36 @@ class StatsRepository {
     });
   }
 
-  async topTracks(limit = 10, since?: number): Promise<Result<TopEntry[], Error>> {
-    return (await this.eventsSince(since)).map(events => aggregateTopTracks(events, limit));
+  async topTracks(limit = 10, since?: number): Promise<TopEntry[]> {
+    return aggregateTopTracks(await this.eventsSince(since), limit);
   }
 
-  async topArtists(limit = 10, since?: number): Promise<Result<TopEntry[], Error>> {
-    return (await this.eventsSince(since)).map(events => aggregateTopArtists(events, limit));
+  async topArtists(limit = 10, since?: number): Promise<TopEntry[]> {
+    return aggregateTopArtists(await this.eventsSince(since), limit);
   }
 
-  async artistPlaysCount(artistId: string): Promise<Result<number, Error>> {
-    return runSafe(() =>
-      db.listenEvents.where("artistId").equals(artistId).and(e => !e.skipped).count(),
+  async artistPlaysCount(artistId: string): Promise<number> {
+    return guarded(() =>
+      this.listenEvents.where("artistId").equals(artistId).and(e => !e.skipped).count(),
     );
   }
 
-  async topGenres(limit = 8, since?: number): Promise<Result<TopGenreEntry[], Error>> {
-    const events = await this.eventsSince(since);
-    if (events.isErr()) return err(events.error);
-    return this.topGenresOf(events.value, limit);
+  async topGenres(limit = 8, since?: number): Promise<TopGenreEntry[]> {
+    return this.topGenresOf(await this.eventsSince(since), limit);
   }
 
   /** Genre ranking over already-loaded events (needs the tracks' tags from the DB). */
-  async topGenresOf(events: readonly ListenEventEntity[], limit = 8): Promise<Result<TopGenreEntry[], Error>> {
-    return runSafe(async () => {
+  async topGenresOf(events: readonly ListenEventEntity[], limit = 8): Promise<TopGenreEntry[]> {
+    return guarded(async () => {
       const played = events.filter(e => !e.skipped);
       if (played.length === 0) return [];
 
       const trackIds = [...new Set(played.map(e => e.trackId))];
-      const tracks = (await db.tracks.bulkGet(trackIds)).filter(t => t !== undefined);
+      const tracks = (await this.tracks.bulkGet(trackIds)).filter(t => t !== undefined);
       const trackTagMap = new Map(tracks.map(t => [t.id, t.tagIds]));
 
       const allTagIds = [...new Set(tracks.flatMap(t => t.tagIds))];
-      const tags = (await db.tags.bulkGet(allTagIds)).filter(t => t !== undefined);
+      const tags = (await this.tags.bulkGet(allTagIds)).filter(t => t !== undefined);
       const tagNameMap = new Map(tags.map(t => [t.id, t.name]));
 
       const map = new Map<string, TopGenreEntry>();
@@ -154,24 +153,24 @@ class StatsRepository {
     });
   }
 
-  async totalListeningSeconds(since?: number): Promise<Result<number, Error>> {
-    return (await this.eventsSince(since)).map(aggregateTotalSeconds);
+  async totalListeningSeconds(since?: number): Promise<number> {
+    return aggregateTotalSeconds(await this.eventsSince(since));
   }
 
-  async summary(since?: number): Promise<Result<StatsSummary, Error>> {
-    return (await this.eventsSince(since)).map(aggregateSummary);
+  async summary(since?: number): Promise<StatsSummary> {
+    return aggregateSummary(await this.eventsSince(since));
   }
 
-  async deleteAllEvents(): Promise<Result<void, Error>> {
-    return runSafe(async () => {
-      await db.listenEvents.clear();
+  async deleteAllEvents(): Promise<void> {
+    return guarded(async () => {
+      await this.listenEvents.clear();
     });
   }
 
-  async dailyActivity(days = 30): Promise<Result<DailyActivityPoint[], Error>> {
-    return runSafe(async () => {
+  async dailyActivity(days = 30): Promise<DailyActivityPoint[]> {
+    return guarded(async () => {
       const since = Date.now() - days * 86_400_000;
-      const events = await db.listenEvents.where("startedAt").aboveOrEqual(since).toArray();
+      const events = await this.listenEvents.where("startedAt").aboveOrEqual(since).toArray();
 
       const map = new Map<string, number>();
       for (const e of events) {
@@ -188,37 +187,37 @@ class StatsRepository {
     });
   }
 
-  async deleteEvent(eventId: string): Promise<Result<void, Error>> {
-    return runSafe(() => db.listenEvents.delete(eventId));
+  async deleteEvent(eventId: string): Promise<void> {
+    return guarded(() => this.listenEvents.delete(eventId));
   }
 
-  eventsForTrack = async (trackId: TrackId): Promise<Result<ListenEventEntity[], Error>> =>
-    runSafe(() => db.listenEvents.where("trackId").equals(trackId).toArray());
+  eventsForTrack = async (trackId: TrackId): Promise<ListenEventEntity[]> =>
+    guarded(() => this.listenEvents.where("trackId").equals(trackId).toArray());
 
-  restoreEvents = async (events: readonly ListenEventEntity[]): Promise<Result<void, Error>> =>
-    runSafe(async () => {
-      await db.listenEvents.bulkPut([...events]);
+  restoreEvents = async (events: readonly ListenEventEntity[]): Promise<void> =>
+    guarded(async () => {
+      await this.listenEvents.bulkPut([...events]);
     });
 
-  async deleteEventsForTrack(trackId: TrackId): Promise<Result<void, Error>> {
-    return runSafe(async () => {
-      await db.listenEvents.where("trackId").equals(trackId).delete();
+  async deleteEventsForTrack(trackId: TrackId): Promise<void> {
+    return guarded(async () => {
+      await this.listenEvents.where("trackId").equals(trackId).delete();
     });
   }
 
-  async hourlyActivity(since?: number): Promise<Result<number[], Error>> {
-    return (await this.eventsSince(since)).map(aggregateHourly);
+  async hourlyActivity(since?: number): Promise<number[]> {
+    return aggregateHourly(await this.eventsSince(since));
   }
 
-  async records(since?: number): Promise<Result<StatsRecords, Error>> {
-    return (await this.eventsSince(since)).map(aggregateRecords);
+  async records(since?: number): Promise<StatsRecords> {
+    return aggregateRecords(await this.eventsSince(since));
   }
 
-  async streaks(now = Date.now()): Promise<Result<StreakInfo, Error>> {
-    return runSafe(async () => {
+  async streaks(now = Date.now()): Promise<StreakInfo> {
+    return guarded(async () => {
       const DAYS = 365;
       const since = now - DAYS * 86_400_000;
-      const events = await db.listenEvents.where("startedAt").aboveOrEqual(since).toArray();
+      const events = await this.listenEvents.where("startedAt").aboveOrEqual(since).toArray();
 
       const activeDays = new Set<string>();
       for (const e of events) {

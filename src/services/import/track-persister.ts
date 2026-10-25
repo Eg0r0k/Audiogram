@@ -2,12 +2,11 @@ import pLimit from "p-limit";
 import { db } from "@/db";
 import type { AlbumEntity, ArtistEntity, CoverOwnerType, TrackEntity } from "@/db/entities";
 import { TrackState } from "@/db/entities";
-import { albumRepository, artistRepository, coverRepository, trackRepository } from "@/db/repositories";
+import { albumRepository, artistRepository } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
 import type { ArtistId } from "@/types/ids";
 import { AlbumId } from "@/types/ids";
 import { fitWithin } from "@/lib/media/fit-within";
-import { unwrapResult } from "@/lib/errors/unwrap";
 import type { EntityResolver } from "../entity-resolver";
 import type { ImportSuccess, TrackToSave } from "../types";
 
@@ -181,17 +180,17 @@ export async function persistTracks(
   const referencedArtistIds = [...new Set(items.flatMap(artistIdsOf))];
   const referencedAlbumIds = [...new Set(tracksToCreate.map(track => track.albumId).filter(Boolean))];
 
-  const uowResult = await unitOfWork.runScoped(
-    [db.tracks, db.artists, db.albums, db.covers],
-    async () => {
+  await unitOfWork.run(
+    ["tracks", "artists", "albums", "covers"],
+    async (uow) => {
       if (artistsToCreate.size > 0) {
-        await unwrapResult(artistRepository.createMany([...artistsToCreate.values()]));
+        await uow.artists.createMany([...artistsToCreate.values()]);
       }
       if (albumsToCreate.size > 0) {
-        await unwrapResult(albumRepository.createMany([...albumsToCreate.values()]));
+        await uow.albums.createMany([...albumsToCreate.values()]);
       }
       if (coversToCreate.length > 0) {
-        await unwrapResult(coverRepository.createMany(
+        await uow.covers.createMany(
           coversToCreate.map(c => ({
             id: crypto.randomUUID(),
             ownerType: c.ownerType,
@@ -201,10 +200,10 @@ export async function persistTracks(
             addedAt: now,
             updatedAt: now,
           })),
-        ));
+        );
       }
       if (tracksToCreate.length > 0) {
-        await unwrapResult(trackRepository.createMany(tracksToCreate));
+        await uow.tracks.createMany(tracksToCreate);
       }
       if (referencedArtistIds.length > 0) {
         await db.artists.where("id").anyOf(referencedArtistIds).and(artist => artist.pinned === 0).modify({ pinned: 1 });
@@ -213,8 +212,6 @@ export async function persistTracks(
         await db.albums.where("id").anyOf(referencedAlbumIds).and(album => album.pinned === 0).modify({ pinned: 1 });
       }
     });
-
-  if (uowResult.isErr()) throw uowResult.error;
 
   return results;
 }
@@ -236,10 +233,10 @@ async function loadExistingIds(
 
   const [artistResults, albumResults] = await Promise.all([
     allArtistIds.length > 0
-      ? unwrapResult(artistRepository.findByIds(allArtistIds))
+      ? artistRepository.findByIds(allArtistIds)
       : Promise.resolve([] as ArtistEntity[]),
     allAlbumIds.length > 0
-      ? unwrapResult(albumRepository.findByIds(allAlbumIds))
+      ? albumRepository.findByIds(allAlbumIds)
       : Promise.resolve([] as AlbumEntity[]),
   ]);
 

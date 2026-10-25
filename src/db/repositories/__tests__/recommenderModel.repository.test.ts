@@ -19,19 +19,19 @@ beforeEach(async () => {
 
 describe("recommenderModelRepository", () => {
   it("returns null when nothing is stored", async () => {
-    expect((await recommenderModelRepository.get())._unsafeUnwrap()).toBeNull();
+    expect(await recommenderModelRepository.get()).toBeNull();
   });
 
   it("round-trips the single row and clear() removes it", async () => {
-    (await recommenderModelRepository.put({
+    await recommenderModelRepository.put({
       weights,
       trainedAt: 1_700_000_000_000,
       examples: 240,
       positives: 120,
       negatives: 120,
-    }))._unsafeUnwrap();
+    });
 
-    expect((await recommenderModelRepository.get())._unsafeUnwrap()).toEqual({
+    expect(await recommenderModelRepository.get()).toEqual({
       id: "weights",
       weights,
       trainedAt: 1_700_000_000_000,
@@ -40,17 +40,17 @@ describe("recommenderModelRepository", () => {
       negatives: 120,
     });
 
-    (await recommenderModelRepository.clear())._unsafeUnwrap();
+    await recommenderModelRepository.clear();
 
-    expect((await recommenderModelRepository.get())._unsafeUnwrap()).toBeNull();
+    expect(await recommenderModelRepository.get()).toBeNull();
   });
 
   it("put overwrites the previous row instead of adding a second one", async () => {
     const base = { weights, trainedAt: 1, examples: 20, positives: 10, negatives: 10 };
-    (await recommenderModelRepository.put(base))._unsafeUnwrap();
-    (await recommenderModelRepository.put({ ...base, trainedAt: 2 }))._unsafeUnwrap();
+    await recommenderModelRepository.put(base);
+    await recommenderModelRepository.put({ ...base, trainedAt: 2 });
 
     expect(await db.recommenderModels.count()).toBe(1);
-    expect((await recommenderModelRepository.get())._unsafeUnwrap()?.trainedAt).toBe(2);
+    expect((await recommenderModelRepository.get())?.trainedAt).toBe(2);
   });
 });

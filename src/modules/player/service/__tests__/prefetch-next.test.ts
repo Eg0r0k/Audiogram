@@ -1,6 +1,7 @@
 ﻿import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { reactive, nextTick } from "vue";
-import { errAsync, ok, okAsync } from "neverthrow";
+import { errAsync, okAsync } from "neverthrow";
+import { DbError } from "@/db/errors/db.errors";
 import { TrackId } from "@/types/ids";
 import { ndTrackId, ytTrackId } from "@/types/track-ref";
 import type { PlayerTrack } from "@/types/track";
@@ -121,7 +122,7 @@ describe("warmLocalTranscode", () => {
   });
 
   it("requests a 2-byte range of the resolved audio url to warm the server cache", async () => {
-    trackFindByIdMock.mockReturnValue(okAsync({ storagePath: "tracks/a.ape" }));
+    trackFindByIdMock.mockResolvedValue({ storagePath: "tracks/a.ape" });
     getAudioUrlMock.mockReturnValue(okAsync("http://127.0.0.1:1/t/local/a.ape"));
     const fetchMock = vi.fn(async () => ({ ok: true }));
     vi.stubGlobal("fetch", fetchMock);
@@ -136,10 +137,13 @@ describe("warmLocalTranscode", () => {
   });
 
   it("reports a missing track or a failing server without throwing", async () => {
-    trackFindByIdMock.mockReturnValue(okAsync(undefined));
+    trackFindByIdMock.mockResolvedValue(undefined);
     expect((await warmLocalTranscode(TrackId("uuid-1"))).ok).toBe(false);
 
-    trackFindByIdMock.mockReturnValue(okAsync({ storagePath: "tracks/a.ape" }));
+    trackFindByIdMock.mockRejectedValueOnce(new DbError("UNKNOWN", "db down"));
+    expect((await warmLocalTranscode(TrackId("uuid-1"))).ok).toBe(false);
+
+    trackFindByIdMock.mockResolvedValue({ storagePath: "tracks/a.ape" });
     getAudioUrlMock.mockReturnValue(okAsync("http://127.0.0.1:1/t/local/a.ape"));
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 500 })));
 
@@ -286,7 +290,7 @@ describe("initNextTrackPrefetch", () => {
     vi.useFakeTimers();
     vi.clearAllMocks();
     platformCapsMock.canProxyStream = true;
-    trackFindBySourceRefMock.mockResolvedValue(ok(undefined));
+    trackFindBySourceRefMock.mockResolvedValue(undefined);
     sourcesGetMock.mockReturnValue(provider);
     provider.isAvailable = true;
     queueMock.queue = [];

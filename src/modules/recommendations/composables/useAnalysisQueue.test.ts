@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ok, err } from "neverthrow";
+import { ok } from "neverthrow";
+import { DbError } from "@/db/errors/db.errors";
 import { useAnalysisQueue } from "@/modules/recommendations/composables/useAnalysisQueue";
 import type { TrackId } from "@/types/ids";
 import { TrackSource, TrackState } from "@/db/entities";
@@ -101,9 +102,9 @@ function setupSuccessfulAnalysis(trackId: string) {
   const track = makeTrack(trackId);
   const fakeBlob = new Blob([new Uint8Array(100)], { type: "audio/mpeg" });
 
-  mockFindById.mockResolvedValue(ok(track));
+  mockFindById.mockResolvedValue(track);
   mockGetFile.mockResolvedValue(ok(fakeBlob));
-  mockUpsert.mockResolvedValue(ok(tid(trackId)));
+  mockUpsert.mockResolvedValue(tid(trackId));
 
   // Воркер отвечает после postMessage через setTimeout(0)
   mockPostMessageImpl = (_data: unknown) => {
@@ -127,7 +128,7 @@ describe("useAnalysisQueue", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetMockWorker();
-    mockFindUnanalyzedIds.mockResolvedValue(ok([]));
+    mockFindUnanalyzedIds.mockResolvedValue([]);
     // requestIdleCallback не существует в happy-dom — полифилл
     globalThis.requestIdleCallback = (cb: IdleRequestCallback) => {
       cb({ timeRemaining: () => 50, didTimeout: false });
@@ -148,7 +149,7 @@ describe("useAnalysisQueue", () => {
   });
 
   it("start() does nothing when no unanalyzed tracks", async () => {
-    mockFindUnanalyzedIds.mockResolvedValue(ok([]));
+    mockFindUnanalyzedIds.mockResolvedValue([]);
     const queue = useAnalysisQueue();
 
     await queue.start();
@@ -157,8 +158,8 @@ describe("useAnalysisQueue", () => {
     expect(queue.isRunning.value).toBe(false);
   });
 
-  it("start() stops early when findUnanalyzedIds returns Err", async () => {
-    mockFindUnanalyzedIds.mockResolvedValue(err(new Error("DB error")));
+  it("start() stops early when findUnanalyzedIds fails", async () => {
+    mockFindUnanalyzedIds.mockRejectedValue(new DbError("UNKNOWN", "DB error"));
     const queue = useAnalysisQueue();
 
     await queue.start();
@@ -169,7 +170,7 @@ describe("useAnalysisQueue", () => {
 
   it("enqueue() immediately starts processing priority tracks", async () => {
     setupSuccessfulAnalysis("priority-track");
-    mockFindUnanalyzedIds.mockResolvedValue(ok([]));
+    mockFindUnanalyzedIds.mockResolvedValue([]);
 
     const queue = useAnalysisQueue();
     queue.enqueue([tid("priority-track")]);
@@ -181,7 +182,7 @@ describe("useAnalysisQueue", () => {
 
   it("does not start twice when already running", async () => {
     // Блокируем findUnanalyzedIds чтобы start() не завершился
-    let resolveIds!: (val: ReturnType<typeof ok>) => void;
+    let resolveIds!: (ids: TrackId[]) => void;
     mockFindUnanalyzedIds.mockReturnValue(
       new Promise((r) => { resolveIds = r; }),
     );
@@ -192,7 +193,7 @@ describe("useAnalysisQueue", () => {
 
     expect(queue.isRunning.value).toBe(true);
 
-    resolveIds(ok([]));
+    resolveIds([]);
     await Promise.all([p1, p2]);
 
     // findUnanalyzedIds должен быть вызван только один раз
@@ -202,7 +203,7 @@ describe("useAnalysisQueue", () => {
   it("upserts features to DB after successful analysis", async () => {
     const trackId = "analyzed-track";
     setupSuccessfulAnalysis(trackId);
-    mockFindUnanalyzedIds.mockResolvedValue(ok([tid(trackId)]));
+    mockFindUnanalyzedIds.mockResolvedValue([tid(trackId)]);
 
     const queue = useAnalysisQueue();
     await queue.start();
@@ -221,8 +222,8 @@ describe("useAnalysisQueue", () => {
 
   it("increments processedCount after each track (even on failure)", async () => {
     const trackId = "fail-track";
-    mockFindById.mockResolvedValue(err(new Error("not found")));
-    mockFindUnanalyzedIds.mockResolvedValue(ok([tid(trackId)]));
+    mockFindById.mockRejectedValue(new DbError("UNKNOWN", "not found"));
+    mockFindUnanalyzedIds.mockResolvedValue([tid(trackId)]);
 
     const queue = useAnalysisQueue();
     await queue.start();
@@ -237,12 +238,12 @@ describe("useAnalysisQueue", () => {
     const success = "success-track";
 
     mockFindById.mockImplementation((id: TrackId) => {
-      if (id === tid(fail)) return Promise.resolve(err(new Error("missing")));
-      return Promise.resolve(ok(makeTrack(success)));
+      if (id === tid(fail)) return Promise.reject(new DbError("UNKNOWN", "missing"));
+      return Promise.resolve(makeTrack(success));
     });
     mockGetFile.mockResolvedValue(ok(new Blob([new Uint8Array(100)])));
-    mockUpsert.mockResolvedValue(ok(tid(success)));
-    mockFindUnanalyzedIds.mockResolvedValue(ok([tid(fail), tid(success)]));
+    mockUpsert.mockResolvedValue(tid(success));
+    mockFindUnanalyzedIds.mockResolvedValue([tid(fail), tid(success)]);
 
     mockPostMessageImpl = (_data: unknown) => {
       setTimeout(() => {
@@ -268,7 +269,7 @@ describe("useAnalysisQueue", () => {
 
   it("stop() prevents further processing", async () => {
     mockFindUnanalyzedIds.mockResolvedValue(
-      ok(Array.from({ length: 10 }, (_, i) => tid(`track-${i}`))),
+      Array.from({ length: 10 }, (_, i) => tid(`track-${i}`)),
     );
     // Все findById зависают бесконечно
     mockFindById.mockReturnValue(new Promise(() => {}));
@@ -286,14 +287,14 @@ describe("useAnalysisQueue", () => {
     // Приоритетный трек
     setupSuccessfulAnalysis("priority");
     // Фоновый трек
-    mockFindUnanalyzedIds.mockResolvedValue(ok([tid("background")]));
+    mockFindUnanalyzedIds.mockResolvedValue([tid("background")]);
 
     mockFindById.mockImplementation((id: TrackId) => {
       order.push(String(id));
-      return Promise.resolve(ok(makeTrack(String(id))));
+      return Promise.resolve(makeTrack(String(id)));
     });
     mockGetFile.mockResolvedValue(ok(new Blob([new Uint8Array(100)])));
-    mockUpsert.mockResolvedValue(ok("x" as any));
+    mockUpsert.mockResolvedValue("x" as any);
     mockPostMessageImpl = (_data: unknown) => {
       setTimeout(() => {
         if (mockWorkerInstance.onmessage) {

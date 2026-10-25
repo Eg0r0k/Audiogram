@@ -50,13 +50,13 @@ describe("trackRepository.findExistingFingerprints (idb)", () => {
 
     const found = await trackRepository.findExistingFingerprints(["fp-a", "fp-c", "fp-a"]);
 
-    expect(found._unsafeUnwrap()).toEqual(new Set(["fp-a"]));
+    expect(found).toEqual(new Set(["fp-a"]));
   });
 
   it("answers an empty library with an empty set", async () => {
     const found = await trackRepository.findExistingFingerprints(["fp-a"]);
 
-    expect(found._unsafeUnwrap()).toEqual(new Set());
+    expect(found).toEqual(new Set());
   });
 
   it("looks candidates up without walking a cursor", async () => {

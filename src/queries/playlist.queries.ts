@@ -27,11 +27,11 @@ import {
   removeCoverCache,
 } from "./cache";
 import { assertValidName } from "@/lib/limits";
-import { sortTracks, unique, unwrapResult } from "./shared";
+import { sortTracks, unique } from "./shared";
 import {
   purgeTracksInTx,
   syncAfterTrackPurge,
-  trackCascadeTables,
+  TRACK_CASCADE_TABLES,
 } from "./track-cascade";
 import type { PlaylistPageData, PaginatedPlaylistTracksResult } from "./types";
 import { deleteOwnedFiles } from "@/services/track-files";
@@ -40,7 +40,7 @@ const PAGE_SIZE = 50;
 
 /** The playlist row under an id, or null — a miss is an answer, not an error. */
 export async function getPlaylistLibraryRow(playlistId: PlaylistId): Promise<PlaylistEntity | null> {
-  return (await unwrapResult(playlistRepository.findById(playlistId))) ?? null;
+  return (await playlistRepository.findById(playlistId)) ?? null;
 }
 
 export interface PlaylistChanges {
@@ -51,11 +51,11 @@ export interface PlaylistChanges {
 }
 
 export async function getPlaylists() {
-  return unwrapResult(playlistRepository.findAll());
+  return playlistRepository.findAll();
 }
 
 export async function getPlaylistByIdOrThrow(playlistId: PlaylistId) {
-  const playlist = await unwrapResult(playlistRepository.findById(playlistId));
+  const playlist = await playlistRepository.findById(playlistId);
 
   if (!playlist) {
     throw new DbError("NOT_FOUND", "Playlist not found");
@@ -76,10 +76,10 @@ export async function getPlaylistPageData(
 
   let rawTracks: TrackEntity[];
   if (sortKey) {
-    rawTracks = await unwrapResult(trackRepository.findSortedByIds(playlist.trackIds, sortKey));
+    rawTracks = await trackRepository.findSortedByIds(playlist.trackIds, sortKey);
   }
   else {
-    const unorderedTracks = await unwrapResult(trackRepository.findByIds(playlist.trackIds));
+    const unorderedTracks = await trackRepository.findByIds(playlist.trackIds);
     const trackMap = new Map(unorderedTracks.map(track => [track.id, track]));
     rawTracks = playlist.trackIds.flatMap((id) => {
       const track = trackMap.get(id);
@@ -91,8 +91,8 @@ export async function getPlaylistPageData(
   const albumIds = unique(rawTracks.map(track => track.albumId));
 
   const [artists, albums] = await Promise.all([
-    unwrapResult(artistRepository.findByIds(artistIds)),
-    unwrapResult(albumRepository.findByIds(albumIds)),
+    artistRepository.findByIds(artistIds),
+    albumRepository.findByIds(albumIds),
   ]);
 
   return {
@@ -118,13 +118,13 @@ export async function getPlaylistTracksPaginated(
 
   if (sortKey) {
     // A global sort genuinely needs all rows (playlists are the smallest collection).
-    const allTracks = await unwrapResult(trackRepository.findByIds(playlist.trackIds));
+    const allTracks = await trackRepository.findByIds(playlist.trackIds);
     const sorted = sortTracks(allTracks, sortKey);
     currentTracksPage = sorted.slice(offset, offset + limit);
   }
   else {
     const pageIds = playlist.trackIds.slice(offset, offset + limit);
-    const pageTracks = await unwrapResult(trackRepository.findByIds(pageIds));
+    const pageTracks = await trackRepository.findByIds(pageIds);
     const trackMap = new Map(pageTracks.map(track => [track.id, track]));
     currentTracksPage = pageIds.flatMap((id) => {
       const track = trackMap.get(id);
@@ -136,8 +136,8 @@ export async function getPlaylistTracksPaginated(
   const albumIds = unique(currentTracksPage.map(track => track.albumId));
 
   const [artists, albums] = await Promise.all([
-    unwrapResult(artistRepository.findByIds(artistIds)),
-    unwrapResult(albumRepository.findByIds(albumIds)),
+    artistRepository.findByIds(artistIds),
+    albumRepository.findByIds(albumIds),
   ]);
 
   const nextOffset = offset + limit < total ? offset + limit : null;
@@ -152,7 +152,7 @@ export async function getPlaylistTracksPaginated(
 export async function getPlaylistTotalDuration(playlistId: PlaylistId): Promise<number> {
   const playlist = await getPlaylistByIdOrThrow(playlistId);
   if (playlist.trackIds.length === 0) return 0;
-  return unwrapResult(trackRepository.sumDurationByTrackIds(playlist.trackIds));
+  return trackRepository.sumDurationByTrackIds(playlist.trackIds);
 }
 export const playlistQueries = {
   all: () =>
@@ -194,7 +194,7 @@ export async function createPlaylistAndSync(queryClient: QueryClient, name = "Ne
     updatedAt: now,
   };
 
-  await unwrapResult(playlistRepository.create(playlist));
+  await playlistRepository.create(playlist);
   await settleLibraryReads(queryClient);
   syncPlaylistCaches(queryClient, playlist);
   await syncSearchIndex({ playlists: [playlist.id] });
@@ -211,14 +211,14 @@ export async function updatePlaylistAndSync(
   let didUpdatePlaylist = false;
 
   if (changes.coverBlob) {
-    const stored = await unwrapResult(coverRepository.upsertPlaylistCover(
+    const stored = await coverRepository.upsertPlaylistCover(
       currentPlaylist.id,
       changes.coverBlob,
-    ));
+    );
     updateCoverCache("playlist", currentPlaylist.id, stored);
   }
   else if (changes.removeCover) {
-    await unwrapResult(coverRepository.deletePlaylistCover(currentPlaylist.id));
+    await coverRepository.deletePlaylistCover(currentPlaylist.id);
     updateCoverCache("playlist", currentPlaylist.id, null);
   }
 
@@ -239,7 +239,7 @@ export async function updatePlaylistAndSync(
       updatedAt: Date.now(),
     };
 
-    await unwrapResult(playlistRepository.update(currentPlaylist.id, updateData));
+    await playlistRepository.update(currentPlaylist.id, updateData);
     await settleLibraryReads(queryClient);
     syncPlaylistCaches(queryClient, nextPlaylist);
     didUpdatePlaylist = true;
@@ -267,26 +267,25 @@ export async function deletePlaylistAndSync(
   }
 
   const tracks = options.deleteTracks === true && currentPlaylist.trackIds.length > 0
-    ? await unwrapResult(trackRepository.findByIds(currentPlaylist.trackIds))
+    ? await trackRepository.findByIds(currentPlaylist.trackIds)
     : [];
   const trackIds = tracks.map(track => track.id);
   const now = Date.now();
 
-  const txResult = await unitOfWork.runScoped(
-    trackCascadeTables(),
-    async () => {
-      const removals = await purgeTracksInTx(tracks, now);
-      await unwrapResult(coverRepository.deletePlaylistCover(currentPlaylist.id));
-      await unwrapResult(playlistRepository.delete(currentPlaylist.id));
-      return removals;
+  const removals = await unitOfWork.run(
+    TRACK_CASCADE_TABLES,
+    async (uow) => {
+      const purged = await purgeTracksInTx(uow, tracks, now);
+      await uow.covers.deletePlaylistCover(currentPlaylist.id);
+      await uow.playlists.delete(currentPlaylist.id);
+      return purged;
     },
   );
-  if (txResult.isErr()) throw txResult.error;
   await deleteOwnedFiles(tracks);
 
   await settleLibraryReads(queryClient);
   // This playlist is gone — re-syncing its caches would put it back.
-  await syncAfterTrackPurge(queryClient, trackIds, txResult.value, [currentPlaylist.id]);
+  await syncAfterTrackPurge(queryClient, trackIds, removals, [currentPlaylist.id]);
   await syncSearchIndex({ playlists: [currentPlaylist.id] });
 
   removePlaylistCaches(queryClient, currentPlaylist.id);
@@ -304,7 +303,7 @@ export async function removeTrackFromPlaylistAndSync(
   playlistId: PlaylistId,
   trackId: string,
 ) {
-  await unwrapResult(playlistRepository.removeTrack(playlistId, trackId as never));
+  await playlistRepository.removeTrack(playlistId, trackId as never);
   // The row is read back after the write, not derived from a read before
   // it: another change to the same playlist may have landed in between.
   const nextPlaylist = await getPlaylistByIdOrThrow(playlistId);
@@ -332,7 +331,7 @@ export const removeTrackFromPlaylistWithUndo = async (
 
   const restore = async (): Promise<void> => {
     if (index === -1) return;
-    await unwrapResult(playlistRepository.insertTrack(playlistId, trackId, index));
+    await playlistRepository.insertTrack(playlistId, trackId, index);
     const nextPlaylist = await getPlaylistByIdOrThrow(playlistId);
     await settleLibraryReads(queryClient);
     syncPlaylistCaches(queryClient, nextPlaylist);
@@ -357,7 +356,7 @@ export async function addTracksToPlaylistAndSync(
 ) {
   // One row write for the whole batch; the repository reports which ids
   // were actually appended so the page patch only gets those.
-  const added = await unwrapResult(playlistRepository.addTracks(playlistId, tracks.map(track => track.id)));
+  const added = await playlistRepository.addTracks(playlistId, tracks.map(track => track.id));
   const nextPlaylist = await getPlaylistByIdOrThrow(playlistId);
   await settleLibraryReads(queryClient);
   const addedSet = new Set(added);

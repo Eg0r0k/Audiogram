@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ok } from "neverthrow";
 import type { TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import { TrackId } from "@/types/ids";
@@ -9,8 +8,8 @@ const repositories = vi.hoisted(() => ({
     findByIds: vi.fn(),
     findSortedByIds: vi.fn(),
   },
-  artistRepository: { findByIds: vi.fn(async () => ok([])) },
-  albumRepository: { findByIds: vi.fn(async () => ok([])) },
+  artistRepository: { findByIds: vi.fn(async () => []) },
+  albumRepository: { findByIds: vi.fn(async () => []) },
   coverRepository: {},
 }));
 
@@ -45,9 +44,9 @@ const hits = (...ids: string[]) => ({
 describe("searchTracksWithin", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    repositories.trackRepository.findByIds.mockImplementation(async (ids: string[]) => ok(ids.map(entity)));
+    repositories.trackRepository.findByIds.mockImplementation(async (ids: string[]) => ids.map(entity));
     repositories.trackRepository.findSortedByIds.mockImplementation(async (ids: string[]) =>
-      ok([...ids].sort().map(entity)),
+      [...ids].sort().map(entity),
     );
   });
 

@@ -33,11 +33,11 @@ import {
   updateCoverCache,
   removeCoverCache,
 } from "./cache";
-import { unique, unwrapResult } from "./shared";
+import { unique } from "./shared";
 import {
   purgeTracksInTx,
   syncAfterTrackPurge,
-  trackCascadeTables,
+  TRACK_CASCADE_TABLES,
 } from "./track-cascade";
 import type { LikedTracksPageData, PaginatedTracksResult } from "./types";
 import { getAlbumByIdOrThrow } from "./album.queries";
@@ -78,8 +78,8 @@ async function loadTrackRelations(tracks: TrackEntity[]): Promise<Track[]> {
   const albumIds = unique(tracks.map(track => track.albumId));
 
   const [artists, albums] = await Promise.all([
-    unwrapResult(artistRepository.findByIds(artistIds)),
-    unwrapResult(albumRepository.findByIds(albumIds)),
+    artistRepository.findByIds(artistIds),
+    albumRepository.findByIds(albumIds),
   ]);
 
   return mapTracks(tracks, artists, albums);
@@ -89,7 +89,7 @@ const joinArtistNames = (artistIds: readonly ArtistId[], nameById: ReadonlyMap<A
   artistIds.map(id => nameById.get(id)).filter(Boolean).join(", ") || "Unknown Artist";
 
 async function loadArtistNames(artistIds: readonly ArtistId[]): Promise<Map<ArtistId, string>> {
-  const artists = await unwrapResult(artistRepository.findByIds(unique([...artistIds])));
+  const artists = await artistRepository.findByIds(unique([...artistIds]));
   return new Map(artists.map(artist => [artist.id, artist.name]));
 }
 
@@ -99,7 +99,7 @@ async function findOrCreateArtists(queryClient: QueryClient, names: string[]) {
   const now = Date.now();
 
   for (const name of names) {
-    const existing = await unwrapResult(artistRepository.findByName(name));
+    const existing = await artistRepository.findByName(name);
 
     if (existing) {
       artists.push(existing);
@@ -114,7 +114,7 @@ async function findOrCreateArtists(queryClient: QueryClient, names: string[]) {
       updatedAt: now,
     };
 
-    await unwrapResult(artistRepository.create(artist));
+    await artistRepository.create(artist);
     syncArtistCaches(queryClient, artist);
     artists.push(artist);
     createdIds.push(artist.id);
@@ -133,16 +133,16 @@ const invalidateTrackRelations = async (queryClient: QueryClient) => {
 };
 
 export async function getLikedTracks() {
-  return unwrapResult(trackRepository.findLiked());
+  return trackRepository.findLiked();
 }
 
 export async function getTrackEntityById(trackId: TrackId) {
-  return unwrapResult(trackRepository.findById(trackId));
+  return trackRepository.findById(trackId);
 }
 
 export async function getLikedTracksPageData(sortKey: TrackSortKey | null = null): Promise<LikedTracksPageData> {
   const tracks = sortKey
-    ? await unwrapResult(trackRepository.findLikedSorted(sortKey))
+    ? await trackRepository.findLikedSorted(sortKey)
     : await getLikedTracks();
   const mappedTracks = await loadTrackRelations(tracks);
 
@@ -158,9 +158,9 @@ export async function getLikedTracksPaginated(
 ): Promise<PaginatedTracksResult> {
   const [tracks, total] = await Promise.all([
     sortKey
-      ? unwrapResult(trackRepository.findLikedSortedPaginated(sortKey, offset, limit))
-      : unwrapResult(trackRepository.findLikedPaginated(offset, limit)),
-    unwrapResult(trackRepository.countLiked()),
+      ? trackRepository.findLikedSortedPaginated(sortKey, offset, limit)
+      : trackRepository.findLikedPaginated(offset, limit),
+    trackRepository.countLiked(),
   ]);
 
   const mappedTracks = await loadTrackRelations(tracks);
@@ -206,9 +206,9 @@ export async function getAllTracksPaginated(
 ): Promise<PaginatedTracksResult> {
   const [rawTracks, counted] = await Promise.all([
     sortKey
-      ? unwrapResult(trackRepository.findAllSortedPaginated(sortKey, offset, limit + 1))
-      : unwrapResult(trackRepository.findPaginated(offset, limit + 1)),
-    offset === 0 ? unwrapResult(trackRepository.countAll()) : null,
+      ? trackRepository.findAllSortedPaginated(sortKey, offset, limit + 1)
+      : trackRepository.findPaginated(offset, limit + 1),
+    offset === 0 ? trackRepository.countAll() : null,
   ]);
 
   const hasMore = rawTracks.length > limit;
@@ -231,7 +231,7 @@ async function searchedTracksSorted(
   const response = await searchDocuments(query, "track", { offset: 0 });
   const ids = response.results.map(item => item.entityId as TrackId);
   return {
-    tracks: await unwrapResult(trackRepository.findSortedByIds(ids, sortKey)),
+    tracks: await trackRepository.findSortedByIds(ids, sortKey),
     matches: matchesByEntity(response.results),
   };
 }
@@ -290,7 +290,7 @@ export const searchTracksWithin = async (
   const totalDuration = response.totalDuration;
 
   if (sortKey) {
-    const sorted = await unwrapResult(trackRepository.findSortedByIds(hitIds, sortKey));
+    const sorted = await trackRepository.findSortedByIds(hitIds, sortKey);
     return { tracks: await loadTrackRelations(sorted.slice(offset, end)), nextOffset, total, totalDuration };
   }
 
@@ -304,7 +304,7 @@ export const searchAlbumTracks = async (
   limit = PAGE_SIZE,
   sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> => {
-  const ids = await unwrapResult(trackRepository.findIdsByAlbumId(albumId));
+  const ids = await trackRepository.findIdsByAlbumId(albumId);
   return searchTracksWithin(ids, query, offset, limit, sortKey);
 };
 
@@ -315,7 +315,7 @@ export const searchArtistTracks = async (
   limit = PAGE_SIZE,
   sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> => {
-  const ids = await unwrapResult(trackRepository.findIdsByArtistId(artistId));
+  const ids = await trackRepository.findIdsByArtistId(artistId);
   return searchTracksWithin(ids, query, offset, limit, sortKey);
 };
 
@@ -325,7 +325,7 @@ export const searchLikedTracks = async (
   limit = PAGE_SIZE,
   sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> => {
-  const ids = await unwrapResult(trackRepository.findLikedIds());
+  const ids = await trackRepository.findLikedIds();
   return searchTracksWithin(ids, query, offset, limit, sortKey);
 };
 
@@ -336,7 +336,7 @@ export const searchPlaylistTracks = async (
   limit = PAGE_SIZE,
   sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> => {
-  const playlist = await unwrapResult(playlistRepository.findById(playlistId));
+  const playlist = await playlistRepository.findById(playlistId);
   return searchTracksWithin(playlist?.trackIds ?? [], query, offset, limit, sortKey);
 };
 
@@ -365,13 +365,13 @@ export async function getAllTracksForQueue(sortKey: TrackSortKey | null, searchQ
     }
     return loadTrackRelations((await searchedTracksSorted(q, sortKey)).tracks);
   }
-  const rawTracks = await unwrapResult(trackRepository.findAllSorted(sortKey ?? DEFAULT_TRACK_SORT_KEY));
+  const rawTracks = await trackRepository.findAllSorted(sortKey ?? DEFAULT_TRACK_SORT_KEY);
   return loadTrackRelations(rawTracks);
 }
 
 export async function getTracksByIds(ids: readonly TrackId[]): Promise<Track[]> {
   if (ids.length === 0) return [];
-  const entities = await unwrapResult(trackRepository.findByIds([...ids]));
+  const entities = await trackRepository.findByIds([...ids]);
   return loadTrackRelations(entities);
 }
 
@@ -383,18 +383,18 @@ export async function getAllTrackIds(sortKey: TrackSortKey | null, searchQuery =
     const response = await searchDocuments(q, "track", { offset: 0 });
     return response.results.map(item => item.entityId as TrackId);
   }
-  return unwrapResult(trackRepository.findAllIdsSorted(sortKey ?? DEFAULT_TRACK_SORT_KEY));
+  return trackRepository.findAllIdsSorted(sortKey ?? DEFAULT_TRACK_SORT_KEY);
 }
 
 /** `null` keeps the order of `ids` — the caller's list order. */
 export async function getTracksByIdsSorted(ids: TrackId[], sortKey: TrackSortKey | null): Promise<Track[]> {
   if (ids.length === 0) return [];
   if (!sortKey) {
-    const byId = new Map((await unwrapResult(trackRepository.findByIds(ids))).map(track => [track.id, track]));
+    const byId = new Map((await trackRepository.findByIds(ids)).map(track => [track.id, track]));
     const entities = ids.map(id => byId.get(id)).filter((track): track is TrackEntity => !!track);
     return loadTrackRelations(entities);
   }
-  const entities = await unwrapResult(trackRepository.findSortedByIds(ids, sortKey));
+  const entities = await trackRepository.findSortedByIds(ids, sortKey);
   return loadTrackRelations(entities);
 }
 
@@ -407,8 +407,8 @@ export async function setTracksLikedAndSync(
 ): Promise<number> {
   if (ids.length === 0) return 0;
   const changed = liked
-    ? await unwrapResult(trackRepository.likeMany(ids, Date.now()))
-    : await unwrapResult(trackRepository.unlikeMany(ids));
+    ? await trackRepository.likeMany(ids, Date.now())
+    : await trackRepository.unlikeMany(ids);
 
   await invalidateTrackRelations(queryClient);
   return changed;
@@ -419,21 +419,16 @@ export async function deleteTracksAndSync(
   ids: TrackId[],
 ): Promise<number> {
   if (ids.length === 0) return 0;
-  const tracks = await unwrapResult(trackRepository.findByIds(ids));
+  const tracks = await trackRepository.findByIds(ids);
   if (tracks.length === 0) return 0;
 
   const trackIds = tracks.map(track => track.id);
   const now = Date.now();
 
-  const txResult = await unitOfWork.runScoped(
-    trackCascadeTables(),
-    // The arrow must `await` inside its body: a bare passthrough settles the
-    // outer promise outside the Dexie transaction zone and throws
-    // PrematureCommitError. Do not "simplify" this back to a plain return.
-    async () => await purgeTracksInTx(tracks, now),
+  const removals = await unitOfWork.run(
+    TRACK_CASCADE_TABLES,
+    uow => purgeTracksInTx(uow, tracks, now),
   );
-  if (txResult.isErr()) throw txResult.error;
-  const removals = txResult.value;
 
   await settleLibraryReads(queryClient);
   await syncAfterTrackPurge(queryClient, trackIds, removals);
@@ -455,7 +450,7 @@ export async function deleteTracksAndSync(
 }
 
 export async function getLikedTotalDuration(): Promise<number> {
-  return unwrapResult(trackRepository.sumDurationByLiked());
+  return trackRepository.sumDurationByLiked();
 }
 
 export async function addTracksToAlbumAndSync(
@@ -465,7 +460,7 @@ export async function addTracksToAlbumAndSync(
 ) {
   const album = await getAlbumByIdOrThrow(albumId);
   const trackIds = unique(tracks.map(track => track.id));
-  const currentTracks = await unwrapResult(trackRepository.findByIds(trackIds));
+  const currentTracks = await trackRepository.findByIds(trackIds);
   const trackMap = new Map(currentTracks.map(track => [track.id, track]));
 
   for (const trackId of trackIds) {
@@ -496,7 +491,7 @@ export async function addTracksToAlbumAndSync(
   });
 
   if (updates.length > 0) {
-    await unwrapResult(trackRepository.updateMany(updates));
+    await trackRepository.updateMany(updates);
   }
 
   await invalidateTrackRelations(queryClient);
@@ -511,7 +506,7 @@ export async function addTracksToArtistAndSync(
   await getArtistByIdOrThrow(artistId);
 
   const trackIds = unique(tracks.map(track => track.id));
-  const currentTracks = await unwrapResult(trackRepository.findByIds(trackIds));
+  const currentTracks = await trackRepository.findByIds(trackIds);
   const trackMap = new Map(currentTracks.map(track => [track.id, track]));
 
   for (const trackId of trackIds) {
@@ -533,7 +528,7 @@ export async function addTracksToArtistAndSync(
   });
 
   if (updates.length > 0) {
-    await unwrapResult(trackRepository.updateMany(updates));
+    await trackRepository.updateMany(updates);
   }
 
   await invalidateTrackRelations(queryClient);
@@ -547,7 +542,7 @@ export async function favoriteTracksAndSync(
   const trackIds = unique(tracks.map(track => track.id));
 
   // Rows already liked keep their original likedAt.
-  await unwrapResult(trackRepository.likeMany(trackIds, Date.now()));
+  await trackRepository.likeMany(trackIds, Date.now());
 
   await invalidateTrackRelations(queryClient);
 }
@@ -556,7 +551,7 @@ export async function toggleTrackLikeAndSync(
   queryClient: QueryClient,
   track: Track,
 ) {
-  const currentTrack = await unwrapResult(trackRepository.findById(track.id));
+  const currentTrack = await trackRepository.findById(track.id);
 
   if (!currentTrack) {
     throw new DbError("NOT_FOUND", "Track not found");
@@ -565,7 +560,7 @@ export async function toggleTrackLikeAndSync(
   const nextValue = !track.isLiked;
   const likedAt = nextValue ? Date.now() : undefined;
 
-  await unwrapResult(trackRepository.setLiked(track.id, nextValue));
+  await trackRepository.setLiked(track.id, nextValue);
   await settleLibraryReads(queryClient);
 
   const nextTrackEntity: TrackEntity = {
@@ -581,7 +576,7 @@ export async function toggleTrackLikeAndSync(
 }
 
 const findTrackOrThrow = async (trackId: TrackId): Promise<TrackEntity> => {
-  const track = await unwrapResult(trackRepository.findById(trackId));
+  const track = await trackRepository.findById(trackId);
   if (!track) throw new DbError("NOT_FOUND", "Track not found");
   return track;
 };
@@ -604,7 +599,7 @@ const writeTrackLyrics = async (
 ): Promise<Track> => {
   const currentTrack = await findTrackOrThrow(track.id);
 
-  await unwrapResult(trackRepository.setLyrics(track.id, changes));
+  await trackRepository.setLyrics(track.id, changes);
   await settleLibraryReads(queryClient);
 
   return syncTrackLyricsCaches(queryClient, currentTrack, track, {
@@ -630,7 +625,7 @@ export const setTrackLyricsOffsetAndSync = async (
 ): Promise<Track> => {
   const currentTrack = await findTrackOrThrow(track.id);
 
-  await unwrapResult(trackRepository.setLyricsOffset(track.id, offsetMs));
+  await trackRepository.setLyricsOffset(track.id, offsetMs);
   await settleLibraryReads(queryClient);
 
   return syncTrackLyricsCaches(queryClient, currentTrack, track, { lyricsOffsetMs: offsetMs });
@@ -648,7 +643,7 @@ const resolveAlbumForChanges = async (
   const title = changes.albumTitle?.trim().replace(/\s+/g, " ");
   if (!title || !firstArtistId) return null;
 
-  const artistAlbums = await unwrapResult(albumRepository.findByArtistId(firstArtistId));
+  const artistAlbums = await albumRepository.findByArtistId(firstArtistId);
   const existing = artistAlbums.find(album => identityKey(album.title) === identityKey(title));
   if (existing) return existing;
 
@@ -661,7 +656,7 @@ const resolveAlbumForChanges = async (
     addedAt: now,
     updatedAt: now,
   };
-  await unwrapResult(albumRepository.create(created));
+  await albumRepository.create(created);
   // Mirror findOrCreateArtists: a brand-new row needs a point-sync into the
   // list cache and a search document, or it stays invisible until reload.
   syncAlbumCaches(queryClient, created);
@@ -674,7 +669,7 @@ export async function updateTrackMetadataAndSync(
   track: Track,
   changes: TrackMetadataChanges,
 ) {
-  const currentTrack = await unwrapResult(trackRepository.findById(track.id));
+  const currentTrack = await trackRepository.findById(track.id);
 
   if (!currentTrack) {
     throw new DbError("NOT_FOUND", "Track not found");
@@ -714,7 +709,7 @@ export async function updateTrackMetadataAndSync(
     diskNo: nextDiskNo,
   };
 
-  await unwrapResult(trackRepository.update(currentTrack.id, {
+  await trackRepository.update(currentTrack.id, {
     title,
     artistIds: nextArtistIds,
     artistName: nextArtistName,
@@ -722,21 +717,21 @@ export async function updateTrackMetadataAndSync(
     albumTitle: nextAlbumTitle,
     trackNo: nextTrackNo,
     diskNo: nextDiskNo,
-  }));
+  });
   await settleLibraryReads(queryClient);
 
   // An album-less track resolves its cover from its own id; once it joins an
   // album that owner stops being consulted, so the embedded art must follow —
   // to the album when it has none, otherwise the track row is just retired.
   if (!currentTrack.albumId && album) {
-    const trackCover = await unwrapResult(coverRepository.findByOwner("track", currentTrack.id));
+    const trackCover = await coverRepository.findByOwner("track", currentTrack.id);
     if (trackCover) {
-      const albumCover = await unwrapResult(coverRepository.findByOwner("album", album.id));
+      const albumCover = await coverRepository.findByOwner("album", album.id);
       if (!albumCover) {
-        const stored = await unwrapResult(coverRepository.upsertOwnerCover("album", album.id, trackCover.blob));
+        const stored = await coverRepository.upsertOwnerCover("album", album.id, trackCover.blob);
         updateCoverCache("album", album.id, stored);
       }
-      await unwrapResult(coverRepository.deleteByOwner("track", currentTrack.id));
+      await coverRepository.deleteByOwner("track", currentTrack.id);
       removeCoverCache("track", currentTrack.id);
     }
   }
@@ -745,11 +740,11 @@ export async function updateTrackMetadataAndSync(
   // so it takes a copy of the album art along unless it already has its own.
   // The album keeps its cover — other tracks may still live there.
   if (currentTrack.albumId && !album) {
-    const trackCover = await unwrapResult(coverRepository.findByOwner("track", currentTrack.id));
+    const trackCover = await coverRepository.findByOwner("track", currentTrack.id);
     if (!trackCover) {
-      const albumCover = await unwrapResult(coverRepository.findByOwner("album", currentTrack.albumId));
+      const albumCover = await coverRepository.findByOwner("album", currentTrack.albumId);
       if (albumCover) {
-        const stored = await unwrapResult(coverRepository.upsertOwnerCover("track", currentTrack.id, albumCover.blob));
+        const stored = await coverRepository.upsertOwnerCover("track", currentTrack.id, albumCover.blob);
         updateCoverCache("track", currentTrack.id, stored);
       }
     }

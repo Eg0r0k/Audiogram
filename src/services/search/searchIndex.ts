@@ -1,4 +1,3 @@
-import type { Result } from "neverthrow";
 import {
   buildAlbumDoc,
   buildAllSearchDocuments,
@@ -78,21 +77,17 @@ export async function searchDocuments(
 async function hydrateTracksByIds(ids: TrackId[]): Promise<Track[]> {
   if (ids.length === 0) return [];
 
-  const entitiesResult = await trackRepository.findByIds(ids);
-  if (entitiesResult.isErr()) throw entitiesResult.error;
-  const entities = entitiesResult.value;
+  const entities = await trackRepository.findByIds(ids);
 
   const artistIds = [...new Set(entities.flatMap(entity => entity.artistIds))];
   const albumIds = [...new Set(entities.map(entity => entity.albumId))];
 
-  const [artistsResult, albumsResult] = await Promise.all([
+  const [artists, albums] = await Promise.all([
     artistRepository.findByIds(artistIds),
     albumRepository.findByIds(albumIds),
   ]);
-  if (artistsResult.isErr()) throw artistsResult.error;
-  if (albumsResult.isErr()) throw albumsResult.error;
 
-  return mapTracks(entities, artistsResult.value, albumsResult.value);
+  return mapTracks(entities, artists, albums);
 }
 
 export async function searchTracks(
@@ -124,13 +119,11 @@ export interface SearchIndexChanges {
 }
 
 const readRows = async <TEntity, TId>(
-  repository: { findByIds: (ids: TId[]) => Promise<Result<TEntity[], Error>> },
+  repository: { findByIds: (ids: TId[]) => Promise<TEntity[]> },
   ids: TId[],
 ): Promise<TEntity[]> => {
   if (ids.length === 0) return [];
-  const result = await repository.findByIds(ids);
-  if (result.isErr()) throw result.error;
-  return result.value;
+  return repository.findByIds(ids);
 };
 
 /**

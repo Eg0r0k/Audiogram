@@ -4,14 +4,13 @@ import { queryKeys } from "@/queries/query-keys";
 import type { TrackId, TagId } from "@/types/ids";
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import { settleLibraryReads } from "./cache";
-import { unwrapResult } from "./shared";
 
 export async function getAllTags(): Promise<TagEntity[]> {
-  return unwrapResult(tagRepository.findAll());
+  return tagRepository.findAll();
 }
 
 export async function getTagsByTrackId(trackId: TrackId): Promise<TagEntity[]> {
-  return unwrapResult(tagRepository.findByTrackId(trackId));
+  return tagRepository.findByTrackId(trackId);
 }
 
 export const tagQueries = {
@@ -47,11 +46,11 @@ export async function addTagToTrackAndSync(
   track: TrackEntity,
   tagName: string,
 ): Promise<TagEntity> {
-  const tag = await unwrapResult(tagRepository.findOrCreate(tagName));
+  const tag = await tagRepository.findOrCreate(tagName);
 
   const currentTagIds = track.tagIds;
   if (!currentTagIds.includes(tag.id)) {
-    await unwrapResult(trackRepository.addTagToTrack(track.id, tag.id));
+    await trackRepository.addTagToTrack(track.id, tag.id);
     await settleLibraryReads(queryClient);
 
     const nextTrack: TrackEntity = {
@@ -74,7 +73,7 @@ export async function removeTagFromTrackAndSync(
   track: TrackEntity,
   tagId: TagId,
 ): Promise<void> {
-  await unwrapResult(trackRepository.removeTagFromTrack(track.id, tagId));
+  await trackRepository.removeTagFromTrack(track.id, tagId);
   await settleLibraryReads(queryClient);
 
   const currentTagIds = track.tagIds;

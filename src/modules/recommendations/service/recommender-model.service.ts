@@ -47,14 +47,14 @@ const loadRow = async (): Promise<RecommenderModelEntity | null> => {
   if (!loadingRow) {
     const gen = rowGeneration;
     loadingRow = recommenderModelRepository.get()
-      .then((result) => {
-        if (result.isErr()) {
-          getLogger().error(`[Recommendations] Reading the learned model failed: ${formatError(result.error)}`);
-          // Not cached: a transient read failure should not stick as "no model" forever.
-          return null;
-        }
-        if (gen === rowGeneration) cachedRow = result.value;
-        return result.value;
+      .then((row) => {
+        if (gen === rowGeneration) cachedRow = row;
+        return row;
+      })
+      .catch((error: unknown) => {
+        getLogger().error(`[Recommendations] Reading the learned model failed: ${formatError(error)}`);
+        // Not cached: a transient read failure should not stick as "no model" forever.
+        return null;
       })
       .finally(() => {
         loadingRow = null;
@@ -78,9 +78,11 @@ export const invalidateWeightsCache = (): void => {
  * history the user has just deleted must stop steering the recommender.
  */
 export const clearModel = async (): Promise<void> => {
-  const result = await recommenderModelRepository.clear();
-  if (result.isErr()) {
-    getLogger().error(`[Recommendations] Clearing the learned model failed: ${formatError(result.error)}`);
+  try {
+    await recommenderModelRepository.clear();
+  }
+  catch (error) {
+    getLogger().error(`[Recommendations] Clearing the learned model failed: ${formatError(error)}`);
   }
   invalidateWeightsCache();
 };
@@ -126,16 +128,18 @@ const trainOnAllExamples = async (ctx: RecommenderContext): Promise<void> => {
 
   const positives = examples.filter(e => e.y === 1).length;
   const negatives = examples.length - positives;
-  const putResult = await recommenderModelRepository.put({
-    weights,
-    featureVersion: MODEL_FEATURE_VERSION,
-    trainedAt: Date.now(),
-    examples: examples.length,
-    positives,
-    negatives,
-  });
-  if (putResult.isErr()) {
-    getLogger().error(`[Recommendations] Saving the learned model failed: ${formatError(putResult.error)}`);
+  try {
+    await recommenderModelRepository.put({
+      weights,
+      featureVersion: MODEL_FEATURE_VERSION,
+      trainedAt: Date.now(),
+      examples: examples.length,
+      positives,
+      negatives,
+    });
+  }
+  catch (error) {
+    getLogger().error(`[Recommendations] Saving the learned model failed: ${formatError(error)}`);
     return;
   }
   invalidateWeightsCache();

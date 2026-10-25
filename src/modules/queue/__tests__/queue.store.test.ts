@@ -102,7 +102,7 @@ function createRecommendation(track: TrackEntity) {
 type QueueStoreInstance = ReturnType<typeof useQueueStore>;
 // The queue restores from the database row; this is what it will read.
 const seedStoredSnapshot = (snapshot: unknown) => {
-  vi.mocked(queueSnapshotRepository.get).mockResolvedValue(ok(snapshot));
+  vi.mocked(queueSnapshotRepository.get).mockResolvedValue(snapshot);
 };
 const seedQueueItems = (store: QueueStoreInstance, list: QueueItem[]) => {
   const currentId = store.currentItem?.id ?? null;
@@ -137,10 +137,10 @@ describe("queue.store", () => {
     setActivePinia(createPinia());
     localStorage.clear();
     vi.clearAllMocks();
-    vi.mocked(trackRepository.findByIds).mockResolvedValue(ok([]));
-    vi.mocked(queueSnapshotRepository.get).mockResolvedValue(ok(null));
-    vi.mocked(queueSnapshotRepository.put).mockResolvedValue(ok(undefined));
-    vi.mocked(queueSnapshotRepository.clear).mockResolvedValue(ok(undefined));
+    vi.mocked(trackRepository.findByIds).mockResolvedValue([]);
+    vi.mocked(queueSnapshotRepository.get).mockResolvedValue(null);
+    vi.mocked(queueSnapshotRepository.put).mockResolvedValue(undefined);
+    vi.mocked(queueSnapshotRepository.clear).mockResolvedValue(undefined);
     vi.mocked(getRecommendations).mockResolvedValue([]);
     registerAutoplaySource(getRecommendations);
     registerPlaybackPort(createPlayerPlaybackPort());
@@ -804,7 +804,7 @@ describe("queue.store", () => {
       const track1 = createTrack("1");
       const track2 = createTrack("2");
 
-      vi.mocked(trackRepository.findByIds).mockResolvedValue(ok([
+      vi.mocked(trackRepository.findByIds).mockResolvedValue([
         {
           id: track1.id,
           title: track1.title,
@@ -839,7 +839,7 @@ describe("queue.store", () => {
           addedAt: track2.addedAt ?? 0,
           likedAt: track2.isLiked ? Date.now() : undefined,
         },
-      ]));
+      ]);
 
       const store = useQueueStore();
       const playerStore = usePlayerStore();
@@ -1850,7 +1850,7 @@ describe("queue.store", () => {
         // The real playPlayerTrack is mocked out — assign what it would have.
         playerStore.currentTrack = createTrack("9");
 
-        resolveDb(ok([createTrackEntity("1")]));
+        resolveDb([createTrackEntity("1")]);
         await restoring;
 
         expect(store.queue.map(item => item.track.id)).toEqual(["9"]);
@@ -1858,7 +1858,7 @@ describe("queue.store", () => {
       });
 
       it("leaves the player alone when playback is already active at commit time", async () => {
-        vi.mocked(trackRepository.findByIds).mockResolvedValue(ok([createTrackEntity("1")]));
+        vi.mocked(trackRepository.findByIds).mockResolvedValue([createTrackEntity("1")]);
         const store = useQueueStore();
         const playerStore = usePlayerStore();
 
@@ -1927,7 +1927,7 @@ describe("queue.store", () => {
     describe("restore current item by id", () => {
       it("keeps the same current track when earlier tracks vanished from the library", async () => {
         vi.mocked(trackRepository.findByIds).mockResolvedValue(
-          ok([createTrackEntity("2"), createTrackEntity("3")]),
+          [createTrackEntity("2"), createTrackEntity("3")],
         );
         const store = useQueueStore();
         const playerStore = usePlayerStore();
@@ -2486,7 +2486,7 @@ describe("queue.store", () => {
 
     it("restores a shuffled snapshot with both orders, keeping entries the original order forgot", async () => {
       vi.mocked(trackRepository.findByIds).mockResolvedValue(
-        ok([createTrackEntity("1"), createTrackEntity("2"), createTrackEntity("3")]),
+        [createTrackEntity("1"), createTrackEntity("2"), createTrackEntity("3")],
       );
       const store = useQueueStore();
 
@@ -2517,7 +2517,7 @@ describe("queue.store", () => {
     });
 
     it("drops a stale current id that is not in the restored queue", async () => {
-      vi.mocked(trackRepository.findByIds).mockResolvedValue(ok([createTrackEntity("1")]));
+      vi.mocked(trackRepository.findByIds).mockResolvedValue([createTrackEntity("1")]);
       const store = useQueueStore();
 
       seedStoredSnapshot({
@@ -2636,7 +2636,7 @@ describe("queue.store", () => {
     });
 
     it("should skip library tracks not found in database", async () => {
-      vi.mocked(trackRepository.findByIds).mockResolvedValue(ok([]));
+      vi.mocked(trackRepository.findByIds).mockResolvedValue([]);
 
       const store = useQueueStore();
 
@@ -2761,7 +2761,7 @@ describe("queue.store", () => {
     });
 
     it("drops retired item covers of library tracks too", async () => {
-      vi.mocked(trackRepository.findByIds).mockResolvedValue(ok([createTrackEntity("1")]));
+      vi.mocked(trackRepository.findByIds).mockResolvedValue([createTrackEntity("1")]);
       const store = useQueueStore();
       seedStoredSnapshot({
         version: 1,

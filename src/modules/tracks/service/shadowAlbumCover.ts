@@ -6,7 +6,6 @@ import { sources } from "@/modules/sources";
 import type { TrackId } from "@/types/ids";
 import { parseTrackRef } from "@/types/track-ref";
 import { updateCoverCache } from "@/queries/cache";
-import { unwrapResult } from "@/lib/errors/unwrap";
 import { formatError } from "@/lib/errors";
 
 /**
@@ -25,7 +24,7 @@ export async function ensureShadowCover(
   if (kind === "local") return;
 
   try {
-    const existing = await unwrapResult(coverRepository.findByOwner(ownerType, ownerId));
+    const existing = await coverRepository.findByOwner(ownerType, ownerId);
     if (existing) return;
 
     // The stored blob is the ONLY rendition the row ever shows (hero, now
@@ -39,7 +38,7 @@ export async function ensureShadowCover(
     const blob = await response.blob();
     if (blob.size === 0) return;
 
-    const stored = await unwrapResult(coverRepository.upsertOwnerCover(ownerType, ownerId, blob));
+    const stored = await coverRepository.upsertOwnerCover(ownerType, ownerId, blob);
     // Surfaces mounted before the fetch landed hold a cached null.
     updateCoverCache(ownerType, ownerId, stored);
   }

@@ -14,9 +14,9 @@ vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
 }));
 
-import { err } from "neverthrow";
 import { db } from "@/db";
-import { trackRepository } from "@/db/repositories";
+import { DbError } from "@/db/errors/db.errors";
+import { TrackRepository } from "@/db/repositories/track.repository";
 import { ensurePinnedMany } from "../ensurePinned";
 
 //
@@ -78,13 +78,13 @@ describe("ensurePinnedMany", () => {
   });
 
   it("pins the rest of the batch when one subject cannot be written", async () => {
-    const write = trackRepository.upsert.bind(trackRepository);
+    const write = TrackRepository.prototype.upsert;
     const doomed = ndTrackId("song30");
-    vi.spyOn(trackRepository, "upsert").mockImplementation(track =>
-      track.id === doomed
-        ? Promise.resolve(err(new Error("DataCloneError")))
-        : write(track),
-    );
+    vi.spyOn(TrackRepository.prototype, "upsert").mockImplementation(function (this: TrackRepository, track) {
+      return track.id === doomed
+        ? Promise.reject(new DbError("UNKNOWN", "DataCloneError"))
+        : write.call(this, track);
+    });
 
     const pinned = await ensurePinnedMany(subjects, { pinned: 0 });
 
@@ -94,7 +94,7 @@ describe("ensurePinnedMany", () => {
   });
 
   it("rejects when its only subject cannot be written", async () => {
-    vi.spyOn(trackRepository, "upsert").mockResolvedValue(err(new Error("DataCloneError")));
+    vi.spyOn(TrackRepository.prototype, "upsert").mockRejectedValue(new DbError("UNKNOWN", "DataCloneError"));
 
     await expect(ensurePinnedMany([subjects[0]], { pinned: 0 })).rejects.toThrow("DataCloneError");
   });

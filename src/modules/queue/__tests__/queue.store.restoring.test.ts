@@ -1,8 +1,8 @@
 import { createApp } from "vue";
 import { createPinia, setActivePinia } from "pinia";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
-import { err, ok, type Result } from "neverthrow";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DbError } from "@/db/errors/db.errors";
 import { queueSnapshotRepository, trackRepository } from "@/db/repositories";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
 import { createPlayerPlaybackPort } from "@/modules/player/lib/queue-playback-port";
@@ -63,7 +63,7 @@ describe("queue store isRestoring", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
-    vi.mocked(trackRepository.findByIds).mockImplementation(async ids => ok(ids.map(id => entity(id))));
+    vi.mocked(trackRepository.findByIds).mockImplementation(async ids => ids.map(id => entity(id)));
   });
 
   afterEach(() => {
@@ -71,11 +71,11 @@ describe("queue store isRestoring", () => {
   });
 
   it("reports isRestoring while the persisted queue loads", async () => {
-    let finishRead: (result: Result<unknown, Error>) => void = () => {};
+    let finishRead: (snapshot: unknown) => void = () => {};
     vi.mocked(queueSnapshotRepository.get).mockReturnValue(
-      new Promise<Result<unknown, Error>>((resolve) => {
+      new Promise<unknown>((resolve) => {
         finishRead = resolve;
-      }) as ReturnType<typeof queueSnapshotRepository.get>,
+      }),
     );
 
     const store = createHydratedStore();
@@ -83,14 +83,12 @@ describe("queue store isRestoring", () => {
     expect(store.isRestoring).toBe(true);
     expect(store.currentTrack).toBeNull();
 
-    finishRead(ok(null));
+    finishRead(null);
     await vi.waitFor(() => expect(store.isRestoring).toBe(false));
   });
 
   it("clears isRestoring after a successful restore", async () => {
-    vi.mocked(queueSnapshotRepository.get).mockResolvedValue(
-      ok(snapshotOf(["t1", "t2", "t3"])) as Awaited<ReturnType<typeof queueSnapshotRepository.get>>,
-    );
+    vi.mocked(queueSnapshotRepository.get).mockResolvedValue(snapshotOf(["t1", "t2", "t3"]));
 
     const store = createHydratedStore();
     expect(store.isRestoring).toBe(true);
@@ -101,9 +99,7 @@ describe("queue store isRestoring", () => {
   });
 
   it("clears isRestoring when the restore fails", async () => {
-    vi.mocked(queueSnapshotRepository.get).mockResolvedValue(
-      err(new Error("database unavailable")) as Awaited<ReturnType<typeof queueSnapshotRepository.get>>,
-    );
+    vi.mocked(queueSnapshotRepository.get).mockRejectedValue(new DbError("UNKNOWN", "database unavailable"));
 
     const store = createHydratedStore();
     expect(store.isRestoring).toBe(true);

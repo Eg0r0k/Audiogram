@@ -1,34 +1,30 @@
 import { db } from "@/db";
 import type { RecommenderModelEntity } from "@/db/entities";
-import { err, ok, type Result } from "neverthrow";
+import { tableOf, type TableMap, type TableSource } from "@/db/tables";
+import { guarded } from "./base.repository";
 
 const MODEL_ID = "weights" as const;
 
-export const recommenderModelRepository = {
-  async get(): Promise<Result<RecommenderModelEntity | null, Error>> {
-    try {
-      return ok((await db.recommenderModels.get(MODEL_ID)) ?? null);
-    }
-    catch (error) {
-      return err(error as Error);
-    }
-  },
-  async put(model: Omit<RecommenderModelEntity, "id">): Promise<Result<void, Error>> {
-    try {
-      await db.recommenderModels.put({ id: MODEL_ID, ...model });
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(error as Error);
-    }
-  },
-  async clear(): Promise<Result<void, Error>> {
-    try {
-      await db.recommenderModels.clear();
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(error as Error);
-    }
-  },
-};
+export class RecommenderModelRepository {
+  private readonly table: TableMap["recommenderModels"];
+
+  constructor(source: TableSource = db) {
+    this.table = tableOf(source, "recommenderModels");
+  }
+
+  async get(): Promise<RecommenderModelEntity | null> {
+    return guarded(async () => (await this.table.get(MODEL_ID)) ?? null);
+  }
+
+  async put(model: Omit<RecommenderModelEntity, "id">): Promise<void> {
+    return guarded(async () => {
+      await this.table.put({ id: MODEL_ID, ...model });
+    });
+  }
+
+  async clear(): Promise<void> {
+    return guarded(() => this.table.clear());
+  }
+}
+
+export const recommenderModelRepository = new RecommenderModelRepository();

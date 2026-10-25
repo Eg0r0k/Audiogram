@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { err, ok } from "neverthrow";
 import type { AudioFeaturesEntity, ListenEventEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
+import { DbError } from "@/db/errors/db.errors";
 import type { TrackId } from "@/types/ids";
 import { computeBreakdowns } from "@/modules/recommendations/lib/scoring";
 
+const logError = vi.hoisted(() => vi.fn());
+
 vi.mock("@/lib/logger", () => ({
-  getLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+  getLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: logError }),
 }));
 vi.mock("@/db/repositories", () => ({
   trackRepository: { findAll: vi.fn() },
@@ -34,9 +36,9 @@ const mockFeaturesFindAll = audioFeaturesRepository.findAll as ReturnType<typeof
 beforeEach(() => {
   vi.clearAllMocks();
   markRecommenderContextDirty();
-  mockFindAll.mockResolvedValue(ok([]));
-  mockEventsSince.mockResolvedValue(ok([]));
-  mockFeaturesFindAll.mockResolvedValue(ok([]));
+  mockFindAll.mockResolvedValue([]);
+  mockEventsSince.mockResolvedValue([]);
+  mockFeaturesFindAll.mockResolvedValue([]);
 });
 
 describe("getRecommenderContext", () => {
@@ -68,7 +70,7 @@ describe("getRecommenderContext", () => {
     const firstCall = getRecommenderContext();
     // Dirty mark lands while the build above is still awaiting the deferred promise.
     markRecommenderContextDirty();
-    resolveTracks(ok([]));
+    resolveTracks([]);
     const first = await firstCall;
 
     const second = await getRecommenderContext();
@@ -77,15 +79,34 @@ describe("getRecommenderContext", () => {
   });
 
   it("does not cache a context built from a failed repository read, and retries on the next call", async () => {
-    mockFindAll.mockResolvedValueOnce(err(new Error("db")));
+    mockFindAll.mockRejectedValueOnce(new DbError("UNKNOWN", "db"));
     const first = await getRecommenderContext();
     expect(first.tracks.size).toBe(0);
     expect(mockFindAll).toHaveBeenCalledTimes(1);
 
-    mockFindAll.mockResolvedValueOnce(ok([]));
+    mockFindAll.mockResolvedValueOnce([]);
     const second = await getRecommenderContext();
     expect(mockFindAll).toHaveBeenCalledTimes(2);
     expect(second).not.toBe(first);
+  });
+
+  it("builds the context from the reads that succeeded when one repository throws", async () => {
+    const track = { id: "t1" as TrackId, artistIds: [], tagIds: [], pinned: 1 } as unknown as TrackEntity;
+    const features = { trackId: "t1" as TrackId, bpm: 120, energy: 0.5, spectralCentroid: 2000, danceability: 0.5, key: 0, mode: 1, analyzedAt: 0, algorithmVersion: 1 };
+    mockFindAll.mockResolvedValueOnce([track]);
+    mockEventsSince.mockRejectedValueOnce(new DbError("QUOTA", "disk full"));
+    mockFeaturesFindAll.mockResolvedValueOnce([features]);
+
+    const ctx = await getRecommenderContext();
+
+    expect([...ctx.tracks.keys()]).toEqual(["t1"]);
+    expect([...ctx.features.keys()]).toEqual(["t1"]);
+    expect(ctx.events).toEqual([]);
+    expect(logError).toHaveBeenCalledTimes(1);
+    expect(logError).toHaveBeenCalledWith("[Recommendations] Reading listen events failed: db/QUOTA: disk full");
+
+    await getRecommenderContext();
+    expect(mockEventsSince).toHaveBeenCalledTimes(2);
   });
 });
 

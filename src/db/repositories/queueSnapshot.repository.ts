@@ -1,34 +1,29 @@
 import { db } from "@/db";
 import { QUEUE_SNAPSHOT_ID } from "@/db/entities";
-import { toDbError } from "@/db/errors/db.errors";
-import { err, ok, type Result } from "neverthrow";
+import { tableOf, type TableMap, type TableSource } from "@/db/tables";
+import { guarded } from "./base.repository";
 
 /** The stored queue snapshot; its shape is the queue module's to check. */
-export const queueSnapshotRepository = {
-  async get(): Promise<Result<unknown, Error>> {
-    try {
-      return ok((await db.queueSnapshot.get(QUEUE_SNAPSHOT_ID))?.snapshot ?? null);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
-  },
-  async put(snapshot: unknown): Promise<Result<void, Error>> {
-    try {
-      await db.queueSnapshot.put({ id: QUEUE_SNAPSHOT_ID, snapshot });
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
-  },
-  async clear(): Promise<Result<void, Error>> {
-    try {
-      await db.queueSnapshot.clear();
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
-  },
-};
+export class QueueSnapshotRepository {
+  private readonly table: TableMap["queueSnapshot"];
+
+  constructor(source: TableSource = db) {
+    this.table = tableOf(source, "queueSnapshot");
+  }
+
+  async get(): Promise<unknown> {
+    return guarded(async () => (await this.table.get(QUEUE_SNAPSHOT_ID))?.snapshot ?? null);
+  }
+
+  async put(snapshot: unknown): Promise<void> {
+    return guarded(async () => {
+      await this.table.put({ id: QUEUE_SNAPSHOT_ID, snapshot });
+    });
+  }
+
+  async clear(): Promise<void> {
+    return guarded(() => this.table.clear());
+  }
+}
+
+export const queueSnapshotRepository = new QueueSnapshotRepository();

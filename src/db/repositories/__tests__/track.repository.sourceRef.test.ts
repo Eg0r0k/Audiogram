@@ -37,7 +37,7 @@ describe("trackRepository.findBySourceRef", () => {
 
     const result = await trackRepository.findBySourceRef(ymTrackId("123"));
 
-    expect(result._unsafeUnwrap()?.id).toBe("b");
+    expect(result?.id).toBe("b");
   });
 
   it("returns undefined for a remote id nothing was downloaded from", async () => {
@@ -45,7 +45,7 @@ describe("trackRepository.findBySourceRef", () => {
 
     const result = await trackRepository.findBySourceRef(ymTrackId("999"));
 
-    expect(result._unsafeUnwrap()).toBeUndefined();
+    expect(result).toBeUndefined();
   });
 
   it("ignores rows without sourceRef", async () => {
@@ -53,6 +53,6 @@ describe("trackRepository.findBySourceRef", () => {
 
     const result = await trackRepository.findBySourceRef(ymTrackId("a"));
 
-    expect(result._unsafeUnwrap()).toBeUndefined();
+    expect(result).toBeUndefined();
   });
 });

@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ok } from "neverthrow";
 
 const repositories = vi.hoisted(() => ({
   artistRepository: { findPinned: vi.fn(), search: vi.fn() },
@@ -28,7 +27,7 @@ describe("picker queries", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("searchArtists without a query returns every pinned artist regardless of the limit", async () => {
-    repositories.artistRepository.findPinned.mockResolvedValue(ok(rows(1200)));
+    repositories.artistRepository.findPinned.mockResolvedValue(rows(1200));
 
     const artists = await searchArtists("   ", 1000);
 
@@ -37,7 +36,7 @@ describe("picker queries", () => {
   });
 
   it("searchArtists with a query keeps the limit on the repository search", async () => {
-    repositories.artistRepository.search.mockResolvedValue(ok([...rows(2), ...rows(1, 0)]));
+    repositories.artistRepository.search.mockResolvedValue([...rows(2), ...rows(1, 0)]);
 
     const artists = await searchArtists("n", 1000);
 
@@ -46,7 +45,7 @@ describe("picker queries", () => {
   });
 
   it("searchAlbums without a query returns every pinned album in title order", async () => {
-    repositories.albumRepository.findAllSortedByTitle.mockResolvedValue(ok([...rows(1200), ...rows(3, 0)]));
+    repositories.albumRepository.findAllSortedByTitle.mockResolvedValue([...rows(1200), ...rows(3, 0)]);
 
     const albums = await searchAlbums("", 1000);
 

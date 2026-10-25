@@ -5,7 +5,6 @@ import { queryKeys } from "@/queries/query-keys";
 import { SidebarFolderId } from "@/types/ids";
 import type { QueryClient } from "@tanstack/vue-query";
 import { settleLibraryReads } from "./cache";
-import { unwrapResult } from "./shared";
 
 // Folders are only read as part of the library summary.
 const invalidateFolders = async (queryClient: QueryClient) => {
@@ -23,22 +22,22 @@ export async function createFolderAndSync(queryClient: QueryClient, name: string
     updatedAt: now,
   };
 
-  await unwrapResult(folderRepository.create(folder));
+  await folderRepository.create(folder);
   await invalidateFolders(queryClient);
 
   return folder;
 }
 
 export async function renameFolderAndSync(queryClient: QueryClient, folderId: SidebarFolderId, name: string) {
-  await unwrapResult(folderRepository.update(folderId, {
+  await folderRepository.update(folderId, {
     name: assertValidFolderName(name),
     updatedAt: Date.now(),
-  }));
+  });
   await invalidateFolders(queryClient);
 }
 
 export async function deleteFolderAndSync(queryClient: QueryClient, folderId: SidebarFolderId) {
-  await unwrapResult(folderRepository.delete(folderId));
+  await folderRepository.delete(folderId);
   await invalidateFolders(queryClient);
 }
 
@@ -47,7 +46,7 @@ export async function setFolderItemsAndSync(
   folderId: SidebarFolderId,
   items: SidebarFolderEntryEntity[],
 ) {
-  await unwrapResult(folderRepository.setItems(folderId, items));
+  await folderRepository.setItems(folderId, items);
   await invalidateFolders(queryClient);
 }
 
@@ -56,6 +55,6 @@ export async function removeFolderItemAndSync(
   type: SidebarFolderEntryEntity["type"],
   id: string,
 ) {
-  await unwrapResult(folderRepository.removeItem(type, id));
+  await folderRepository.removeItem(type, id);
   await invalidateFolders(queryClient);
 }

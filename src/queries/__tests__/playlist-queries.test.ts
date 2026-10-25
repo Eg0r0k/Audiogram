@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ok } from "neverthrow";
 import type { AlbumEntity, PlaylistEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
@@ -54,16 +53,16 @@ function makeTrackEntity(id: string): TrackEntity {
 describe("getPlaylistTracksPaginated", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    repositories.artistRepository.findByIds.mockResolvedValue(ok([]));
-    repositories.albumRepository.findByIds.mockResolvedValue(ok([album]));
+    repositories.artistRepository.findByIds.mockResolvedValue([]);
+    repositories.albumRepository.findByIds.mockResolvedValue([album]);
   });
 
   it("without sortKey fetches only the page's ids, not the whole playlist", async () => {
     const trackIds = Array.from({ length: 200 }, (_, i) => `t${i}`);
     const pageIds = trackIds.slice(50, 100);
 
-    repositories.playlistRepository.findById.mockResolvedValue(ok(makePlaylist(trackIds)));
-    repositories.trackRepository.findByIds.mockResolvedValue(ok(pageIds.map(makeTrackEntity)));
+    repositories.playlistRepository.findById.mockResolvedValue(makePlaylist(trackIds));
+    repositories.trackRepository.findByIds.mockResolvedValue(pageIds.map(makeTrackEntity));
 
     const result = await getPlaylistTracksPaginated("pl-1" as PlaylistId, 50, 50, null);
 

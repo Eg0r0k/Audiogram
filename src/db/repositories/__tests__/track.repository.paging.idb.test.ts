@@ -69,7 +69,7 @@ beforeEach(async () => {
 
 describe("findAllSortedPaginated", () => {
   it("returns the requested page, shadow rows excluded", async () => {
-    const page = (await trackRepository.findAllSortedPaginated("date_added_asc", OFFSET, LIMIT))._unsafeUnwrap();
+    const page = await trackRepository.findAllSortedPaginated("date_added_asc", OFFSET, LIMIT);
 
     expect(page.map(t => t.id)).toEqual(expectedPage);
   });
@@ -99,7 +99,7 @@ describe("sorted listings cover the whole key range", () => {
     const odd = "t-odd" as TrackId;
     await db.tracks.put(track(9100, { id: odd, title: "￿￿" }));
 
-    const sorted = (await trackRepository.findAllSorted("title_asc"))._unsafeUnwrap();
+    const sorted = await trackRepository.findAllSorted("title_asc");
 
     expect(sorted.map(t => t.id)).toContain(odd);
   });
@@ -108,7 +108,7 @@ describe("sorted listings cover the whole key range", () => {
     const odd = "t-negative" as TrackId;
     await db.tracks.put(track(9101, { id: odd, duration: -1 }));
 
-    const sorted = (await trackRepository.findAllSorted("duration_asc"))._unsafeUnwrap();
+    const sorted = await trackRepository.findAllSorted("duration_asc");
 
     expect(sorted.map(t => t.id)).toContain(odd);
   });
@@ -119,7 +119,7 @@ describe("sorted listings cover the whole key range", () => {
     const odd = "t-liked-negative" as TrackId;
     await db.tracks.put(track(9102, { id: odd, duration: -1, likedAt: 5 }));
 
-    const sorted = (await trackRepository.findLikedSorted("duration_asc"))._unsafeUnwrap();
+    const sorted = await trackRepository.findLikedSorted("duration_asc");
 
     expect(sorted.map(t => t.id)).toContain(odd);
   });
@@ -128,7 +128,7 @@ describe("sorted listings cover the whole key range", () => {
     const odd = "t-liked-odd" as TrackId;
     await db.tracks.put(track(9103, { id: odd, title: "￿￿", likedAt: 5 }));
 
-    const sorted = (await trackRepository.findLikedSorted("title_asc"))._unsafeUnwrap();
+    const sorted = await trackRepository.findLikedSorted("title_asc");
 
     expect(sorted.map(t => t.id)).toContain(odd);
   });
@@ -140,14 +140,14 @@ describe("findPaginated", () => {
       trackRepository.findPaginated(OFFSET, LIMIT),
     );
 
-    expect(result._unsafeUnwrap()).toHaveLength(LIMIT);
+    expect(result).toHaveLength(LIMIT);
     expect(reads).toBeLessThan(OFFSET);
   });
 });
 
 describe("findIdsByArtistId", () => {
   it("returns the artist's member ids, shadow rows excluded", async () => {
-    const ids = (await trackRepository.findIdsByArtistId(ARTIST))._unsafeUnwrap();
+    const ids = await trackRepository.findIdsByArtistId(ARTIST);
 
     expect(ids).toHaveLength(MEMBERS);
     expect(ids.some(id => id.startsWith("s"))).toBe(false);
@@ -168,7 +168,7 @@ describe("library-membership counts", () => {
   it("countByAlbumIds returns an empty map without reading anything", async () => {
     const { result, reads } = await measureRecordReads(() => trackRepository.countByAlbumIds([]));
 
-    expect(result._unsafeUnwrap().size).toBe(0);
+    expect(result.size).toBe(0);
     expect(reads).toBe(0);
   });
 
@@ -176,7 +176,7 @@ describe("library-membership counts", () => {
     const other = "ar2" as ArtistId;
     await db.tracks.put(track(9001, { id: "shared" as TrackId, artistIds: [ARTIST, other] }));
 
-    const counts = (await trackRepository.countByArtistIds([ARTIST]))._unsafeUnwrap();
+    const counts = await trackRepository.countByArtistIds([ARTIST]);
 
     expect(counts.get(ARTIST)).toBe(MEMBERS + 1);
     expect(counts.has(other)).toBe(false);
@@ -187,7 +187,7 @@ describe("library-membership counts", () => {
       trackRepository.countByAlbumIds([ALBUM]),
     );
 
-    expect(result._unsafeUnwrap().get(ALBUM)).toBe(MEMBERS);
+    expect(result.get(ALBUM)).toBe(MEMBERS);
     expect(valueReads).toBeLessThanOrEqual(SHADOWS);
   });
 
@@ -196,7 +196,7 @@ describe("library-membership counts", () => {
       trackRepository.countByArtistIds([ARTIST]),
     );
 
-    expect(result._unsafeUnwrap().get(ARTIST)).toBe(MEMBERS);
+    expect(result.get(ARTIST)).toBe(MEMBERS);
     expect(valueReads).toBeLessThanOrEqual(SHADOWS);
   });
 
@@ -216,7 +216,7 @@ describe("library-membership counts", () => {
       trackRepository.countByArtistIds([ARTIST]),
     );
 
-    expect(result._unsafeUnwrap().get(ARTIST)).toBe(MEMBERS);
+    expect(result.get(ARTIST)).toBe(MEMBERS);
     expect(valueReads).toBe(0);
   });
 });

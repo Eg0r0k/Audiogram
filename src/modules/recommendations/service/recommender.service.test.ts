@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { err, ok } from "neverthrow";
 import type { AudioFeaturesEntity, ListenEventEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
+import { DbError } from "@/db/errors/db.errors";
 import type { TrackId } from "@/types/ids";
 
 const tid = (s: string) => s as TrackId;
@@ -59,24 +59,24 @@ const mockEnsureModelFresh = ensureModelFresh as ReturnType<typeof vi.fn>;
 beforeEach(() => {
   vi.clearAllMocks();
   markRecommenderContextDirty();
-  mockEventsSince.mockResolvedValue(ok([]));
-  mockFeaturesFindAll.mockResolvedValue(ok([]));
+  mockEventsSince.mockResolvedValue([]);
+  mockFeaturesFindAll.mockResolvedValue([]);
   mockGetActiveWeights.mockResolvedValue(DEFAULT_WEIGHTS);
   mockEnsureModelFresh.mockResolvedValue(undefined);
 });
 
 describe("getRecommendations", () => {
   it("returns [] when the seed track is unknown", async () => {
-    mockFindAll.mockResolvedValue(ok([makeTrack("A")]));
+    mockFindAll.mockResolvedValue([makeTrack("A")]);
     expect(await getRecommendations(tid("S"))).toEqual([]);
   });
 
   it("returns [] when tracks cannot be read, and retries the repository on the next call", async () => {
-    mockFindAll.mockResolvedValueOnce(err(new Error("db")));
+    mockFindAll.mockRejectedValueOnce(new DbError("UNKNOWN", "db"));
     expect(await getRecommendations(tid("S"))).toEqual([]);
     expect(mockFindAll).toHaveBeenCalledTimes(1);
 
-    mockFindAll.mockResolvedValueOnce(ok([makeTrack("S"), makeTrack("A")]));
+    mockFindAll.mockResolvedValueOnce([makeTrack("S"), makeTrack("A")]);
     const recs = await getRecommendations(tid("S"));
     expect(mockFindAll).toHaveBeenCalledTimes(2);
     expect(recs.map(r => r.trackId)).toEqual([tid("A")]);
@@ -84,19 +84,19 @@ describe("getRecommendations", () => {
 
   it("excludes the seed, explicit ids and the recently played tracks", async () => {
     const now = Date.now();
-    mockFindAll.mockResolvedValue(ok(["S", "A", "B", "C", "D", "E"].map(id => makeTrack(id))));
-    mockEventsSince.mockResolvedValue(ok([
+    mockFindAll.mockResolvedValue(["S", "A", "B", "C", "D", "E"].map(id => makeTrack(id)));
+    mockEventsSince.mockResolvedValue([
       makeEvent("B", now - MINUTE),
       makeEvent("D", now - 2 * MINUTE),
       makeEvent("E", now - 3 * MINUTE),
-    ]));
+    ]);
     const ids = (await getRecommendations(tid("S"), 10, [tid("C")])).map(r => r.trackId);
     expect(ids.sort()).toEqual(["A"]);
   });
 
   it("returns non-empty recommendations, without the seed, when history is empty and features tie", async () => {
-    mockFindAll.mockResolvedValue(ok(["S", "A", "B"].map(id => makeTrack(id))));
-    mockFeaturesFindAll.mockResolvedValue(ok(["S", "A", "B"].map(id => makeFeatures(id))));
+    mockFindAll.mockResolvedValue(["S", "A", "B"].map(id => makeTrack(id)));
+    mockFeaturesFindAll.mockResolvedValue(["S", "A", "B"].map(id => makeFeatures(id)));
     const recs = await getRecommendations(tid("S"));
     expect(recs.length).toBeGreaterThan(0);
     expect(recs.some(r => r.trackId === tid("S"))).toBe(false);
@@ -104,8 +104,8 @@ describe("getRecommendations", () => {
 
   it("ranks a track with completed listens above one with early skips", async () => {
     const now = Date.now();
-    mockFindAll.mockResolvedValue(ok(["S", "A", "B"].map(id => makeTrack(id))));
-    mockEventsSince.mockResolvedValue(ok([
+    mockFindAll.mockResolvedValue(["S", "A", "B"].map(id => makeTrack(id)));
+    mockEventsSince.mockResolvedValue([
       makeEvent("A", now - 10 * DAY, { completed: true, skipped: false, secondsListened: 200 }),
       makeEvent("A", now - 8 * DAY, { completed: true, skipped: false, secondsListened: 200 }),
       makeEvent("B", now - 10 * DAY, { completed: false, skipped: true, secondsListened: 5 }),
@@ -115,15 +115,15 @@ describe("getRecommendations", () => {
       makeEvent("PAD1", now - MINUTE),
       makeEvent("PAD2", now - 2 * MINUTE),
       makeEvent("PAD3", now - 3 * MINUTE),
-    ]));
+    ]);
     const recs = await getRecommendations(tid("S"), 10);
     const order = recs.map(r => r.trackId);
     expect(order.indexOf(tid("A"))).toBeLessThan(order.indexOf(tid("B")));
   });
 
   it("leaves breakdown.audioSimilarity null when the seed has no audio features", async () => {
-    mockFindAll.mockResolvedValue(ok(["S", "A", "B"].map(id => makeTrack(id))));
-    mockFeaturesFindAll.mockResolvedValue(ok([makeFeatures("A"), makeFeatures("B", { bpm: 140 })]));
+    mockFindAll.mockResolvedValue(["S", "A", "B"].map(id => makeTrack(id)));
+    mockFeaturesFindAll.mockResolvedValue([makeFeatures("A"), makeFeatures("B", { bpm: 140 })]);
     const recs = await getRecommendations(tid("S"));
     expect(recs.length).toBeGreaterThan(0);
     expect(recs.every(r => r.breakdown.audioSimilarity === null)).toBe(true);
@@ -131,14 +131,14 @@ describe("getRecommendations", () => {
 
   it("puts an unplayed track of a known artist into the exploration slot, tagged and in the middle", async () => {
     const now = Date.now();
-    mockFindAll.mockResolvedValue(ok([
+    mockFindAll.mockResolvedValue([
       makeTrack("S"),
       makeTrack("K", { artistIds: ["ar-known" as any] }),
       makeTrack("R1"),
       makeTrack("R2"),
       makeTrack("N", { artistIds: ["ar-known" as any] }),
-    ]));
-    mockEventsSince.mockResolvedValue(ok([
+    ]);
+    mockEventsSince.mockResolvedValue([
       makeEvent("K", now - 10 * DAY, { artistId: "ar-known" as any }),
       makeEvent("K", now - 9 * DAY, { artistId: "ar-known" as any }),
       makeEvent("R1", now - 8 * DAY),
@@ -146,7 +146,7 @@ describe("getRecommendations", () => {
       makeEvent("PAD1", now - MINUTE),
       makeEvent("PAD2", now - 2 * MINUTE),
       makeEvent("PAD3", now - 3 * MINUTE),
-    ]));
+    ]);
     const recs = await getRecommendations(tid("S"), 3, [], { rng: () => 0 });
     expect(recs.map(r => r.pick)).toEqual(["rank", "explore", "rank"]);
     expect(recs[1].trackId).toBe(tid("N"));
@@ -155,31 +155,31 @@ describe("getRecommendations", () => {
 
   it("skips the exploration slot right after an early skip", async () => {
     const now = Date.now();
-    mockFindAll.mockResolvedValue(ok([
+    mockFindAll.mockResolvedValue([
       makeTrack("S"),
       makeTrack("K", { artistIds: ["ar-known" as any] }),
       makeTrack("R1"),
       makeTrack("R2"),
       makeTrack("N", { artistIds: ["ar-known" as any] }),
-    ]));
-    mockEventsSince.mockResolvedValue(ok([
+    ]);
+    mockEventsSince.mockResolvedValue([
       makeEvent("K", now - 10 * DAY, { artistId: "ar-known" as any }),
       makeEvent("R1", now - 8 * DAY),
       makeEvent("R2", now - 7 * DAY),
       makeEvent("PAD1", now - 3 * MINUTE),
       makeEvent("PAD2", now - 2 * MINUTE),
       makeEvent("PAD3", now - MINUTE, { completed: false, skipped: true, secondsListened: 4 }),
-    ]));
+    ]);
     const recs = await getRecommendations(tid("S"), 3, [], { rng: () => 0 });
     expect(recs.every(r => r.pick === "rank")).toBe(true);
   });
 
   it("respects limit and the default MMR artist cap", async () => {
-    mockFindAll.mockResolvedValue(ok([
+    mockFindAll.mockResolvedValue([
       makeTrack("S"),
       ...["A1", "A2", "A3"].map(id => makeTrack(id, { artistIds: [tid("same") as any], likedAt: 1 })),
       makeTrack("B", { artistIds: [tid("other") as any] }),
-    ]));
+    ]);
     const recs = await getRecommendations(tid("S"), 3);
     expect(recs.length).toBe(3);
     const sameArtistCount = recs.filter(r => r.track.artistIds[0] === tid("same")).length;

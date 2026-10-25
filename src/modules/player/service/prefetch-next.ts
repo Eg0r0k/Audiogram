@@ -78,11 +78,11 @@ export const prefetchIdOf = (track: PlayerTrack | null | undefined): TrackId | n
  * header probe — milliseconds.
  */
 export const warmLocalTranscode = async (id: TrackId): Promise<{ ok: boolean; error?: string }> => {
-  const track = await trackRepository.findById(id);
-  if (track.isErr() || !track.value?.storagePath) {
+  const track = await trackRepository.findById(id).catch(() => undefined);
+  if (!track?.storagePath) {
     return { ok: false, error: "track not found" };
   }
-  const url = await storageService.getAudioUrl(track.value.storagePath);
+  const url = await storageService.getAudioUrl(track.storagePath);
   if (url.isErr()) {
     return { ok: false, error: url.error.message };
   }
@@ -189,8 +189,8 @@ export const initNextTrackPrefetch = (): (() => void) => {
   const prefetcher = createNextTrackPrefetcher({
     nextTrackId,
     hasLocalCopy: async (id) => {
-      const copy = await trackRepository.findBySourceRef(id);
-      return copy.isOk() && copy.value !== undefined;
+      const copy = await trackRepository.findBySourceRef(id).catch(() => undefined);
+      return copy !== undefined;
     },
     prefetch: (id) => {
       // Local ids have no source provider — they warm the media server's

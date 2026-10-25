@@ -3,7 +3,6 @@ import { mapTrack, type EphemeralTrack, type PlayerTrack, type Track } from "@/t
 import { playlistRepository, queueSnapshotRepository, trackRepository } from "@/db/repositories";
 import { LEGACY_QUEUE_STORAGE_KEY, QUEUE_CURSOR_STORAGE_KEY } from "@/db/entities";
 import { unique } from "@/queries/shared";
-import { unwrapResult } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import { migrateProxyUrl } from "@/lib/stream-url";
 import { ndPlaylistId, parseTrackRef } from "@/types/track-ref";
@@ -92,9 +91,9 @@ export const createQueueSnapshotWriter = (delayMs: number) => {
     const { snapshot } = pending;
     pending = null;
     const write = snapshot ? queueSnapshotRepository.put(snapshot) : queueSnapshotRepository.clear();
-    write.then((result) => {
-      if (result.isErr()) getLogger().error(`[Queue] Failed to store the queue: ${result.error.message}`);
-    }).catch(() => {});
+    write.catch((error: unknown) => {
+      getLogger().error(`[Queue] Failed to store the queue: ${formatError(error)}`);
+    });
   };
 
   if (typeof window !== "undefined") {
@@ -123,7 +122,7 @@ export const createQueueSnapshotWriter = (delayMs: number) => {
 export const loadPersistedQueue = async (
   cursor: PersistedQueueCursor | null,
 ): Promise<PersistedQueueSnapshot | null> => {
-  const stored = (await unwrapResult(queueSnapshotRepository.get())) as { version: number } | null;
+  const stored = (await queueSnapshotRepository.get()) as { version: number } | null;
   // An unknown version is left for the caller to reject, not read here.
   if (!stored || !cursor || stored.version !== 1) return stored as PersistedQueueSnapshot | null;
   const snapshot = stored as PersistedQueueSnapshot;
@@ -270,7 +269,7 @@ const ndPlaylistSourceRewrites = async (
   for (const [id, isNd] of allTracksAreNd) {
     if (!isNd) continue;
     try {
-      const found = await unwrapResult(playlistRepository.findById(PlaylistId(id)));
+      const found = await playlistRepository.findById(PlaylistId(id));
       if (!found) rewrites.set(id, ndPlaylistId(id));
     }
     catch (error) {
@@ -333,7 +332,7 @@ export const rehydratePersistedQueue = async (
   }));
 
   const libraryTracks = libraryTrackIds.length > 0
-    ? await unwrapResult(trackRepository.findByIds(libraryTrackIds))
+    ? await trackRepository.findByIds(libraryTrackIds)
     : [];
   const libraryTracksById = new Map(libraryTracks.map(track => [track.id, mapTrack(track)]));
   const playlistSourceRewrites = await ndPlaylistSourceRewrites(snapshot.queue);

@@ -676,14 +676,14 @@ describe("player.store", () => {
     });
 
     beforeEach(() => {
-      trackRepoMock.findBySourceRef.mockResolvedValue(ok(undefined));
+      trackRepoMock.findBySourceRef.mockResolvedValue(undefined);
     });
 
     it("plays the downloaded local copy before asking the source", async () => {
-      trackRepoMock.findBySourceRef.mockResolvedValue(ok(createLibraryTrack({
+      trackRepoMock.findBySourceRef.mockResolvedValue(createLibraryTrack({
         id: "local:dQw4w9WgXcQ" as never,
         storagePath: "tracks/dQw4w9WgXcQ.m4a",
-      })));
+      }));
       // The registry is consulted for the source's resolve deadline before
       // the copy lookup; what must not happen is a stream resolution.
       const resolveStreamUrl = vi.fn();
@@ -1611,7 +1611,7 @@ describe("player.store", () => {
         .mockReturnValueOnce(errAsync({ kind: "NETWORK", message: "upstream down" }))
         .mockReturnValueOnce(okAsync("http://127.0.0.1:60123/deadbeef/yt/x"));
       sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl });
-      trackRepoMock.findBySourceRef.mockResolvedValue(ok(undefined));
+      trackRepoMock.findBySourceRef.mockResolvedValue(undefined);
       const store = usePlayerStore();
 
       await store.playPlayerTrack(createLibraryTrack({ id: "yt:x" as never, source: TrackSource.REMOTE_YT, storagePath: "" }));
@@ -2324,7 +2324,7 @@ describe("player.store", () => {
         .mockReturnValueOnce(errAsync({ kind: "NETWORK", message: "upstream down" }))
         .mockReturnValueOnce(okAsync("http://127.0.0.1:60123/deadbeef/yt/x"));
       sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl });
-      trackRepoMock.findBySourceRef.mockResolvedValue(ok(undefined));
+      trackRepoMock.findBySourceRef.mockResolvedValue(undefined);
       const store = usePlayerStore();
 
       await store.playPlayerTrack(createLibraryTrack({ id: "yt:x" as never, source: TrackSource.REMOTE_YT, storagePath: "" }));
@@ -2408,7 +2408,7 @@ describe("player.store", () => {
       const resolveStreamUrl = vi.fn(() => new ResultAsync(new Promise<never>(() => {})));
       // The leash is the provider's own declaration (ytSourceProvider.resolveTimeoutMs).
       sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl, resolveTimeoutMs: 45_000 });
-      trackRepoMock.findBySourceRef.mockResolvedValue(ok(undefined));
+      trackRepoMock.findBySourceRef.mockResolvedValue(undefined);
       const store = usePlayerStore();
 
       const failure = store.playPlayerTrack(createLibraryTrack({ id: "yt:x" as never, source: TrackSource.REMOTE_YT, storagePath: "" }))

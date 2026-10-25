@@ -1,12 +1,10 @@
 import type { PlaylistEntity, TrackEntity } from "@/db/entities";
-import { db } from "@/db";
-import { playlistRepository, trackRepository } from "@/db/repositories";
+import type { Scope } from "@/db/unit-of-work";
 import { syncSearchIndex } from "@/services/search/searchIndex";
 import { cleanupAfterTrackRemoval } from "@/services/library-gc";
 import type { PlaylistId, TrackId } from "@/types/ids";
 import type { QueryClient } from "@tanstack/vue-query";
 import { removeTracksFromCaches, syncPlaylistCaches } from "./cache";
-import { unwrapResult } from "./shared";
 
 //
 // Deleting a container (album, artist, playlist) can take its tracks with it.
@@ -15,14 +13,10 @@ import { unwrapResult } from "./shared";
 // (query caches, the search index) is synced strictly after the commit.
 //
 
-/** Transaction scope a track purge needs — pass to `unitOfWork.runScoped`. */
-export const trackCascadeTables = () => [
-  db.tracks,
-  db.albums,
-  db.artists,
-  db.playlists,
-  db.covers,
-];
+/** Transaction scope a track purge needs; pass to `unitOfWork.run`. */
+export const TRACK_CASCADE_TABLES = ["tracks", "albums", "artists", "playlists", "covers"] as const;
+
+export type TrackCascadeScope = Scope<(typeof TRACK_CASCADE_TABLES)[number]>;
 
 /** A playlist that lost track references, plus which ones it lost. */
 export interface PlaylistTrackRemoval {
@@ -32,10 +26,11 @@ export interface PlaylistTrackRemoval {
 
 /**
  * Deletes the track rows and everything that points at them. Runs INSIDE an
- * open transaction scoped to `trackCascadeTables()`; the returned playlist
+ * open transaction scoped to `TRACK_CASCADE_TABLES`; the returned playlist
  * removals are the caller's input to `syncAfterTrackPurge`.
  */
 export const purgeTracksInTx = async (
+  uow: TrackCascadeScope,
   tracks: readonly TrackEntity[],
   now: number,
 ): Promise<PlaylistTrackRemoval[]> => {
@@ -46,7 +41,7 @@ export const purgeTracksInTx = async (
 
   // Playlists are read inside the tx and written back as partial updates,
   // so a rename racing the delete survives.
-  const playlists = await unwrapResult(playlistRepository.findAll());
+  const playlists = await uow.playlists.findAll();
   const removals = playlists
     .filter(playlist => playlist.trackIds.some(id => trackIdSet.has(id)))
     .map(playlist => ({
@@ -59,12 +54,12 @@ export const purgeTracksInTx = async (
     }));
 
   if (removals.length > 0) {
-    await unwrapResult(playlistRepository.updateMany(removals.map(({ next }) => ({
+    await uow.playlists.updateMany(removals.map(({ next }) => ({
       key: next.id,
       changes: { trackIds: next.trackIds, updatedAt: next.updatedAt },
-    }))));
+    })));
   }
-  await unwrapResult(trackRepository.deleteMany(trackIds));
+  await uow.tracks.deleteMany(trackIds);
   // The album dies with its last track, the artist with their last album.
   await cleanupAfterTrackRemoval([...tracks]);
 

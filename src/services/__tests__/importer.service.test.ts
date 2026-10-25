@@ -3,6 +3,7 @@ import { MusicLibraryEngine } from "../importer.service";
 import type { ScannedFile } from "@/modules/watched-folders/types";
 import { ImportErrorCode } from "../types";
 import { AUDIO_FILE_EXTENSIONS } from "../import/constants";
+import * as repositories from "@/db/repositories";
 
 // в”Ђв”Ђ Hoisted shared mocks + helper (available in vi.mock factories) в”Ђв”Ђ
 
@@ -15,7 +16,7 @@ const {
   mockOpen,
   mockHasNativeSupport,
   mockFindExistingFingerprints,
-  mockUnitOfWorkRunScoped,
+  mockUnitOfWorkRun,
   MockWorkerPool,
 } = vi.hoisted(() => ({
   mockWorkerPoolParse: vi.fn(),
@@ -26,7 +27,7 @@ const {
   mockOpen: vi.fn(),
   mockHasNativeSupport: vi.fn(() => true),
   mockFindExistingFingerprints: vi.fn(),
-  mockUnitOfWorkRunScoped: vi.fn(),
+  mockUnitOfWorkRun: vi.fn(),
   MockWorkerPool: vi.fn().mockImplementation(function() {
     return { parse: mockWorkerPoolParse, dispose: vi.fn() };
   }),
@@ -40,7 +41,7 @@ function okResult<T>(val: T) {
 /** The library's fingerprints, as the repository reports them for a batch. */
 const holdsFingerprints = (...held: string[]) =>
   mockFindExistingFingerprints.mockImplementation(async (candidates: readonly string[]) =>
-    okResult(new Set(candidates.filter(fingerprint => held.includes(fingerprint)))));
+    new Set(candidates.filter(fingerprint => held.includes(fingerprint))));
 
 // в”Ђв”Ђ Module mocks в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
@@ -76,33 +77,42 @@ vi.mock("@/db/storage/IFileStorage", () => ({
 vi.mock("@/db/repositories", () => ({
   trackRepository: {
     findExistingFingerprints: mockFindExistingFingerprints,
-    findByStoragePath: vi.fn().mockResolvedValue(okResult(undefined)),
-    findByStoragePathPrefix: vi.fn().mockResolvedValue(okResult([])),
-    existsByFingerprint: vi.fn().mockResolvedValue(okResult(false)),
-    createMany: vi.fn().mockResolvedValue(okResult([])),
-    findByIds: vi.fn().mockResolvedValue(okResult([])),
-    findAll: vi.fn().mockResolvedValue(okResult([])),
-    delete: vi.fn().mockResolvedValue(okResult(undefined)),
-    deleteMany: vi.fn().mockResolvedValue(okResult(undefined)),
+    findByStoragePath: vi.fn().mockResolvedValue(undefined),
+    findByStoragePathPrefix: vi.fn().mockResolvedValue([]),
+    existsByFingerprint: vi.fn().mockResolvedValue(false),
+    createMany: vi.fn().mockResolvedValue([]),
+    findByIds: vi.fn().mockResolvedValue([]),
+    findAll: vi.fn().mockResolvedValue([]),
+    delete: vi.fn().mockResolvedValue(undefined),
+    deleteMany: vi.fn().mockResolvedValue(undefined),
   },
   artistRepository: {
-    findByIds: vi.fn().mockResolvedValue(okResult([])),
-    createMany: vi.fn().mockResolvedValue(okResult([])),
+    findByIds: vi.fn().mockResolvedValue([]),
+    createMany: vi.fn().mockResolvedValue([]),
   },
   albumRepository: {
-    findByIds: vi.fn().mockResolvedValue(okResult([])),
-    createMany: vi.fn().mockResolvedValue(okResult([])),
+    findByIds: vi.fn().mockResolvedValue([]),
+    createMany: vi.fn().mockResolvedValue([]),
   },
   coverRepository: {
-    createMany: vi.fn().mockResolvedValue(okResult([])),
+    createMany: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
 vi.mock("@/db/unit-of-work", () => ({
   unitOfWork: {
-    runScoped: mockUnitOfWorkRunScoped,
+    run: mockUnitOfWorkRun,
   },
 }));
+
+const uowScope = {
+  tracks: repositories.trackRepository,
+  artists: repositories.artistRepository,
+  albums: repositories.albumRepository,
+  covers: repositories.coverRepository,
+};
+
+const runInScope = async (_tables: unknown, work: (uow: typeof uowScope) => Promise<unknown>) => work(uowScope);
 
 // EntityResolver accesses @/db directly; mock to prevent IndexedDB init
 vi.mock("@/db", () => {
@@ -176,9 +186,7 @@ describe("MusicLibraryEngine", () => {
     mockWarmup.mockResolvedValue(undefined);
     mockOpen.mockResolvedValue(null);
     holdsFingerprints();
-    mockUnitOfWorkRunScoped.mockImplementation((_tables: unknown, cb: () => Promise<void>) => {
-      return Promise.resolve({ isOk: () => true, isErr: () => false, value: cb() });
-    });
+    mockUnitOfWorkRun.mockImplementation(runInScope);
     mockHasNativeSupport.mockReturnValue(true);
 
     engine = new MusicLibraryEngine();
@@ -234,7 +242,7 @@ describe("MusicLibraryEngine", () => {
 
       expect(mockWorkerPoolParse).toHaveBeenCalled();
       expect(mockImportFile).toHaveBeenCalled();
-      expect(mockUnitOfWorkRunScoped).toHaveBeenCalled();
+      expect(mockUnitOfWorkRun).toHaveBeenCalled();
       expect(result.failed).toHaveLength(0);
       expect(result.successful).toHaveLength(1);
       expect(result.successful[0].fileName).toBe("song.mp3");
@@ -334,15 +342,12 @@ describe("MusicLibraryEngine", () => {
     });
 
     it("returns true on successful import", async () => {
-      mockUnitOfWorkRunScoped.mockImplementation((_tables: unknown, cb: () => Promise<void>) => {
-        const result = cb();
-        return Promise.resolve({ isOk: () => true, isErr: () => false, value: result });
-      });
+      mockUnitOfWorkRun.mockImplementation(runInScope);
 
       const result = await engine.importSingleExternalFile(makeScannedFile());
 
       expect(mockWorkerPoolParse).toHaveBeenCalled();
-      expect(mockUnitOfWorkRunScoped).toHaveBeenCalled();
+      expect(mockUnitOfWorkRun).toHaveBeenCalled();
       expect(result).toBe(true);
     });
   });

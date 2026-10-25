@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ok, okAsync, errAsync } from "neverthrow";
+import { okAsync, errAsync } from "neverthrow";
 import { TrackSource, TrackState } from "@/db/entities";
+import { DbError } from "@/db/errors/db.errors";
 import { StorageError } from "@/db/errors/storage.errors";
 import type { Track } from "@/types/track";
 
@@ -45,7 +46,7 @@ describe("playback-resolver.service", () => {
     vi.clearAllMocks();
     platformMock.hasFs = true;
     storageMock.getAudioUrl.mockReturnValue(okAsync("blob:audio"));
-    trackRepositoryMock.findBySourceRef.mockResolvedValue(ok(undefined));
+    trackRepositoryMock.findBySourceRef.mockResolvedValue(undefined);
   });
 
   describe("library tracks", () => {
@@ -97,7 +98,7 @@ describe("playback-resolver.service", () => {
     const remote = () => libraryTrack({ id: "yt:abc" as never, source: TrackSource.REMOTE_YT, storagePath: "" });
 
     it("prefers the downloaded local copy over the source stream", async () => {
-      trackRepositoryMock.findBySourceRef.mockResolvedValue(ok({ id: "local-1", storagePath: "tracks/local-1.m4a", sourceRef: "yt:abc" }));
+      trackRepositoryMock.findBySourceRef.mockResolvedValue({ id: "local-1", storagePath: "tracks/local-1.m4a", sourceRef: "yt:abc" });
 
       const result = await resolvePlaybackSource(remote());
 
@@ -108,7 +109,7 @@ describe("playback-resolver.service", () => {
     });
 
     it("falls back to the source stream, even when the copy lookup itself fails", async () => {
-      trackRepositoryMock.findBySourceRef.mockResolvedValue(errAsync(new Error("idb down")));
+      trackRepositoryMock.findBySourceRef.mockRejectedValue(new DbError("UNKNOWN", "idb down"));
       sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl: vi.fn(() => okAsync("http://127.0.0.1:60123/deadbeef/yt/abc")) });
 
       const result = await resolvePlaybackSource(remote());
@@ -118,7 +119,7 @@ describe("playback-resolver.service", () => {
     });
 
     it("streams when there is no copy", async () => {
-      trackRepositoryMock.findBySourceRef.mockResolvedValue(ok(undefined));
+      trackRepositoryMock.findBySourceRef.mockResolvedValue(undefined);
       sourcesMock.forTrack.mockReturnValue({ resolveStreamUrl: vi.fn(() => okAsync("http://127.0.0.1:60123/deadbeef/yt/abc")) });
 
       const result = await resolvePlaybackSource(remote());

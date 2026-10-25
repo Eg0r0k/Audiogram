@@ -1,4 +1,3 @@
-import { ok } from "neverthrow";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { QueueItemId } from "@/types/ids";
 
@@ -35,7 +34,7 @@ const STORED: PersistedQueueSnapshot = {
 
 describe("loadPersistedQueue", () => {
   beforeEach(() => {
-    vi.mocked(queueSnapshotRepository.get).mockResolvedValue(ok(STORED));
+    vi.mocked(queueSnapshotRepository.get).mockResolvedValue(STORED);
   });
 
   // The cursor is written on every skip, the snapshot only on edits.
@@ -60,7 +59,7 @@ describe("loadPersistedQueue", () => {
 
   it("hands an unknown snapshot version back unread", async () => {
     const future = { version: 2, rows: [] };
-    vi.mocked(queueSnapshotRepository.get).mockResolvedValue(ok(future));
+    vi.mocked(queueSnapshotRepository.get).mockResolvedValue(future);
     expect(await loadPersistedQueue({ currentItemId: id("a") })).toBe(future);
   });
 });

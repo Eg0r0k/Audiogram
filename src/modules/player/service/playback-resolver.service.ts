@@ -132,9 +132,8 @@ const resolveRemote = (track: Track): ResultAsync<PlaybackSource, PlaybackError>
   }
 
   // A failed lookup is treated as "no copy": the stream is still playable.
-  return ResultAsync.fromSafePromise(trackRepository.findBySourceRef(track.id))
-    .andThen((copyResult) => {
-      const copy = copyResult.isOk() ? copyResult.value : undefined;
+  return ResultAsync.fromSafePromise(trackRepository.findBySourceRef(track.id).catch(() => undefined))
+    .andThen((copy) => {
       if (copy?.storagePath) return fromStorage(copy.storagePath);
       return sources.forTrack(track.id).resolveStreamUrl(track.id)
         .map(url => classifyUrl(url))

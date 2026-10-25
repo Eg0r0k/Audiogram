@@ -1,5 +1,6 @@
 import type { IndexableType, Table } from "dexie";
 import { db } from "@/db";
+import { TABLE_NAMES } from "@/db/tables";
 import { unitOfWork } from "@/db/unit-of-work";
 import { getLogger } from "@/lib/logger";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
@@ -97,7 +98,7 @@ export async function cleanupAfterTrackRemoval(removed: RemovedTrackRef[]): Prom
 export async function sweepOrphanedEntities(): Promise<{ albums: number; artists: number }> {
   // One transaction: the sweep runs at startup concurrently with the
   // download-manager init and queue restore.
-  const result = await unitOfWork.run(async () => {
+  const result = await unitOfWork.run(TABLE_NAMES, async () => {
     const referencedAlbums = new Set(await uniqueKeysOf(db.tracks, "albumId") as AlbumId[]);
     const orphanAlbums = (await db.albums.toCollection().primaryKeys()).filter(id => !referencedAlbums.has(id));
     await deleteAlbumsWithCovers(orphanAlbums);
@@ -123,12 +124,11 @@ export async function sweepOrphanedEntities(): Promise<{ albums: number; artists
 
     return { albums: orphanAlbums.length, artists: orphanArtists.length };
   });
-  if (result.isErr()) throw result.error;
 
-  if (result.value.albums > 0 || result.value.artists > 0) {
+  if (result.albums > 0 || result.artists > 0) {
     getLogger().info(
-      `[LibraryGC] Swept ${result.value.albums} orphan albums, ${result.value.artists} orphan artists`,
+      `[LibraryGC] Swept ${result.albums} orphan albums, ${result.artists} orphan artists`,
     );
   }
-  return result.value;
+  return result;
 }

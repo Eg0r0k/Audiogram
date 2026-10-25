@@ -54,12 +54,12 @@ describe("album listings skip shadow rows (idb)", () => {
   // per sort there); queries/__tests__/album-tracks-paging.integration.test.ts
   // covers this same album against it.
   it("countByAlbumId and sumDurationByAlbumId count library members only", async () => {
-    expect((await trackRepository.countByAlbumId(ALBUM))._unsafeUnwrap()).toBe(1);
-    expect((await trackRepository.sumDurationByAlbumId(ALBUM))._unsafeUnwrap()).toBe(100);
+    expect(await trackRepository.countByAlbumId(ALBUM)).toBe(1);
+    expect(await trackRepository.sumDurationByAlbumId(ALBUM)).toBe(100);
   });
 
   it("findByAlbumId still returns every row for the cascades", async () => {
     const all = await trackRepository.findByAlbumId(ALBUM);
-    expect(all._unsafeUnwrap()).toHaveLength(3);
+    expect(all).toHaveLength(3);
   });
 });

@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ok } from "neverthrow";
 import { QueryClient } from "@tanstack/vue-query";
 import { TrackId } from "@/types/ids";
 
@@ -11,8 +10,8 @@ const repositories = vi.hoisted(() => ({
     likeMany: vi.fn(),
     unlikeMany: vi.fn(),
   },
-  albumRepository: { findByIds: vi.fn(async () => ok([])) },
-  artistRepository: { findByIds: vi.fn(async () => ok([])) },
+  albumRepository: { findByIds: vi.fn(async () => []) },
+  artistRepository: { findByIds: vi.fn(async () => []) },
   coverRepository: {},
   playlistRepository: {},
 }));
@@ -65,7 +64,7 @@ describe("bulk track queries", () => {
   });
 
   it("getAllTrackIds without a search goes through the id-only sorted query", async () => {
-    repositories.trackRepository.findAllIdsSorted.mockResolvedValue(ok([TrackId("b"), TrackId("a")]));
+    repositories.trackRepository.findAllIdsSorted.mockResolvedValue([TrackId("b"), TrackId("a")]);
 
     const ids = await getAllTrackIds("title_asc", "   ");
 
@@ -89,7 +88,7 @@ describe("bulk track queries", () => {
   });
 
   it("getAllTrackIds without a sort falls back to the newest-first index order", async () => {
-    repositories.trackRepository.findAllIdsSorted.mockResolvedValue(ok([]));
+    repositories.trackRepository.findAllIdsSorted.mockResolvedValue([]);
 
     await getAllTrackIds(null, "");
 
@@ -114,7 +113,7 @@ describe("bulk track queries", () => {
 
     it("getTracksPaginated with a search and a sort pages the sorted hits", async () => {
       search.searchDocuments.mockResolvedValue(hits);
-      repositories.trackRepository.findSortedByIds.mockResolvedValue(ok([entity("a", "A"), entity("b", "B"), entity("c", "C")]));
+      repositories.trackRepository.findSortedByIds.mockResolvedValue([entity("a", "A"), entity("b", "B"), entity("c", "C")]);
 
       const page = await getTracksPaginated(2, "que", 2, "title_asc");
 
@@ -138,7 +137,7 @@ describe("bulk track queries", () => {
 
     it("getAllTracksForQueue with a search and a sort sorts the hits", async () => {
       search.searchDocuments.mockResolvedValue(hits);
-      repositories.trackRepository.findSortedByIds.mockResolvedValue(ok([entity("a", "A"), entity("b", "B"), entity("c", "C")]));
+      repositories.trackRepository.findSortedByIds.mockResolvedValue([entity("a", "A"), entity("b", "B"), entity("c", "C")]);
 
       const tracks = await getAllTracksForQueue("title_asc", "que");
 
@@ -147,7 +146,7 @@ describe("bulk track queries", () => {
     });
 
     it("getTracksByIdsSorted without a sort keeps the given id order", async () => {
-      repositories.trackRepository.findByIds.mockResolvedValue(ok([entity("a", "A"), entity("b", "B")]));
+      repositories.trackRepository.findByIds.mockResolvedValue([entity("a", "A"), entity("b", "B")]);
 
       const tracks = await getTracksByIdsSorted([TrackId("b"), TrackId("a")], null);
 
@@ -157,7 +156,7 @@ describe("bulk track queries", () => {
   });
 
   it("setTracksLikedAndSync(true) likes in one repository call and invalidates once", async () => {
-    repositories.trackRepository.likeMany.mockResolvedValue(ok(2));
+    repositories.trackRepository.likeMany.mockResolvedValue(2);
     const invalidate = vi.spyOn(cache, "invalidateForTrackMutation");
 
     const changed = await setTracksLikedAndSync(queryClient, [TrackId("a"), TrackId("b")], true);
@@ -171,7 +170,7 @@ describe("bulk track queries", () => {
   });
 
   it("setTracksLikedAndSync(false) unlikes", async () => {
-    repositories.trackRepository.unlikeMany.mockResolvedValue(ok(1));
+    repositories.trackRepository.unlikeMany.mockResolvedValue(1);
 
     const changed = await setTracksLikedAndSync(queryClient, [TrackId("a")], false);
 

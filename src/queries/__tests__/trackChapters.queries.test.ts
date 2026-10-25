@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ok } from "neverthrow";
 import { TrackId } from "@/types/ids";
 
 const findByIdMock = vi.hoisted(() => vi.fn());
@@ -28,11 +27,11 @@ describe("trackChaptersQueries.detail", () => {
   });
 
   it("returns the stored chapters for a real track id", async () => {
-    findByIdMock.mockResolvedValue(ok({
+    findByIdMock.mockResolvedValue({
       trackId: TrackId("t1"),
       chapters: [{ time: 1770, title: "Drop" }],
       updatedAt: 1,
-    }));
+    });
 
     const options = trackChaptersQueries.detail(TrackId("t1"));
     const result = await (options.queryFn as () => Promise<unknown>)();
@@ -42,7 +41,7 @@ describe("trackChaptersQueries.detail", () => {
   });
 
   it("maps a missing row to an empty chapter list", async () => {
-    findByIdMock.mockResolvedValue(ok(undefined));
+    findByIdMock.mockResolvedValue(undefined);
 
     const options = trackChaptersQueries.detail(TrackId("t2"));
     const result = await (options.queryFn as () => Promise<unknown>)();

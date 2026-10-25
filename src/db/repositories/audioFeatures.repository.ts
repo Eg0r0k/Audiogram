@@ -1,20 +1,21 @@
 import { db } from "@/db";
 import type { AudioFeaturesEntity } from "@/db/entities";
-import { BaseRepository } from "./base.repository";
+import { tableOf, type TableMap, type TableSource } from "@/db/tables";
+import { BaseRepository, guarded } from "./base.repository";
 import type { TrackId } from "@/types/ids";
-import type { Result } from "neverthrow";
-import { err, ok } from "neverthrow";
-import { toDbError } from "@/db/errors/db.errors";
 
 export const CURRENT_ALGORITHM_VERSION = 1;
 
-class AudioFeaturesRepository extends BaseRepository<AudioFeaturesEntity, TrackId> {
-  constructor() {
-    super(db.audioFeatures);
+export class AudioFeaturesRepository extends BaseRepository<AudioFeaturesEntity, TrackId> {
+  private readonly tracks: TableMap["tracks"];
+
+  constructor(source: TableSource = db) {
+    super(tableOf(source, "audioFeatures"));
+    this.tracks = tableOf(source, "tracks");
   }
 
-  async findUnanalyzedIds(): Promise<Result<TrackId[], Error>> {
-    try {
+  async findUnanalyzedIds(): Promise<TrackId[]> {
+    return guarded(async () => {
       const analyzed = await this.table
         .where("algorithmVersion")
         .aboveOrEqual(CURRENT_ALGORITHM_VERSION)
@@ -22,42 +23,29 @@ class AudioFeaturesRepository extends BaseRepository<AudioFeaturesEntity, TrackI
 
       const analyzedSet = new Set(analyzed);
 
-      const allTrackIds = await db.tracks
+      const allTrackIds = await this.tracks
         .toCollection()
         .primaryKeys();
 
-      return ok(allTrackIds.filter(id => !analyzedSet.has(id)));
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return allTrackIds.filter(id => !analyzedSet.has(id));
+    });
   }
 
-  async countAnalyzed(): Promise<Result<number, Error>> {
-    try {
-      const count = await this.table
-        .where("algorithmVersion")
-        .aboveOrEqual(CURRENT_ALGORITHM_VERSION)
-        .count();
-      return ok(count);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+  async countAnalyzed(): Promise<number> {
+    return guarded(() => this.table
+      .where("algorithmVersion")
+      .aboveOrEqual(CURRENT_ALGORITHM_VERSION)
+      .count());
   }
 
-  async findManyByIds(trackIds: TrackId[]): Promise<Result<AudioFeaturesEntity[], Error>> {
-    try {
-      if (trackIds.length === 0) return ok([]);
-      const results = await this.table
+  async findManyByIds(trackIds: TrackId[]): Promise<AudioFeaturesEntity[]> {
+    return guarded(async () => {
+      if (trackIds.length === 0) return [];
+      return this.table
         .where("trackId")
         .anyOf(trackIds)
         .toArray();
-      return ok(results);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 }
 

@@ -5,7 +5,6 @@ import { trackCoverOwner } from "@/modules/covers/composables/useTrackCover";
 import { queryClient } from "@/queries/client";
 import { invalidateLibraryData } from "@/queries/library.queries";
 import { syncLocalCopyCache } from "@/queries/localCopy.queries";
-import { unwrapResult } from "@/lib/errors/unwrap";
 import { extensionOf } from "@/services/import/item-io";
 import { musicLibraryEngine } from "@/services/importer.service";
 import { syncSearchIndex } from "@/services/search/searchIndex";
@@ -15,9 +14,9 @@ import { formatError } from "@/lib/errors";
 
 /** The remote row's identity, which outranks whatever tags the file carries. */
 const knownFrom = async (remoteId: TrackId, row: TrackEntity): Promise<KnownMetadata> => {
-  const album = row.albumId ? await unwrapResult(albumRepository.findById(row.albumId)) : undefined;
+  const album = row.albumId ? await albumRepository.findById(row.albumId) : undefined;
   const owner = trackCoverOwner(row);
-  const cover = owner ? await unwrapResult(coverRepository.findByOwner(owner.ownerType, owner.ownerId)) : undefined;
+  const cover = owner ? await coverRepository.findByOwner(owner.ownerType, owner.ownerId) : undefined;
 
   return {
     sourceRef: remoteId,
@@ -39,7 +38,7 @@ const knownFrom = async (remoteId: TrackId, row: TrackEntity): Promise<KnownMeta
  * library). Throws on a failed import.
  */
 export const importDownloadedFile = async (remoteId: TrackId, absolutePath: string): Promise<TrackId | null> => {
-  const row = await unwrapResult(trackRepository.findById(remoteId));
+  const row = await trackRepository.findById(remoteId);
   if (!row) throw new Error(`No row to import from for ${remoteId}`);
 
   const name = absolutePath.split(/[\\/]/).pop() ?? `${remoteId}.bin`;
@@ -85,7 +84,7 @@ export const finalizeDownloadImport = async (
 ): Promise<void> => {
   const localId = await importDownloadedFile(job.trackId, file.path);
   if (localId) {
-    const copy = await unwrapResult(trackRepository.findById(localId));
+    const copy = await trackRepository.findById(localId);
     await syncLocalCopyCache(queryClient, job.trackId, copy ?? null);
     await invalidateLibraryData(queryClient);
   }

@@ -15,15 +15,22 @@ type ExtractedFeatures = Omit<AudioFeaturesEntity, "trackId" | "analyzedAt" | "a
 
 /** Storage path of the track to decode, or null when there is nothing to read. */
 export const getAnalysisSourcePath = async (trackId: TrackId): Promise<string | null> => {
-  const result = await trackRepository.findById(trackId);
-  if (result.isErr()) return null;
-  return result.value?.storagePath ?? null;
+  try {
+    return (await trackRepository.findById(trackId))?.storagePath ?? null;
+  }
+  catch {
+    return null;
+  }
 };
 
 /** Track ids with no features for the current algorithm version. */
 export const getUnanalyzedTrackIds = async (): Promise<TrackId[]> => {
-  const result = await audioFeaturesRepository.findUnanalyzedIds();
-  return result.isOk() ? result.value : [];
+  try {
+    return await audioFeaturesRepository.findUnanalyzedIds();
+  }
+  catch {
+    return [];
+  }
 };
 
 export const saveAnalyzedFeatures = async (

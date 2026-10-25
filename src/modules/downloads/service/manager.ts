@@ -8,7 +8,6 @@ import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { sources } from "@/modules/sources";
 import type { SourceError } from "@/modules/sources";
-import { unwrapResult } from "@/lib/errors/unwrap";
 import type { TrackId } from "@/types/ids";
 import { finalizeDownloadImport } from "./finalize";
 import { useDownloadsStore, type DownloadRuntime } from "../store/downloads.store";
@@ -64,14 +63,14 @@ function isRetriable(error: SourceError): boolean {
  * job for the same track; null when a local copy already exists.
  */
 export async function enqueueTrackDownload(trackId: TrackId, batchId?: string): Promise<string | null> {
-  const active = await unwrapResult(downloadJobRepository.findActiveByTrackId(trackId));
+  const active = await downloadJobRepository.findActiveByTrackId(trackId);
   if (active) return active.id;
 
-  const copy = await unwrapResult(trackRepository.findBySourceRef(trackId));
+  const copy = await trackRepository.findBySourceRef(trackId);
   if (copy) return null;
 
   // A terminal error from a previous run is superseded by this attempt.
-  await unwrapResult(downloadJobRepository.deleteErrorsByTrackId(trackId));
+  await downloadJobRepository.deleteErrorsByTrackId(trackId);
   useDownloadsStore().removeFailed(trackId);
 
   const job: DownloadJobEntity = {
@@ -82,7 +81,7 @@ export async function enqueueTrackDownload(trackId: TrackId, batchId?: string): 
     batchId,
     addedAt: Date.now(),
   };
-  await unwrapResult(downloadJobRepository.upsert(job));
+  await downloadJobRepository.upsert(job);
   const store = useDownloadsStore();
   store.upsert(runtimeOf(job));
   if (batchId) store.growBatch(batchId);
@@ -98,7 +97,7 @@ export async function enqueueTrackDownload(trackId: TrackId, batchId?: string): 
  * in Rust).
  */
 export async function cancelTrackDownload(jobId: string): Promise<void> {
-  const job = await unwrapResult(downloadJobRepository.findById(jobId));
+  const job = await downloadJobRepository.findById(jobId);
   if (!job) return;
 
   if (job.status === "running") {
@@ -114,14 +113,14 @@ export async function cancelTrackDownload(jobId: string): Promise<void> {
   }
 
   retryAt.delete(jobId);
-  await unwrapResult(downloadJobRepository.delete(jobId));
+  await downloadJobRepository.delete(jobId);
   useDownloadsStore().remove(jobId);
   if (job.batchId) useDownloadsStore().shrinkBatch(job.batchId);
 }
 
 /** Drops a failed download the user gave up on, error row included. */
 export const dismissFailedDownload = async (jobId: string): Promise<void> => {
-  await unwrapResult(downloadJobRepository.delete(jobId));
+  await downloadJobRepository.delete(jobId);
   useDownloadsStore().dismissFailed(jobId);
 };
 
@@ -134,13 +133,13 @@ export async function initDownloadManager(): Promise<void> {
   // Downloads land as files in native storage.
   if (!platformCaps.hasFs) return;
 
-  await unwrapResult(downloadJobRepository.requeueRunning());
+  await downloadJobRepository.requeueRunning();
   await sweepTmpOrphans();
 
   const store = useDownloadsStore();
-  const queued = await unwrapResult(downloadJobRepository.findByStatus("queued"));
+  const queued = await downloadJobRepository.findByStatus("queued");
   for (const job of queued) store.upsert(runtimeOf(job));
-  const failed = await unwrapResult(downloadJobRepository.findByStatus("error"));
+  const failed = await downloadJobRepository.findByStatus("error");
   for (const job of failed) store.addFailed({ jobId: job.id, trackId: job.trackId });
 
   // pump() reports its own failures; callers only kick the scheduler.
@@ -182,7 +181,7 @@ function scheduleRetryPump(): void {
 async function pump(): Promise<void> {
   let queued: DownloadJobEntity[];
   try {
-    queued = await unwrapResult(downloadJobRepository.findByStatus("queued"));
+    queued = await downloadJobRepository.findByStatus("queued");
   }
   catch (error) {
     getLogger().error(`[Downloads] Failed to read the queue: ${formatError(error)}`);
@@ -212,9 +211,9 @@ async function runJob(jobId: string): Promise<void> {
 
   // The claim is the atomic queued → running transition; losing it means a
   // competing pump (or a cancel) got to the job first.
-  const claimed = await unwrapResult(downloadJobRepository.claim(jobId));
+  const claimed = await downloadJobRepository.claim(jobId);
   if (!claimed) return;
-  const job = await unwrapResult(downloadJobRepository.findById(jobId));
+  const job = await downloadJobRepository.findById(jobId);
   if (!job) return;
 
   retryAt.delete(jobId);
@@ -222,7 +221,7 @@ async function runJob(jobId: string): Promise<void> {
   // CANCELLED failure will not arrive — drop the job here.
   const runtime = store.jobs[jobId] as DownloadRuntime | undefined;
   if (runtime?.cancelling) {
-    await unwrapResult(downloadJobRepository.delete(jobId));
+    await downloadJobRepository.delete(jobId);
     store.remove(jobId);
     if (job.batchId) store.shrinkBatch(job.batchId);
     return;
@@ -246,7 +245,7 @@ async function runJob(jobId: string): Promise<void> {
     }
     // Done = deleted: the imported local row (sourceRef) is the ledger of
     // finished downloads, keeping a "done" row would only accumulate garbage.
-    await unwrapResult(downloadJobRepository.delete(jobId));
+    await downloadJobRepository.delete(jobId);
     store.remove(jobId);
     if (job.batchId) store.bumpBatch(job.batchId, "finished");
     getLogger().info(`[Downloads] Done: ${job.trackId}`);
@@ -254,7 +253,7 @@ async function runJob(jobId: string): Promise<void> {
   }
 
   if (result.error.kind === "CANCELLED") {
-    await unwrapResult(downloadJobRepository.delete(jobId));
+    await downloadJobRepository.delete(jobId);
     store.remove(jobId);
     if (job.batchId) store.shrinkBatch(job.batchId);
     getLogger().info(`[Downloads] Cancelled: ${job.trackId}`);
@@ -269,12 +268,12 @@ async function failJob(job: DownloadJobEntity, error: SourceError): Promise<void
   const attempts = job.attempts + 1;
 
   if (isRetriable(error) && attempts < MAX_ATTEMPTS) {
-    await unwrapResult(downloadJobRepository.upsert({
+    await downloadJobRepository.upsert({
       ...job,
       status: "queued",
       attempts,
       error: error.message,
-    }));
+    });
     // A source that named its own wait (429 Retry-After) is not asked sooner.
     const backoff = Math.max(RETRY_BASE_MS * 2 ** (attempts - 1), error.retryAfterMs ?? 0);
     retryAt.set(job.id, Date.now() + backoff);
@@ -283,12 +282,12 @@ async function failJob(job: DownloadJobEntity, error: SourceError): Promise<void
     return;
   }
 
-  await unwrapResult(downloadJobRepository.upsert({
+  await downloadJobRepository.upsert({
     ...job,
     status: "error",
     attempts,
     error: error.message,
-  }));
+  });
   store.remove(job.id);
   store.addFailed({ jobId: job.id, trackId: job.trackId });
   if (job.batchId) store.bumpBatch(job.batchId, "failed");
@@ -314,7 +313,7 @@ const failureTitle = async (trackId: TrackId, count: number): Promise<string> =>
   if (count > 1) return i18n.global.t("downloads.failedMany", { count });
   let title: string | undefined;
   try {
-    title = (await unwrapResult(trackRepository.findById(trackId)))?.title;
+    title = (await trackRepository.findById(trackId))?.title;
   }
   catch {
     // The toast still fires, just without the track name.

@@ -17,7 +17,6 @@ import type { TrackId, ArtistId } from "@/types/ids";
 import { keepPreviousData, queryOptions } from "@tanstack/vue-query";
 import type { QueryClient } from "@tanstack/vue-query";
 import { splitArtistNames } from "@/lib/artist-names";
-import { unwrapResult } from "./shared";
 import { mapTrack } from "@/types/track";
 
 export interface RecentHistoryEntry {
@@ -55,7 +54,7 @@ const namesFromListenedTracks = async (
   }
   if (trackIdByArtist.size === 0) return new Map();
 
-  const tracks = await unwrapResult(trackRepository.findByIds([...new Set(trackIdByArtist.values())]));
+  const tracks = await trackRepository.findByIds([...new Set(trackIdByArtist.values())]);
   const tracksById = new Map(tracks.map(track => [track.id as string, track]));
   const names = new Map<string, string>();
   for (const [artistId, trackId] of trackIdByArtist) {
@@ -75,7 +74,7 @@ const namesFromListenedTracks = async (
 const eventsQuery = (since?: number) =>
   queryOptions({
     queryKey: queryKeys.stats.events(since),
-    queryFn: (): Promise<ListenEventEntity[]> => unwrapResult(statsRepository.eventsSince(since)),
+    queryFn: (): Promise<ListenEventEntity[]> => statsRepository.eventsSince(since),
     staleTime: STATS_STALE_TIME,
     // Structural sharing exists to keep references stable for consumers that
     // compare by identity; the aggregates reduce this array to numbers and
@@ -93,7 +92,7 @@ export const statsQueries = {
   hasHistory: () =>
     queryOptions({
       queryKey: queryKeys.stats.hasHistory(),
-      queryFn: () => unwrapResult(statsRepository.hasEvents()),
+      queryFn: () => statsRepository.hasEvents(),
       staleTime: STATS_STALE_TIME,
     }),
   // Ряды топов собираются одним запросом (события + метаданные), чтобы при
@@ -103,9 +102,7 @@ export const statsQueries = {
       queryKey: queryKeys.stats.topTracks(limit, since),
       queryFn: async ({ client }): Promise<TopTrackEntry[]> => {
         const entries = aggregateTopTracks(await eventsOf(client, since), limit);
-        const tracks = await unwrapResult(
-          trackRepository.findByIds(entries.map(entry => entry.id as TrackId)),
-        );
+        const tracks = await trackRepository.findByIds(entries.map(entry => entry.id as TrackId));
         const tracksById = new Map(
           tracks.map(track => [track.id as string, mapTrack(track)]),
         );
@@ -121,7 +118,7 @@ export const statsQueries = {
   topTracksMeta: (ids: readonly string[]) =>
     queryOptions({
       queryKey: queryKeys.stats.topTracksMeta(ids),
-      queryFn: () => unwrapResult(trackRepository.findByIds(ids as TrackId[])),
+      queryFn: () => trackRepository.findByIds(ids as TrackId[]),
       staleTime: STATS_STALE_TIME,
       placeholderData: keepPreviousData,
     }),
@@ -131,9 +128,7 @@ export const statsQueries = {
       queryFn: async ({ client }) => {
         const events = await eventsOf(client, since);
         const entries = aggregateTopArtists(events, limit);
-        const artists = await unwrapResult(
-          artistRepository.findByIds(entries.map(entry => entry.id as ArtistId)),
-        );
+        const artists = await artistRepository.findByIds(entries.map(entry => entry.id as ArtistId));
         const namesById = new Map(artists.map(artist => [artist.id as string, artist.name]));
         for (const [id, name] of await namesFromListenedTracks(events, entries, namesById)) {
           namesById.set(id, name);
@@ -150,7 +145,7 @@ export const statsQueries = {
   artistPlays: (artistId: string) =>
     queryOptions({
       queryKey: queryKeys.stats.artistPlays(artistId),
-      queryFn: () => unwrapResult(statsRepository.artistPlaysCount(artistId)),
+      queryFn: () => statsRepository.artistPlaysCount(artistId),
       staleTime: STATS_STALE_TIME,
       placeholderData: keepPreviousData,
     }),
@@ -158,7 +153,7 @@ export const statsQueries = {
     queryOptions({
       queryKey: queryKeys.stats.topGenres(limit, since),
       queryFn: async ({ client }) =>
-        unwrapResult(statsRepository.topGenresOf(await eventsOf(client, since), limit)),
+        statsRepository.topGenresOf(await eventsOf(client, since), limit),
       staleTime: STATS_STALE_TIME,
       placeholderData: keepPreviousData,
     }),
@@ -173,7 +168,7 @@ export const statsQueries = {
     queryOptions({
       queryKey: queryKeys.stats.dailyActivity(days),
       // dailyActivity уже возвращает непрерывный массив {date, seconds}[] с нулями в пропусках
-      queryFn: () => unwrapResult(statsRepository.dailyActivity(days)),
+      queryFn: () => statsRepository.dailyActivity(days),
       staleTime: STATS_STALE_TIME,
       placeholderData: keepPreviousData,
     }),
@@ -209,16 +204,16 @@ export const statsQueries = {
   streaks: () =>
     queryOptions({
       queryKey: queryKeys.stats.streaks(),
-      queryFn: () => unwrapResult(statsRepository.streaks()),
+      queryFn: () => statsRepository.streaks(),
       staleTime: STATS_STALE_TIME,
     }),
   recentHistory: (limit: number) =>
     queryOptions({
       queryKey: queryKeys.stats.recentHistory(limit),
       queryFn: async (): Promise<RecentHistoryEntry[]> => {
-        const events = await unwrapResult(statsRepository.recentHistory(limit));
+        const events = await statsRepository.recentHistory(limit);
         const trackIds = events.map(event => event.trackId);
-        const tracks = await unwrapResult(trackRepository.findByIds(trackIds));
+        const tracks = await trackRepository.findByIds(trackIds);
         const tracksById = new Map(tracks.map(track => [track.id, mapTrack(track)]));
 
         return events.flatMap((event) => {

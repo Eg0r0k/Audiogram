@@ -5,7 +5,6 @@ import {
   coverRepository,
   trackRepository,
 } from "@/db/repositories";
-import { db } from "@/db";
 import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
 import { queryKeys } from "@/queries/query-keys";
@@ -24,11 +23,11 @@ import {
   removeCoverCache,
 } from "./cache";
 import { assertValidName } from "@/lib/limits";
-import { sortTracks, unwrapResult, unique } from "./shared";
+import { sortTracks, unique } from "./shared";
 import {
   purgeTracksInTx,
   syncAfterTrackPurge,
-  trackCascadeTables,
+  TRACK_CASCADE_TABLES,
 } from "./track-cascade";
 import type { AlbumPageData, PaginatedTracksResult } from "./types";
 import { deleteOwnedFiles } from "@/services/track-files";
@@ -37,7 +36,7 @@ const PAGE_SIZE = 50;
 
 /** The album row under an id, or null — a miss is an answer, not an error. */
 export async function getAlbumLibraryRow(albumId: AlbumId): Promise<AlbumEntity | null> {
-  return (await unwrapResult(albumRepository.findById(albumId))) ?? null;
+  return (await albumRepository.findById(albumId)) ?? null;
 }
 
 export interface AlbumChanges {
@@ -48,7 +47,7 @@ export interface AlbumChanges {
 }
 
 export async function getAlbumByIdOrThrow(albumId: AlbumId) {
-  const album = await unwrapResult(albumRepository.findById(albumId));
+  const album = await albumRepository.findById(albumId);
 
   if (!album) {
     throw new DbError("NOT_FOUND", "Album not found");
@@ -62,11 +61,11 @@ export async function searchAlbums(query: string, limit = 8) {
   const normalizedQuery = query.trim();
 
   if (!normalizedQuery) {
-    const albums = await unwrapResult(albumRepository.findAllSortedByTitle());
+    const albums = await albumRepository.findAllSortedByTitle();
     return albums.filter(album => album.pinned !== 0);
   }
 
-  const found = await unwrapResult(albumRepository.search(normalizedQuery, limit));
+  const found = await albumRepository.search(normalizedQuery, limit);
   return found.filter(album => album.pinned !== 0);
 }
 
@@ -75,7 +74,7 @@ export type AlbumWithArtistName = AlbumEntity & { artistName?: string };
 /** `searchAlbums` plus each album's artist name, read in one bulk lookup. */
 export const searchAlbumsWithArtistName = async (query: string, limit = 8): Promise<AlbumWithArtistName[]> => {
   const albums = await searchAlbums(query, limit);
-  const artists = await unwrapResult(artistRepository.findByIds(unique(albums.map(album => album.artistId))));
+  const artists = await artistRepository.findByIds(unique(albums.map(album => album.artistId)));
   const names = new Map(artists.map(artist => [artist.id, artist.name]));
   return albums.map(album => ({ ...album, artistName: names.get(album.artistId) }));
 };
@@ -86,7 +85,7 @@ export async function getAlbumPageData(albumId: AlbumId, sortKey: TrackSortKey |
     getAlbumTrackEntities(albumId, sortKey),
   ]);
 
-  const artist = await unwrapResult(artistRepository.findById(album.artistId));
+  const artist = await artistRepository.findById(album.artistId);
 
   if (!artist) {
     throw new DbError("NOT_FOUND", "Artist not found");
@@ -134,7 +133,7 @@ export async function getAlbumTracksPaginated(
     // order is cached until the registry expires it, so between a delete and
     // that invalidation it still names rows that are gone, and the list would
     // advertise a number it cannot fill. The count reads no row.
-    unwrapResult(trackRepository.countByAlbumId(albumId)),
+    trackRepository.countByAlbumId(albumId),
   ]);
 
   const pageIds = order.slice(offset, offset + limit);
@@ -144,11 +143,11 @@ export async function getAlbumTracksPaginated(
   }
 
   // bulkGet answers in the order asked, so the page keeps the list's order.
-  const rawTracks = await unwrapResult(trackRepository.findByIds(pageIds));
+  const rawTracks = await trackRepository.findByIds(pageIds);
 
   const allArtistIds = unique(rawTracks.flatMap(t => t.artistIds));
   const allArtists = allArtistIds.length > 0
-    ? await unwrapResult(artistRepository.findByIds(allArtistIds))
+    ? await artistRepository.findByIds(allArtistIds)
     : [];
 
   const mappedTracks = mapTracks(rawTracks, allArtists, [album]);
@@ -163,13 +162,13 @@ export async function getAlbumTracksPaginated(
 }
 
 export async function getAlbumTotalDuration(albumId: AlbumId): Promise<number> {
-  return unwrapResult(trackRepository.sumDurationByAlbumId(albumId));
+  return trackRepository.sumDurationByAlbumId(albumId);
 }
 
 async function getAlbumTrackEntities(albumId: AlbumId, sortKey: TrackSortKey | null) {
   // Shadow rows (a liked catalog track next to its downloaded copy) are not
   // listed; findByAlbumId keeps them for the cascades.
-  const albumTracks = (await unwrapResult(trackRepository.findByAlbumId(albumId)))
+  const albumTracks = (await trackRepository.findByAlbumId(albumId))
     .filter(track => track.pinned !== 0);
 
   if (!sortKey) {
@@ -219,7 +218,7 @@ export async function createAlbumAndSync(
     updatedAt: now,
   };
 
-  await unwrapResult(albumRepository.create(album));
+  await albumRepository.create(album);
   await settleLibraryReads(queryClient);
   syncAlbumCaches(queryClient, album);
   invalidateForAlbumMutation(queryClient, { kind: "creation", artistId });
@@ -238,11 +237,11 @@ export async function updateAlbumAndSync(
   let updatedTrackIds: TrackId[] = [];
 
   if (changes.coverBlob) {
-    const stored = await unwrapResult(coverRepository.upsertAlbumCover(currentAlbum.id, changes.coverBlob));
+    const stored = await coverRepository.upsertAlbumCover(currentAlbum.id, changes.coverBlob);
     updateCoverCache("album", currentAlbum.id, stored);
   }
   else if (changes.removeCover) {
-    await unwrapResult(coverRepository.deleteAlbumCover(currentAlbum.id));
+    await coverRepository.deleteAlbumCover(currentAlbum.id);
     updateCoverCache("album", currentAlbum.id, null);
   }
 
@@ -255,13 +254,12 @@ export async function updateAlbumAndSync(
     };
 
     // The album row and its tracks' denormalized title change together.
-    const txResult = await unitOfWork.runScoped([db.albums, db.tracks], async () => {
-      await unwrapResult(albumRepository.update(currentAlbum.id, { title }));
-      await unwrapResult(trackRepository.setAlbumTitleByAlbumId(currentAlbum.id, title));
+    await unitOfWork.run(["albums", "tracks"], async (uow) => {
+      await uow.albums.update(currentAlbum.id, { title });
+      await uow.tracks.setAlbumTitleByAlbumId(currentAlbum.id, title);
     });
-    if (txResult.isErr()) throw txResult.error;
 
-    updatedTrackIds = await unwrapResult(trackRepository.findIdsByAlbumId(currentAlbum.id));
+    updatedTrackIds = await trackRepository.findIdsByAlbumId(currentAlbum.id);
 
     await settleLibraryReads(queryClient);
     syncAlbumCaches(queryClient, nextAlbum);
@@ -296,41 +294,40 @@ export async function deleteAlbumAndSync(
     return;
   }
 
-  const rawTracks = await unwrapResult(trackRepository.findByAlbumId(albumEntity.id));
+  const rawTracks = await trackRepository.findByAlbumId(albumEntity.id);
   const cascadeTracks = options.deleteTracks === true;
   const trackIds = rawTracks.map(track => track.id);
   const now = Date.now();
 
-  const txResult = await unitOfWork.runScoped(
-    trackCascadeTables(),
-    async () => {
+  const removals = await unitOfWork.run(
+    TRACK_CASCADE_TABLES,
+    async (uow) => {
       // An empty shadow album (0 tracks) is deleted explicitly below.
-      const removals = cascadeTracks
-        ? await purgeTracksInTx(rawTracks, now)
+      const purged = cascadeTracks
+        ? await purgeTracksInTx(uow, rawTracks, now)
         : [];
 
       if (!cascadeTracks && rawTracks.length > 0) {
         // Detach fully — a dangling albumId would keep pointing at a dead row.
-        await unwrapResult(trackRepository.updateMany(rawTracks.map(track => ({
+        await uow.tracks.updateMany(rawTracks.map(track => ({
           key: track.id,
           changes: { albumTitle: "", albumId: createAlbumId("") },
-        }))));
+        })));
       }
 
-      await unwrapResult(coverRepository.deleteAlbumCover(albumEntity.id));
-      await unwrapResult(albumRepository.delete(albumEntity.id));
+      await uow.covers.deleteAlbumCover(albumEntity.id);
+      await uow.albums.delete(albumEntity.id);
 
-      return removals;
+      return purged;
     },
   );
-  if (txResult.isErr()) throw txResult.error;
   if (cascadeTracks) await deleteOwnedFiles(rawTracks);
 
   await settleLibraryReads(queryClient);
   await syncAfterTrackPurge(
     queryClient,
     cascadeTracks ? trackIds : [],
-    txResult.value,
+    removals,
   );
   await syncSearchIndex({ albums: [albumEntity.id], tracks: cascadeTracks ? [] : trackIds });
 
@@ -341,6 +338,6 @@ export async function deleteAlbumAndSync(
   invalidateForAlbumMutation(queryClient, {
     kind: "removal",
     artistId: albumEntity.artistId,
-    playlistIds: txResult.value.map(({ next }) => next.id),
+    playlistIds: removals.map(({ next }) => next.id),
   });
 }

@@ -15,7 +15,6 @@ vi.mock("@/modules/tracks/service/ensurePinned", () => ({ ensurePinned: vi.fn() 
 vi.mock("@/modules/tracks/service/libraryMembership", () => ({ promoteTrackToLibrary: vi.fn() }));
 vi.mock("@/queries/library.queries", () => ({ invalidateLibraryData: vi.fn() }));
 vi.mock("@/queries/client", () => ({ queryClient: {} }));
-vi.mock("@/queries/shared", () => ({ unwrapResult: vi.fn() }));
 vi.mock("@/db/repositories", () => ({ playlistRepository: {}, trackRepository: {} }));
 vi.mock("../service/manager", () => ({ enqueueTrackDownload: vi.fn() }));
 vi.mock("../store/downloads.store", () => ({ useDownloadsStore: vi.fn() }));

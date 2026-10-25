@@ -1,60 +1,52 @@
 import { db } from "@/db";
 import type { CoverEntity, CoverOwnerType } from "@/db/entities";
+import { tableOf, type TableMap, type TableSource } from "@/db/tables";
 import type { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
-import { err, ok, type Result } from "neverthrow";
-import { toDbError } from "@/db/errors/db.errors";
+import { guarded } from "./base.repository";
 
-class CoverRepository {
+export class CoverRepository {
+  private readonly covers: TableMap["covers"];
+
+  constructor(source: TableSource = db) {
+    this.covers = tableOf(source, "covers");
+  }
+
   async findByOwner(
     ownerType: CoverOwnerType,
     ownerId: string,
-  ): Promise<Result<CoverEntity | undefined, Error>> {
-    try {
-      const cover = await db.covers
-        .where("[ownerType+ownerId]")
-        .equals([ownerType, ownerId])
-        .first();
-
-      return ok(cover);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+  ): Promise<CoverEntity | undefined> {
+    return guarded(() => this.covers
+      .where("[ownerType+ownerId]")
+      .equals([ownerType, ownerId])
+      .first());
   }
 
   async findByOwners(
     ownerType: CoverOwnerType,
     ownerIds: readonly string[],
-  ): Promise<Result<CoverEntity[], Error>> {
-    if (ownerIds.length === 0) return ok([]);
-    try {
-      const covers = await db.covers
-        .where("[ownerType+ownerId]")
-        .anyOf(ownerIds.map(id => [ownerType, id]))
-        .toArray();
-
-      return ok(covers);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+  ): Promise<CoverEntity[]> {
+    if (ownerIds.length === 0) return [];
+    return guarded(() => this.covers
+      .where("[ownerType+ownerId]")
+      .anyOf(ownerIds.map(id => [ownerType, id]))
+      .toArray());
   }
 
   async getAlbumCover(
     albumId: AlbumId,
-  ): Promise<Result<CoverEntity | undefined, Error>> {
+  ): Promise<CoverEntity | undefined> {
     return this.findByOwner("album", albumId);
   }
 
   async getPlaylistCover(
     playlistId: PlaylistId,
-  ): Promise<Result<CoverEntity | undefined, Error>> {
+  ): Promise<CoverEntity | undefined> {
     return this.findByOwner("playlist", playlistId);
   }
 
   async getArtistCover(
     artistId: ArtistId,
-  ): Promise<Result<CoverEntity | undefined, Error>> {
+  ): Promise<CoverEntity | undefined> {
     return this.findByOwner("artist", artistId);
   }
 
@@ -62,115 +54,95 @@ class CoverRepository {
     ownerType: CoverOwnerType,
     ownerId: string,
     blob: Blob,
-  ): Promise<Result<CoverEntity, Error>> {
-    try {
-      // find + write inside one transaction: two concurrent upserts for the
-      // same owner would otherwise both miss and the second add() would hit
-      // the unique [ownerType+ownerId] key.
-      const stored = await db.transaction("rw", db.covers, async (): Promise<CoverEntity> => {
-        const now = Date.now();
-        const mimeType = blob.type || "image/jpeg";
-        const existing = await db.covers
-          .where("[ownerType+ownerId]")
-          .equals([ownerType, ownerId])
-          .first();
+  ): Promise<CoverEntity> {
+    // find + write inside one transaction: two concurrent upserts for the
+    // same owner would otherwise both miss and the second add() would hit
+    // the unique [ownerType+ownerId] key.
+    return guarded(() => db.transaction("rw", "covers", async (): Promise<CoverEntity> => {
+      const now = Date.now();
+      const mimeType = blob.type || "image/jpeg";
+      const existing = await this.covers
+        .where("[ownerType+ownerId]")
+        .equals([ownerType, ownerId])
+        .first();
 
-        if (existing) {
-          await db.covers.update(existing.id, { blob, mimeType, updatedAt: now });
-          return { ...existing, blob, mimeType, updatedAt: now };
-        }
+      if (existing) {
+        await this.covers.update(existing.id, { blob, mimeType, updatedAt: now });
+        return { ...existing, blob, mimeType, updatedAt: now };
+      }
 
-        const fresh: CoverEntity = {
-          id: crypto.randomUUID(),
-          ownerType,
-          ownerId,
-          blob,
-          mimeType,
-          addedAt: now,
-          updatedAt: now,
-        };
-        await db.covers.add(fresh);
-        return fresh;
-      });
-
-      return ok(stored);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      const fresh: CoverEntity = {
+        id: crypto.randomUUID(),
+        ownerType,
+        ownerId,
+        blob,
+        mimeType,
+        addedAt: now,
+        updatedAt: now,
+      };
+      await this.covers.add(fresh);
+      return fresh;
+    }));
   }
 
   async upsertAlbumCover(
     albumId: AlbumId,
     blob: Blob,
-  ): Promise<Result<CoverEntity, Error>> {
+  ): Promise<CoverEntity> {
     return this.upsertOwnerCover("album", albumId, blob);
   }
 
   async upsertPlaylistCover(
     playlistId: PlaylistId,
     blob: Blob,
-  ): Promise<Result<CoverEntity, Error>> {
+  ): Promise<CoverEntity> {
     return this.upsertOwnerCover("playlist", playlistId, blob);
   }
 
   async upsertArtistCover(
     artistId: ArtistId,
     blob: Blob,
-  ): Promise<Result<CoverEntity, Error>> {
+  ): Promise<CoverEntity> {
     return this.upsertOwnerCover("artist", artistId, blob);
   }
 
-  async createMany(covers: CoverEntity[]): Promise<Result<void, Error>> {
-    try {
-      await db.covers.bulkAdd(covers);
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+  async createMany(covers: CoverEntity[]): Promise<void> {
+    return guarded(async () => {
+      await this.covers.bulkAdd(covers);
+    });
   }
 
-  async upsertMany(covers: CoverEntity[]): Promise<Result<void, Error>> {
-    try {
-      await db.covers.bulkPut(covers);
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+  async upsertMany(covers: CoverEntity[]): Promise<void> {
+    return guarded(async () => {
+      await this.covers.bulkPut(covers);
+    });
   }
 
   async deleteByOwner(
     ownerType: CoverOwnerType,
     ownerId: string,
-  ): Promise<Result<void, Error>> {
-    try {
-      const existing = await db.covers
+  ): Promise<void> {
+    return guarded(async () => {
+      const existing = await this.covers
         .where("[ownerType+ownerId]")
         .equals([ownerType, ownerId])
         .first();
 
       if (existing) {
-        await db.covers.delete(existing.id);
+        await this.covers.delete(existing.id);
       }
-
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 
-  async deleteAlbumCover(albumId: AlbumId): Promise<Result<void, Error>> {
+  async deleteAlbumCover(albumId: AlbumId): Promise<void> {
     return this.deleteByOwner("album", albumId);
   }
 
-  async deletePlaylistCover(playlistId: PlaylistId): Promise<Result<void, Error>> {
+  async deletePlaylistCover(playlistId: PlaylistId): Promise<void> {
     return this.deleteByOwner("playlist", playlistId);
   }
 
-  async deleteArtistCover(artistId: ArtistId): Promise<Result<void, Error>> {
+  async deleteArtistCover(artistId: ArtistId): Promise<void> {
     return this.deleteByOwner("artist", artistId);
   }
 }

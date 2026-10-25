@@ -1,10 +1,8 @@
 import { db } from "@/db";
 import type { SidebarFolderEntity, SidebarFolderEntryEntity } from "@/db/entities";
+import { tableOf, type TableSource } from "@/db/tables";
 import type { SidebarFolderId } from "@/types/ids";
-import type { Result } from "neverthrow";
-import { err, ok } from "neverthrow";
-import { BaseRepository } from "./base.repository";
-import { toDbError } from "@/db/errors/db.errors";
+import { BaseRepository, guarded } from "./base.repository";
 
 function folderItemKey(item: SidebarFolderEntryEntity) {
   return `${item.type}:${item.id}`;
@@ -29,16 +27,17 @@ function normalizeFolderItems(items: SidebarFolderEntryEntity[]) {
   return { normalizedItems, seen };
 }
 
-class FolderRepository extends BaseRepository<SidebarFolderEntity, SidebarFolderId> {
-  constructor() {
-    super(db.folders);
+export class FolderRepository extends BaseRepository<SidebarFolderEntity, SidebarFolderId> {
+  constructor(source: TableSource = db) {
+    super(tableOf(source, "folders"));
   }
 
-  async setItems(folderId: SidebarFolderId, items: SidebarFolderEntryEntity[]): Promise<Result<void, Error>> {
-    try {
+  async setItems(folderId: SidebarFolderId, items: SidebarFolderEntryEntity[]): Promise<void> {
+    return guarded(async () => {
       const { normalizedItems, seen } = normalizeFolderItems(items);
+      const notMoved = (item: SidebarFolderEntryEntity) => !seen.has(folderItemKey(item));
 
-      await db.transaction("rw", db.folders, async () => {
+      await db.transaction("rw", "folders", async () => {
         await this.table.update(folderId, {
           items: normalizedItems,
           updatedAt: Date.now(),
@@ -48,7 +47,7 @@ class FolderRepository extends BaseRepository<SidebarFolderEntity, SidebarFolder
         await Promise.all(folders.map(async (folder) => {
           if (folder.id === folderId) return;
 
-          const filteredItems = folder.items.filter(item => !seen.has(folderItemKey(item)));
+          const filteredItems = folder.items.filter(notMoved);
           if (filteredItems.length === folder.items.length) return;
 
           await this.table.update(folder.id, {
@@ -57,20 +56,16 @@ class FolderRepository extends BaseRepository<SidebarFolderEntity, SidebarFolder
           });
         }));
       });
-
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 
-  async removeItem(type: SidebarFolderEntryEntity["type"], id: string): Promise<Result<void, Error>> {
-    try {
-      await db.transaction("rw", db.folders, async () => {
+  async removeItem(type: SidebarFolderEntryEntity["type"], id: string): Promise<void> {
+    const notRemoved = (item: SidebarFolderEntryEntity) => !(item.type === type && item.id === id);
+    return guarded(async () => {
+      await db.transaction("rw", "folders", async () => {
         const folders = await this.table.toArray();
         await Promise.all(folders.map(async (folder) => {
-          const filteredItems = folder.items.filter(item => !(item.type === type && item.id === id));
+          const filteredItems = folder.items.filter(notRemoved);
           if (filteredItems.length === folder.items.length) return;
 
           await this.table.update(folder.id, {
@@ -79,12 +74,7 @@ class FolderRepository extends BaseRepository<SidebarFolderEntity, SidebarFolder
           });
         }));
       });
-
-      return ok(undefined);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 }
 

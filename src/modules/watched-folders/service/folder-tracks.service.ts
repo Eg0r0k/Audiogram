@@ -40,14 +40,13 @@ export const countFolderTracks = async (
 export const deleteFolderTracks = async (tracks: TrackEntity[]): Promise<void> => {
   if (tracks.length === 0) return;
 
-  const txResult = await unitOfWork.runScoped(
-    [db.tracks, db.albums, db.artists, db.covers],
+  await unitOfWork.run(
+    ["tracks", "albums", "artists", "covers"],
     async () => {
       await db.tracks.bulkDelete(tracks.map(track => track.id));
       await cleanupAfterTrackRemoval(tracks);
     },
   );
-  if (txResult.isErr()) throw txResult.error;
 };
 
 /** Rebases every row of a moved folder onto its new location. */

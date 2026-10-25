@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { err, ok } from "neverthrow";
 import type { RecommenderModelEntity } from "@/db/entities";
+import { DbError } from "@/db/errors/db.errors";
 import { DEFAULT_WEIGHTS, COMPONENT_KEYS } from "@/modules/recommendations/lib/scoring";
 import type * as RecommenderModelModule from "@/modules/recommendations/service/recommender-model.service";
 
@@ -171,25 +171,25 @@ beforeEach(async () => {
 
 describe("getActiveWeights", () => {
   it("returns DEFAULT_WEIGHTS when there is no stored model", async () => {
-    mockGet.mockResolvedValue(ok(null));
+    mockGet.mockResolvedValue(null);
     expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
   });
 
   it("returns DEFAULT_WEIGHTS when the stored model was fitted on an older feature version", async () => {
-    mockGet.mockResolvedValue(ok(makeRow({ featureVersion: undefined })));
+    mockGet.mockResolvedValue(makeRow({ featureVersion: undefined }));
     expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
-    mockGet.mockResolvedValue(ok(makeRow({ featureVersion: 1 })));
+    mockGet.mockResolvedValue(makeRow({ featureVersion: 1 }));
     service.invalidateWeightsCache();
     expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
   });
 
   it("returns the learned weights exactly when examples is at the blend's fullAt (200)", async () => {
-    mockGet.mockResolvedValue(ok(makeRow({ examples: 200 })));
+    mockGet.mockResolvedValue(makeRow({ examples: 200 }));
     expect(await service.getActiveWeights()).toEqual(learnedWeights);
   });
 
   it("blends to the midpoint when examples is half of fullAt", async () => {
-    mockGet.mockResolvedValue(ok(makeRow({ examples: 100 })));
+    mockGet.mockResolvedValue(makeRow({ examples: 100 }));
     const w = await service.getActiveWeights();
     for (const key of COMPONENT_KEYS) {
       expect(w[key]).toBeCloseTo((DEFAULT_WEIGHTS[key] + learnedWeights[key]) / 2, 10);
@@ -197,29 +197,29 @@ describe("getActiveWeights", () => {
   });
 
   it("returns DEFAULT_WEIGHTS when the repository errors", async () => {
-    mockGet.mockResolvedValue(err(new Error("db")));
+    mockGet.mockRejectedValue(new DbError("UNKNOWN", "db"));
     expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
   });
 
   it("does not cache a repository error as 'no model' — the next call retries the repository", async () => {
-    mockGet.mockResolvedValueOnce(err(new Error("db")));
+    mockGet.mockRejectedValueOnce(new DbError("UNKNOWN", "db"));
     expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
     expect(mockGet).toHaveBeenCalledTimes(1);
 
-    mockGet.mockResolvedValueOnce(ok(makeRow({ examples: 200 })));
+    mockGet.mockResolvedValueOnce(makeRow({ examples: 200 }));
     expect(await service.getActiveWeights()).toEqual(learnedWeights);
     expect(mockGet).toHaveBeenCalledTimes(2);
   });
 
   it("caches: a second call does not hit the repository again", async () => {
-    mockGet.mockResolvedValue(ok(null));
+    mockGet.mockResolvedValue(null);
     await service.getActiveWeights();
     await service.getActiveWeights();
     expect(mockGet).toHaveBeenCalledTimes(1);
   });
 
   it("invalidateWeightsCache forces a re-read", async () => {
-    mockGet.mockResolvedValue(ok(null));
+    mockGet.mockResolvedValue(null);
     await service.getActiveWeights();
     service.invalidateWeightsCache();
     await service.getActiveWeights();
@@ -234,12 +234,12 @@ describe("getActiveWeights", () => {
 
     const inFlight = service.getActiveWeights();
     service.invalidateWeightsCache();
-    resolveGet(ok(makeRow({ examples: 200 })));
+    resolveGet(makeRow({ examples: 200 }));
     await inFlight;
 
     // Without the generation guard the stale row would sit in the cache and
     // this call would answer from it instead of reading again.
-    mockGet.mockResolvedValueOnce(ok(null));
+    mockGet.mockResolvedValueOnce(null);
     expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
     expect(mockGet).toHaveBeenCalledTimes(2);
   });
@@ -247,26 +247,26 @@ describe("getActiveWeights", () => {
 
 describe("clearModel", () => {
   it("clears the repository row and the cache — the next read falls back to the defaults", async () => {
-    mockGet.mockResolvedValueOnce(ok(makeRow({ examples: 200 })));
-    mockClear.mockResolvedValue(ok(undefined));
+    mockGet.mockResolvedValueOnce(makeRow({ examples: 200 }));
+    mockClear.mockResolvedValue(undefined);
     expect(await service.getActiveWeights()).toEqual(learnedWeights);
 
     await service.clearModel();
     expect(mockClear).toHaveBeenCalledTimes(1);
 
-    mockGet.mockResolvedValueOnce(ok(null));
+    mockGet.mockResolvedValueOnce(null);
     expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
     expect(mockGet).toHaveBeenCalledTimes(2);
   });
 
   it("still drops the cache when the repository clear fails", async () => {
-    mockGet.mockResolvedValueOnce(ok(makeRow({ examples: 200 })));
-    mockClear.mockResolvedValue(err(new Error("db")));
+    mockGet.mockResolvedValueOnce(makeRow({ examples: 200 }));
+    mockClear.mockRejectedValue(new DbError("UNKNOWN", "db"));
     await service.getActiveWeights();
 
     await expect(service.clearModel()).resolves.toBeUndefined();
 
-    mockGet.mockResolvedValueOnce(ok(null));
+    mockGet.mockResolvedValueOnce(null);
     expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
     expect(mockGet).toHaveBeenCalledTimes(2);
   });
@@ -279,8 +279,8 @@ describe("ensureModelFresh hold-out gate", () => {
   };
 
   it("saves the model when the learned weights beat the defaults on the hold-out", async () => {
-    mockGet.mockResolvedValue(ok(null));
-    mockPut.mockResolvedValue(ok(undefined));
+    mockGet.mockResolvedValue(null);
+    mockPut.mockResolvedValue(undefined);
     mockGetCtx.mockResolvedValue(mixedRunsCtx(60));
     scriptAuc(0.55, 0.7);
 
@@ -291,8 +291,8 @@ describe("ensureModelFresh hold-out gate", () => {
   });
 
   it("keeps the defaults and drops a stale learned row when the candidate is worse", async () => {
-    mockGet.mockResolvedValue(ok(makeRow({ trainedAt: Date.now() - 25 * 60 * 60 * 1000 })));
-    mockClear.mockResolvedValue(ok(undefined));
+    mockGet.mockResolvedValue(makeRow({ trainedAt: Date.now() - 25 * 60 * 60 * 1000 }));
+    mockClear.mockResolvedValue(undefined);
     mockGetCtx.mockResolvedValue(mixedRunsCtx(60));
     scriptAuc(0.7, 0.55);
 
@@ -300,12 +300,12 @@ describe("ensureModelFresh hold-out gate", () => {
 
     expect(mockPut).not.toHaveBeenCalled();
     expect(mockClear).toHaveBeenCalledTimes(1);
-    mockGet.mockResolvedValue(ok(null));
+    mockGet.mockResolvedValue(null);
     expect(await service.getActiveWeights()).toEqual(DEFAULT_WEIGHTS);
   });
 
   it("does not save when the hold-out has only one label and no AUC exists", async () => {
-    mockGet.mockResolvedValue(ok(null));
+    mockGet.mockResolvedValue(null);
     mockGetCtx.mockResolvedValue(mixedRunsCtx(60));
     scriptAuc(null, null);
 
@@ -318,27 +318,27 @@ describe("ensureModelFresh hold-out gate", () => {
 
 describe("ensureModelFresh", () => {
   it("is a no-op when the stored model's trainedAt is fresh (< 24h) — no context load, no save", async () => {
-    mockGet.mockResolvedValue(ok(makeRow({ trainedAt: Date.now() - 1000 })));
+    mockGet.mockResolvedValue(makeRow({ trainedAt: Date.now() - 1000 }));
     await service.ensureModelFresh();
     expect(mockGetCtx).not.toHaveBeenCalled();
     expect(mockPut).not.toHaveBeenCalled();
   });
 
   it("trains when there is no stored model, and does not save when there are too few examples", async () => {
-    mockGet.mockResolvedValue(ok(null));
+    mockGet.mockResolvedValue(null);
     await service.ensureModelFresh();
     expect(mockGetCtx).toHaveBeenCalledTimes(1);
     expect(mockPut).not.toHaveBeenCalled();
   });
 
   it("retrains a fresh model fitted on an older feature version", async () => {
-    mockGet.mockResolvedValue(ok(makeRow({ trainedAt: Date.now() - 1000, featureVersion: 1 })));
+    mockGet.mockResolvedValue(makeRow({ trainedAt: Date.now() - 1000, featureVersion: 1 }));
     await service.ensureModelFresh();
     expect(mockGetCtx).toHaveBeenCalledTimes(1);
   });
 
   it("trains when the stored model is stale (>= 24h old)", async () => {
-    mockGet.mockResolvedValue(ok(makeRow({ trainedAt: Date.now() - 25 * 60 * 60 * 1000 })));
+    mockGet.mockResolvedValue(makeRow({ trainedAt: Date.now() - 25 * 60 * 60 * 1000 }));
     await service.ensureModelFresh();
     expect(mockGetCtx).toHaveBeenCalledTimes(1);
   });
@@ -347,7 +347,7 @@ describe("ensureModelFresh", () => {
     vi.useFakeTimers();
     try {
       const start = Date.now();
-      mockGet.mockResolvedValue(ok(makeRow({ trainedAt: start - 25 * 60 * 60 * 1000 })));
+      mockGet.mockResolvedValue(makeRow({ trainedAt: start - 25 * 60 * 60 * 1000 }));
       mockGetCtx.mockResolvedValue(fewExamplesCtx());
 
       await service.ensureModelFresh();
@@ -370,7 +370,7 @@ describe("ensureModelFresh", () => {
     vi.useFakeTimers();
     try {
       const start = Date.now();
-      mockGet.mockResolvedValue(ok(null));
+      mockGet.mockResolvedValue(null);
       mockGetCtx.mockRejectedValue(new Error("boom"));
 
       await service.ensureModelFresh();
@@ -391,8 +391,8 @@ describe("ensureModelFresh", () => {
 
   it("trains on at most MAX_TRAINING_RUNS of the newest runs", async () => {
     expect(service.MAX_TRAINING_RUNS).toBe(300);
-    mockGet.mockResolvedValue(ok(null));
-    mockPut.mockResolvedValue(ok(undefined));
+    mockGet.mockResolvedValue(null);
+    mockPut.mockResolvedValue(undefined);
     mockGetCtx.mockResolvedValue(manyRunsCtx(320));
 
     await service.ensureModelFresh();
@@ -402,20 +402,20 @@ describe("ensureModelFresh", () => {
   });
 
   it("runs only one training when called concurrently", async () => {
-    mockGet.mockResolvedValue(ok(makeRow({ trainedAt: Date.now() - 25 * 60 * 60 * 1000 })));
+    mockGet.mockResolvedValue(makeRow({ trainedAt: Date.now() - 25 * 60 * 60 * 1000 }));
     await Promise.all([service.ensureModelFresh(), service.ensureModelFresh()]);
     expect(mockGetCtx).toHaveBeenCalledTimes(1);
   });
 
   it("never rejects, even when the context load fails", async () => {
-    mockGet.mockResolvedValue(ok(null));
+    mockGet.mockResolvedValue(null);
     mockGetCtx.mockReset().mockRejectedValue(new Error("boom"));
     await expect(service.ensureModelFresh()).resolves.toBeUndefined();
   });
 
   it("saves the learned model and invalidates the weights cache when there are enough examples", async () => {
-    mockGet.mockResolvedValue(ok(null));
-    mockPut.mockResolvedValue(ok(undefined));
+    mockGet.mockResolvedValue(null);
+    mockPut.mockResolvedValue(undefined);
 
     const tracks = ["seed", ...Array.from({ length: 3 }, (_, i) => `c${i}`)].map(id => ({
       id, title: id, artistName: "Artist", albumTitle: "Album", artistIds: [`ar-${id}`], albumId: "al", tagIds: [],
@@ -461,7 +461,7 @@ describe("ensureModelFresh", () => {
     // ensureModelFresh's own loadRow() read the row once; invalidateWeightsCache()
     // after the save must force the next getActiveWeights() to read again.
     expect(mockGet).toHaveBeenCalledTimes(1);
-    mockGet.mockResolvedValue(ok(makeRow({ weights: saved.weights, examples: saved.examples })));
+    mockGet.mockResolvedValue(makeRow({ weights: saved.weights, examples: saved.examples }));
     await service.getActiveWeights();
     expect(mockGet).toHaveBeenCalledTimes(2);
   });

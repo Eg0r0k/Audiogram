@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ok } from "neverthrow";
 import type { AlbumEntity, ArtistEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import { QueryClient } from "@tanstack/vue-query";
@@ -121,10 +120,10 @@ describe("track.queries", () => {
       albumTitle: albumB.title,
     };
 
-    repositories.trackRepository.findAllSortedPaginated.mockResolvedValue(ok([trackA, trackB]));
-    repositories.artistRepository.findByIds.mockResolvedValue(ok([artist]));
-    repositories.albumRepository.findByIds.mockResolvedValue(ok([albumA, albumB]));
-    repositories.trackRepository.countAll.mockResolvedValue(ok(2));
+    repositories.trackRepository.findAllSortedPaginated.mockResolvedValue([trackA, trackB]);
+    repositories.artistRepository.findByIds.mockResolvedValue([artist]);
+    repositories.albumRepository.findByIds.mockResolvedValue([albumA, albumB]);
+    repositories.trackRepository.countAll.mockResolvedValue(2);
 
     const result = await getTracksPaginated(0, "", 50, "album_asc");
 
@@ -150,20 +149,20 @@ describe("track.queries", () => {
     const rows = (from: number, count: number) => Array.from({ length: count }, (_, i) => row(from + i));
 
     beforeEach(() => {
-      repositories.artistRepository.findByIds.mockResolvedValue(ok([]));
-      repositories.albumRepository.findByIds.mockResolvedValue(ok([]));
-      repositories.trackRepository.countAll.mockResolvedValue(ok(1000));
+      repositories.artistRepository.findByIds.mockResolvedValue([]);
+      repositories.albumRepository.findByIds.mockResolvedValue([]);
+      repositories.trackRepository.countAll.mockResolvedValue(1000);
     });
 
     it("counts the library for the first page only", async () => {
-      repositories.trackRepository.findAllSortedPaginated.mockResolvedValue(ok(rows(0, 51)));
+      repositories.trackRepository.findAllSortedPaginated.mockResolvedValue(rows(0, 51));
       const first = await getTracksPaginated(0, "", 50, "album_asc");
       expect(first.total).toBe(1000);
       expect(first.tracks).toHaveLength(50);
       expect(first.nextOffset).toBe(50);
 
       repositories.trackRepository.countAll.mockClear();
-      repositories.trackRepository.findPaginated.mockResolvedValue(ok(rows(50, 51)));
+      repositories.trackRepository.findPaginated.mockResolvedValue(rows(50, 51));
       const second = await getTracksPaginated(50, "", 50, null);
       expect(repositories.trackRepository.countAll).not.toHaveBeenCalled();
       expect(second.tracks).toHaveLength(50);
@@ -171,7 +170,7 @@ describe("track.queries", () => {
     });
 
     it("ends the list on a page that comes back short", async () => {
-      repositories.trackRepository.findAllSortedPaginated.mockResolvedValue(ok(rows(950, 50)));
+      repositories.trackRepository.findAllSortedPaginated.mockResolvedValue(rows(950, 50));
       const last = await getTracksPaginated(950, "", 50, "album_asc");
       expect(last.tracks).toHaveLength(50);
       expect(last.nextOffset).toBeNull();
@@ -231,12 +230,12 @@ describe("track.queries", () => {
     const likedTracks = [trackA, trackB];
 
     beforeEach(() => {
-      repositories.artistRepository.findByIds.mockResolvedValue(ok([artist]));
-      repositories.albumRepository.findByIds.mockResolvedValue(ok([album]));
+      repositories.artistRepository.findByIds.mockResolvedValue([artist]);
+      repositories.albumRepository.findByIds.mockResolvedValue([album]);
     });
 
     it("without sortKey calls findLiked() and returns mapped tracks", async () => {
-      repositories.trackRepository.findLiked.mockResolvedValue(ok(likedTracks));
+      repositories.trackRepository.findLiked.mockResolvedValue(likedTracks);
 
       const result = await getLikedTracksPageData();
 
@@ -247,7 +246,7 @@ describe("track.queries", () => {
     });
 
     it("with sortKey calls findLikedSorted() and returns mapped tracks", async () => {
-      repositories.trackRepository.findLikedSorted.mockResolvedValue(ok(likedTracks));
+      repositories.trackRepository.findLikedSorted.mockResolvedValue(likedTracks);
 
       const result = await getLikedTracksPageData("title_asc");
 
@@ -291,14 +290,14 @@ describe("track.queries", () => {
     };
 
     beforeEach(() => {
-      repositories.artistRepository.findByIds.mockResolvedValue(ok([artist]));
-      repositories.albumRepository.findByIds.mockResolvedValue(ok([album]));
+      repositories.artistRepository.findByIds.mockResolvedValue([artist]);
+      repositories.albumRepository.findByIds.mockResolvedValue([album]);
     });
 
     it("without sortKey calls findLikedPaginated + countLiked, not sumDurationByLiked", async () => {
-      repositories.trackRepository.findLikedPaginated.mockResolvedValue(ok([track]));
-      repositories.trackRepository.countLiked.mockResolvedValue(ok(1));
-      repositories.trackRepository.sumDurationByLiked.mockResolvedValue(ok(100));
+      repositories.trackRepository.findLikedPaginated.mockResolvedValue([track]);
+      repositories.trackRepository.countLiked.mockResolvedValue(1);
+      repositories.trackRepository.sumDurationByLiked.mockResolvedValue(100);
 
       const result = await getLikedTracksPaginated(0, 50);
 
@@ -310,9 +309,9 @@ describe("track.queries", () => {
     });
 
     it("with sortKey calls findLikedSortedPaginated instead of double-fetch", async () => {
-      repositories.trackRepository.findLikedSortedPaginated.mockResolvedValue(ok([track]));
-      repositories.trackRepository.countLiked.mockResolvedValue(ok(1));
-      repositories.trackRepository.sumDurationByLiked.mockResolvedValue(ok(100));
+      repositories.trackRepository.findLikedSortedPaginated.mockResolvedValue([track]);
+      repositories.trackRepository.countLiked.mockResolvedValue(1);
+      repositories.trackRepository.sumDurationByLiked.mockResolvedValue(100);
 
       const result = await getLikedTracksPaginated(0, 50, "title_asc");
 
@@ -324,9 +323,9 @@ describe("track.queries", () => {
     });
 
     it("returns nextOffset=null when no more pages", async () => {
-      repositories.trackRepository.findLikedPaginated.mockResolvedValue(ok([track]));
-      repositories.trackRepository.countLiked.mockResolvedValue(ok(1));
-      repositories.trackRepository.sumDurationByLiked.mockResolvedValue(ok(100));
+      repositories.trackRepository.findLikedPaginated.mockResolvedValue([track]);
+      repositories.trackRepository.countLiked.mockResolvedValue(1);
+      repositories.trackRepository.sumDurationByLiked.mockResolvedValue(100);
 
       const result = await getLikedTracksPaginated(0, 50);
 
@@ -334,9 +333,9 @@ describe("track.queries", () => {
     });
 
     it("returns nextOffset when more pages exist", async () => {
-      repositories.trackRepository.findLikedPaginated.mockResolvedValue(ok([track]));
-      repositories.trackRepository.countLiked.mockResolvedValue(ok(100));
-      repositories.trackRepository.sumDurationByLiked.mockResolvedValue(ok(10000));
+      repositories.trackRepository.findLikedPaginated.mockResolvedValue([track]);
+      repositories.trackRepository.countLiked.mockResolvedValue(100);
+      repositories.trackRepository.sumDurationByLiked.mockResolvedValue(10000);
 
       const result = await getLikedTracksPaginated(0, 50);
 
@@ -409,13 +408,13 @@ describe("track.queries", () => {
 
     beforeEach(() => {
       queryClient = new QueryClient();
-      repositories.trackRepository.findById.mockResolvedValue(ok(currentTrackEntity));
-      repositories.trackRepository.update.mockResolvedValue(ok(1));
-      repositories.artistRepository.findByName.mockResolvedValue(ok(artist));
+      repositories.trackRepository.findById.mockResolvedValue(currentTrackEntity);
+      repositories.trackRepository.update.mockResolvedValue(1);
+      repositories.artistRepository.findByName.mockResolvedValue(artist);
     });
 
     it("reuses an existing album of the first artist matched case-insensitively", async () => {
-      repositories.albumRepository.findByArtistId.mockResolvedValue(ok([existingAlbum]));
+      repositories.albumRepository.findByArtistId.mockResolvedValue([existingAlbum]);
 
       const next = await updateTrackMetadataAndSync(queryClient, track, {
         title: track.title,
@@ -428,8 +427,8 @@ describe("track.queries", () => {
     });
 
     it("creates a new album row when no identity match exists", async () => {
-      repositories.albumRepository.findByArtistId.mockResolvedValue(ok([existingAlbum]));
-      repositories.albumRepository.create.mockResolvedValue(ok("new-album" as AlbumId));
+      repositories.albumRepository.findByArtistId.mockResolvedValue([existingAlbum]);
+      repositories.albumRepository.create.mockResolvedValue("new-album" as AlbumId);
       // Seed the sidebar's summary like a mounted library would, so the
       // point-sync has something to patch.
       queryClient.setQueryData(queryKeys.library.summary(), summaryWith([existingAlbum]));
@@ -459,7 +458,7 @@ describe("track.queries", () => {
     });
 
     it("does not sync an album into the search index or list cache when reusing an existing album", async () => {
-      repositories.albumRepository.findByArtistId.mockResolvedValue(ok([existingAlbum]));
+      repositories.albumRepository.findByArtistId.mockResolvedValue([existingAlbum]);
       queryClient.setQueryData(queryKeys.library.summary(), summaryWith([existingAlbum]));
 
       await updateTrackMetadataAndSync(queryClient, track, {
@@ -477,18 +476,18 @@ describe("track.queries", () => {
       // Fixing the tags of an album-less import may assign one — the embedded
       // art must follow the track.
       const albumless: TrackEntity = { ...currentTrackEntity, albumId: "" as AlbumId, albumTitle: "" };
-      repositories.trackRepository.findById.mockResolvedValue(ok(albumless));
-      repositories.albumRepository.findById.mockResolvedValue(ok(existingAlbum));
+      repositories.trackRepository.findById.mockResolvedValue(albumless);
+      repositories.albumRepository.findById.mockResolvedValue(existingAlbum);
       const coverBlob = new Blob([new Uint8Array(4)], { type: "image/webp" });
       repositories.coverRepository.findByOwner.mockImplementation(
         async (ownerType: string, ownerId: string) =>
-          ok(ownerType === "track" && ownerId === albumless.id
+          ownerType === "track" && ownerId === albumless.id
             ? { id: "c1", ownerType, ownerId, blob: coverBlob, mimeType: "image/webp", addedAt: 1, updatedAt: 1 }
-            : undefined),
+            : undefined,
       );
       repositories.coverRepository.upsertOwnerCover.mockImplementation(async (ownerType: string, ownerId: string, blob: Blob) =>
-        ok({ id: "c1", ownerType, ownerId, blob, mimeType: blob.type, addedAt: 2, updatedAt: 2 }));
-      repositories.coverRepository.deleteByOwner.mockResolvedValue(ok(undefined));
+        ({ id: "c1", ownerType, ownerId, blob, mimeType: blob.type, addedAt: 2, updatedAt: 2 }));
+      repositories.coverRepository.deleteByOwner.mockResolvedValue(undefined);
 
       await updateTrackMetadataAndSync(queryClient, { ...track, albumId: albumless.albumId }, {
         title: track.title,
@@ -504,14 +503,14 @@ describe("track.queries", () => {
 
     it("keeps the existing album cover and just drops the track-owned one", async () => {
       const albumless: TrackEntity = { ...currentTrackEntity, albumId: "" as AlbumId, albumTitle: "" };
-      repositories.trackRepository.findById.mockResolvedValue(ok(albumless));
-      repositories.albumRepository.findById.mockResolvedValue(ok(existingAlbum));
+      repositories.trackRepository.findById.mockResolvedValue(albumless);
+      repositories.albumRepository.findById.mockResolvedValue(existingAlbum);
       const cover = (ownerType: string, ownerId: string) =>
         ({ id: `c-${ownerType}`, ownerType, ownerId, blob: new Blob(), mimeType: "image/webp", addedAt: 1, updatedAt: 1 });
       repositories.coverRepository.findByOwner.mockImplementation(
-        async (ownerType: string, ownerId: string) => ok(cover(ownerType, ownerId)),
+        async (ownerType: string, ownerId: string) => cover(ownerType, ownerId),
       );
-      repositories.coverRepository.deleteByOwner.mockResolvedValue(ok(undefined));
+      repositories.coverRepository.deleteByOwner.mockResolvedValue(undefined);
 
       await updateTrackMetadataAndSync(queryClient, { ...track, albumId: albumless.albumId }, {
         title: track.title,
@@ -527,7 +526,7 @@ describe("track.queries", () => {
     // Imports store tag-less files with no artist and no album; the editor
     // may not be stricter than that, but an album still needs an artist.
     it("saves a track with no artists, album-less", async () => {
-      repositories.coverRepository.findByOwner.mockResolvedValue(ok(undefined));
+      repositories.coverRepository.findByOwner.mockResolvedValue(undefined);
 
       const next = await updateTrackMetadataAndSync(queryClient, track, {
         title: "Renamed",
@@ -544,7 +543,7 @@ describe("track.queries", () => {
     });
 
     it("keeps the album a track already has when its artists are cleared", async () => {
-      repositories.albumRepository.findById.mockResolvedValue(ok({ ...existingAlbum, id: currentTrackEntity.albumId, title: "Old Album" }));
+      repositories.albumRepository.findById.mockResolvedValue({ ...existingAlbum, id: currentTrackEntity.albumId, title: "Old Album" });
 
       const next = await updateTrackMetadataAndSync(queryClient, track, {
         title: track.title,
@@ -574,7 +573,7 @@ describe("track.queries", () => {
     });
 
     it("detaches the track from its album when neither albumId nor albumTitle is given", async () => {
-      repositories.coverRepository.findByOwner.mockResolvedValue(ok(undefined));
+      repositories.coverRepository.findByOwner.mockResolvedValue(undefined);
 
       const next = await updateTrackMetadataAndSync(queryClient, track, {
         title: track.title,
@@ -594,12 +593,12 @@ describe("track.queries", () => {
       const coverBlob = new Blob([new Uint8Array(4)], { type: "image/webp" });
       repositories.coverRepository.findByOwner.mockImplementation(
         async (ownerType: string, ownerId: string) =>
-          ok(ownerType === "album" && ownerId === currentTrackEntity.albumId
+          ownerType === "album" && ownerId === currentTrackEntity.albumId
             ? { id: "c1", ownerType, ownerId, blob: coverBlob, mimeType: "image/webp", addedAt: 1, updatedAt: 1 }
-            : undefined),
+            : undefined,
       );
       repositories.coverRepository.upsertOwnerCover.mockImplementation(async (ownerType: string, ownerId: string, blob: Blob) =>
-        ok({ id: "c2", ownerType, ownerId, blob, mimeType: blob.type, addedAt: 2, updatedAt: 2 }));
+        ({ id: "c2", ownerType, ownerId, blob, mimeType: blob.type, addedAt: 2, updatedAt: 2 }));
 
       await updateTrackMetadataAndSync(queryClient, track, {
         title: track.title,
@@ -612,7 +611,7 @@ describe("track.queries", () => {
     });
 
     it("persists trackNo and diskNo", async () => {
-      repositories.albumRepository.findById.mockResolvedValue(ok(existingAlbum));
+      repositories.albumRepository.findById.mockResolvedValue(existingAlbum);
 
       const result = await updateTrackMetadataAndSync(queryClient, track, {
         title: track.title,
@@ -636,8 +635,8 @@ describe("track.queries", () => {
         trackNo: 3,
         diskNo: 1,
       };
-      repositories.trackRepository.findById.mockResolvedValue(ok(trackWithNumbers));
-      repositories.albumRepository.findById.mockResolvedValue(ok(existingAlbum));
+      repositories.trackRepository.findById.mockResolvedValue(trackWithNumbers);
+      repositories.albumRepository.findById.mockResolvedValue(existingAlbum);
 
       const result = await updateTrackMetadataAndSync(queryClient, track, {
         title: track.title,
@@ -661,8 +660,8 @@ describe("track.queries", () => {
         trackNo: 3,
         diskNo: 1,
       };
-      repositories.trackRepository.findById.mockResolvedValue(ok(trackWithNumbers));
-      repositories.albumRepository.findById.mockResolvedValue(ok(existingAlbum));
+      repositories.trackRepository.findById.mockResolvedValue(trackWithNumbers);
+      repositories.albumRepository.findById.mockResolvedValue(existingAlbum);
 
       const result = await updateTrackMetadataAndSync(queryClient, track, {
         title: track.title,
@@ -697,8 +696,8 @@ describe("track.queries", () => {
         playCount: 0,
         addedAt: 1,
       } as TrackEntity;
-      repositories.trackRepository.findById.mockResolvedValue(ok(entity));
-      repositories.trackRepository.setLiked.mockResolvedValue(ok(undefined));
+      repositories.trackRepository.findById.mockResolvedValue(entity);
+      repositories.trackRepository.setLiked.mockResolvedValue(undefined);
       const track = {
         id: entity.id,
         kind: "library",

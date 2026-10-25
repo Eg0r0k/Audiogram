@@ -15,7 +15,6 @@ vi.mock("@/services/search/searchIndex", () => ({
 
 import { db } from "@/db";
 import { playlistRepository } from "@/db/repositories";
-import { unwrapResult } from "@/lib/errors/unwrap";
 import type { Track } from "@/types/track";
 import { getAlbumByIdOrThrow, getAlbumPageData } from "../album.queries";
 import { getArtistByIdOrThrow } from "../artist.queries";
@@ -61,8 +60,10 @@ describe("not-found lookups (integration)", () => {
       ["Track not found", () => attachTrackLyricsAndSync(queryClient, missingTrack, { lyricsPath: "lyrics/t.lrc", lyricsFileName: null })],
       ["Track not found", () => updateTrackMetadataAndSync(queryClient, missingTrack, { title: "T", artistNames: [] })],
       ["Track not found", () => deleteTrackAndSync(queryClient, missingTrack)],
-      ["Playlist not found", () => unwrapResult(playlistRepository.findTrackIdsPaginated(PlaylistId("pl-missing"), 0, 10))],
+      ["Playlist not found", () => playlistRepository.findTrackIdsPaginated(PlaylistId("pl-missing"), 0, 10)],
     ];
+
+    expect(await playlistRepository.findById(PlaylistId("pl-missing"))).toBeUndefined();
 
     for (const [message, lookup] of lookups) {
       const error = await rejectionOf(lookup());
@@ -94,10 +95,10 @@ describe("not-found lookups (integration)", () => {
   it("the thrown error normalises to isNotFound", async () => {
     const album = await rejectionOf(getAlbumByIdOrThrow(AlbumId("al-missing")));
     const track = await rejectionOf(deleteTrackAndSync(queryClient, missingTrack));
-    const playlistPage = await playlistRepository.findTrackIdsPaginated(PlaylistId("pl-missing"), 0, 10);
+    const playlistPage = await rejectionOf(playlistRepository.findTrackIdsPaginated(PlaylistId("pl-missing"), 0, 10));
 
     expect(isNotFound(toAppError(album))).toBe(true);
     expect(isNotFound(toAppError(track))).toBe(true);
-    expect(playlistPage.isErr() && isNotFound(toAppError(playlistPage.error))).toBe(true);
+    expect(isNotFound(toAppError(playlistPage))).toBe(true);
   });
 });

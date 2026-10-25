@@ -15,34 +15,33 @@ import type { ImportItemIO } from "../import/item-io";
 import type { MetadataParser } from "../import/metadata-parser";
 import type { ImportItem } from "../types";
 import type { BaseMetadata } from "@/workers/types";
-
-function okResult<T>(value: T) {
-  return { isOk: () => true, isErr: () => false, value };
-}
+import * as repositories from "@/db/repositories";
 
 vi.mock("@/db/repositories", () => ({
   trackRepository: {
-    getAllFingerprints: vi.fn(async () => okResult(new Set<string>())),
-    createMany: vi.fn(async () => okResult([])),
-    findByIds: vi.fn(async () => okResult([])),
+    getAllFingerprints: vi.fn(async () => new Set<string>()),
+    createMany: vi.fn(async () => []),
+    findByIds: vi.fn(async () => []),
   },
   artistRepository: {
-    findByIds: vi.fn(async () => okResult([])),
-    createMany: vi.fn(async () => okResult([])),
+    findByIds: vi.fn(async () => []),
+    createMany: vi.fn(async () => []),
   },
   albumRepository: {
-    findByIds: vi.fn(async () => okResult([])),
-    createMany: vi.fn(async () => okResult([])),
+    findByIds: vi.fn(async () => []),
+    createMany: vi.fn(async () => []),
   },
-  coverRepository: { createMany: vi.fn(async () => okResult([])) },
+  coverRepository: { createMany: vi.fn(async () => undefined) },
 }));
 
 vi.mock("@/db/unit-of-work", () => ({
   unitOfWork: {
-    runScoped: async (_tables: unknown, cb: () => Promise<void>) => {
-      await cb();
-      return okResult(undefined);
-    },
+    run: async (_tables: unknown, work: (uow: unknown) => Promise<void>) => work({
+      tracks: repositories.trackRepository,
+      artists: repositories.artistRepository,
+      albums: repositories.albumRepository,
+      covers: repositories.coverRepository,
+    }),
   },
 }));
 

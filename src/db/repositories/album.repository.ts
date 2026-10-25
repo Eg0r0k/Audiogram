@@ -1,102 +1,73 @@
 import { db } from "@/db";
 import type { AlbumEntity } from "@/db/entities";
+import { tableOf, type TableSource } from "@/db/tables";
 import type { AlbumId, ArtistId } from "@/types/ids";
-import type { Result } from "neverthrow";
-import { ok, err } from "neverthrow";
-import { BaseRepository } from "./base.repository";
-import { toDbError } from "@/db/errors/db.errors";
+import { BaseRepository, guarded } from "./base.repository";
 
-class AlbumRepository extends BaseRepository<AlbumEntity, AlbumId> {
-  constructor() {
-    super(db.albums);
+export class AlbumRepository extends BaseRepository<AlbumEntity, AlbumId> {
+  constructor(source: TableSource = db) {
+    super(tableOf(source, "albums"));
   }
 
-  async update(id: AlbumId, changes: Partial<AlbumEntity>): Promise<Result<number, Error>> {
-    try {
+  async update(id: AlbumId, changes: Partial<AlbumEntity>): Promise<number> {
+    return guarded(() => {
       const withTimestamp: Partial<AlbumEntity> = {
         ...changes,
         updatedAt: Date.now(),
       };
-      const count = await this.table.update(id, withTimestamp);
-      return ok(count);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return this.table.update(id, withTimestamp);
+    });
   }
 
   /** Library members only (pinned = 1). */
-  async findPinned(): Promise<Result<AlbumEntity[], Error>> {
-    try {
-      const albums = await this.table.where("pinned").equals(1).toArray();
-      return ok(albums);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+  async findPinned(): Promise<AlbumEntity[]> {
+    return guarded(() => this.table.where("pinned").equals(1).toArray());
   }
 
-  async findByArtistId(artistId: ArtistId): Promise<Result<AlbumEntity[], Error>> {
-    try {
+  async findByArtistId(artistId: ArtistId): Promise<AlbumEntity[]> {
+    return guarded(async () => {
       const albums = await this.table
         .where("artistId")
         .equals(artistId)
         .sortBy("year");
-      return ok([...albums].reverse());
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return [...albums].reverse();
+    });
   }
 
-  async findAllSortedByTitle(desc = false): Promise<Result<AlbumEntity[], Error>> {
-    try {
+  async findAllSortedByTitle(desc = false): Promise<AlbumEntity[]> {
+    return guarded(() => {
       const collection = desc
         ? this.table.orderBy("title").reverse()
         : this.table.orderBy("title");
-      const albums = await collection.toArray();
-      return ok(albums);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return collection.toArray();
+    });
   }
 
-  async search(query: string, limit = 20): Promise<Result<AlbumEntity[], Error>> {
-    try {
+  async search(query: string, limit = 20): Promise<AlbumEntity[]> {
+    return guarded(() => {
       const normalizedQuery = query.toLowerCase();
-      const albums = await this.table
+      return this.table
         .filter(album => album.title.toLowerCase().includes(normalizedQuery))
         .limit(limit)
         .toArray();
-      return ok(albums);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+    });
   }
 
   // Artist-page listing: shadow albums can reference a local artist via
   // substitution — skip them.
-  async countByArtistId(artistId: ArtistId): Promise<Result<number, Error>> {
-    try {
-      const count = await this.table
-        .where("[artistId+pinned]")
-        .equals([artistId, 1])
-        .count();
-      return ok(count);
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+  async countByArtistId(artistId: ArtistId): Promise<number> {
+    return guarded(() => this.table
+      .where("[artistId+pinned]")
+      .equals([artistId, 1])
+      .count());
   }
 
   async findByArtistIdPaginated(
     artistId: ArtistId,
     offset: number,
     limit: number,
-  ): Promise<Result<AlbumEntity[], Error>> {
-    try {
+  ): Promise<AlbumEntity[]> {
+    return guarded(async () => {
       // `year` is optional, so a compound [artistId+year] index would miss
       // undated albums; sort in memory instead (an artist has few albums).
       const all = await this.table
@@ -104,11 +75,8 @@ class AlbumRepository extends BaseRepository<AlbumEntity, AlbumId> {
         .equals([artistId, 1])
         .sortBy("year");
       all.reverse();
-      return ok(all.slice(offset, offset + limit));
-    }
-    catch (error) {
-      return err(toDbError(error));
-    }
+      return all.slice(offset, offset + limit);
+    });
   }
 }
 

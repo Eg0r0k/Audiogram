@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
+import { DbError } from "@/db/errors/db.errors";
 import { TrackSource, TrackState, type AlbumEntity, type ArtistEntity, type TrackEntity } from "@/db/entities";
 import type { AlbumId, ArtistId, PlaylistId, TagId, TrackId } from "@/types/ids";
 import { albumRepository } from "../album.repository";
@@ -72,9 +73,9 @@ describe("downloadJobRepository (indexed by [trackId+status])", () => {
       job("j-run", "t1", "running"),
     ]);
 
-    const found = await trackOf(downloadJobRepository.findActiveByTrackId("t1" as TrackId));
+    const found = await downloadJobRepository.findActiveByTrackId("t1" as TrackId);
     expect(found?.id).toBe("j-run");
-    expect(await trackOf(downloadJobRepository.findActiveByTrackId("t3" as TrackId))).toBeUndefined();
+    expect(await downloadJobRepository.findActiveByTrackId("t3" as TrackId)).toBeUndefined();
   });
 
   it("deleteErrorsByTrackId drops only the error rows of that track", async () => {
@@ -85,7 +86,7 @@ describe("downloadJobRepository (indexed by [trackId+status])", () => {
       job("j-other", "t2", "error"),
     ]);
 
-    const deleted = await trackOf(downloadJobRepository.deleteErrorsByTrackId("t1" as TrackId));
+    const deleted = await downloadJobRepository.deleteErrorsByTrackId("t1" as TrackId);
 
     expect(deleted).toBe(2);
     expect((await db.downloadJobs.toCollection().primaryKeys()).sort()).toEqual(["j-other", "j-queued"]);
@@ -104,8 +105,8 @@ describe("coverRepository.upsertOwnerCover", () => {
   });
 
   it("updates the existing row in place, keeping its id", async () => {
-    const first = await trackOf(coverRepository.upsertOwnerCover("playlist", "p1", new Blob(["a"])));
-    const second = await trackOf(coverRepository.upsertOwnerCover("playlist", "p1", new Blob(["bb"], { type: "image/png" })));
+    const first = await coverRepository.upsertOwnerCover("playlist", "p1", new Blob(["a"]));
+    const second = await coverRepository.upsertOwnerCover("playlist", "p1", new Blob(["bb"], { type: "image/png" }));
 
     expect(second.id).toBe(first.id);
     expect(second.updatedAt).toBeGreaterThanOrEqual(first.updatedAt);
@@ -122,7 +123,7 @@ describe("tagRepository.findOrCreate", () => {
       tagRepository.findOrCreate("ROCK"),
     ]);
 
-    const ids = new Set(results.map(r => r._unsafeUnwrap().id));
+    const ids = new Set(results.map(r => r.id));
     expect(ids.size).toBe(1);
     expect(await db.tags.count()).toBe(1);
     expect((await db.tags.toArray())[0].name).toBe("rock");
@@ -145,10 +146,11 @@ describe("trackRepository tag mutations", () => {
     await db.tracks.add(track("t1", { tagIds: ["tag-a" as TagId] }));
 
     await trackRepository.addTagToTrack("t1" as TrackId, "tag-a" as TagId);
-    const missing = await trackRepository.addTagToTrack("nope" as TrackId, "tag-a" as TagId);
+    const missing = trackRepository.addTagToTrack("nope" as TrackId, "tag-a" as TagId);
 
+    await expect(missing).rejects.toBeInstanceOf(DbError);
+    await expect(missing).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect((await db.tracks.get("t1" as TrackId))?.tagIds).toEqual(["tag-a"]);
-    expect(missing.isErr()).toBe(true);
   });
 
   it("removeTagFromTrack removes just that tag", async () => {
@@ -164,7 +166,7 @@ describe("trackRepository.findByIds", () => {
   it("returns rows in the requested order, skipping unknown ids", async () => {
     await db.tracks.bulkAdd([track("a"), track("b"), track("c")]);
 
-    const rows = await trackOf(trackRepository.findByIds(["c", "x", "a"] as TrackId[]));
+    const rows = await trackRepository.findByIds(["c", "x", "a"] as TrackId[]);
 
     expect(rows.map(r => r.id)).toEqual(["c", "a"]);
   });
@@ -178,14 +180,14 @@ describe("trackRepository.countByAlbumIds", () => {
       track("t3", { albumId: "album-a" as AlbumId, pinned: 0 }),
     ]);
 
-    const counts = await trackOf(trackRepository.countByAlbumIds(["album-a", "album-b"] as AlbumId[]));
+    const counts = await trackRepository.countByAlbumIds(["album-a", "album-b"] as AlbumId[]);
 
     expect(counts.get("album-a" as AlbumId)).toBe(2);
     expect(counts.get("album-b" as AlbumId)).toBe(0);
   });
 
   it("returns an empty map for empty input", async () => {
-    expect((await trackOf(trackRepository.countByAlbumIds([]))).size).toBe(0);
+    expect((await trackRepository.countByAlbumIds([])).size).toBe(0);
   });
 });
 
@@ -197,7 +199,7 @@ describe("trackRepository bulk writes", () => {
       track("t3", { albumId: "al2" as AlbumId, albumTitle: "Other" }),
     ]);
 
-    const changed = await trackOf(trackRepository.setAlbumTitleByAlbumId("al1" as AlbumId, "New"));
+    const changed = await trackRepository.setAlbumTitleByAlbumId("al1" as AlbumId, "New");
 
     expect(changed).toBe(2);
     expect((await db.tracks.toArray()).map(t => t.albumTitle).sort()).toEqual(["New", "New", "Other"]);
@@ -210,7 +212,7 @@ describe("trackRepository bulk writes", () => {
       track("t3"),
     ]);
 
-    const changed = await trackOf(trackRepository.likeMany(["t1", "t2", "t3", "missing"] as TrackId[], 99));
+    const changed = await trackRepository.likeMany(["t1", "t2", "t3", "missing"] as TrackId[], 99);
 
     expect(changed).toBe(2);
     expect((await db.tracks.get("t2" as TrackId))?.likedAt).toBe(5);
@@ -224,8 +226,8 @@ describe("albumRepository / artistRepository pinned lookups", () => {
     await db.albums.bulkAdd([album("al1"), album("al2", { pinned: 0 })]);
     await db.artists.bulkAdd([artist("ar1"), artist("ar2", { pinned: 0 })]);
 
-    expect((await trackOf(albumRepository.findPinned())).map(a => a.id)).toEqual(["al1"]);
-    expect((await trackOf(artistRepository.findPinned())).map(a => a.id)).toEqual(["ar1"]);
+    expect((await albumRepository.findPinned()).map(a => a.id)).toEqual(["al1"]);
+    expect((await artistRepository.findPinned()).map(a => a.id)).toEqual(["ar1"]);
   });
 
   it("countByArtistId and findByArtistIdPaginated skip shadow albums and order newest first", async () => {
@@ -237,9 +239,9 @@ describe("albumRepository / artistRepository pinned lookups", () => {
       album("al5", { artistId: "ar2" as ArtistId }),
     ]);
 
-    expect(await trackOf(albumRepository.countByArtistId("ar1" as ArtistId))).toBe(3);
-    const page1 = await trackOf(albumRepository.findByArtistIdPaginated("ar1" as ArtistId, 0, 2));
-    const page2 = await trackOf(albumRepository.findByArtistIdPaginated("ar1" as ArtistId, 2, 2));
+    expect(await albumRepository.countByArtistId("ar1" as ArtistId)).toBe(3);
+    const page1 = await albumRepository.findByArtistIdPaginated("ar1" as ArtistId, 0, 2);
+    const page2 = await albumRepository.findByArtistIdPaginated("ar1" as ArtistId, 2, 2);
     expect(page1.map(a => a.year)).toEqual([2003, 2002]);
     expect(page2.map(a => a.year)).toEqual([2001]);
   });
@@ -252,14 +254,10 @@ describe("playlistRepository.addTracks", () => {
     });
     const modifySpy = vi.spyOn(db.playlists, "update");
 
-    const added = await trackOf(playlistRepository.addTracks("p1" as PlaylistId, ["t2", "t1", "t3", "t2"] as TrackId[]));
+    const added = await playlistRepository.addTracks("p1" as PlaylistId, ["t2", "t1", "t3", "t2"] as TrackId[]);
 
     expect(added).toEqual(["t2", "t3"]);
     expect((await db.playlists.get("p1" as PlaylistId))?.trackIds).toEqual(["t1", "t2", "t3"]);
     expect(modifySpy).not.toHaveBeenCalled();
   });
 });
-
-async function trackOf<T>(promise: Promise<{ _unsafeUnwrap: () => T }>): Promise<T> {
-  return (await promise)._unsafeUnwrap();
-}

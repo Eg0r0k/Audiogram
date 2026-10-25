@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, nextTick, ref } from "vue";
 import { mount } from "@vue/test-utils";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
-import { ok } from "neverthrow";
 
 const rows = vi.hoisted(() => ({
   artists: new Map<string, { pinned: number }>(),
@@ -14,9 +13,9 @@ const rows = vi.hoisted(() => ({
 vi.mock("vue-router", () => ({ useRoute: () => ({ query: rows.query }) }));
 
 vi.mock("@/db/repositories", () => ({
-  artistRepository: { findById: (id: string) => Promise.resolve(ok(rows.artists.get(id))) },
-  albumRepository: { findById: (id: string) => Promise.resolve(ok(rows.albums.get(id))) },
-  playlistRepository: { findById: (id: string) => Promise.resolve(ok(rows.playlists.get(id))) },
+  artistRepository: { findById: (id: string) => Promise.resolve(rows.artists.get(id)) },
+  albumRepository: { findById: (id: string) => Promise.resolve(rows.albums.get(id)) },
+  playlistRepository: { findById: (id: string) => Promise.resolve(rows.playlists.get(id)) },
 }));
 vi.mock("../../registry", () => ({
   sources: {

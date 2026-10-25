@@ -41,16 +41,16 @@ describe("artistPlaysCount", () => {
       makeEvent({ artistId: "a2" as ArtistId }),
     );
 
-    expect((await statsRepository.artistPlaysCount("a1"))._unsafeUnwrap()).toBe(2);
-    expect((await statsRepository.artistPlaysCount("a2"))._unsafeUnwrap()).toBe(1);
-    expect((await statsRepository.artistPlaysCount("a3"))._unsafeUnwrap()).toBe(0);
+    expect(await statsRepository.artistPlaysCount("a1")).toBe(2);
+    expect(await statsRepository.artistPlaysCount("a2")).toBe(1);
+    expect(await statsRepository.artistPlaysCount("a3")).toBe(0);
   });
 });
 
 describe("summary", () => {
   it("returns zeros when there are no events", async () => {
     const result = await statsRepository.summary();
-    expect(result._unsafeUnwrap()).toEqual({
+    expect(result).toEqual({
       totalSeconds: 0,
       playsCount: 0,
       uniqueTracks: 0,
@@ -66,7 +66,7 @@ describe("summary", () => {
       makeEvent({ trackId: "t1" as TrackId, artistId: "a1" as ArtistId, secondsListened: 40, completed: false }),
       makeEvent({ trackId: "t2" as TrackId, artistId: "a2" as ArtistId, secondsListened: 30, completed: false, skipped: true }),
     );
-    const s = (await statsRepository.summary())._unsafeUnwrap();
+    const s = await statsRepository.summary();
     // totalSeconds включает и пропущенные события; plays/uniques — только не-skipped.
     expect(s.totalSeconds).toBe(130);
     expect(s.playsCount).toBe(2);
@@ -82,7 +82,7 @@ describe("summary", () => {
       makeEvent({ startedAt: now - 10 * 86_400_000, secondsListened: 500 }),
       makeEvent({ startedAt: now - 1000, secondsListened: 60 }),
     );
-    const s = (await statsRepository.summary(now - 86_400_000))._unsafeUnwrap();
+    const s = await statsRepository.summary(now - 86_400_000);
     expect(s.totalSeconds).toBe(60);
     expect(s.playsCount).toBe(1);
   });
@@ -91,7 +91,7 @@ describe("summary", () => {
 describe("deleteAllEvents", () => {
   it("removes every listen event", async () => {
     await seed(makeEvent(), makeEvent(), makeEvent());
-    (await statsRepository.deleteAllEvents())._unsafeUnwrap();
+    await statsRepository.deleteAllEvents();
     expect(await db.listenEvents.count()).toBe(0);
   });
 });
@@ -104,7 +104,7 @@ describe("hourlyActivity", () => {
       makeEvent({ startedAt: at(9), secondsListened: 50 }),
       makeEvent({ startedAt: at(22), secondsListened: 30 }),
     );
-    const hours = (await statsRepository.hourlyActivity())._unsafeUnwrap();
+    const hours = await statsRepository.hourlyActivity();
     expect(hours).toHaveLength(24);
     expect(hours[9]).toBe(150);
     expect(hours[22]).toBe(30);
@@ -114,7 +114,7 @@ describe("hourlyActivity", () => {
 
 describe("records", () => {
   it("returns empty records for no events", async () => {
-    const r = (await statsRepository.records())._unsafeUnwrap();
+    const r = await statsRepository.records();
     expect(r).toEqual({
       busiestDay: null,
       mostRepeatedTrackId: null,
@@ -137,7 +137,7 @@ describe("records", () => {
       // пропущенное событие не считается ни в repeat, ни в сессии
       makeEvent({ trackId: "t3" as TrackId, startedAt: day2 + MIN, secondsListened: 300, skipped: true }),
     );
-    const r = (await statsRepository.records())._unsafeUnwrap();
+    const r = await statsRepository.records();
     expect(r.busiestDay).toEqual({ date: "2026-05-03", seconds: 1800 });
     expect(r.mostRepeatedTrackId).toBe("t1");
     expect(r.mostRepeatedCount).toBe(2);
@@ -167,7 +167,7 @@ describe("dailyActivity", () => {
 
     await seed(makeEvent({ startedAt: now.getTime(), secondsListened: 42 }));
 
-    const points = (await statsRepository.dailyActivity(3))._unsafeUnwrap();
+    const points = await statsRepository.dailyActivity(3);
     const point = points.find(p => p.date === expectedKey);
     expect(point).toBeDefined();
     expect(point?.seconds).toBe(42);
@@ -186,7 +186,7 @@ describe("streaks", () => {
   };
 
   it("returns zeros without events", async () => {
-    const s = (await statsRepository.streaks(NOW))._unsafeUnwrap();
+    const s = await statsRepository.streaks(NOW);
     expect(s).toEqual({ current: 0, best: 0 });
   });
 
@@ -198,7 +198,7 @@ describe("streaks", () => {
       // разрыв на day 3
       makeEvent({ startedAt: dayAgo(4) }),
     );
-    const s = (await statsRepository.streaks(NOW))._unsafeUnwrap();
+    const s = await statsRepository.streaks(NOW);
     expect(s.current).toBe(3);
     expect(s.best).toBe(3);
   });
@@ -208,7 +208,7 @@ describe("streaks", () => {
       makeEvent({ startedAt: dayAgo(1) }),
       makeEvent({ startedAt: dayAgo(2) }),
     );
-    const s = (await statsRepository.streaks(NOW))._unsafeUnwrap();
+    const s = await statsRepository.streaks(NOW);
     expect(s.current).toBe(2);
   });
 
@@ -221,7 +221,7 @@ describe("streaks", () => {
       makeEvent({ startedAt: dayAgo(5) }),
       makeEvent({ startedAt: dayAgo(6) }),
     );
-    const s = (await statsRepository.streaks(NOW))._unsafeUnwrap();
+    const s = await statsRepository.streaks(NOW);
     expect(s.current).toBe(1);
     expect(s.best).toBe(4);
   });

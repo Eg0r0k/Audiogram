@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as SearchIndexModule from "../searchIndex";
 import type { SearchDocument } from "../types";
-import { ok } from "neverthrow";
 import { TrackSource, TrackState } from "@/db/entities";
 import { TrackId } from "@/types/ids";
 
@@ -100,8 +99,8 @@ describe("syncSearchIndex", () => {
       addedAt: 1,
     };
     repositories.trackRepository.findByIds
-      .mockResolvedValueOnce(ok([row]))
-      .mockResolvedValueOnce(ok([]));
+      .mockResolvedValueOnce([row])
+      .mockResolvedValueOnce([]);
 
     await searchIndex.syncSearchIndex({ tracks: [TrackId("t1")] });
     expect((await searchIndex.searchDocuments("alpha", "all")).total).toBe(1);
@@ -114,7 +113,7 @@ describe("syncSearchIndex", () => {
 describe("searchTracks hydration by id", () => {
   it("plays the DB storagePath, not anything embedded in the index", async () => {
     buildAllSearchDocuments.mockResolvedValue([alphaDoc]);
-    repositories.trackRepository.findByIds.mockResolvedValue(ok([{
+    repositories.trackRepository.findByIds.mockResolvedValue([{
       id: "t1",
       title: "Alpha Song",
       artistIds: [],
@@ -129,11 +128,11 @@ describe("searchTracks hydration by id", () => {
       format: {},
       playCount: 0,
       addedAt: 1,
-    }]));
-    repositories.artistRepository.findByIds.mockResolvedValue(ok([]));
-    repositories.albumRepository.findByIds.mockResolvedValue(ok([
+    }]);
+    repositories.artistRepository.findByIds.mockResolvedValue([]);
+    repositories.albumRepository.findByIds.mockResolvedValue([
       { id: "al1", title: "Real Album", artistId: "a0", addedAt: 1, updatedAt: 1 },
-    ]));
+    ]);
 
     const { tracks, total, totalDuration } = await searchIndex.searchTracks("alpha", 0, undefined);
 

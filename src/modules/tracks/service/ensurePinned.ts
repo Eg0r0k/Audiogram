@@ -1,9 +1,7 @@
 import { toRaw } from "vue";
-import type { Result } from "neverthrow";
-import { db } from "@/db";
 import type { ArtistEntity, CoverOwnerType, PinnedFlag } from "@/db/entities";
-import { albumRepository, artistRepository, trackRepository } from "@/db/repositories";
-import { unitOfWork } from "@/db/unit-of-work";
+import { artistRepository } from "@/db/repositories";
+import { unitOfWork, type Scope } from "@/db/unit-of-work";
 import { getLogger } from "@/lib/logger";
 import { chunk } from "@/lib/math";
 import { syncSearchIndex } from "@/services/search/searchIndex";
@@ -17,7 +15,6 @@ import {
   type RemotePinRows,
 } from "@/services/entity-resolver";
 import { mapTrack, type Track } from "@/types/track";
-import { unwrapResult } from "@/lib/errors/unwrap";
 import type { TrackMenuSubject } from "../components/menu/type";
 import { trackCoverOwner } from "@/modules/covers/composables/useTrackCover";
 import { ensureShadowCover } from "./shadowAlbumCover";
@@ -53,6 +50,8 @@ interface PinContext {
   now: number;
 }
 
+type PinScope = Scope<"tracks" | "albums" | "artists">;
+
 /**
  * Guarantees a Dexie row for the subject and returns it as a Track: library
  * subjects pass through, remote DTOs run the pin cascade in one unitOfWork:
@@ -73,8 +72,8 @@ export async function ensurePinned(
 }
 
 /** One subject's cascade. Runs inside the caller's transaction. */
-const pinOneRemote = async (entry: RemoteEntry, ctx: PinContext): Promise<PinnedEntry> => {
-  const track = await unwrapResult(trackRepository.findById(entry.dto.id));
+const pinOneRemote = async (entry: RemoteEntry, ctx: PinContext, uow: PinScope): Promise<PinnedEntry> => {
+  const track = await uow.tracks.findById(entry.dto.id);
   const dto = alignArtists(entry.dto, ctx.snapshot.index, {
     createMissing: ctx.requestedPinned === 1 || track?.pinned === 1,
   });
@@ -83,8 +82,8 @@ const pinOneRemote = async (entry: RemoteEntry, ctx: PinContext): Promise<Pinned
   // from a DTO that knows no names.
   const artistIds = dto.artistIds ?? track?.artistIds ?? [];
   const [album, artists] = await Promise.all([
-    dto.albumId ? unwrapResult(albumRepository.findById(dto.albumId)) : Promise.resolve(undefined),
-    artistIds.length > 0 ? unwrapResult(artistRepository.findByIds(artistIds)) : Promise.resolve([]),
+    dto.albumId ? uow.albums.findById(dto.albumId) : Promise.resolve(undefined),
+    artistIds.length > 0 ? uow.artists.findByIds(artistIds) : Promise.resolve([]),
   ]);
 
   const existing: RemotePinExisting = {
@@ -94,9 +93,9 @@ const pinOneRemote = async (entry: RemoteEntry, ctx: PinContext): Promise<Pinned
   };
   const built = buildRemoteShadowEntities(dto, ctx.requestedPinned, existing, ctx.now);
 
-  await unwrapResult(trackRepository.upsert(built.track));
-  if (built.album) await unwrapResult(albumRepository.upsert(built.album));
-  if (built.artists.length > 0) await unwrapResult(artistRepository.upsertMany(built.artists));
+  await uow.tracks.upsert(built.track);
+  if (built.album) await uow.albums.upsert(built.album);
+  if (built.artists.length > 0) await uow.artists.upsertMany(built.artists);
 
   // Only rows the snapshot does not already carry: buildRemoteShadowEntities
   // re-emits existing ones, and a later subject has to match an artist an
@@ -113,56 +112,59 @@ const pinOneRemote = async (entry: RemoteEntry, ctx: PinContext): Promise<Pinned
 const runPinBatch = async (
   batch: readonly RemoteEntry[],
   ctx: PinContext,
-): Promise<Result<PinnedEntry[], Error>> => {
+): Promise<PinnedEntry[]> => {
   const artistsBefore = ctx.snapshot.rows.length;
-  const result = await unitOfWork.runScoped(
-    [db.tracks, db.albums, db.artists],
-    async () => {
+  try {
+    return await unitOfWork.run(["tracks", "albums", "artists"], async (uow) => {
       const pinned: PinnedEntry[] = [];
-      for (const entry of batch) pinned.push(await pinOneRemote(entry, ctx));
+      for (const entry of batch) pinned.push(await pinOneRemote(entry, ctx, uow));
       return pinned;
-    },
-  );
-
-  // An aborted transaction rolled its rows back, so the in-memory snapshot has
-  // to follow it: a retried subject must not align onto an artist whose
-  // row no longer exists. The index cannot drop entries, so it is rebuilt —
-  // only here, on a path a batch does not normally take.
-  if (result.isErr() && ctx.snapshot.rows.length > artistsBefore) {
-    for (const artist of ctx.snapshot.rows.splice(artistsBefore)) ctx.snapshot.ids.delete(artist.id);
-    ctx.snapshot.index = artistNameIndex(ctx.snapshot.rows);
+    });
   }
-  return result;
+  catch (error) {
+    // An aborted transaction rolled its rows back, so the in-memory snapshot has
+    // to follow it: a retried subject must not align onto an artist whose
+    // row no longer exists. The index cannot drop entries, so it is rebuilt,
+    // only here, on a path a batch does not normally take.
+    if (ctx.snapshot.rows.length > artistsBefore) {
+      for (const artist of ctx.snapshot.rows.splice(artistsBefore)) ctx.snapshot.ids.delete(artist.id);
+      ctx.snapshot.index = artistNameIndex(ctx.snapshot.rows);
+    }
+    throw error;
+  }
 };
 
 const pinInChunks = async (
   remote: readonly RemoteEntry[],
   ctx: PinContext,
-): Promise<{ pinned: PinnedEntry[]; failures: Error[] }> => {
+): Promise<{ pinned: PinnedEntry[]; failures: unknown[] }> => {
   const pinned: PinnedEntry[] = [];
-  const failures: Error[] = [];
+  const failures: unknown[] = [];
 
   // Chunked rather than one transaction for the whole batch: IndexedDB cannot
   // run a readwrite transaction concurrently with anything else scoped to the
   // same stores, so a queued album held as one transaction would stall every
   // library read behind it until the last track committed.
   for (const batch of chunk(remote, PIN_CHUNK_SIZE)) {
-    const result = await runPinBatch(batch, ctx);
-    if (result.isOk()) {
-      pinned.push(...result.value);
-      continue;
+    try {
+      pinned.push(...await runPinBatch(batch, ctx));
     }
-    if (batch.length === 1) {
-      failures.push(result.error);
-      continue;
-    }
-    // A transaction aborts whole, so one unwritable row took the chunk's other
-    // subjects down with it. Re-run them alone — a transaction each, but only
-    // the subject that actually fails is lost.
-    for (const entry of batch) {
-      const retry = await runPinBatch([entry], ctx);
-      if (retry.isOk()) pinned.push(...retry.value);
-      else failures.push(retry.error);
+    catch (error) {
+      if (batch.length === 1) {
+        failures.push(error);
+        continue;
+      }
+      // A transaction aborts whole, so one unwritable row took the chunk's other
+      // subjects down with it. Re-run them alone: a transaction each, but only
+      // the subject that actually fails is lost.
+      for (const entry of batch) {
+        try {
+          pinned.push(...await runPinBatch([entry], ctx));
+        }
+        catch (retryError) {
+          failures.push(retryError);
+        }
+      }
     }
   }
 
@@ -234,7 +236,7 @@ export async function ensurePinnedMany(
   // for a library member, names the source has no id for get a row of their
   // own. Read once, outside the writes.
   const needsArtists = remote.some(({ dto }) => (dto.artistIds ?? []).length > 0 || !!dto.artistName);
-  const artistRows = needsArtists ? [...await unwrapResult(artistRepository.findAll())] : [];
+  const artistRows = needsArtists ? [...await artistRepository.findAll()] : [];
   const ctx: PinContext = {
     snapshot: {
       rows: artistRows,

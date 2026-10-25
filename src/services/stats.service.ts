@@ -145,21 +145,17 @@ class StatsService {
   /** Deletes the track's listens and returns an undo that writes them back. */
   async removeFromHistory(trackId: TrackId): Promise<() => Promise<void>> {
     const events = await statsRepository.eventsForTrack(trackId);
-    if (events.isErr()) throw events.error;
-    const result = await statsRepository.deleteEventsForTrack(trackId);
-    if (result.isErr()) throw result.error;
+    await statsRepository.deleteEventsForTrack(trackId);
     await this._notifyNow();
 
     return async () => {
-      const restored = await statsRepository.restoreEvents(events.value);
-      if (restored.isErr()) throw restored.error;
+      await statsRepository.restoreEvents(events);
       await this._notifyNow();
     };
   }
 
   async clearHistory(): Promise<void> {
-    const result = await statsRepository.deleteAllEvents();
-    if (result.isErr()) throw result.error;
+    await statsRepository.deleteAllEvents();
     await this._notifyNow();
   }
 }

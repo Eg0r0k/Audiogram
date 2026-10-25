@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { defineComponent, h, nextTick, shallowRef, type Ref } from "vue";
 import { mount } from "@vue/test-utils";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
-import { ok } from "neverthrow";
 import { TrackSource, TrackState } from "@/db/entities";
 import type { Track } from "@/types/track";
 import { TrackId } from "@/types/ids";
@@ -92,7 +91,7 @@ describe("useTrackMenuCaps", () => {
   });
 
   it("shadow-pinned remote library row is pinned but not in the library", () => {
-    copyMock.findBySourceRef.mockResolvedValue(ok(undefined));
+    copyMock.findBySourceRef.mockResolvedValue(undefined);
     registryMock.providers = { yt: { capabilities: { download: true } } };
     const subject = shallowRef<TrackMenuSubject | null>({
       kind: "library",
@@ -110,11 +109,11 @@ describe("useTrackMenuCaps", () => {
   });
 
   it("a downloaded local copy flips canDownload off and canExportFile on", async () => {
-    copyMock.findBySourceRef.mockResolvedValue(ok({
+    copyMock.findBySourceRef.mockResolvedValue({
       id: "local-1",
       storagePath: "tracks/local-1.m4a",
       sourceRef: ytTrackId("abc"),
-    }));
+    });
     registryMock.providers = { yt: { capabilities: { download: true } } };
     const subject = shallowRef<TrackMenuSubject | null>({
       kind: "library",
@@ -130,7 +129,7 @@ describe("useTrackMenuCaps", () => {
   });
 
   it("a remote DTO subject without a copy can be downloaded", () => {
-    copyMock.findBySourceRef.mockResolvedValue(ok(undefined));
+    copyMock.findBySourceRef.mockResolvedValue(undefined);
     registryMock.providers = { yt: { capabilities: { download: true } } };
     const subject = shallowRef<TrackMenuSubject | null>({
       kind: "remote",
@@ -152,7 +151,7 @@ describe("useTrackMenuCaps", () => {
   });
 
   it("tolerates sources without a registered provider (nd until M2)", () => {
-    copyMock.findBySourceRef.mockResolvedValue(ok(undefined));
+    copyMock.findBySourceRef.mockResolvedValue(undefined);
     registryMock.providers = {};
     const subject = shallowRef<TrackMenuSubject | null>({
       kind: "remote",
@@ -167,7 +166,7 @@ describe("useTrackMenuCaps", () => {
   });
 
   it("looks up a playing stream's offline copy under its stream identity", async () => {
-    copyMock.findBySourceRef.mockResolvedValue(ok(undefined));
+    copyMock.findBySourceRef.mockResolvedValue(undefined);
     registryMock.providers = { yt: { capabilities: { download: true } }, nd: { capabilities: { download: true } } };
     const ytSubject = shallowRef<TrackMenuSubject | null>({
       kind: "ephemeral",

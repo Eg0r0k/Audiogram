@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { err, ok } from "neverthrow";
+import { DbError } from "@/db/errors/db.errors";
 import { ndAlbumId, ndArtistId, ndTrackId } from "@/types/track-ref";
 import type { SourceTrackDTO } from "@/modules/sources";
 
@@ -9,7 +9,7 @@ const repos = vi.hoisted(() => ({
   artist: { findByIds: vi.fn(), upsertMany: vi.fn(), findAll: vi.fn() },
 }));
 
-const uow = vi.hoisted(() => ({ runScoped: vi.fn() }));
+const uow = vi.hoisted(() => ({ run: vi.fn() }));
 const searchIndex = vi.hoisted(() => ({
   syncSearchIndex: vi.fn(async () => {}),
 }));
@@ -44,14 +44,15 @@ const dto: SourceTrackDTO = {
 describe("ensurePinned", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    uow.runScoped.mockImplementation(async (_tables: unknown, cb: () => Promise<unknown>) => ok(await cb()));
-    repos.track.findById.mockResolvedValue(ok(undefined));
-    repos.track.upsert.mockResolvedValue(ok("nd:song1"));
-    repos.album.findById.mockResolvedValue(ok(undefined));
-    repos.album.upsert.mockResolvedValue(ok("nd:album1"));
-    repos.artist.findByIds.mockResolvedValue(ok([]));
-    repos.artist.upsertMany.mockResolvedValue(ok(["nd:artist1"]));
-    repos.artist.findAll.mockResolvedValue(ok([]));
+    uow.run.mockImplementation(async (_tables: unknown, work: (scope: unknown) => Promise<unknown>) =>
+      work({ tracks: repos.track, albums: repos.album, artists: repos.artist }));
+    repos.track.findById.mockResolvedValue(undefined);
+    repos.track.upsert.mockResolvedValue("nd:song1");
+    repos.album.findById.mockResolvedValue(undefined);
+    repos.album.upsert.mockResolvedValue("nd:album1");
+    repos.artist.findByIds.mockResolvedValue([]);
+    repos.artist.upsertMany.mockResolvedValue(["nd:artist1"]);
+    repos.artist.findAll.mockResolvedValue([]);
   });
 
   it("returns library subjects untouched without touching the DB", async () => {
@@ -60,7 +61,7 @@ describe("ensurePinned", () => {
     const result = await ensurePinned({ kind: "library", track });
 
     expect(result).toBe(track);
-    expect(uow.runScoped).not.toHaveBeenCalled();
+    expect(uow.run).not.toHaveBeenCalled();
   });
 
   it("rejects ephemeral subjects", async () => {
@@ -73,7 +74,8 @@ describe("ensurePinned", () => {
   it("runs the whole cascade inside one unitOfWork transaction", async () => {
     const result = await ensurePinned({ kind: "remote", dto });
 
-    expect(uow.runScoped).toHaveBeenCalledTimes(1);
+    expect(uow.run).toHaveBeenCalledTimes(1);
+    expect(uow.run).toHaveBeenCalledWith(["tracks", "albums", "artists"], expect.any(Function));
     expect(repos.track.upsert).toHaveBeenCalledTimes(1);
     expect(repos.album.upsert).toHaveBeenCalledTimes(1);
     expect(repos.artist.upsertMany).toHaveBeenCalledTimes(1);
@@ -95,9 +97,9 @@ describe("ensurePinned", () => {
 
   it("attaches the track to a same-named local artist instead of a shadow row", async () => {
     const localId = "a1b2c3d4-0000-0000-0000-000000000001";
-    repos.artist.findAll.mockResolvedValue(ok([
+    repos.artist.findAll.mockResolvedValue([
       { id: localId, name: "ARTIST A", pinned: 1, addedAt: 1, updatedAt: 1 },
-    ]));
+    ]);
 
     await ensurePinned({ kind: "remote", dto });
 
@@ -107,7 +109,7 @@ describe("ensurePinned", () => {
   });
 
   it("creates one artist row per credited name, '&' included, when the source knows no ids", async () => {
-    repos.artist.upsertMany.mockResolvedValue(ok([]));
+    repos.artist.upsertMany.mockResolvedValue([]);
 
     await ensurePinned({
       kind: "remote",
@@ -129,17 +131,17 @@ describe("ensurePinned", () => {
   });
 
   it("looks the existing artists up by the track's own ids when the DTO carries none", async () => {
-    repos.track.findById.mockResolvedValue(ok({
+    repos.track.findById.mockResolvedValue({
       id: "nd:song1",
       title: "Remote Song",
       artistIds: [ndArtistId("artist1"), ndArtistId("artist2")],
       albumId: "",
       pinned: 1,
-    }));
-    repos.artist.findByIds.mockResolvedValue(ok([
+    });
+    repos.artist.findByIds.mockResolvedValue([
       { id: "nd:artist1", name: "Artist A", pinned: 1, addedAt: 1, updatedAt: 1 },
       { id: "nd:artist2", name: "Artist B", pinned: 1, addedAt: 1, updatedAt: 1 },
-    ]));
+    ]);
 
     await ensurePinned({ kind: "remote", dto: { id: ndTrackId("song1"), title: "Remote Song" } }, { pinned: 0 });
 
@@ -166,7 +168,7 @@ describe("ensurePinned", () => {
   });
 
   it("propagates a failed transaction", async () => {
-    uow.runScoped.mockResolvedValue(err(new Error("tx failed")));
+    uow.run.mockRejectedValue(new DbError("UNKNOWN", "tx failed"));
 
     await expect(ensurePinned({ kind: "remote", dto })).rejects.toThrow("tx failed");
   });

@@ -1,5 +1,4 @@
 ﻿import { createPinia, setActivePinia } from "pinia";
-import { ok } from "neverthrow";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
 import { trackRepository } from "@/db/repositories";
@@ -95,7 +94,7 @@ describe("useEphemeralImport", () => {
     playerStore.currentTrack = track;
 
     importFromPathsMock.mockResolvedValue(batchResult("lib-1"));
-    vi.mocked(trackRepository.findById).mockResolvedValue(ok(importedEntity("lib-1")));
+    vi.mocked(trackRepository.findById).mockResolvedValue(importedEntity("lib-1"));
 
     const { importCurrent } = useEphemeralImport(() => track);
     await importCurrent();
