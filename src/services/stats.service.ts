@@ -5,6 +5,7 @@ import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { createEventHook } from "@vueuse/core";
 import { getLogger } from "@/lib/logger";
 import { formatError } from "@/lib/errors";
+import { valueOrThrow } from "@/lib/errors/unwrap";
 
 const MIN_LISTEN_SECONDS = 10;
 const COMPLETE_THRESHOLD = 0.8;
@@ -144,22 +145,18 @@ class StatsService {
 
   /** Deletes the track's listens and returns an undo that writes them back. */
   async removeFromHistory(trackId: TrackId): Promise<() => Promise<void>> {
-    const events = await statsRepository.eventsForTrack(trackId);
-    if (events.isErr()) throw events.error;
-    const result = await statsRepository.deleteEventsForTrack(trackId);
-    if (result.isErr()) throw result.error;
+    const events = valueOrThrow(await statsRepository.eventsForTrack(trackId));
+    valueOrThrow(await statsRepository.deleteEventsForTrack(trackId));
     await this._notifyNow();
 
     return async () => {
-      const restored = await statsRepository.restoreEvents(events.value);
-      if (restored.isErr()) throw restored.error;
+      valueOrThrow(await statsRepository.restoreEvents(events));
       await this._notifyNow();
     };
   }
 
   async clearHistory(): Promise<void> {
-    const result = await statsRepository.deleteAllEvents();
-    if (result.isErr()) throw result.error;
+    valueOrThrow(await statsRepository.deleteAllEvents());
     await this._notifyNow();
   }
 }

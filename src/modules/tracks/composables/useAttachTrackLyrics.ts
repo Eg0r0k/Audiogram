@@ -8,6 +8,7 @@ import { hasNativeSupport } from "@/db/storage/IFileStorage";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { fileNameFromPath } from "@/lib/files/path";
 import { formatError } from "@/lib/errors";
+import { valueOrThrow } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import { useLyricsStore } from "@/modules/player/store/lyrics.store";
 import { usePlayerStore } from "@/modules/player/store/player.store";
@@ -78,24 +79,14 @@ async function saveLyricsFile(trackId: string, selected: SelectedLyricsFile): Pr
   const targetPath = `lyrics/${trackId}.lrc`;
 
   if (selected.path && hasNativeSupport(storageService)) {
-    const result = await storageService.importFile(selected.path, targetPath);
-    if (result.isErr()) {
-      throw result.error;
-    }
-
-    return result.value;
+    return valueOrThrow(await storageService.importFile(selected.path, targetPath));
   }
 
   if (!selected.file) {
     throw new Error("Lyrics file not selected");
   }
 
-  const result = await storageService.saveFile(targetPath, selected.file);
-  if (result.isErr()) {
-    throw result.error;
-  }
-
-  return result.value;
+  return valueOrThrow(await storageService.saveFile(targetPath, selected.file));
 }
 
 const pickedFileName = (selected: SelectedLyricsFile): string | null =>

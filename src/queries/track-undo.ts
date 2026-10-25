@@ -13,6 +13,7 @@ import { deleteOwnedFiles } from "@/services/track-files";
 import type { TrackId } from "@/types/ids";
 import { invalidateForTrackMutation, removeCoverCache, settleLibraryReads } from "./cache";
 import { unwrapResult } from "./shared";
+import { valueOrThrow } from "@/lib/errors/unwrap";
 import { unique } from "@/lib/math";
 import { trackCascadeTables } from "./track-cascade";
 import { deleteTracksAndSync } from "./track.queries";
@@ -95,7 +96,7 @@ export const deleteTracksWithUndo = async (
     if (settled) return;
     settled = true;
     const now = Date.now();
-    const tx = await unitOfWork.runScoped(trackCascadeTables(), async () => {
+    valueOrThrow(await unitOfWork.runScoped(trackCascadeTables(), async () => {
       if (goneArtists.length > 0) await unwrapResult(artistRepository.upsertMany(goneArtists));
       if (goneAlbums.length > 0) await unwrapResult(albumRepository.upsertMany(goneAlbums));
       await unwrapResult(trackRepository.upsertMany(tracks));
@@ -109,8 +110,7 @@ export const deleteTracksWithUndo = async (
         .filter(order => existing.has(order.id))
         .map(order => ({ key: order.id, changes: { trackIds: order.trackIds, updatedAt: now } }));
       if (updates.length > 0) await unwrapResult(playlistRepository.updateMany(updates));
-    });
-    if (tx.isErr()) throw tx.error;
+    }));
 
     await settleLibraryReads(queryClient);
     await syncSearchIndex({ tracks: trackIds });

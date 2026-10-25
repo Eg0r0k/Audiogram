@@ -2,7 +2,7 @@ import { db } from "@/db";
 import type { TrackEntity } from "@/db/entities";
 import { playlistRepository, trackRepository } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
-import { unwrapResult } from "@/lib/errors/unwrap";
+import { unwrapResult, valueOrThrow } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import { syncSearchIndex } from "@/services/search/searchIndex";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
@@ -65,10 +65,9 @@ export async function removeTrackFromLibrary(trackId: TrackId): Promise<void> {
       return track;
     },
   );
-  if (result.isErr()) throw result.error;
 
   // The row as it was: a deleted local artist is no longer on the track.
-  const track = result.value;
+  const track = valueOrThrow(result);
   syncSearchIndex({
     tracks: [trackId],
     albums: track?.albumId ? [track.albumId] : [],

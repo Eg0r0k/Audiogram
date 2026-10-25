@@ -34,6 +34,7 @@ import {
   removeCoverCache,
 } from "./cache";
 import { unwrapResult } from "./shared";
+import { valueOrThrow } from "@/lib/errors/unwrap";
 import { indexById, unique } from "@/lib/math";
 import {
   purgeTracksInTx,
@@ -45,6 +46,7 @@ import { getAlbumByIdOrThrow } from "./album.queries";
 import { getArtistByIdOrThrow } from "./artist.queries";
 import { dedupeArtistNames, identityKey } from "@/lib/artist-names";
 import { assertValidName } from "@/lib/limits";
+import type { Nullish } from "@/types/utils";
 
 const PAGE_SIZE = 50;
 
@@ -63,7 +65,7 @@ export interface TrackMetadataChanges {
 
 // undefined = leave unchanged (keep current), null = clear (store undefined), number = set.
 const resolveNullableNumber = (
-  next: number | null | undefined,
+  next: Nullish<number>,
   current: number | undefined,
 ): number | undefined => {
   if (next === undefined) return current;
@@ -426,15 +428,13 @@ export async function deleteTracksAndSync(
   const trackIds = tracks.map(track => track.id);
   const now = Date.now();
 
-  const txResult = await unitOfWork.runScoped(
+  const removals = valueOrThrow(await unitOfWork.runScoped(
     trackCascadeTables(),
     // The arrow must `await` inside its body: a bare passthrough settles the
     // outer promise outside the Dexie transaction zone and throws
     // PrematureCommitError. Do not "simplify" this back to a plain return.
     async () => await purgeTracksInTx(tracks, now),
-  );
-  if (txResult.isErr()) throw txResult.error;
-  const removals = txResult.value;
+  ));
 
   await settleLibraryReads(queryClient);
   await syncAfterTrackPurge(queryClient, trackIds, removals);

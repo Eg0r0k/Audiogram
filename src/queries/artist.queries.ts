@@ -26,6 +26,7 @@ import {
 } from "./cache";
 import { assertValidName } from "@/lib/limits";
 import { sortTracks, unwrapResult } from "./shared";
+import { valueOrThrow } from "@/lib/errors/unwrap";
 import { indexById, unique } from "@/lib/math";
 import {
   purgeTracksInTx,
@@ -292,13 +293,12 @@ export async function updateArtistAndSync(
 
   if (Object.keys(updateData).length > 0) {
     // Artist row and its tracks' denormalized names move together.
-    const txResult = await unitOfWork.runScoped([db.artists, db.tracks], async () => {
+    valueOrThrow(await unitOfWork.runScoped([db.artists, db.tracks], async () => {
       await unwrapResult(artistRepository.update(currentArtist.id, updateData));
       if (updateData.name) {
         await syncTrackArtistNames(currentArtist.id, nextArtist.name);
       }
-    });
-    if (txResult.isErr()) throw txResult.error;
+    }));
 
     await settleLibraryReads(queryClient);
     syncArtistCaches(queryClient, nextArtist);
@@ -372,7 +372,7 @@ export async function deleteArtistAndSync(
     };
   });
 
-  const txResult = await unitOfWork.runScoped(
+  const playlistRemovals = valueOrThrow(await unitOfWork.runScoped(
     trackCascadeTables(),
     async () => {
       // The purge GCs albums that lost their last track; the artist's own
@@ -395,15 +395,14 @@ export async function deleteArtistAndSync(
 
       return removals;
     },
-  );
-  if (txResult.isErr()) throw txResult.error;
+  ));
   if (cascadeTracks) await deleteOwnedFiles(affectedTracks);
 
   await settleLibraryReads(queryClient);
   await syncAfterTrackPurge(
     queryClient,
     cascadeTracks ? affectedTrackIds : [],
-    txResult.value,
+    playlistRemovals,
   );
 
   for (const album of albums) {
@@ -421,6 +420,6 @@ export async function deleteArtistAndSync(
 
   invalidateForArtistMutation(queryClient, {
     kind: "removal",
-    playlistIds: txResult.value.map(({ next }) => next.id),
+    playlistIds: playlistRemovals.map(({ next }) => next.id),
   });
 }

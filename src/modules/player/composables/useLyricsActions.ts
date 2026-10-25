@@ -5,6 +5,7 @@ import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { storageService } from "@/db/storage";
 import { formatError } from "@/lib/errors";
+import { valueOrThrow } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useAttachTrackLyrics } from "@/modules/tracks/composables/useAttachTrackLyrics";
@@ -58,11 +59,10 @@ export const useLyricsActions = () => {
   const saveText = (track: Track, text: string, { resetOffset = false }: { resetOffset?: boolean } = {}): Promise<Track> =>
     run(async () => {
       try {
-        const saved = await storageService.saveFile(`lyrics/${track.id}.lrc`, new Blob([text], { type: "text/plain" }));
-        if (saved.isErr()) throw saved.error;
+        const lyricsPath = valueOrThrow(await storageService.saveFile(`lyrics/${track.id}.lrc`, new Blob([text], { type: "text/plain" })));
 
         const next = await attachTrackLyricsAndSync(queryClient, track, {
-          lyricsPath: saved.value,
+          lyricsPath,
           lyricsFileName: null,
           lyricsOffsetMs: resetOffset ? 0 : undefined,
         });

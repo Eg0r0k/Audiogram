@@ -7,7 +7,7 @@ import { unitOfWork } from "@/db/unit-of-work";
 import type { ArtistId } from "@/types/ids";
 import { AlbumId } from "@/types/ids";
 import { fitWithin } from "@/lib/media/fit-within";
-import { unwrapResult } from "@/lib/errors/unwrap";
+import { unwrapResult, valueOrThrow } from "@/lib/errors/unwrap";
 import { unique } from "@/lib/math";
 import type { EntityResolver } from "../entity-resolver";
 import type { ImportSuccess, TrackToSave } from "../types";
@@ -182,7 +182,7 @@ export async function persistTracks(
   const referencedArtistIds = unique(items.flatMap(artistIdsOf));
   const referencedAlbumIds = unique(tracksToCreate.map(track => track.albumId).filter(Boolean));
 
-  const uowResult = await unitOfWork.runScoped(
+  valueOrThrow(await unitOfWork.runScoped(
     [db.tracks, db.artists, db.albums, db.covers],
     async () => {
       if (artistsToCreate.size > 0) {
@@ -213,9 +213,7 @@ export async function persistTracks(
       if (referencedAlbumIds.length > 0) {
         await db.albums.where("id").anyOf(referencedAlbumIds).and(album => album.pinned === 0).modify({ pinned: 1 });
       }
-    });
-
-  if (uowResult.isErr()) throw uowResult.error;
+    }));
 
   return results;
 }

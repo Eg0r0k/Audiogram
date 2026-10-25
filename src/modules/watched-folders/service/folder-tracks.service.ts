@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { unitOfWork } from "@/db/unit-of-work";
 import type { TrackEntity } from "@/db/entities";
+import { valueOrThrow } from "@/lib/errors/unwrap";
 import { cleanupAfterTrackRemoval } from "@/services/library-gc";
 
 /**
@@ -40,14 +41,13 @@ export const countFolderTracks = async (
 export const deleteFolderTracks = async (tracks: TrackEntity[]): Promise<void> => {
   if (tracks.length === 0) return;
 
-  const txResult = await unitOfWork.runScoped(
+  valueOrThrow(await unitOfWork.runScoped(
     [db.tracks, db.albums, db.artists, db.covers],
     async () => {
       await db.tracks.bulkDelete(tracks.map(track => track.id));
       await cleanupAfterTrackRemoval(tracks);
     },
-  );
-  if (txResult.isErr()) throw txResult.error;
+  ));
 };
 
 /** Rebases every row of a moved folder onto its new location. */

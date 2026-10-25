@@ -25,6 +25,7 @@ import {
 } from "./cache";
 import { assertValidName } from "@/lib/limits";
 import { sortTracks, unwrapResult } from "./shared";
+import { valueOrThrow } from "@/lib/errors/unwrap";
 import { unique } from "@/lib/math";
 import {
   purgeTracksInTx,
@@ -256,11 +257,10 @@ export async function updateAlbumAndSync(
     };
 
     // The album row and its tracks' denormalized title change together.
-    const txResult = await unitOfWork.runScoped([db.albums, db.tracks], async () => {
+    valueOrThrow(await unitOfWork.runScoped([db.albums, db.tracks], async () => {
       await unwrapResult(albumRepository.update(currentAlbum.id, { title }));
       await unwrapResult(trackRepository.setAlbumTitleByAlbumId(currentAlbum.id, title));
-    });
-    if (txResult.isErr()) throw txResult.error;
+    }));
 
     updatedTrackIds = await unwrapResult(trackRepository.findIdsByAlbumId(currentAlbum.id));
 
@@ -302,7 +302,7 @@ export async function deleteAlbumAndSync(
   const trackIds = rawTracks.map(track => track.id);
   const now = Date.now();
 
-  const txResult = await unitOfWork.runScoped(
+  const playlistRemovals = valueOrThrow(await unitOfWork.runScoped(
     trackCascadeTables(),
     async () => {
       // An empty shadow album (0 tracks) is deleted explicitly below.
@@ -323,15 +323,14 @@ export async function deleteAlbumAndSync(
 
       return removals;
     },
-  );
-  if (txResult.isErr()) throw txResult.error;
+  ));
   if (cascadeTracks) await deleteOwnedFiles(rawTracks);
 
   await settleLibraryReads(queryClient);
   await syncAfterTrackPurge(
     queryClient,
     cascadeTracks ? trackIds : [],
-    txResult.value,
+    playlistRemovals,
   );
   await syncSearchIndex({ albums: [albumEntity.id], tracks: cascadeTracks ? [] : trackIds });
 
@@ -342,6 +341,6 @@ export async function deleteAlbumAndSync(
   invalidateForAlbumMutation(queryClient, {
     kind: "removal",
     artistId: albumEntity.artistId,
-    playlistIds: txResult.value.map(({ next }) => next.id),
+    playlistIds: playlistRemovals.map(({ next }) => next.id),
   });
 }

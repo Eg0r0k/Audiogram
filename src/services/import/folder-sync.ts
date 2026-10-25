@@ -13,7 +13,7 @@ import {
 import { trackRepository } from "@/db/repositories";
 import { TrackSource } from "@/db/entities";
 import { TrackId } from "@/types/ids";
-import { unwrapResult } from "@/lib/errors/unwrap";
+import { unwrapResult, valueOrThrow } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import type { ScannedFile, SyncResult, WatchedFolder } from "@/types/watched-folders";
 import { computeFileFingerprint } from "./file-fingerprint";
@@ -74,15 +74,14 @@ export class FolderSyncService {
     }
 
     if (removedTracks.length > 0) {
-      const txResult = await unitOfWork.runScoped(
+      valueOrThrow(await unitOfWork.runScoped(
         [db.tracks, db.albums, db.artists, db.covers],
         async () => {
           await unwrapResult(trackRepository.deleteMany(removedTracks.map(t => t.id)));
           // Cascade: albums/artists that lost their last reference die with them.
           await cleanupAfterTrackRemoval(removedTracks);
         },
-      );
-      if (txResult.isErr()) throw txResult.error;
+      ));
       result.removed = removedTracks.length;
       advance(removedTracks.length);
     }
@@ -126,14 +125,13 @@ export class FolderSyncService {
   async removeSingleFile(absolutePath: string): Promise<boolean> {
     const track = await unwrapResult(trackRepository.findByStoragePath(absolutePath));
     if (!track) return false;
-    const txResult = await unitOfWork.runScoped(
+    valueOrThrow(await unitOfWork.runScoped(
       [db.tracks, db.albums, db.artists, db.covers],
       async () => {
         await unwrapResult(trackRepository.delete(track.id));
         await cleanupAfterTrackRemoval([track]);
       },
-    );
-    if (txResult.isErr()) throw txResult.error;
+    ));
     return true;
   }
 

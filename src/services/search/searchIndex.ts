@@ -16,6 +16,7 @@ import { countTrackDocuments, trackProjectionMismatch } from "./projectionCheck"
 import { matchesByEntity } from "./searchMatches";
 import { mapTracks, type Track } from "@/types/track";
 import { indexById, unique } from "@/lib/math";
+import { valueOrThrow } from "@/lib/errors/unwrap";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 
 let engine: SearchEngine | null = null;
@@ -79,9 +80,7 @@ export async function searchDocuments(
 async function hydrateTracksByIds(ids: TrackId[]): Promise<Track[]> {
   if (ids.length === 0) return [];
 
-  const entitiesResult = await trackRepository.findByIds(ids);
-  if (entitiesResult.isErr()) throw entitiesResult.error;
-  const entities = entitiesResult.value;
+  const entities = valueOrThrow(await trackRepository.findByIds(ids));
 
   const artistIds = unique(entities.flatMap(entity => entity.artistIds));
   const albumIds = unique(entities.map(entity => entity.albumId));
@@ -90,10 +89,8 @@ async function hydrateTracksByIds(ids: TrackId[]): Promise<Track[]> {
     artistRepository.findByIds(artistIds),
     albumRepository.findByIds(albumIds),
   ]);
-  if (artistsResult.isErr()) throw artistsResult.error;
-  if (albumsResult.isErr()) throw albumsResult.error;
 
-  return mapTracks(entities, artistsResult.value, albumsResult.value);
+  return mapTracks(entities, valueOrThrow(artistsResult), valueOrThrow(albumsResult));
 }
 
 export async function searchTracks(
@@ -129,9 +126,7 @@ const readRows = async <TEntity, TId>(
   ids: TId[],
 ): Promise<TEntity[]> => {
   if (ids.length === 0) return [];
-  const result = await repository.findByIds(ids);
-  if (result.isErr()) throw result.error;
-  return result.value;
+  return valueOrThrow(await repository.findByIds(ids));
 };
 
 /**
