@@ -1,5 +1,5 @@
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
-import type { DiscordActivityPayload } from "../utils/discordPresence";
+import type { DiscordActivityPayload } from "../lib/discordPresence";
 
 export const setDiscordActivity = (payload: DiscordActivityPayload): Promise<void> =>
   invokeCommand(COMMANDS.discordSetActivity, { payload });

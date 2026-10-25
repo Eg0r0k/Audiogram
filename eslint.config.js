@@ -130,7 +130,6 @@ export default withVueTs(
       "src/queries/**",
       "src/services/**",
       "src/modules/*/service/**",
-      "src/modules/*/services/**",
     ],
     rules: {
       "@typescript-eslint/no-restricted-imports": ["error", {

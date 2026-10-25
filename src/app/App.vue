@@ -63,7 +63,7 @@ import { useChangelogOnStartup } from "@/modules/update/composables/useChangelog
 import WhatsNewDialog from "@/modules/update/components/WhatsNewDialog.vue";
 import { useTrayBehavior } from "@/modules/settings/composables/useTrayBehavior";
 import { useProxySync } from "@/modules/settings/composables/useProxySync";
-import { useNdSourceSync } from "@/modules/settings/composables/useNdSourceSync";
+import { useNdSourceSync } from "@/modules/sources/navidrome/composables/useNdSourceSync";
 import { useYmSourceSync } from "@/modules/sources/yandex/composables/useYmSourceSync";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { ephemeralFromPath } from "@/types/track";
@@ -75,7 +75,7 @@ import { useCssVar, useEventListener } from "@vueuse/core";
 import NetworkStatusToast from "@/components/NetworkStatusToast.vue";
 import { useAnalysisQueueLifecycle } from "@/modules/recommendations/composables/useAnalysisQueueLifecycle";
 import { getLogger } from "@/lib/logger";
-import { applyStartupWindow } from "@/modules/settings/services/startup-window";
+import { applyStartupWindow } from "@/modules/settings/service/startup-window";
 import { formatError } from "@/lib/errors";
 
 const log = getLogger();

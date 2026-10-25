@@ -7,7 +7,7 @@ import { SUPPORTED_LANGUAGES } from "../schema";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { TAURI_ONLY_KEYS } from "../schema/general";
 import { DEFAULT_LOCALE, isSupportedLocale, setHtmlLangAttribute } from "@/app/i18n/utils";
-import { autostartService } from "../services/autostart";
+import { autostartService } from "../service/autostart";
 import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 

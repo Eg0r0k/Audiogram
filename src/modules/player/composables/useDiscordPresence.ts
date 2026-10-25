@@ -6,7 +6,7 @@ import { clearDiscordActivity, setDiscordActivity } from "../api/discordApi";
 import {
   createDiscordActivityPayload,
   getDiscordPositionBucket,
-} from "../utils/discordPresence";
+} from "../lib/discordPresence";
 
 const DISCORD_CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID?.trim() ?? "";
 const RETRY_DELAY_MS = 30_000;

@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const applyProxy = vi.hoisted(() => vi.fn());
-vi.mock("../../services/proxy", () => ({ applyProxy }));
+vi.mock("../../service/proxy", () => ({ applyProxy }));
 
 const checkAvailableSources = vi.hoisted(() => vi.fn(() => Promise.resolve([])));
 vi.mock("@/modules/sources/composables/useSourceHealth", () => ({ checkAvailableSources }));

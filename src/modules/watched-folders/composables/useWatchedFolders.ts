@@ -6,13 +6,13 @@ import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 
 import { useWatchedFoldersStore } from "../store/watched-folders.store";
-import { startWatching, type StopWatchFn } from "../services/folder-watcher";
+import { startWatching, type StopWatchFn } from "../service/folder-watcher";
 import {
   countFolderTracks,
   deleteFolderTracks,
   getFolderTracks,
   relinkFolderTracks,
-} from "../services/folder-tracks.service";
+} from "../service/folder-tracks.service";
 import type { WatchedFolder } from "../types";
 import { musicLibraryEngine } from "@/services/importer.service";
 import { getLogger } from "@/lib/logger";

@@ -1,6 +1,6 @@
 import { YTNodes, type APIResponseTypes, type Innertube, type Types, type YTMusic } from "youtubei.js";
 import { getLogger } from "@/lib/logger";
-import { currentProxyUrl } from "@/modules/settings/services/proxy";
+import { currentProxyUrl } from "@/modules/settings/service/proxy";
 import type {
   YtAlbumDetail,
   YtArtistDetail,

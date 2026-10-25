@@ -20,7 +20,7 @@ import { adaptiveExploreShare, exploreStats } from "../lib/explore-policy";
 import { DEFAULT_EXPLORE_SHARE } from "../lib/slate";
 import { RECENT_EXCLUDE } from "../service/recommender.service";
 import { pickFeedBatch, splitFeed, type FeedEntry, type FeedSplit } from "../service/stand-feed";
-import { loadFeedback, pairKey, saveFeedback, writeSnapshot, type FeedbackEntry, type FeedbackLabel } from "../service/stand-feedback.store";
+import { loadFeedback, pairKey, saveFeedback, writeSnapshot, type FeedbackEntry, type FeedbackLabel } from "../service/standFeedbackStorage";
 import { hitRate, pairAgreement, reach, sampleTransitions, type AgreementCase, type TransitionCase } from "../service/stand-metrics";
 import { createTuner } from "../service/stand-tuner";
 import { formatError } from "@/lib/errors";

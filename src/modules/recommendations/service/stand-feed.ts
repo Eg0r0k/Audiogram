@@ -12,7 +12,7 @@ import {
 } from "../lib/scoring";
 import { buildSlate, exploreEligibility, type SlateCandidate } from "../lib/slate";
 import type { RecommenderContext } from "./recommender-context.service";
-import { pairKey, type FeedbackEntry, type FeedbackLabel } from "./stand-feedback.store";
+import { pairKey, type FeedbackEntry, type FeedbackLabel } from "./standFeedbackStorage";
 
 export interface FeedEntry {
   track: TrackEntity;

@@ -19,7 +19,7 @@ const caps = { hasFs: true };
 vi.mock("@/lib/environment/platformCaps", () => ({ platformCaps: caps }));
 
 const fs = await import("@tauri-apps/plugin-fs");
-const { loadFeedback, saveFeedback, pairKey, FEEDBACK_FILE } = await import("@/modules/recommendations/service/stand-feedback.store");
+const { loadFeedback, saveFeedback, pairKey, FEEDBACK_FILE } = await import("@/modules/recommendations/service/standFeedbackStorage");
 
 const mockRead = fs.readTextFile as ReturnType<typeof vi.fn>;
 const mockWrite = fs.writeTextFile as ReturnType<typeof vi.fn>;

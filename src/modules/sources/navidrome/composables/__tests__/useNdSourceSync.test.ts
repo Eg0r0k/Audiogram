@@ -3,13 +3,13 @@ import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const applyNdConfig = vi.hoisted(() => vi.fn());
-vi.mock("../../services/nd", () => ({ applyNdConfig }));
+vi.mock("../../api/ndConfig", () => ({ applyNdConfig }));
 
 const checkSource = vi.hoisted(() => vi.fn(() => Promise.resolve({ state: "ok" })));
 vi.mock("@/modules/sources/composables/useSourceHealth", () => ({ checkSource }));
 
 import { queryClient } from "@/queries/client";
-import { useSettingsStore } from "../../store";
+import { useSettingsStore } from "@/modules/settings/store";
 import { useNdSourceSync } from "../useNdSourceSync";
 
 const ND = {

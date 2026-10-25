@@ -73,7 +73,7 @@ import { toaster } from "@/app/toaster";
 import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import type { ComponentKey } from "@/modules/recommendations/lib/scoring";
-import type { FeedbackLabel } from "@/modules/recommendations/service/stand-feedback.store";
+import type { FeedbackLabel } from "@/modules/recommendations/service/standFeedbackStorage";
 import type { TrackId } from "@/types/ids";
 import { useRecoStand, type StandParams } from "@/modules/recommendations/composables/useRecoStand";
 import StandSourcePicker from "@/modules/recommendations/components/stand/StandSourcePicker.vue";

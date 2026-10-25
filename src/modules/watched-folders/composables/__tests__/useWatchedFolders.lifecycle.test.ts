@@ -23,7 +23,7 @@ vi.mock("@/services/importer.service", () => ({ musicLibraryEngine: {} }));
 vi.mock("@/services/library-gc", () => ({ cleanupAfterTrackRemoval: vi.fn() }));
 vi.mock("@/db", () => ({ db: {} }));
 vi.mock("@/db/unit-of-work", () => ({ unitOfWork: {} }));
-vi.mock("@/modules/watched-folders/services/folder-watcher", () => ({
+vi.mock("@/modules/watched-folders/service/folder-watcher", () => ({
   startWatching: vi.fn(async () => stopWatcher),
 }));
 vi.mock("@/modules/watched-folders/store/watched-folders.store", () => ({

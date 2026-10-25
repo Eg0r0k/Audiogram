@@ -30,9 +30,9 @@ vi.mock("@tanstack/vue-query", () => ({ useQueryClient: () => ({}) }));
 vi.mock("@/queries/library.queries", () => ({ invalidateLibraryData: vi.fn(async () => {}) }));
 vi.mock("@/services/importer.service", () => ({ musicLibraryEngine: engineMock }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn() }) }));
-vi.mock("../../services/folder-tracks.service", () => folderTracks);
+vi.mock("../../service/folder-tracks.service", () => folderTracks);
 const watcherMock = vi.hoisted(() => ({ startWatching: vi.fn(async () => () => {}) }));
-vi.mock("../../services/folder-watcher", () => watcherMock);
+vi.mock("../../service/folder-watcher", () => watcherMock);
 vi.mock("../../store/watched-folders.store", () => ({ useWatchedFoldersStore: () => storeMock }));
 vi.mock("pinia", () => ({
   storeToRefs: () => ({ folders: ref([]), autoScanOnStartup: ref(false) }),

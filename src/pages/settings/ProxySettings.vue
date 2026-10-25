@@ -188,7 +188,7 @@ import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
 import { isValidProxyHost } from "@/modules/settings/schema/proxy";
 import { useProxySettings } from "@/modules/settings/store/proxy";
-import { checkProxyConnection } from "@/modules/settings/services/proxy";
+import { checkProxyConnection } from "@/modules/settings/service/proxy";
 import type { ProxyProtocol } from "@/modules/settings/schema";
 import ItemDescription from "@/components/ui/item/ItemDescription.vue";
 

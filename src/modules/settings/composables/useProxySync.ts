@@ -1,7 +1,7 @@
 import { watch } from "vue";
 import { watchDebounced } from "@vueuse/core";
 import { useProxySettings } from "../store/proxy";
-import { applyProxy } from "../services/proxy";
+import { applyProxy } from "../service/proxy";
 import { getLogger } from "@/lib/logger";
 import { queryClient } from "@/queries/client";
 import { invalidateRemoteSources } from "@/queries/source.queries";

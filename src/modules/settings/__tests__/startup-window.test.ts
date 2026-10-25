@@ -9,7 +9,7 @@ vi.mock("@/app/tauri-commands", () => ({
 const windowApi = { show: vi.fn(), setFocus: vi.fn(), minimize: vi.fn() };
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => windowApi }));
 
-const { applyStartupWindow, decideStartupWindow } = await import("../services/startup-window");
+const { applyStartupWindow, decideStartupWindow } = await import("../service/startup-window");
 
 describe("decideStartupWindow", () => {
   it.each([

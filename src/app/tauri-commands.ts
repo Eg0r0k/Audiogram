@@ -9,7 +9,7 @@ import type {
   YtDownloadResult,
   YtTrackMeta,
 } from "@/modules/youtube/types";
-import type { DiscordActivityPayload } from "@/modules/player/utils/discordPresence";
+import type { DiscordActivityPayload } from "@/modules/player/lib/discordPresence";
 import type { ThumbbarAction, ThumbbarState } from "@/modules/player/api/thumbbarApi";
 import type {
   YmAuthEvent,

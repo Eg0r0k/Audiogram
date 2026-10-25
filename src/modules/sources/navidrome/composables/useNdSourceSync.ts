@@ -1,7 +1,7 @@
 import { watch } from "vue";
 import { watchDebounced } from "@vueuse/core";
-import { useNdSourceSettings } from "../store/sources";
-import { applyNdConfig } from "../services/nd";
+import { useNdSourceSettings } from "@/modules/settings/store/sources";
+import { applyNdConfig } from "../api/ndConfig";
 import { getLogger } from "@/lib/logger";
 import { queryClient } from "@/queries/client";
 import { invalidateSource } from "@/queries/source.queries";

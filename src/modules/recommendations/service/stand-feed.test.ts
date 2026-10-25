@@ -5,7 +5,7 @@ import type { ArtistId, QueueItemId, TrackId } from "@/types/ids";
 import { DEFAULT_MMR_OPTIONS } from "../lib/rank";
 import { DEFAULT_WEIGHTS, type Breakdown } from "../lib/scoring";
 import { buildTransitions } from "../lib/transitions";
-import { pairKey, type FeedbackEntry } from "./stand-feedback.store";
+import { pairKey, type FeedbackEntry } from "./standFeedbackStorage";
 import { pickFeedBatch, splitFeed, type FeedBatchOptions, type FeedContext, type FeedEntry } from "./stand-feed";
 
 const tid = (s: string) => s as TrackId;
