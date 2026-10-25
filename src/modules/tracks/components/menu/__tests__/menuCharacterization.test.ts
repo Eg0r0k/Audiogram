@@ -30,6 +30,7 @@ import {
   type SourceKind,
 } from "@/types/track-ref";
 import { useTrackMenuContent } from "../composables/useTrackMenuContent";
+import TrackMenuEntries from "../TrackMenuEntries.vue";
 import TrackMenuSheetHeader from "../TrackMenuSheetHeader.vue";
 import type { TrackContext, TrackMenuSubject } from "../type";
 import { provideTrackMenuComponents } from "../useTrackMenuComponents";
@@ -349,18 +350,18 @@ const Host = defineComponent({
     const { mode } = props.input;
     provideResponsiveMenu(menuContext(mode));
     provideTrackMenuComponents(fakeParts);
-    const { activeTrack, contextComponent, contextProps, actions, caps } = useTrackMenuContent({
+    const { input, actions } = useTrackMenuContent({
       context: () => props.input.context,
       playlistId: () => PlaylistId("pl-1"),
       isPlaylistOwner: () => props.input.isPlaylistOwner ?? false,
     });
     return () => {
-      const track = activeTrack.value;
+      const facts = input.value;
       return [
-        h("div", { "data-testid": "sheet-header" }, track && mode === "sheet"
-          ? [h(TrackMenuSheetHeader, { track, actions, caps: caps.value })]
+        h("div", { "data-testid": "sheet-header" }, facts && mode === "sheet"
+          ? [h(TrackMenuSheetHeader, { input: facts, actions })]
           : []),
-        h("div", { "data-testid": "menu-entries" }, track ? [h(contextComponent.value, contextProps.value)] : []),
+        h("div", { "data-testid": "menu-entries" }, facts ? [h(TrackMenuEntries, { input: facts, actions })] : []),
       ];
     };
   },
@@ -478,7 +479,7 @@ const scenarios: Scenario[] = [
     fixture: localTrackWithLyrics,
     expected: {
       header: [
-        { label: "Add to favorites", disabled: false, pressed: true },
+        { label: "Remove from favorites", disabled: false, pressed: true },
         { label: SAVE_AS, disabled: false },
         { label: "Replace lyrics", disabled: false },
       ],
@@ -831,13 +832,13 @@ const scenarios: Scenario[] = [
     },
   },
   {
-    name: "queue popper: an opened file gets only the queue items, no import",
+    name: "queue popper: an opened file gets the queue items and the import",
     context: "queue",
     mode: "popper",
     fixture: openWithFile,
     expected: {
       header: [],
-      entries: ["Play next", "Add to queue", "|", "Remove from queue [destructive]"],
+      entries: ["Play next", "Add to queue", "|", "Remove from queue [destructive]", "|", "Import to library"],
     },
   },
   {
@@ -871,13 +872,13 @@ const scenarios: Scenario[] = [
     },
   },
   {
-    name: "current-track popper: a stream with a catalog id gets queue items and the download",
+    name: "current-track popper: a stream with a catalog id gets the download and no queue items",
     context: "current-track",
     mode: "popper",
     fixture: streamWithCatalogId,
     expected: {
       header: [],
-      entries: ["Show lyrics", "|", "Play next", "Add to queue", "Download"],
+      entries: ["Show lyrics", "|", "Download"],
     },
   },
   {
@@ -887,7 +888,7 @@ const scenarios: Scenario[] = [
     fixture: streamQueuedForDownload,
     expected: {
       header: [],
-      entries: ["Show lyrics", "|", "Play next", "Add to queue", "Cancel download"],
+      entries: ["Show lyrics", "|", "Cancel download"],
     },
   },
   {
@@ -897,7 +898,7 @@ const scenarios: Scenario[] = [
     fixture: openWithFile,
     expected: {
       header: [],
-      entries: ["Show lyrics", "|", "Play next", "Add to queue", "Import to library"],
+      entries: ["Show lyrics", "|", "Import to library"],
     },
   },
   {
@@ -933,12 +934,12 @@ describe("track menu as the user sees it", () => {
     },
   );
 
-  it("ends the queue menu on a bare separator for a stream whose source cannot download", async () => {
+  it("does not end the queue menu on a bare separator for a stream whose source cannot download", async () => {
     const { read } = await renderMenu({ context: "queue", mode: "popper", fixture: streamFromSourceWithoutDownload });
 
     expect(read()).toStrictEqual({
       header: [],
-      entries: ["Play next", "Add to queue", "|", "Remove from queue [destructive]", "|"],
+      entries: ["Play next", "Add to queue", "|", "Remove from queue [destructive]"],
     });
   });
 });

@@ -8,16 +8,15 @@
     <ResponsiveMenuContent class="w-65">
       <template #header>
         <TrackMenuSheetHeader
-          v-if="activeTrack"
-          :track="activeTrack"
+          v-if="input"
+          :input="input"
           :actions="actions"
-          :caps="caps"
         />
       </template>
-      <component
-        :is="contextComponent"
-        v-if="activeTrack"
-        v-bind="contextProps"
+      <TrackMenuEntries
+        v-if="input"
+        :input="input"
+        :actions="actions"
       />
     </ResponsiveMenuContent>
   </ResponsiveContextMenu>
@@ -37,6 +36,7 @@ import { useTrackMenuAutoClose } from "../composables/useTrackMenuAutoClose";
 import { useTrackMenuContent } from "../composables/useTrackMenuContent";
 import { provideTrackContextMenu, type TrackContextMenuHandle } from "./useTrackContextMenu";
 import TrackMenuSheetHeader from "../TrackMenuSheetHeader.vue";
+import TrackMenuEntries from "../TrackMenuEntries.vue";
 
 provideTrackMenuComponents(responsiveTrackComponents);
 
@@ -74,7 +74,7 @@ useTrackMenuAutoClose(localOpen, {
   playlistId: () => props.playlistId,
 });
 
-const { activeTrack, contextComponent, contextProps, actions, caps } = useTrackMenuContent({
+const { input, actions } = useTrackMenuContent({
   context: () => props.context,
   playlistId: () => props.playlistId,
   isPlaylistOwner: () => props.isPlaylistOwner,

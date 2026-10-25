@@ -1,11 +1,12 @@
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
+import { useDownloadsStore } from "@/modules/downloads/store/downloads.store";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import { useTrackContextActions } from "@/modules/tracks/composables/useTrackContextActions";
+import { useEphemeralImport } from "@/modules/tracks/composables/useEphemeralImport";
 import { useTrackMenuCaps } from "@/modules/tracks/composables/useTrackMenuCaps";
-import { useQueueStore } from "@/modules/queue/store/queue.store";
+import type { TrackMenuFacts } from "@/modules/tracks/lib/trackMenu";
 import type { PlaylistId } from "@/types/ids";
-import { trackContextComponents } from "../contexts";
-import type { TrackContext } from "../type";
+import type { TrackContext, TrackMenuActions } from "../type";
 
 export interface TrackMenuContentOptions {
   context: MaybeRefOrGetter<TrackContext>;
@@ -16,52 +17,44 @@ export interface TrackMenuContentOptions {
 
 /**
  * The part of a track menu shell that does not depend on how it is shown:
- * which context component renders for the active subject and the props it
- * receives. Context menu, dropdown and the mobile sheet all share it.
+ * what the menu model needs to know about the active subject and the
+ * actions its entries run. Context menu, dropdown and the mobile sheet all
+ * share it.
  */
 export const useTrackMenuContent = (options: TrackMenuContentOptions) => {
   const { activeSubject, activeTrack, activeIndex, activeQueueItemId } = useTrackMenu();
-  const queueStore = useQueueStore();
+  const downloadsStore = useDownloadsStore();
+  const { importCurrent } = useEphemeralImport(activeTrack);
 
-  const contextComponent = computed(() => trackContextComponents[toValue(options.context)]);
+  const actions: TrackMenuActions = {
+    ...useTrackContextActions(activeTrack, {
+      playlistId: () => toValue(options.playlistId),
+      queueIndex: activeIndex,
+      queueItemId: activeQueueItemId,
+      subject: activeSubject,
+      onNavigate: options.onNavigate,
+      // The sheet stays open after its header buttons, so the shown state follows.
+      onTrackChange: (next) => {
+        if (activeTrack.value?.id === next.id) activeTrack.value = next;
+      },
+    }),
+    importToLibrary: importCurrent,
+  };
 
-  const actions = useTrackContextActions(activeTrack, {
-    playlistId: () => toValue(options.playlistId),
-    queueIndex: activeIndex,
-    queueItemId: activeQueueItemId,
-    subject: activeSubject,
-    onNavigate: options.onNavigate,
-    // The sheet stays open after its header buttons, so the shown state follows.
-    onTrackChange: (next) => {
-      if (activeTrack.value?.id === next.id) activeTrack.value = next;
-    },
-  });
-
-  // Computed once per active subject; contexts receive ready-made booleans.
   const caps = useTrackMenuCaps(activeSubject);
 
-  const contextProps = computed(() => {
-    if (!activeTrack.value) return {};
-
-    const base = { track: activeTrack.value, actions, caps: caps.value };
-
-    switch (toValue(options.context)) {
-      case "playlist":
-        return {
-          ...base,
-          playlistId: toValue(options.playlistId),
-          isOwner: toValue(options.isPlaylistOwner) ?? false,
-        };
-      case "queue":
-        return {
-          ...base,
-          queueIndex: activeIndex.value ?? -1,
-          queueLength: queueStore.size,
-        };
-      default:
-        return base;
-    }
+  const input = computed<TrackMenuFacts | null>(() => {
+    const track = activeTrack.value;
+    if (!track) return null;
+    const { trackId } = caps.value;
+    return {
+      context: toValue(options.context),
+      track,
+      caps: caps.value,
+      job: trackId ? downloadsStore.byTrackId[trackId] ?? null : null,
+      isPlaylistOwner: toValue(options.isPlaylistOwner) ?? false,
+    };
   });
 
-  return { activeTrack, contextComponent, contextProps, actions, caps };
+  return { input, actions };
 };

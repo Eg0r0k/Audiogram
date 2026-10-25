@@ -7,7 +7,9 @@ import type { SourceTrackDTO } from "@/modules/sources";
 // "yt-search" is its own target even though both serve catalog rows through
 // the default context. Likewise "search-top" is the best-result row above the
 // "search" track section.
-export type TrackContext = "default" | "current-track" | "queue" | "playlist" | "album" | "search" | "search-top" | "history" | "liked" | "artist" | "yt-search";
+export const TRACK_CONTEXTS = ["default", "current-track", "queue", "playlist", "album", "search", "search-top", "history", "liked", "artist", "yt-search"] as const;
+
+export type TrackContext = (typeof TRACK_CONTEXTS)[number];
 
 //
 // What the menu is open FOR. Menus serve not only library tracks but also
@@ -70,3 +72,7 @@ export interface ContextActions {
   /** Opens the track's page at its source (yt/nd) via plugin-opener. */
   openExternal: () => void;
 }
+
+export type TrackMenuActions = ContextActions & {
+  importToLibrary: () => Promise<void>;
+};

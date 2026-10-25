@@ -10,8 +10,8 @@ import type { TrackMenuSubject } from "../components/menu/type";
 //
 // "WHAT can be done with this subject" — the second axis of the menu system.
 // Contexts answer "WHERE the menu is open"; capabilities answer everything
-// source/pinned/offline-dependent, so item components never inspect the
-// source themselves.
+// source/pinned/offline-dependent, so the menu model never inspects the
+// source itself.
 //
 export interface TrackMenuCaps {
   kind: TrackMenuSubject["kind"];
@@ -34,9 +34,6 @@ export interface TrackMenuCaps {
   canDownload: boolean;
   canOpenExternal: boolean;
 }
-
-/** The details panel reads the Dexie row; caps-less call sites are library-only and always have one. */
-export const canShowDetails = (caps?: TrackMenuCaps | null): boolean => caps?.isPinned ?? true;
 
 function subjectTrackId(subject: TrackMenuSubject | null): TrackId | null {
   if (!subject) return null;
@@ -61,8 +58,8 @@ function sourceCanDownload(kind: SourceKind): boolean {
  * `localCopyQueries.byRemoteId(trackId)` query (cache-synced by the download
  * manager, which imports the download as a local track).
  *
- * Shells compute this once per active subject and pass it down next to
- * `actions` — item components receive ready-made booleans.
+ * Shells compute this once per active subject and hand it to the menu
+ * model as ready-made booleans.
  */
 export function useTrackMenuCaps(subject: Ref<TrackMenuSubject | null>): Ref<TrackMenuCaps> {
   const trackId = computed(() => subjectTrackId(subject.value));
