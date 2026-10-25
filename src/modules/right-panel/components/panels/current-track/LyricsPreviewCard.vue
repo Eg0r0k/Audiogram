@@ -90,6 +90,7 @@ import { computed } from "vue";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { tintedSurface } from "@/lib/color/tinted-surface";
+import { clamp } from "@/lib/math";
 import { useAttachCurrentTrackLyrics } from "@/modules/player/composables/useAttachCurrentTrackLyrics";
 import { useCurrentLyrics } from "@/modules/player/composables/useCurrentLyrics";
 import { useLyricsStore } from "@/modules/player/store/lyrics.store";
@@ -128,7 +129,7 @@ const rows = computed(() => {
   visible.forEach((line, position) => {
     if (line.index <= activeLineIndex.value) current = position;
   });
-  const start = Math.min(Math.max(current - 1, 0), Math.max(visible.length - VISIBLE_LINES, 0));
+  const start = clamp(current - 1, 0, Math.max(visible.length - VISIBLE_LINES, 0));
   return visible
     .slice(start, start + VISIBLE_LINES)
     .map((line, offset) => ({ ...line, current: start + offset === current }));

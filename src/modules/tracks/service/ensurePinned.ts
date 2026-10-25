@@ -5,7 +5,7 @@ import type { ArtistEntity, CoverOwnerType, PinnedFlag } from "@/db/entities";
 import { albumRepository, artistRepository, trackRepository } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
 import { getLogger } from "@/lib/logger";
-import { chunk } from "@/lib/math";
+import { chunk, indexById } from "@/lib/math";
 import { syncSearchIndex } from "@/services/search/searchIndex";
 import type { SourceTrackDTO } from "@/types/source-dto";
 import {
@@ -90,7 +90,7 @@ const pinOneRemote = async (entry: RemoteEntry, ctx: PinContext): Promise<Pinned
   const existing: RemotePinExisting = {
     track,
     album,
-    artists: new Map(artists.map(artist => [artist.id, artist])),
+    artists: indexById(artists),
   };
   const built = buildRemoteShadowEntities(dto, ctx.requestedPinned, existing, ctx.now);
 

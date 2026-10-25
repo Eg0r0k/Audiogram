@@ -9,6 +9,7 @@ import { filterFilesByExtension } from "@/lib/files/filterFiles";
 import { ACCEPTED_AUDIO_EXTENSIONS } from "@/lib/files/acceptedAudioExtensions";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { requestFiles } from "@/lib/files/requestFiles";
+import { fileNameFromPath } from "@/lib/files/path";
 import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { i18n } from "@/app/i18n";
@@ -184,7 +185,7 @@ export function useImport() {
   async function importFromPaths(paths: string[]): Promise<ImportBatchResult | null> {
     if (paths.length === 0) return null;
 
-    const importId = _startImport(paths.map(p => p.split(/[\\/]/).pop() ?? p));
+    const importId = _startImport(paths.map(p => fileNameFromPath(p)));
 
     // Callers (the "import to library" CTA) need the outcome to react to it;
     // the shared sheet state alone can already belong to a newer import.

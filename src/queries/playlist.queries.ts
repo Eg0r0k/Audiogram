@@ -27,7 +27,8 @@ import {
   removeCoverCache,
 } from "./cache";
 import { assertValidName } from "@/lib/limits";
-import { sortTracks, unique, unwrapResult } from "./shared";
+import { sortTracks, unwrapResult } from "./shared";
+import { indexById, unique } from "@/lib/math";
 import {
   purgeTracksInTx,
   syncAfterTrackPurge,
@@ -80,7 +81,7 @@ export async function getPlaylistPageData(
   }
   else {
     const unorderedTracks = await unwrapResult(trackRepository.findByIds(playlist.trackIds));
-    const trackMap = new Map(unorderedTracks.map(track => [track.id, track]));
+    const trackMap = indexById(unorderedTracks);
     rawTracks = playlist.trackIds.flatMap((id) => {
       const track = trackMap.get(id);
       return track ? [track] : [];
@@ -125,7 +126,7 @@ export async function getPlaylistTracksPaginated(
   else {
     const pageIds = playlist.trackIds.slice(offset, offset + limit);
     const pageTracks = await unwrapResult(trackRepository.findByIds(pageIds));
-    const trackMap = new Map(pageTracks.map(track => [track.id, track]));
+    const trackMap = indexById(pageTracks);
     currentTracksPage = pageIds.flatMap((id) => {
       const track = trackMap.get(id);
       return track ? [track] : [];

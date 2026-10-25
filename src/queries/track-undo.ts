@@ -12,7 +12,8 @@ import { syncSearchIndex } from "@/services/search/searchIndex";
 import { deleteOwnedFiles } from "@/services/track-files";
 import type { TrackId } from "@/types/ids";
 import { invalidateForTrackMutation, removeCoverCache, settleLibraryReads } from "./cache";
-import { unique, unwrapResult } from "./shared";
+import { unwrapResult } from "./shared";
+import { unique } from "@/lib/math";
 import { trackCascadeTables } from "./track-cascade";
 import { deleteTracksAndSync } from "./track.queries";
 

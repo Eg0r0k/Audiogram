@@ -7,6 +7,8 @@ import { DEFAULT_WEIGHTS, type ComponentWeights } from "../lib/scoring";
 import { getRecommenderContext, type RecommenderContext } from "./recommender-context.service";
 import { buildContextAtFactory, sampleCandidatesFactory } from "./recommender-training-context";
 import { formatError } from "@/lib/errors";
+import { chunk } from "@/lib/math";
+import { sleep } from "@/lib/sleep";
 
 const FRESH_MS = 24 * 3_600_000;
 const RUN_CHUNK_SIZE = 20;
@@ -100,10 +102,10 @@ const trainOnAllExamples = async (ctx: RecommenderContext): Promise<void> => {
   const buildContextAt = buildContextAtFactory(ctx);
   const sampleCandidates = sampleCandidatesFactory(ctx);
   const examples: TrainingExample[] = [];
-  for (let start = 0; start < runs.length; start += RUN_CHUNK_SIZE) {
-    const chunk = runs.slice(start, start + RUN_CHUNK_SIZE);
-    examples.push(...buildExamples({ runs: chunk, buildContextAt, sampleCandidates }));
-    if (start + RUN_CHUNK_SIZE < runs.length) await new Promise<void>(resolve => setTimeout(resolve, 0));
+  const batches = chunk(runs, RUN_CHUNK_SIZE);
+  for (const [index, batch] of batches.entries()) {
+    examples.push(...buildExamples({ runs: batch, buildContextAt, sampleCandidates }));
+    if (index < batches.length - 1) await sleep();
   }
 
   // The stand-tuned defaults are the prior; learned weights only replace

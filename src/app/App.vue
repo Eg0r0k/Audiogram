@@ -67,6 +67,7 @@ import { useNdSourceSync } from "@/modules/sources/navidrome/composables/useNdSo
 import { useYmSourceSync } from "@/modules/sources/yandex/composables/useYmSourceSync";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { ephemeralFromPath } from "@/types/track";
+import { stripExtension } from "@/lib/files/path";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { useNowPlayingTitle } from "@/modules/player/composables/useNowPlayingTitle";
 import { useExternalLinkInterceptor } from "@/composables/useExternalLinkInterceptor";
@@ -123,7 +124,7 @@ const LayoutComponent = computed(() => {
 useOpenedFiles((files) => {
   const tracks = files.map(file =>
     ephemeralFromPath(file.path, {
-      title: file.name.replace(/\.[^.]+$/, ""),
+      title: stripExtension(file.name),
     }),
   );
   queueStore.setQueue(tracks, 0, { type: "external" })

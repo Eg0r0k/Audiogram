@@ -6,6 +6,7 @@ import { useI18n } from "vue-i18n";
 import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
 import { platformCaps } from "@/lib/environment/platformCaps";
+import { fileNameFromPath } from "@/lib/files/path";
 import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { useLyricsStore } from "@/modules/player/store/lyrics.store";
@@ -98,7 +99,7 @@ async function saveLyricsFile(trackId: string, selected: SelectedLyricsFile): Pr
 }
 
 const pickedFileName = (selected: SelectedLyricsFile): string | null =>
-  selected.file?.name ?? selected.path?.split(/[\\/]/).pop() ?? null;
+  selected.file?.name ?? (selected.path === undefined ? null : fileNameFromPath(selected.path));
 
 export const useAttachTrackLyrics = () => {
   const queryClient = useQueryClient();

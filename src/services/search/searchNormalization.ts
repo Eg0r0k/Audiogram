@@ -1,4 +1,5 @@
 import { SEARCH_ASSOCIATION_GROUPS } from "./searchAssociations";
+import { unique } from "@/lib/math";
 
 const NON_ALPHANUMERIC_REGEX = /[^\p{L}\p{N}]+/gu;
 const COMBINING_MARK_REGEX = /\p{M}/gu;
@@ -58,7 +59,7 @@ function createSearchAssociations(): Map<string, readonly string[]> {
   const associations = new Map<string, Set<string>>();
 
   for (const group of SEARCH_ASSOCIATION_GROUPS) {
-    const normalizedTerms = Array.from(new Set(group.terms.flatMap(term => unicodeTokenizer(term))));
+    const normalizedTerms = unique(group.terms.flatMap(term => unicodeTokenizer(term)));
 
     for (const term of normalizedTerms) {
       const related = associations.get(term) ?? new Set<string>();

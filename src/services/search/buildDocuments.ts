@@ -1,5 +1,7 @@
 import { db } from "@/db";
 import type { AlbumEntity, ArtistEntity, PinnedFlag, PlaylistEntity, TrackEntity } from "@/db/entities";
+import { fileNameFromPath } from "@/lib/files/path";
+import { indexById } from "@/lib/math";
 import type { SearchDocument, SearchEntityType } from "./types";
 
 const FILE_EXTENSION_REGEX = /\.[^./\\]+$/u;
@@ -10,7 +12,7 @@ export const isLibraryMember = (row: { pinned: PinnedFlag }): boolean => row.pin
 
 const fileNameOf = (storagePath: string | undefined): string | undefined => {
   if (!storagePath) return undefined;
-  const base = storagePath.split(/[/\\]/u).pop();
+  const base = fileNameFromPath(storagePath);
   return base ? base.replace(FILE_EXTENSION_REGEX, "") : undefined;
 };
 
@@ -80,8 +82,8 @@ export async function buildAllSearchDocuments(): Promise<SearchDocument[]> {
 
   // Maps keep every row (names may denormalize through shadow artists);
   // only library members become documents.
-  const artistMap = new Map(artists.map(a => [a.id, a]));
-  const albumMap = new Map(albums.map(a => [a.id, a]));
+  const artistMap = indexById(artists);
+  const albumMap = indexById(albums);
   const tracks = allTracks.filter(isLibraryMember);
 
   return [

@@ -1,5 +1,6 @@
 import type { AudioFeaturesEntity, TrackEntity } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
+import { chunk } from "@/lib/math";
 import type { CandidateInput, ComponentWeights, ScoringContext } from "./scoring";
 import { COMPONENT_KEYS, computeBreakdowns, DEFAULT_WEIGHTS, ranksToVector, weightsTotal } from "./scoring";
 import type { Session, SessionEvent } from "./sessions";
@@ -84,12 +85,11 @@ export const buildExamples = (input: BuildExamplesInput): TrainingExample[] => {
   const sorted = [...runs].sort((a, b) => a.startedAt - b.startedAt);
   const examples: TrainingExample[] = [];
 
-  for (let start = 0; start < sorted.length; start += chunkSize) {
-    const chunk = sorted.slice(start, start + chunkSize);
-    const cutoff = chunk[0].startedAt;
+  for (const batch of chunk(sorted, chunkSize)) {
+    const cutoff = batch[0].startedAt;
     const { ctx, tracks, features } = buildContextAt(cutoff);
 
-    for (const run of chunk) {
+    for (const run of batch) {
       const seedTrack = tracks.get(run.seed.trackId);
       if (!seedTrack) continue;
 

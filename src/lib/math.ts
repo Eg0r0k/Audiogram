@@ -35,3 +35,8 @@ export function chunk<T>(items: readonly T[], size: number): T[][] {
   }
   return chunks;
 }
+
+export const unique = <T>(values: Iterable<T>): T[] => [...new Set(values)];
+
+export const indexById = <T extends { id: unknown }>(items: readonly T[]): Map<T["id"], T> =>
+  new Map(items.map(item => [item.id, item]));

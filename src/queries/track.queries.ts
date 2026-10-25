@@ -33,7 +33,8 @@ import {
   updateCoverCache,
   removeCoverCache,
 } from "./cache";
-import { unique, unwrapResult } from "./shared";
+import { unwrapResult } from "./shared";
+import { indexById, unique } from "@/lib/math";
 import {
   purgeTracksInTx,
   syncAfterTrackPurge,
@@ -390,7 +391,7 @@ export async function getAllTrackIds(sortKey: TrackSortKey | null, searchQuery =
 export async function getTracksByIdsSorted(ids: TrackId[], sortKey: TrackSortKey | null): Promise<Track[]> {
   if (ids.length === 0) return [];
   if (!sortKey) {
-    const byId = new Map((await unwrapResult(trackRepository.findByIds(ids))).map(track => [track.id, track]));
+    const byId = indexById(await unwrapResult(trackRepository.findByIds(ids)));
     const entities = ids.map(id => byId.get(id)).filter((track): track is TrackEntity => !!track);
     return loadTrackRelations(entities);
   }
@@ -466,7 +467,7 @@ export async function addTracksToAlbumAndSync(
   const album = await getAlbumByIdOrThrow(albumId);
   const trackIds = unique(tracks.map(track => track.id));
   const currentTracks = await unwrapResult(trackRepository.findByIds(trackIds));
-  const trackMap = new Map(currentTracks.map(track => [track.id, track]));
+  const trackMap = indexById(currentTracks);
 
   for (const trackId of trackIds) {
     if (!trackMap.has(trackId)) {
@@ -512,7 +513,7 @@ export async function addTracksToArtistAndSync(
 
   const trackIds = unique(tracks.map(track => track.id));
   const currentTracks = await unwrapResult(trackRepository.findByIds(trackIds));
-  const trackMap = new Map(currentTracks.map(track => [track.id, track]));
+  const trackMap = indexById(currentTracks);
 
   for (const trackId of trackIds) {
     if (!trackMap.has(trackId)) {

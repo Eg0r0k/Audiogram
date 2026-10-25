@@ -2,7 +2,7 @@ import { PlaylistId, type QueueItemId } from "@/types/ids";
 import { mapTrack, type EphemeralTrack, type PlayerTrack, type Track } from "@/types/track";
 import { playlistRepository, queueSnapshotRepository, trackRepository } from "@/db/repositories";
 import { LEGACY_QUEUE_STORAGE_KEY, QUEUE_CURSOR_STORAGE_KEY } from "@/db/entities";
-import { unique } from "@/queries/shared";
+import { unique } from "@/lib/math";
 import { unwrapResult } from "@/lib/errors/unwrap";
 import { getLogger } from "@/lib/logger";
 import { migrateProxyUrl } from "@/lib/stream-url";

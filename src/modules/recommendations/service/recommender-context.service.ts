@@ -4,6 +4,7 @@ import { audioFeaturesRepository } from "@/db/repositories/audioFeatures.reposit
 import { SESSION_GAP_MS, statsRepository } from "@/db/repositories/stats.repository";
 import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
+import { indexById } from "@/lib/math";
 import type { ArtistId, TrackId } from "@/types/ids";
 import { buildAffinityMap, buildArtistAffinityMap, DEFAULT_AFFINITY_OPTIONS } from "../lib/affinity";
 import { computeFeatureStats, createAudioSpace } from "../lib/audio-similarity";
@@ -94,7 +95,7 @@ export const buildRecommenderContext = (input: BuildRecommenderContextInput): Re
 
   return {
     now,
-    tracks: new Map(tracks.map(t => [t.id, t])),
+    tracks: indexById(tracks),
     features: new Map(features.map(f => [f.trackId, f])),
     events,
     sessions,

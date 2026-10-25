@@ -12,10 +12,11 @@ import type { ResultAsync } from "neverthrow";
 import type { ImportItem } from "../types";
 import { ImportError } from "../types";
 import { HEAD_READ_SIZE, MAX_METADATA_READ } from "./constants";
+import { fileNameFromPath as lastPathSegment } from "@/lib/files/path";
 
 export function fileNameFromPath(path: string): string {
   if (path.startsWith("content://")) return contentUriFileName(path);
-  return path.split(/[\\/]/).pop() ?? "unknown";
+  return lastPathSegment(path);
 }
 
 // The last segment of a SAF URI is the provider's document id, not the file
@@ -39,7 +40,7 @@ const contentUriFileName = (uri: string): string => {
  * dot must not be mistaken for one.
  */
 export function extensionOf(name: string): string {
-  const base = name.split(/[\\/]/).pop() ?? "";
+  const base = lastPathSegment(name);
   const dot = base.lastIndexOf(".");
   return dot >= 0 ? base.slice(dot + 1).toLowerCase() : "";
 }

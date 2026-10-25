@@ -7,6 +7,7 @@ import { getLogger } from "@/lib/logger";
 import { useCurrentPlayerTrack } from "./useCurrentPlayerTrack";
 import { isEphemeralTrack, isLibraryTrack } from "@/types/track";
 import { formatError } from "@/lib/errors";
+import { sleep } from "@/lib/sleep";
 
 const POSITION_UPDATE_INTERVAL = 1000;
 // Both the browser's media session and Android's extrapolate the position
@@ -642,7 +643,7 @@ export const useMediaSession = () => {
       // the notification can show its art a moment later. Skipped from the
       // notification, there is no slide to protect.
       if (blob && document.visibilityState !== "hidden") {
-        await new Promise(resolve => setTimeout(resolve, ARTWORK_ENCODE_DELAY_MS));
+        await sleep(ARTWORK_ENCODE_DELAY_MS);
       }
       if (token !== androidArtworkToken) return;
       const encoded = blob ? await coverArtworkBase64(blob) : "";

@@ -36,6 +36,7 @@ import {
   assertPlaybackInvariant,
 } from "../lib/playback-status";
 import { formatError } from "@/lib/errors";
+import { clamp } from "@/lib/math";
 
 export const usePlayerStore = defineStore("player", () => {
   const engine = shallowRef<PlaybackEngine | null>(null);
@@ -670,7 +671,7 @@ export const usePlayerStore = defineStore("player", () => {
 
   const setPlaybackRate = (value: number) => {
     if (!Number.isFinite(value)) return;
-    playbackRate.value = Math.min(Math.max(value, 0.0625), 16);
+    playbackRate.value = clamp(value, 0.0625, 16);
     engine.value?.setPlaybackRate(playbackRate.value);
   };
 

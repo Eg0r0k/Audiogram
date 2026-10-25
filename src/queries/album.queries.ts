@@ -24,7 +24,8 @@ import {
   removeCoverCache,
 } from "./cache";
 import { assertValidName } from "@/lib/limits";
-import { sortTracks, unwrapResult, unique } from "./shared";
+import { sortTracks, unwrapResult } from "./shared";
+import { unique } from "@/lib/math";
 import {
   purgeTracksInTx,
   syncAfterTrackPurge,

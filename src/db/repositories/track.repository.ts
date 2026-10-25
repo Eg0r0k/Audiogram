@@ -7,6 +7,7 @@ import type { Result } from "neverthrow";
 import { ok, err } from "neverthrow";
 import { BaseRepository } from "./base.repository";
 import { toDbError } from "@/db/errors/db.errors";
+import { unique } from "@/lib/math";
 
 // Dexie's own floor and ceiling of the IndexedDB key space. They span numbers
 // and strings alike, so a sort field needs no per-type bounds and no table
@@ -628,11 +629,11 @@ class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
    */
   async findExistingFingerprints(candidates: readonly string[]): Promise<Result<Set<string>, Error>> {
     try {
-      const unique = [...new Set(candidates)];
-      if (unique.length === 0) return ok(new Set());
+      const fingerprints = unique(candidates);
+      if (fingerprints.length === 0) return ok(new Set());
       const counts = await db.transaction("r", this.table, () =>
-        Promise.all(unique.map(fingerprint => this.table.where("fingerprint").equals(fingerprint).count())));
-      return ok(new Set(unique.filter((_, index) => counts[index] > 0)));
+        Promise.all(fingerprints.map(fingerprint => this.table.where("fingerprint").equals(fingerprint).count())));
+      return ok(new Set(fingerprints.filter((_, index) => counts[index] > 0)));
     }
     catch (error) {
       return err(toDbError(error));

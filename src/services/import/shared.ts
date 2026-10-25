@@ -1,4 +1,5 @@
 import type { ImportControl } from "../types";
+import { sleep } from "@/lib/sleep";
 
 /** Waits while the import is paused, then reports whether it was cancelled. */
 export async function isCancelled(control?: ImportControl): Promise<boolean> {
@@ -34,5 +35,5 @@ export function yieldToEventLoop(): Promise<void> {
     });
   }
 
-  return new Promise<void>(resolve => setTimeout(resolve, 0));
+  return sleep();
 }

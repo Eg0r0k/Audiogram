@@ -18,6 +18,7 @@ import { keepPreviousData, queryOptions } from "@tanstack/vue-query";
 import type { QueryClient } from "@tanstack/vue-query";
 import { splitArtistNames } from "@/lib/artist-names";
 import { unwrapResult } from "./shared";
+import { indexById, unique } from "@/lib/math";
 import { mapTrack } from "@/types/track";
 
 export interface RecentHistoryEntry {
@@ -55,8 +56,8 @@ const namesFromListenedTracks = async (
   }
   if (trackIdByArtist.size === 0) return new Map();
 
-  const tracks = await unwrapResult(trackRepository.findByIds([...new Set(trackIdByArtist.values())]));
-  const tracksById = new Map(tracks.map(track => [track.id as string, track]));
+  const tracks = await unwrapResult(trackRepository.findByIds(unique(trackIdByArtist.values())));
+  const tracksById = indexById(tracks);
   const names = new Map<string, string>();
   for (const [artistId, trackId] of trackIdByArtist) {
     const track = tracksById.get(trackId);

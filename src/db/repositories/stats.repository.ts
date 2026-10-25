@@ -2,6 +2,7 @@ import { db } from "@/db";
 import type { ListenEventEntity } from "@/db/entities";
 import type { TagId, TrackId } from "@/types/ids";
 import { toDbError } from "@/db/errors/db.errors";
+import { unique } from "@/lib/math";
 import { err, ok, type Result } from "neverthrow";
 import {
   aggregateHourly,
@@ -128,11 +129,11 @@ class StatsRepository {
       const played = events.filter(e => !e.skipped);
       if (played.length === 0) return [];
 
-      const trackIds = [...new Set(played.map(e => e.trackId))];
+      const trackIds = unique(played.map(e => e.trackId));
       const tracks = (await db.tracks.bulkGet(trackIds)).filter(t => t !== undefined);
       const trackTagMap = new Map(tracks.map(t => [t.id, t.tagIds]));
 
-      const allTagIds = [...new Set(tracks.flatMap(t => t.tagIds))];
+      const allTagIds = unique(tracks.flatMap(t => t.tagIds));
       const tags = (await db.tags.bulkGet(allTagIds)).filter(t => t !== undefined);
       const tagNameMap = new Map(tags.map(t => [t.id, t.name]));
 

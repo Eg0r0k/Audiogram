@@ -17,6 +17,7 @@ import { writeFile } from "@tauri-apps/plugin-fs";
 import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
 import { platformCaps } from "@/lib/environment/platformCaps";
+import { fileNameFromPath } from "@/lib/files/path";
 import { routeLocation } from "@/app/router/route-locations";
 import { useAttachTrackLyrics } from "./useAttachTrackLyrics";
 import { useToggleTrackLike } from "./useToggleTrackLike";
@@ -232,7 +233,7 @@ export const useTrackContextActions = (
     if (!sourcePath) return;
 
     const fallbackExt = sourcePath.split(".").pop()?.toLowerCase() ?? "mp3";
-    const fileName = sourcePath.split(/[\\/]/).pop() ?? `${current.title}.${fallbackExt}`;
+    const fileName = fileNameFromPath(sourcePath);
 
     try {
       const fileBlob = await (async () => {

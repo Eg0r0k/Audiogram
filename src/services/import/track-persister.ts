@@ -8,6 +8,7 @@ import type { ArtistId } from "@/types/ids";
 import { AlbumId } from "@/types/ids";
 import { fitWithin } from "@/lib/media/fit-within";
 import { unwrapResult } from "@/lib/errors/unwrap";
+import { unique } from "@/lib/math";
 import type { EntityResolver } from "../entity-resolver";
 import type { ImportSuccess, TrackToSave } from "../types";
 
@@ -178,8 +179,8 @@ export async function persistTracks(
 
   // Existing rows the batch attaches to may be remote shadows (pinned = 0):
   // a local track under them makes them library members.
-  const referencedArtistIds = [...new Set(items.flatMap(artistIdsOf))];
-  const referencedAlbumIds = [...new Set(tracksToCreate.map(track => track.albumId).filter(Boolean))];
+  const referencedArtistIds = unique(items.flatMap(artistIdsOf));
+  const referencedAlbumIds = unique(tracksToCreate.map(track => track.albumId).filter(Boolean));
 
   const uowResult = await unitOfWork.runScoped(
     [db.tracks, db.artists, db.albums, db.covers],
@@ -225,14 +226,14 @@ async function loadExistingIds(
   artistIdsOf: (item: TrackToSave) => ArtistId[],
   resolver: EntityResolver,
 ) {
-  const allArtistIds = [...new Set(items.flatMap(artistIdsOf))];
-  const allAlbumIds = [...new Set(
+  const allArtistIds = unique(items.flatMap(artistIdsOf));
+  const allAlbumIds = unique(
     items.map((item) => {
       const firstId = artistIdsOf(item)[0];
       if (!firstId || !item.meta.album) return null;
       return resolver.getAlbumEntry(firstId, item.meta.album)?.id ?? null;
     }).filter((id): id is AlbumId => id !== null),
-  )];
+  );
 
   const [artistResults, albumResults] = await Promise.all([
     allArtistIds.length > 0
