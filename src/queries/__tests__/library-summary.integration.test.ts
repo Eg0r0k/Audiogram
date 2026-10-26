@@ -10,7 +10,8 @@ vi.mock("@/modules/covers/lib/cover-cache", () => ({
 
 import { db } from "@/db";
 import { trackRepository } from "@/db/repositories";
-import { getLibraryItemTrackCount, getLibrarySummary } from "../library.queries";
+import { getLibraryItemTrackCount, readLibrarySummary } from "../library.queries";
+import { rebuildCounters } from "../track.queries";
 
 const track = (id: string, likedAt?: number): TrackEntity => ({
   id: TrackId(id),
@@ -29,7 +30,7 @@ const track = (id: string, likedAt?: number): TrackEntity => ({
   likedAt,
 } as unknown as TrackEntity);
 
-describe("getLibrarySummary", () => {
+describe("readLibrarySummary", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -38,12 +39,13 @@ describe("getLibrarySummary", () => {
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
     await db.tracks.bulkPut([track("t-1", 3), track("t-2", 2), track("t-3")]);
+    await rebuildCounters();
   });
 
   // The sidebar shows a count; loading every liked row for it is what made
   // the summary the heaviest read in the app.
   it("carries the liked count, not the liked rows", async () => {
-    const summary = await getLibrarySummary();
+    const summary = await readLibrarySummary();
 
     expect(summary.likedCount).toBe(2);
     expect(summary).not.toHaveProperty("likedTracks");
@@ -57,7 +59,7 @@ describe("getLibrarySummary", () => {
     const byAlbum = vi.spyOn(trackRepository, "inAlbum");
     const byArtist = vi.spyOn(trackRepository, "byArtist");
 
-    const summary = await getLibrarySummary();
+    const summary = await readLibrarySummary();
 
     expect(summary.albums).toHaveLength(1);
     expect(summary.artists).toHaveLength(1);

@@ -1,12 +1,12 @@
 import { computed, onScopeDispose, shallowRef, triggerRef, watch, type Ref, type ShallowRef } from "vue";
-import { useQuery } from "@tanstack/vue-query";
-import { loadTrackRelations, memberTrackScope, trackQueries } from "@/queries/track.queries";
+import { loadTrackRelations, memberTrackScope, readCounters } from "@/queries/track.queries";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { LivePages, uniqueById } from "@/modules/tracks/lib/livePages";
 import { useLiveSearchList } from "@/modules/tracks/composables/useLiveSearchList";
 import type { SearchMatch } from "@/services/search/types";
 import type { Track } from "@/types/track";
 import { DEFAULT_TRACK_SORT_KEY } from "@/types/track-sort";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 
 const PAGE_SIZE = 50;
 
@@ -36,8 +36,9 @@ export const useIndexTracksPage = (sortKey: Ref<TrackSortKey | null>, searchQuer
     pageSize: PAGE_SIZE,
     onChange: () => triggerRef(pages),
   }));
-  // A live count re-walks every member on each write (85 ms at 20k); the total stays on TanStack.
-  const memberCount = useQuery(trackQueries.memberCount());
+  // The counter row, not a live count: that re-walks every member on each write (85 ms at 20k).
+  const counters = useLiveQuery(readCounters, () => []);
+  const memberCount = computed(() => counters.data.value?.members.count);
 
   const restartLive = () => {
     pages.value.reset();
@@ -53,7 +54,7 @@ export const useIndexTracksPage = (sortKey: Ref<TrackSortKey | null>, searchQuer
 
   const liveList = computed<IndexList | undefined>(() => {
     const tracks = liveTracks.value;
-    const total = memberCount.data.value;
+    const total = memberCount.value;
     return tracks && total !== undefined ? { tracks, total, matches: {} } : undefined;
   });
 
@@ -66,8 +67,7 @@ export const useIndexTracksPage = (sortKey: Ref<TrackSortKey | null>, searchQuer
   const total = computed(() => shownList.value?.total ?? 0);
   const matches = computed<Record<string, SearchMatch>>(() => shownList.value?.matches ?? {});
 
-  // TanStack reports "no error" as null; the live pages as undefined.
-  const liveError = computed(() => pages.value.error ?? memberCount.error.value ?? undefined);
+  const liveError = computed(() => pages.value.error ?? counters.error.value);
 
   // A failed next page is shown at the end of the list it failed to extend.
   const isError = computed(() => isSearching.value ? search.isError.value : liveError.value !== undefined);
@@ -92,7 +92,7 @@ export const useIndexTracksPage = (sortKey: Ref<TrackSortKey | null>, searchQuer
       search.refetch();
       return;
     }
-    memberCount.refetch().catch(() => {});
+    counters.refetch();
     restartLive();
   };
 

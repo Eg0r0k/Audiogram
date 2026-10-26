@@ -75,7 +75,6 @@ export const queryKeys = {
       return search ? [...base, "search", search] : base;
     },
     likedTotalDuration: () => ["tracks", "liked", "totalDuration"] as const,
-    memberCount: () => ["tracks", "memberCount"] as const,
     byIds: (ids: readonly TrackId[]) => ["tracks", "byIds", ...ids] as const,
     /** The local track downloaded from a remote id (null result when none). */
     localCopy: (remoteId: TrackId) => ["tracks", "localCopy", remoteId] as const,

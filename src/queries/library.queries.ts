@@ -1,6 +1,7 @@
 import {
   albumRepository,
   artistRepository,
+  counterRepository,
   folderRepository,
   playlistRepository,
   trackRepository,
@@ -8,21 +9,20 @@ import {
 import { queryKeys } from "@/queries/query-keys";
 import { coverCache } from "@/modules/covers/lib/cover-cache";
 import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
-import { queryOptions, type QueryClient } from "@tanstack/vue-query";
+import type { QueryClient } from "@tanstack/vue-query";
 import type { AlbumId, ArtistId } from "@/types/ids";
 import { settleLibraryReads } from "./cache";
 import { rebuildCounters } from "./track.queries";
 import type { LibrarySummaryData } from "./types";
 
-export const getLibrarySummary = async (): Promise<LibrarySummaryData> => {
-  // Playing from ND/YT browsing must not grow the library — shadow rows
-  // (pinned = 0) are excluded by the pinned index.
-  const [artists, albums, playlists, folders, likedCount] = await Promise.all([
+// Shadow rows (pinned = 0) from ND/YT browsing stay out through the pinned index.
+export const readLibrarySummary = async (): Promise<LibrarySummaryData> => {
+  const [artists, albums, playlists, folders, liked] = await Promise.all([
     artistRepository.findPinned(),
     albumRepository.findPinned(),
     playlistRepository.findAll(),
     folderRepository.findAll(),
-    trackRepository.liked().count(),
+    counterRepository.get("liked"),
   ]);
 
   return {
@@ -30,7 +30,7 @@ export const getLibrarySummary = async (): Promise<LibrarySummaryData> => {
     albums,
     playlists,
     folders,
-    likedCount,
+    likedCount: liked.count,
   };
 };
 
@@ -40,14 +40,6 @@ export const getLibraryItemTrackCount = async (type: "album" | "artist", id: Alb
   if (type === "album") return trackRepository.inAlbum(id as AlbumId).members().count();
   return trackRepository.byArtist(id as ArtistId).members().count();
 };
-
-export const libraryQueries = {
-  summary: () =>
-    queryOptions({
-      queryKey: queryKeys.library.summary(),
-      queryFn: getLibrarySummary,
-    }),
-} as const;
 
 /**
  * After a bulk change to the local library (import, pin, rescan). Unlike the

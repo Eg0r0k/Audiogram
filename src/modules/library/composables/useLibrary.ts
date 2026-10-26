@@ -1,7 +1,8 @@
 import { useRouter } from "vue-router";
 import { useLibraryStore } from "../store/library.store";
 import { storeToRefs } from "pinia";
-import { useQuery, useQueryClient } from "@tanstack/vue-query";
+import { useQueryClient } from "@tanstack/vue-query";
+import { createSharedComposable } from "@vueuse/core";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { LIBRARY_FILTERS, type FolderLibraryItemType, type LibraryFilter, type LibraryFolderEntry, type LibraryItem } from "../types";
@@ -19,7 +20,7 @@ import {
   clearLibraryData,
   getLibraryItemTrackCount,
   invalidateLibraryData,
-  libraryQueries,
+  readLibrarySummary,
 } from "@/queries/library.queries";
 import {
   createPlaylistAndSync,
@@ -32,6 +33,10 @@ import type { AlbumId, ArtistId, PlaylistId, SidebarFolderId } from "@/types/ids
 import { SidebarFolderId as createSidebarFolderId } from "@/types/ids";
 import { routeLocation } from "@/app/router/route-locations";
 import { ROUTE_NAMES } from "@/app/router/route-names";
+import { useLiveQuery } from "@/composables/useLiveQuery";
+
+// Every sidebar host, menu and page calling useLibrary reads through one subscription, not one each.
+const useLibrarySummary = createSharedComposable(() => useLiveQuery(readLibrarySummary, () => []));
 
 export const useLibrary = () => {
   const store = useLibraryStore();
@@ -58,7 +63,9 @@ export const useLibrary = () => {
     return navigateHome();
   };
 
-  const { data, isLoading } = useQuery(libraryQueries.summary());
+  const { data, isLoading: isReading, error } = useLibrarySummary();
+  // A failed first read shows the system rows instead of loading for good.
+  const isLoading = computed(() => isReading.value && error.value === undefined);
   const artists = computed(() => data.value?.artists ?? []);
   const albums = computed(() => data.value?.albums ?? []);
   const playlists = computed(() => data.value?.playlists ?? []);

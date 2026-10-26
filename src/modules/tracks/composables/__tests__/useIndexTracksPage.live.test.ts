@@ -13,7 +13,6 @@ import type { TrackToSave } from "@/services/types";
 import type { SearchMatch } from "@/services/search/types";
 import { resetSearchIndex } from "@/services/search/searchIndex";
 import { invalidateLibraryData } from "@/queries/library.queries";
-import { queryKeys } from "@/queries/query-keys";
 import type { Track } from "@/types/track";
 import { AlbumId, TrackId } from "@/types/ids";
 import type { TrackSortKey } from "@/modules/tracks/types";
@@ -27,6 +26,7 @@ import {
   deleteTracksAndSync,
   getTracksByIds,
   loadTrackRelations,
+  rebuildCounters,
   searchTrackIds,
   toggleTrackLikeAndSync,
   updateTrackMetadataAndSync,
@@ -130,6 +130,7 @@ describe("useIndexTracksPage on live pages", () => {
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
     await db.tracks.bulkAdd(SEED);
+    await rebuildCounters();
     resetSearchIndex();
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     vi.mocked(loadTrackRelations).mockClear();
@@ -209,22 +210,22 @@ describe("useIndexTracksPage on live pages", () => {
     expect(loading).toEqual([]);
   });
 
-  it("/all: the total comes from the member count query, not from a live count", async () => {
+  it("the totals come from the counter row and no count query runs", async () => {
     const countSpy = vi.spyOn(TrackScope.prototype, "count");
     const api = mountPage(ref(null));
-    await loadPages(api, 3);
+    await loadPages(api, 1);
+
+    expect(queryClient.getQueryCache().getAll()).toEqual([]);
     expect(api.total.value).toBe(120);
 
-    await toggleTrackLikeAndSync(queryClient, await trackOf("t060"));
-    await until(() => windowSpy.mock.calls.length > 0);
-    await quiet();
+    await db.counters.put({ id: "members", count: 7, seconds: 0 });
+    await until(() => api.total.value === 7);
 
-    expect(countSpy).toHaveBeenCalledTimes(1);
+    await trackRepository.create(entity("new", { addedAt: 9000 }));
+    await until(() => api.total.value === 8);
+    await until(() => ids(api)[0] === TrackId("new"));
 
-    queryClient.setQueryData(queryKeys.tracks.memberCount(), 7);
-    await nextTick();
-
-    expect(api.total.value).toBe(7);
+    expect(countSpy).not.toHaveBeenCalled();
   });
 
   it("/all: a search string switches to the search query and back without an empty flash", async () => {

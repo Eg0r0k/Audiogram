@@ -1,14 +1,13 @@
 import { computed, onScopeDispose, shallowRef, triggerRef, watch, type Ref, type ShallowRef } from "vue";
-import { useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { formatTotalDuration } from "@/lib/format/time";
 import type { LikedData } from "@/types/media-data";
 import type { Track } from "@/types/track";
-import { libraryQueries } from "@/queries/library.queries";
-import { likedTrackScope, loadTrackRelations, trackQueries } from "@/queries/track.queries";
+import { likedTrackScope, loadTrackRelations, readCounters } from "@/queries/track.queries";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { LivePages, uniqueById } from "@/modules/tracks/lib/livePages";
 import { useLiveSearchList } from "@/modules/tracks/composables/useLiveSearchList";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 
 const PAGE_SIZE = 50;
 
@@ -36,10 +35,10 @@ export const useLikedTracksPage = (sortKey: Ref<TrackSortKey | null>, searchQuer
     pageSize: PAGE_SIZE,
     onChange: () => triggerRef(pages),
   }));
-  // Totals stay on TanStack: a live count or duration sum walks every liked row (34 and 114 ms at 5k likes) on each like.
-  const summary = useQuery(libraryQueries.summary());
-  const likedSeconds = useQuery(trackQueries.likedTotalDuration());
-  const likedCount = computed(() => summary.data.value?.likedCount);
+  // The counter row, not a live count or duration sum: those walk every liked row (34 and 114 ms at 5k likes) on each like.
+  const counters = useLiveQuery(readCounters, () => []);
+  const likedCount = computed(() => counters.data.value?.liked.count);
+  const likedSeconds = computed(() => counters.data.value?.liked.seconds);
 
   const restartLive = () => {
     pages.value.reset();
@@ -56,7 +55,7 @@ export const useLikedTracksPage = (sortKey: Ref<TrackSortKey | null>, searchQuer
   const liveList = computed<LikedList | undefined>(() => {
     const tracks = liveTracks.value;
     const count = likedCount.value;
-    const seconds = likedSeconds.data.value;
+    const seconds = likedSeconds.value;
     return tracks && count !== undefined && seconds !== undefined ? { tracks, count, seconds } : undefined;
   });
 
@@ -74,8 +73,7 @@ export const useLikedTracksPage = (sortKey: Ref<TrackSortKey | null>, searchQuer
 
   const tracks = computed(() => shownList.value?.tracks ?? []);
 
-  // TanStack reports "no error" as null; the live pages as undefined.
-  const liveError = computed(() => pages.value.error ?? summary.error.value ?? likedSeconds.error.value ?? undefined);
+  const liveError = computed(() => pages.value.error ?? counters.error.value);
 
   // A failed next page is shown at the end of the list it failed to extend.
   const isError = computed(() => isSearching.value ? search.isError.value : liveError.value !== undefined);
@@ -100,8 +98,7 @@ export const useLikedTracksPage = (sortKey: Ref<TrackSortKey | null>, searchQuer
       search.refetch();
       return;
     }
-    summary.refetch().catch(() => {});
-    likedSeconds.refetch().catch(() => {});
+    counters.refetch();
     restartLive();
   };
 

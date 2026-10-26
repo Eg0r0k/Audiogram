@@ -6,7 +6,6 @@ import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { db } from "@/db";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
 import { TrackScope } from "@/db/repositories/track.scope";
-import { queryKeys } from "@/queries/query-keys";
 import { AlbumId, TrackId } from "@/types/ids";
 
 const PAGE_SIZE = 50;
@@ -17,7 +16,7 @@ vi.mock("@/queries/track.queries", async importOriginal => ({
   searchTrackIds: vi.fn(),
 }));
 
-import { searchTrackIds } from "@/queries/track.queries";
+import { rebuildCounters, searchTrackIds } from "@/queries/track.queries";
 import { useIndexTracksPage } from "../useIndexTracksPage";
 
 const name = (index: number) => `track-${String(index).padStart(3, "0")}`;
@@ -68,6 +67,7 @@ describe("useIndexTracksPage", () => {
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
     await db.tracks.bulkAdd(SEED);
+    await rebuildCounters();
   });
 
   afterEach(() => {
@@ -79,8 +79,7 @@ describe("useIndexTracksPage", () => {
     const { api, wrapper, queryClient } = mountComposable();
     await until(() => !api.isLoading.value);
 
-    const fetched = queryClient.getQueryCache().getAll().filter(query => query.state.data !== undefined);
-    expect(fetched.map(query => query.queryKey)).toEqual([queryKeys.tracks.memberCount()]);
+    expect(queryClient.getQueryCache().getAll()).toEqual([]);
     expect(api.total.value).toBe(LIBRARY_TOTAL);
     expect(api.tracks.value).toHaveLength(PAGE_SIZE);
     expect(sumDuration).not.toHaveBeenCalled();

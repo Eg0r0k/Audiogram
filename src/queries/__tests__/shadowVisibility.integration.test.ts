@@ -19,7 +19,7 @@ vi.mock("@/services/search/searchIndex", () => ({
 import { db } from "@/db";
 import { ensurePinned } from "@/modules/tracks/service/ensurePinned";
 import { buildAllSearchDocuments } from "@/services/search/buildDocuments";
-import { getLibraryItemTrackCount, getLibrarySummary } from "../library.queries";
+import { getLibraryItemTrackCount, readLibrarySummary } from "../library.queries";
 import { getAllTracksPaginated } from "../track.queries";
 import { getArtistPageData } from "../artist.queries";
 
@@ -42,7 +42,7 @@ describe("shadow rows stay invisible to library surfaces (integration)", () => {
   it("playing from browsing (shadow pin) grows no library list", async () => {
     await ensurePinned({ kind: "remote", dto }, { pinned: 0 });
 
-    const summary = await getLibrarySummary();
+    const summary = await readLibrarySummary();
     expect(summary.albums).toHaveLength(0);
     expect(summary.artists).toHaveLength(0);
 
@@ -57,7 +57,7 @@ describe("shadow rows stay invisible to library surfaces (integration)", () => {
   it("a full pin makes the family visible everywhere", async () => {
     await ensurePinned({ kind: "remote", dto });
 
-    const summary = await getLibrarySummary();
+    const summary = await readLibrarySummary();
     expect(summary.albums.map(album => album.id)).toEqual([ndAlbumId("album1")]);
     expect(summary.artists.map(artist => artist.id)).toEqual([ndArtistId("artist1")]);
     expect(await getLibraryItemTrackCount("album", ndAlbumId("album1"))).toBe(1);

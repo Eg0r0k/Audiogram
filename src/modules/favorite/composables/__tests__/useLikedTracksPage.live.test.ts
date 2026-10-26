@@ -12,7 +12,9 @@ import type { Track } from "@/types/track";
 import { AlbumId, TrackId } from "@/types/ids";
 import type { TrackSortKey } from "@/modules/tracks/types";
 
-vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
+vi.mock("vue-i18n", () => ({
+  useI18n: () => ({ t: (key: string, params?: { count?: number }) => (params?.count === undefined ? key : `${key}:${params.count}`) }),
+}));
 vi.mock("@/queries/track.queries", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/queries/track.queries")>();
   return { ...actual, searchTrackIds: vi.fn(actual.searchTrackIds) };
@@ -20,6 +22,7 @@ vi.mock("@/queries/track.queries", async (importOriginal) => {
 
 import {
   getTracksByIds,
+  rebuildCounters,
   searchTrackIds,
   toggleTrackLikeAndSync,
   updateTrackMetadataAndSync,
@@ -104,6 +107,7 @@ describe("useLikedTracksPage on live pages", () => {
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
     await db.tracks.bulkAdd(SEED);
+    await rebuildCounters();
     resetSearchIndex();
     vi.mocked(searchTrackIds).mockClear();
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -171,6 +175,29 @@ describe("useLikedTracksPage on live pages", () => {
 
     expect(new Set(ids(api)).size).toBe(ids(api).length);
     expect(ids(api).slice(49, 53)).toEqual([TrackId("t048"), TrackId("t049"), TrackId("x2"), TrackId("t050")]);
+  });
+
+  it("the totals come from the counter row and no count query runs", async () => {
+    const count = vi.spyOn(TrackScope.prototype, "count");
+    const sumDuration = vi.spyOn(TrackScope.prototype, "sumDuration");
+    const api = mountPage(ref(null));
+    await loadPages(api, 1);
+
+    expect(queryClient.getQueryCache().getAll()).toEqual([]);
+    expect(api.likedData.value.trackCount).toBe(120);
+    expect(api.likedData.value.duration).toBe("common.hoursShort:3 common.minutesShort:20");
+
+    await db.counters.put({ id: "liked", count: 7, seconds: 700 });
+    await until(() => api.likedData.value.trackCount === 7);
+
+    expect(api.totalDuration.value).toBe("common.minutesShort:11");
+
+    await trackRepository.setLiked(TrackId("a000"), true);
+    await until(() => api.likedData.value.trackCount === 8);
+
+    expect(api.totalDuration.value).toBe("common.minutesShort:13");
+    expect(count).not.toHaveBeenCalled();
+    expect(sumDuration).not.toHaveBeenCalled();
   });
 
   it("a sort change keeps the old rows until the first new page lands", async () => {

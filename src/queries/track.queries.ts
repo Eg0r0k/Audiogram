@@ -207,16 +207,6 @@ export const trackQueries = {
       queryKey: queryKeys.tracks.byIds(ids),
       queryFn: ids.length > 0 ? () => getTracksByIds(ids) : skipToken,
     }),
-  likedTotalDuration: () =>
-    queryOptions({
-      queryKey: queryKeys.tracks.likedTotalDuration(),
-      queryFn: getLikedTotalDuration,
-    }),
-  memberCount: () =>
-    queryOptions({
-      queryKey: queryKeys.tracks.memberCount(),
-      queryFn: () => trackRepository.members().count(),
-    }),
 } as const;
 
 export async function getAllTracksPaginated(
@@ -458,10 +448,6 @@ export async function deleteTracksAndSync(
     playlistIds: removals.map(removal => removal.next.id),
   });
   return trackIds.length;
-}
-
-export async function getLikedTotalDuration(): Promise<number> {
-  return trackRepository.liked().sumDuration();
 }
 
 export async function addTracksToAlbumAndSync(
