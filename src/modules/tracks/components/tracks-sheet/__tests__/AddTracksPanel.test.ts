@@ -9,7 +9,8 @@ import type { RightPanelAddTracksPayload } from "@/modules/right-panel/types";
 import AddTracksPanel from "../AddTracksPanel.vue";
 
 const queries = vi.hoisted(() => ({
-  getTracksPaginated: vi.fn(),
+  getAllTracksPaginated: vi.fn(),
+  searchTracksPaginated: vi.fn(),
   getTracksByIds: vi.fn(),
   addTracksToAlbumAndSync: vi.fn(),
   addTracksToArtistAndSync: vi.fn(),
@@ -65,7 +66,7 @@ describe("AddTracksPanel", () => {
     for (const mock of Object.values(queries)) mock.mockReset();
     queue.syncTracksMetadata.mockReset();
     i18n.global.locale.value = "en";
-    queries.getTracksPaginated.mockResolvedValue({ tracks: [track({})], nextOffset: null, total: 1 });
+    queries.getAllTracksPaginated.mockResolvedValue({ tracks: [track({})], nextOffset: null, last: null, total: 1 });
     queries.addTracksToArtistAndSync.mockResolvedValue(undefined);
     queries.favoriteTracksAndSync.mockResolvedValue(undefined);
   });
@@ -94,5 +95,14 @@ describe("AddTracksPanel", () => {
     await userEvent.click(screen.getByTestId("confirm"));
 
     await waitFor(() => expect(queue.syncTracksMetadata).toHaveBeenCalledWith([fresh]));
+  });
+
+  it("reads the library from the top of the index by key, not by offset", async () => {
+    renderPanel({ entityType: "favorite", entityId: "" });
+
+    await screen.findByTestId("row-t1");
+
+    expect(queries.getAllTracksPaginated).toHaveBeenCalledWith(null);
+    expect(queries.searchTracksPaginated).not.toHaveBeenCalled();
   });
 });

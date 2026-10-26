@@ -6,23 +6,29 @@ import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 const PAGE_SIZE = 50;
 const LIBRARY_TOTAL = 500; // 10 pages
 
-// getTracksPaginated returns real rows so the flattened list length (what
-// VirtualScrollable uses as itemCount) can be asserted.
+// getAllTracksPaginated returns real rows so the flattened list length (what
+// VirtualScrollable uses as itemCount) can be asserted; its key is the index
+// of the row a page ends on.
 vi.mock("@/queries/track.queries", () => ({
-  getTracksPaginated: vi.fn(async (offset: number) => ({
-    tracks: Array.from(
-      { length: Math.min(PAGE_SIZE, LIBRARY_TOTAL - offset) },
-      (_, i) => ({ id: `track-${offset + i}` }),
-    ),
-    nextOffset: offset + PAGE_SIZE < LIBRARY_TOTAL ? offset + PAGE_SIZE : null,
-    total: LIBRARY_TOTAL,
+  getAllTracksPaginated: vi.fn(async (after: readonly number[] | null) => {
+    const start = after === null ? 0 : after[0] + 1;
+    const tracks = Array.from(
+      { length: Math.max(0, Math.min(PAGE_SIZE, LIBRARY_TOTAL - start)) },
+      (_, i) => ({ id: `track-${start + i}` }),
+    );
+    return { tracks, nextOffset: null, last: tracks.length === PAGE_SIZE ? [start + PAGE_SIZE - 1] : null, total: LIBRARY_TOTAL };
+  }),
+  searchTracksPaginated: vi.fn(async (_query: string, offset: number) => ({
+    tracks: [{ id: `hit-${offset}` }],
+    nextOffset: offset === 0 ? 1 : null,
+    total: 2,
   })),
 }));
 
-import { getTracksPaginated } from "@/queries/track.queries";
+import { getAllTracksPaginated, searchTracksPaginated } from "@/queries/track.queries";
 import { useIndexTracksPage } from "../useIndexTracksPage";
 
-function mountComposable() {
+function mountComposable(search = "") {
   let api!: ReturnType<typeof useIndexTracksPage>;
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
@@ -30,7 +36,7 @@ function mountComposable() {
   const wrapper = mount(
     defineComponent({
       setup() {
-        api = useIndexTracksPage(ref(null), ref(""));
+        api = useIndexTracksPage(ref(null), ref(search));
         return () => h("div");
       },
     }),
@@ -72,7 +78,7 @@ describe("useIndexTracksPage", () => {
   it("keeps the loaded list on screen when only the next page fails", async () => {
     const { api, wrapper } = mountComposable();
     await flushPromises();
-    vi.mocked(getTracksPaginated).mockRejectedValueOnce(new Error("idb"));
+    vi.mocked(getAllTracksPaginated).mockRejectedValueOnce(new Error("idb"));
 
     await api.fetchNextPage();
     await flushPromises();
@@ -80,6 +86,22 @@ describe("useIndexTracksPage", () => {
     expect(api.isError.value).toBe(false);
     expect(api.isFetchNextPageError.value).toBe(true);
     expect(api.tracks.value).toHaveLength(PAGE_SIZE);
+
+    wrapper.unmount();
+  });
+
+  it("a search pages the index by offset from the first hit", async () => {
+    vi.mocked(getAllTracksPaginated).mockClear();
+    const { api, wrapper } = mountComposable("abba");
+    await flushPromises();
+
+    await api.fetchNextPage();
+    await flushPromises();
+
+    expect(vi.mocked(searchTracksPaginated).mock.calls.map(call => call[1])).toEqual([0, 1]);
+    expect(api.tracks.value.map(track => track.id)).toEqual(["hit-0", "hit-1"]);
+    expect(api.hasNextPage.value).toBe(false);
+    expect(getAllTracksPaginated).not.toHaveBeenCalled();
 
     wrapper.unmount();
   });

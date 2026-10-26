@@ -59,9 +59,11 @@ import {
   addTracksToAlbumAndSync,
   addTracksToArtistAndSync,
   favoriteTracksAndSync,
+  getAllTracksPaginated,
   getTracksByIds,
-  getTracksPaginated,
+  searchTracksPaginated,
 } from "@/queries/track.queries";
+import type { PaginatedTracksResult, TrackPageParam } from "@/queries/types";
 import { unique } from "@/lib/math";
 import { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
@@ -97,9 +99,14 @@ const {
   isFetchNextPageError,
 } = useInfiniteQuery({
   queryKey: computed(() => queryKeys.tracks.allPaginated(normalizedSearchQuery.value)),
-  queryFn: ({ pageParam = 0 }) => getTracksPaginated(pageParam, normalizedSearchQuery.value),
-  initialPageParam: 0,
-  getNextPageParam: lastPage => lastPage.nextOffset,
+  queryFn: ({ pageParam }) => {
+    if (normalizedSearchQuery.value) {
+      return searchTracksPaginated(normalizedSearchQuery.value, typeof pageParam === "number" ? pageParam : 0);
+    }
+    return getAllTracksPaginated(typeof pageParam === "number" ? null : pageParam);
+  },
+  initialPageParam: null as TrackPageParam,
+  getNextPageParam: (lastPage: PaginatedTracksResult) => lastPage.last === undefined ? lastPage.nextOffset : lastPage.last,
   enabled: hasEntityId,
   placeholderData: keepPreviousData,
 });

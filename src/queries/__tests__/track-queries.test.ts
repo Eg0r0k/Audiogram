@@ -37,14 +37,15 @@ vi.mock("@/services/search/searchIndex", () => ({
   syncSearchIndex: vi.fn(async () => {}),
 }));
 
-import { syncSearchIndex } from "@/services/search/searchIndex";
+import { searchTracks, syncSearchIndex } from "@/services/search/searchIndex";
 import { queryKeys } from "@/queries/query-keys";
 import * as cache from "../cache";
 import type { LibrarySummaryData } from "../types";
 import {
+  getAllTracksPaginated,
   getLikedTracksPageData,
   getLikedTracksPaginated,
-  getTracksPaginated,
+  searchTracksPaginated,
   toggleTrackLikeAndSync,
   updateTrackMetadataAndSync,
 } from "../track.queries";
@@ -118,14 +119,14 @@ describe("track.queries", () => {
     repositories.artistRepository.findByIds.mockResolvedValue([artist]);
     repositories.albumRepository.findByIds.mockResolvedValue([albumA, albumB]);
 
-    const result = await getTracksPaginated(0, "", 50, "album_asc");
+    const result = await getAllTracksPaginated(null, 50, "album_asc");
 
-    expect(tracks.members().rows).toHaveBeenCalledWith({ sort: "album_asc", offset: 0, limit: 51 });
+    expect(tracks.members().page).toHaveBeenCalledWith({ sort: "album_asc", after: null, limit: 50 });
     expect(result.tracks.map(track => track.id)).toEqual([trackA.id, trackB.id]);
     expect(result.total).toBe(2);
   });
 
-  describe("getTracksPaginated over the whole library", () => {
+  describe("getAllTracksPaginated over the whole library", () => {
     const row = (i: number): TrackEntity => ({
       id: `t-${i}` as TrackId,
       title: `Track ${i}`,
@@ -149,23 +150,47 @@ describe("track.queries", () => {
     });
 
     it("counts the library for the first page only", async () => {
-      const first = await getTracksPaginated(0, "", 50, "album_asc");
+      const first = await getAllTracksPaginated(null, 50, null);
       expect(first.total).toBe(1000);
       expect(first.tracks).toHaveLength(50);
-      expect(first.nextOffset).toBe(50);
+      expect(first.nextOffset).toBeNull();
+      expect(first.last).toEqual(["t-950"]);
 
       members.count.mockClear();
-      const second = await getTracksPaginated(50, "", 50, null);
+      const second = await getAllTracksPaginated(first.last ?? null, 50, null);
       expect(members.count).not.toHaveBeenCalled();
-      expect(members.rows).toHaveBeenLastCalledWith({ sort: "date_added_desc", offset: 50, limit: 51 });
+      expect(members.page).toHaveBeenLastCalledWith({ sort: "date_added_desc", after: ["t-950"], limit: 50 });
       expect(second.tracks).toHaveLength(50);
-      expect(second.nextOffset).toBe(100);
+      expect(second.last).toEqual(["t-900"]);
     });
 
     it("ends the list on a page that comes back short", async () => {
-      const last = await getTracksPaginated(950, "", 50, "album_asc");
-      expect(last.tracks).toHaveLength(50);
+      const last = await getAllTracksPaginated(["t-959"], 50, "album_asc");
+      expect(last.tracks).toHaveLength(40);
+      expect(last.last).toBeNull();
       expect(last.nextOffset).toBeNull();
+    });
+
+    it("the second /all page starts exactly after the first page's last row", async () => {
+      const inTitleOrder = (await members.rows({ sort: "title_asc" })).map(track => track.id);
+
+      const first = await getAllTracksPaginated(null, 50, "title_asc");
+      const second = await getAllTracksPaginated(first.last ?? null, 50, "title_asc");
+
+      expect(members.page).toHaveBeenLastCalledWith({ sort: "title_asc", after: first.last, limit: 50 });
+      expect(first.last).toEqual([first.tracks[49].id]);
+      expect([...first.tracks, ...second.tracks].map(track => track.id)).toEqual(inTitleOrder.slice(0, 100));
+    });
+
+    it("a search keeps paging by offset", async () => {
+      vi.mocked(searchTracks).mockResolvedValue({ tracks: [], total: 120, totalDuration: 0, matches: {} });
+
+      const page = await searchTracksPaginated("track", 50, 50, null);
+
+      expect(searchTracks).toHaveBeenCalledWith("track", 50, 50);
+      expect(page.nextOffset).toBe(100);
+      expect(page.last).toBeUndefined();
+      expect(members.page).not.toHaveBeenCalled();
     });
   });
 
@@ -289,9 +314,9 @@ describe("track.queries", () => {
     it("without sortKey pages and counts the liked scope without summing its durations", async () => {
       const liked = useTrackScopes({ liked: [track] }).liked();
 
-      const result = await getLikedTracksPaginated(0, 50);
+      const result = await getLikedTracksPaginated(null, 50);
 
-      expect(liked.rows).toHaveBeenCalledWith({ offset: 0, limit: 50 });
+      expect(liked.page).toHaveBeenCalledWith({ after: null, limit: 50 });
       expect(liked.count).toHaveBeenCalledOnce();
       expect(liked.sumDuration).not.toHaveBeenCalled();
       expect(result.total).toBe(1);
@@ -301,29 +326,35 @@ describe("track.queries", () => {
     it("with sortKey pages the sorted liked scope in one read instead of double-fetch", async () => {
       const liked = useTrackScopes({ liked: [track] }).liked();
 
-      const result = await getLikedTracksPaginated(0, 50, "title_asc");
+      const result = await getLikedTracksPaginated(null, 50, "title_asc");
 
-      expect(liked.rows).toHaveBeenCalledOnce();
-      expect(liked.rows).toHaveBeenCalledWith({ sort: "title_asc", offset: 0, limit: 50 });
+      expect(liked.page).toHaveBeenCalledOnce();
+      expect(liked.page).toHaveBeenCalledWith({ sort: "title_asc", after: null, limit: 50 });
       expect(repositories.trackRepository.withIds).not.toHaveBeenCalled();
       expect(result.tracks).toHaveLength(1);
       expect(result.total).toBe(1);
     });
 
-    it("returns nextOffset=null when no more pages", async () => {
+    it("returns last null when the page comes back short", async () => {
       useTrackScopes({ liked: [track] });
 
-      const result = await getLikedTracksPaginated(0, 50);
+      const result = await getLikedTracksPaginated(null, 50);
 
+      expect(result.last).toBeNull();
       expect(result.nextOffset).toBeNull();
     });
 
-    it("returns nextOffset when more pages exist", async () => {
-      useTrackScopes({ liked: [track] }).liked().count.mockResolvedValue(100);
+    it("resumes after the last row of a full page and counts on the first page only", async () => {
+      const other = { ...track, id: "track-2" as TrackId };
+      const liked = useTrackScopes({ liked: [track, other] }).liked();
 
-      const result = await getLikedTracksPaginated(0, 50);
+      const head = await getLikedTracksPaginated(null, 1);
+      const next = await getLikedTracksPaginated(head.last ?? null, 1);
 
-      expect(result.nextOffset).toBe(50);
+      expect(head).toMatchObject({ nextOffset: null, last: [track.id], total: 2 });
+      expect(liked.page).toHaveBeenLastCalledWith({ after: [track.id], limit: 1 });
+      expect(next.tracks.map(row => row.id)).toEqual([other.id]);
+      expect(liked.count).toHaveBeenCalledOnce();
     });
   });
 

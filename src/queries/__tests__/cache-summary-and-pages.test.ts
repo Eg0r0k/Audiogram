@@ -98,11 +98,11 @@ describe("summary counts survive a point-sync", () => {
 
 describe("liked infinite pages under a point-sync", () => {
   const page = () => ({
-    pages: [{ tracks: [row("t-1", true), row("t-2", true)], nextOffset: 2, total: 5 }],
-    pageParams: [0],
+    pages: [{ tracks: [row("t-1", true), row("t-2", true)], nextOffset: null, last: [200, "t-2"], total: 5 }],
+    pageParams: [null],
   });
 
-  it("a like prepended to the default liked page moves its nextOffset along", () => {
+  it("a like prepended to the default liked page keeps its keyset cursor", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(queryKeys.tracks.likedPageInfinite(), page());
 
@@ -110,7 +110,7 @@ describe("liked infinite pages under a point-sync", () => {
 
     const first = queryClient.getQueryData<ReturnType<typeof page>>(queryKeys.tracks.likedPageInfinite())!.pages[0];
     expect(first.tracks.map(track => track.id)).toEqual(["t-9", "t-1", "t-2"]);
-    expect(first).toMatchObject({ nextOffset: 3, total: 6 });
+    expect(first).toMatchObject({ nextOffset: null, last: [200, "t-2"], total: 6 });
   });
 
   it("a sorted liked page is left for invalidation, not patched", () => {
@@ -122,15 +122,15 @@ describe("liked infinite pages under a point-sync", () => {
     expect(queryClient.getQueryData(queryKeys.tracks.likedPageInfinite("title_asc"))).toEqual(page());
   });
 
-  it("removing rows from the default liked page moves its nextOffset back", () => {
+  it("removing rows from the default liked page keeps its keyset cursor", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(queryKeys.tracks.likedPageInfinite(), page());
 
-    removeTracksFromCaches(queryClient, ["t-1"]);
+    removeTracksFromCaches(queryClient, ["t-2"]);
 
     const first = queryClient.getQueryData<ReturnType<typeof page>>(queryKeys.tracks.likedPageInfinite())!.pages[0];
-    expect(first.tracks.map(track => track.id)).toEqual(["t-2"]);
-    expect(first).toMatchObject({ nextOffset: 1, total: 4 });
+    expect(first.tracks.map(track => track.id)).toEqual(["t-1"]);
+    expect(first).toMatchObject({ nextOffset: null, last: [200, "t-2"], total: 4 });
   });
 
   it("deleting rows loaded in the liked pages moves the summary's likedCount too", () => {

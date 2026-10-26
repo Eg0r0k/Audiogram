@@ -5,6 +5,7 @@ import { formatTotalDuration } from "@/lib/format/time";
 import type { LikedData } from "@/types/media-data";
 import { queryKeys } from "@/queries/query-keys";
 import { getLikedTracksPaginated, searchLikedTracks, trackQueries } from "@/queries/track.queries";
+import type { PaginatedTracksResult, TrackPageParam } from "@/queries/types";
 import type { TrackSortKey } from "@/modules/tracks/types";
 
 export function useLikedTracksPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) {
@@ -23,11 +24,14 @@ export function useLikedTracksPage(sortKey: Ref<TrackSortKey | null>, searchQuer
     isFetchingNextPage,
   } = useInfiniteQuery({
     queryKey: computed(() => queryKeys.tracks.likedPageInfinite(sortKey.value, normalizedSearchQuery.value)),
-    queryFn: ({ pageParam = 0 }) => normalizedSearchQuery.value
-      ? searchLikedTracks(normalizedSearchQuery.value, pageParam, undefined, sortKey.value)
-      : getLikedTracksPaginated(pageParam, undefined, sortKey.value),
-    initialPageParam: 0,
-    getNextPageParam: lastPage => lastPage.nextOffset,
+    queryFn: ({ pageParam }) => {
+      if (normalizedSearchQuery.value) {
+        return searchLikedTracks(normalizedSearchQuery.value, typeof pageParam === "number" ? pageParam : 0, undefined, sortKey.value);
+      }
+      return getLikedTracksPaginated(typeof pageParam === "number" ? null : pageParam, undefined, sortKey.value);
+    },
+    initialPageParam: null as TrackPageParam,
+    getNextPageParam: (lastPage: PaginatedTracksResult) => lastPage.last === undefined ? lastPage.nextOffset : lastPage.last,
     placeholderData: previousData => previousData,
   });
 

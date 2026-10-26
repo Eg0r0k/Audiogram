@@ -1,7 +1,8 @@
 import { useInfiniteQuery } from "@tanstack/vue-query";
 import { computed, type Ref } from "vue";
 import { queryKeys } from "@/queries/query-keys";
-import { getTracksPaginated } from "@/queries/track.queries";
+import { getAllTracksPaginated, searchTracksPaginated } from "@/queries/track.queries";
+import type { PaginatedTracksResult, TrackPageParam } from "@/queries/types";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import type { SearchMatch } from "@/services/search/types";
 import { DEFAULT_TRACK_SORT_KEY } from "@/types/track-sort";
@@ -15,10 +16,14 @@ export function useIndexTracksPage(sortKey: Ref<TrackSortKey | null>, searchQuer
 
   const queryState = useInfiniteQuery({
     queryKey: computed(() => queryKeys.tracks.indexInfinite(resolvedSortKey.value, normalizedSearchQuery.value)),
-    queryFn: ({ pageParam = 0 }) =>
-      getTracksPaginated(pageParam, normalizedSearchQuery.value, undefined, resolvedSortKey.value),
-    initialPageParam: 0,
-    getNextPageParam: lastPage => lastPage.nextOffset,
+    queryFn: ({ pageParam }) => {
+      if (normalizedSearchQuery.value) {
+        return searchTracksPaginated(normalizedSearchQuery.value, typeof pageParam === "number" ? pageParam : 0, undefined, resolvedSortKey.value);
+      }
+      return getAllTracksPaginated(typeof pageParam === "number" ? null : pageParam, undefined, resolvedSortKey.value);
+    },
+    initialPageParam: null as TrackPageParam,
+    getNextPageParam: (lastPage: PaginatedTracksResult) => lastPage.last === undefined ? lastPage.nextOffset : lastPage.last,
     placeholderData: previousData => previousData,
   });
 

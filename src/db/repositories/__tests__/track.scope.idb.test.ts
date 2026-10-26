@@ -315,7 +315,30 @@ describe("TrackScope keyset pages", () => {
     const exact = await members.page({ sort: "plays_desc", limit: total });
     expect(exact.rows).toHaveLength(total);
     expect(exact.last).not.toBeNull();
-    expect(await members.page({ sort: "plays_desc", after: exact.last, limit: total })).toEqual({ rows: [], last: null });
+    expect(await members.page({ sort: "plays_desc", after: exact.last, limit: total })).toEqual({ rows: [], first: null, last: null });
+  });
+
+  it("page returns the first and last keys of the rows it holds", async () => {
+    for (const [name, scope] of KEYSET_SCOPES()) {
+      for (const sort of [undefined, "title_asc", "duration_desc", "date_added_desc"] as const) {
+        if (name === "members" && sort === undefined) continue;
+        const label = `${name} ${sort}`;
+        const head = await scope.page({ sort, limit: 7 });
+        const next = await scope.page({ sort, after: head.last, limit: 7 });
+
+        expect(idsOf(await scope.window({ sort, from: head.first!, to: next.first })), label).toEqual(idsOf(head.rows));
+        expect(idsOf(await scope.window({ sort, from: head.first!, to: head.last })), label).toEqual(idsOf(head.rows.slice(0, -1)));
+      }
+    }
+
+    const members = trackRepository.members();
+    const short = await members.page({ sort: "album_asc", limit: 1000 });
+    expect(short.last).toBeNull();
+    expect(idsOf(await members.window({ sort: "album_asc", from: short.first!, to: null }))).toEqual(idsOf(short.rows));
+
+    const one = await members.page({ sort: "title_asc", limit: 1 });
+    expect(one.first).toEqual([1, one.rows[0].title, one.rows[0].id]);
+    expect(one.last).toEqual(one.first);
   });
 
   it("liked pages in like order resume across rows liked in the same millisecond", async () => {

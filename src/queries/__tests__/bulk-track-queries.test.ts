@@ -32,7 +32,7 @@ import {
   getAllTrackIds,
   getAllTracksForQueue,
   getTracksByIdsSorted,
-  getTracksPaginated,
+  searchTracksPaginated,
   setTracksLikedAndSync,
 } from "../track.queries";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
@@ -107,21 +107,21 @@ describe("bulk track queries", () => {
   describe("search + sort", () => {
     const hits = { results: [{ entityId: "b" }, { entityId: "a" }, { entityId: "c" }], total: 3, totalDuration: 0 };
 
-    it("getTracksPaginated with a search and no sort keeps relevance order", async () => {
+    it("searchTracksPaginated without a sort keeps relevance order", async () => {
       search.searchTracks.mockResolvedValue({ tracks: [{ id: "b" }, { id: "a" }], total: 2, totalDuration: 0 });
 
-      const page = await getTracksPaginated(0, "que", 50, null);
+      const page = await searchTracksPaginated("que", 0, 50, null);
 
       expect(page.tracks.map(t => t.id)).toEqual(["b", "a"]);
       expect(search.searchTracks).toHaveBeenCalledWith("que", 0, 50);
       expect(repositories.trackRepository.withIds).not.toHaveBeenCalled();
     });
 
-    it("getTracksPaginated with a search and a sort pages the sorted hits", async () => {
+    it("searchTracksPaginated with a sort pages the sorted hits", async () => {
       search.searchDocuments.mockResolvedValue(hits);
       const tracks = useTrackScopes({ withIds: titled });
 
-      const page = await getTracksPaginated(2, "que", 2, "title_asc");
+      const page = await searchTracksPaginated("que", 2, 2, "title_asc");
 
       expect(search.searchDocuments).toHaveBeenCalledWith("que", "track", { offset: 0 });
       expect(tracks.withIds).toHaveBeenCalledWith(["b", "a", "c"]);

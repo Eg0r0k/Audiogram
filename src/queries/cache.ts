@@ -78,9 +78,11 @@ const isPagedData = (data: unknown): boolean =>
   Array.isArray((data as Nullish<{ pages?: unknown }>)?.pages);
 
 /**
- * Pages are offset-paged over Dexie: a row added or dropped in place shifts
- * everything after it, so the next fetch must start where the cached rows
- * now end, not where the page said they ended when it was read.
+ * An offset-paged list (an id slice, a search): a row added or dropped in
+ * place shifts everything after it, so the next fetch must start where the
+ * cached rows now end, not where the page said they ended when it was read.
+ * A keyset page carries `nextOffset: null` and is left alone: its `last`
+ * resumes after the right row even when the patch removed that row.
  */
 const recountOffsets = <P extends { nextOffset: number | null }>(
   pages: P[],

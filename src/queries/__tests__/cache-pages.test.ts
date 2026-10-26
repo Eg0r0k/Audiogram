@@ -134,6 +134,32 @@ describe("removeTracksFromCaches", () => {
 
     expect(setQueriesData).toHaveBeenCalledTimes(1);
   });
+
+  it("a patch leaves the keyset cursor of an index-paged list alone", () => {
+    const queryClient = new QueryClient();
+    const keys = [queryKeys.tracks.indexInfinite("date_added_desc"), queryKeys.tracks.likedPageInfinite()];
+    const cursor = [1, 20, "t-2"] as const;
+    for (const key of keys) {
+      queryClient.setQueryData<Pages>(key, {
+        pages: [
+          { tracks: [row("t-1"), row("t-2")], nextOffset: null, last: cursor, total: 3 },
+          { tracks: [row("t-3")], nextOffset: null, last: null, total: 3 },
+        ],
+        pageParams: [null, cursor],
+      });
+    }
+
+    removeTracksFromCaches(queryClient, [TrackId("t-2")]);
+
+    for (const key of keys) {
+      const data = queryClient.getQueryData<Pages>(key);
+      expect(rowIds(data), String(key)).toEqual([["t-1"], ["t-3"]]);
+      expect(data?.pages.map(page => page.last), String(key)).toEqual([cursor, null]);
+      expect(data?.pages.map(page => page.nextOffset), String(key)).toEqual([null, null]);
+      expect(data?.pages.map(page => page.total), String(key)).toEqual([2, 2]);
+      expect(data?.pageParams, String(key)).toEqual([null, cursor]);
+    }
+  });
 });
 
 describe("playlist point-sync of its paged tracks", () => {

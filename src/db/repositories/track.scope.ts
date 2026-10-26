@@ -56,6 +56,7 @@ export interface TrackPageOptions {
 
 export interface TrackPage {
   rows: TrackEntity[];
+  first: TrackIndexKey | null;
   last: TrackIndexKey | null;
 }
 
@@ -254,7 +255,11 @@ export class TrackScope {
       const start = after === null ? null : { key: after, inclusive: false };
       const rows = await seek(this.table, start, null).limit(limit).toArray();
       const full = rows.length > 0 && rows.length === limit;
-      return { rows, last: full ? keyOf(rows[rows.length - 1]) : null };
+      return {
+        rows,
+        first: rows.length > 0 ? keyOf(rows[0]) : null,
+        last: full ? keyOf(rows[rows.length - 1]) : null,
+      };
     });
   }
 

@@ -7,6 +7,7 @@ import {
   trackRepository,
 } from "@/db/repositories";
 import type { TrackLyricsChanges } from "@/db/repositories/track.repository";
+import type { TrackIndexKey, TrackScope } from "@/db/repositories/track.scope";
 import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
 import {
@@ -152,25 +153,33 @@ export async function getLikedTracksPageData(sortKey: TrackSortKey | null = null
   };
 }
 
+// Only the first page counts the list: the view reads its size from pages[0],
+// and a count walks the whole index (150 ms at 30k tracks) on every page. A
+// later page cannot know how many rows precede it, so it reports its own.
+const indexPage = async (
+  scope: TrackScope,
+  sort: TrackSortKey | undefined,
+  after: TrackIndexKey | null,
+  limit: number,
+): Promise<PaginatedTracksResult> => {
+  const [page, counted] = await Promise.all([
+    scope.page({ sort, after, limit }),
+    after === null ? scope.count() : null,
+  ]);
+  return {
+    tracks: await loadTrackRelations(page.rows),
+    nextOffset: null,
+    last: page.last,
+    total: counted ?? page.rows.length,
+  };
+};
+
 export async function getLikedTracksPaginated(
-  offset: number,
+  after: TrackIndexKey | null,
   limit = PAGE_SIZE,
   sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> {
-  const liked = trackRepository.liked();
-  const [tracks, total] = await Promise.all([
-    liked.rows({ sort: sortKey ?? undefined, offset, limit }),
-    liked.count(),
-  ]);
-
-  const mappedTracks = await loadTrackRelations(tracks);
-  const nextOffset = offset + limit < total ? offset + limit : null;
-
-  return {
-    tracks: mappedTracks,
-    nextOffset,
-    total,
-  };
+  return indexPage(trackRepository.liked(), sortKey ?? undefined, after, limit);
 }
 
 // queryOptions factories — only for non-infinite queries.
@@ -195,29 +204,12 @@ export const trackQueries = {
     }),
 } as const;
 
-// Only the first page counts the library: the list reads its size from
-// pages[0], and a count walks the whole index (150 ms at 30k tracks) on
-// every page. One extra row tells whether another page follows; a later
-// page's total is just the rows seen so far.
 export async function getAllTracksPaginated(
-  offset: number,
+  after: TrackIndexKey | null,
   limit = PAGE_SIZE,
   sortKey?: TrackSortKey | null,
 ): Promise<PaginatedTracksResult> {
-  const members = trackRepository.members();
-  const [rawTracks, counted] = await Promise.all([
-    members.rows({ sort: sortKey ?? DEFAULT_TRACK_SORT_KEY, offset, limit: limit + 1 }),
-    offset === 0 ? members.count() : null,
-  ]);
-
-  const hasMore = rawTracks.length > limit;
-  const mappedTracks = await loadTrackRelations(hasMore ? rawTracks.slice(0, limit) : rawTracks);
-
-  return {
-    tracks: mappedTracks,
-    nextOffset: hasMore ? offset + limit : null,
-    total: counted ?? offset + mappedTracks.length,
-  };
+  return indexPage(trackRepository.members(), sortKey ?? DEFAULT_TRACK_SORT_KEY, after, limit);
 }
 
 // Search hits come back in score order; a chosen sort reorders the whole hit
@@ -338,21 +330,6 @@ export const searchPlaylistTracks = async (
   const playlist = await playlistRepository.findById(playlistId);
   return searchTracksWithin(playlist?.trackIds ?? [], query, offset, limit, sortKey);
 };
-
-export async function getTracksPaginated(
-  offset: number,
-  searchQuery = "",
-  limit = PAGE_SIZE,
-  sortKey?: TrackSortKey | null,
-): Promise<PaginatedTracksResult> {
-  const normalizedSearchQuery = searchQuery.trim();
-
-  if (normalizedSearchQuery.length > 0) {
-    return searchTracksPaginated(normalizedSearchQuery, offset, limit, sortKey);
-  }
-
-  return getAllTracksPaginated(offset, limit, sortKey);
-}
 
 /** The whole index in the order the list page shows it: `null` sort is
  *  relevance for a search and newest-first otherwise. */

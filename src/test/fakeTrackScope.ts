@@ -1,7 +1,7 @@
 import { vi, type Mock } from "vitest";
 import type { TrackEntity } from "@/db/entities";
 import type { TrackRepository } from "@/db/repositories/track.repository";
-import type { TrackScope } from "@/db/repositories/track.scope";
+import type { TrackIndexKey, TrackScope } from "@/db/repositories/track.scope";
 import { isDescendingSort, trackSortField, type TrackSortKey } from "@/types/track-sort";
 
 const SCOPE_FACTORIES = ["all", "members", "liked", "inAlbum", "byArtist", "withTag", "withIds"] as const;
@@ -33,11 +33,31 @@ const ordered = (rows: readonly TrackEntity[], sort: TrackSortKey | undefined): 
   return isDescendingSort(sort) ? ascending.reverse() : ascending;
 };
 
+// The fake's index key is the row id wrapped in an array, read in the fake's own order.
+const keyOf = (row: TrackEntity | undefined): TrackIndexKey | null => (row ? [row.id] : null);
+
+const positionOf = (rows: readonly TrackEntity[], key: TrackIndexKey): number => {
+  const position = rows.findIndex(row => row.id === key[0]);
+  if (position < 0) throw new Error(`fakeTrackScope: no row holds the key ${JSON.stringify(key)}`);
+  return position;
+};
+
 export const fakeTrackScope = (rows: readonly TrackEntity[]): FakeTrackScope => {
   const scope: FakeTrackScope = {
     members: vi.fn(() => scope),
     rows: vi.fn<TrackScope["rows"]>(async ({ sort, offset = 0, limit } = {}) =>
       ordered(rows, sort).slice(offset, limit === undefined ? undefined : offset + limit)),
+    page: vi.fn<TrackScope["page"]>(async ({ sort, after = null, limit }) => {
+      const all = ordered(rows, sort);
+      const start = after === null ? 0 : positionOf(all, after) + 1;
+      const page = all.slice(start, start + limit);
+      const full = page.length > 0 && page.length === limit;
+      return { rows: page, first: keyOf(page[0]), last: full ? keyOf(page[page.length - 1]) : null };
+    }),
+    window: vi.fn<TrackScope["window"]>(async ({ sort, from, to }) => {
+      const all = ordered(rows, sort);
+      return all.slice(positionOf(all, from), to === null ? undefined : positionOf(all, to));
+    }),
     ids: vi.fn<TrackScope["ids"]>(async sort => ordered(rows, sort).map(row => row.id)),
     count: vi.fn<TrackScope["count"]>(async () => rows.length),
     sumDuration: vi.fn<TrackScope["sumDuration"]>(async () => rows.reduce((total, row) => total + row.duration, 0)),

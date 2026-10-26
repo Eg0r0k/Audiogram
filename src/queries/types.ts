@@ -4,6 +4,7 @@ import type {
   PlaylistEntity,
   SidebarFolderEntity,
 } from "@/db/entities";
+import type { TrackIndexKey } from "@/db/repositories/track.scope";
 import type { Track } from "@/types/track";
 import type { SearchMatch } from "@/services/search/types";
 
@@ -39,12 +40,17 @@ export interface LikedTracksPageData {
 export interface PaginatedTracksResult {
   tracks: Track[];
   nextOffset: number | null;
+  /** Where an index-paged list resumes, null once it has ended; an id-sliced list pages by `nextOffset` instead. */
+  last?: TrackIndexKey | null;
   total: number;
   /** Seconds across every match; only a search inside a collection knows it up front. */
   totalDuration?: number;
   /** Why each track of this page matched, keyed by track id; a search page only. */
   matches?: Record<string, SearchMatch>;
 }
+
+// The index resumes after a key and a search at an offset; null starts either.
+export type TrackPageParam = TrackIndexKey | number | null;
 
 export interface PaginatedAlbumsResult {
   albums: AlbumEntity[];
