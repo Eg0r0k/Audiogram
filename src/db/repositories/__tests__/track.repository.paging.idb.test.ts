@@ -67,9 +67,9 @@ beforeEach(async () => {
   ]);
 });
 
-describe("findAllSortedPaginated", () => {
+describe("members().rows paged", () => {
   it("returns the requested page, shadow rows excluded", async () => {
-    const page = await trackRepository.findAllSortedPaginated("date_added_asc", OFFSET, LIMIT);
+    const page = await trackRepository.members().rows({ sort: "date_added_asc", offset: OFFSET, limit: LIMIT });
 
     expect(page.map(t => t.id)).toEqual(expectedPage);
   });
@@ -78,10 +78,10 @@ describe("findAllSortedPaginated", () => {
   // if the meter were blind, both numbers would come out the same.
   it("reads no more rows than the liked list does for the same page", async () => {
     const liked = await measureRecordReads(() =>
-      trackRepository.findLikedSortedPaginated("date_added_asc", OFFSET, LIMIT),
+      trackRepository.liked().rows({ sort: "date_added_asc", offset: OFFSET, limit: LIMIT }),
     );
     const all = await measureRecordReads(() =>
-      trackRepository.findAllSortedPaginated("date_added_asc", OFFSET, LIMIT),
+      trackRepository.members().rows({ sort: "date_added_asc", offset: OFFSET, limit: LIMIT }),
     );
 
     expect(liked.reads).toBeGreaterThan(0);
@@ -99,7 +99,7 @@ describe("sorted listings cover the whole key range", () => {
     const odd = "t-odd" as TrackId;
     await db.tracks.put(track(9100, { id: odd, title: "￿￿" }));
 
-    const sorted = await trackRepository.findAllSorted("title_asc");
+    const sorted = await trackRepository.members().rows({ sort: "title_asc" });
 
     expect(sorted.map(t => t.id)).toContain(odd);
   });
@@ -108,7 +108,7 @@ describe("sorted listings cover the whole key range", () => {
     const odd = "t-negative" as TrackId;
     await db.tracks.put(track(9101, { id: odd, duration: -1 }));
 
-    const sorted = await trackRepository.findAllSorted("duration_asc");
+    const sorted = await trackRepository.members().rows({ sort: "duration_asc" });
 
     expect(sorted.map(t => t.id)).toContain(odd);
   });
@@ -119,7 +119,7 @@ describe("sorted listings cover the whole key range", () => {
     const odd = "t-liked-negative" as TrackId;
     await db.tracks.put(track(9102, { id: odd, duration: -1, likedAt: 5 }));
 
-    const sorted = await trackRepository.findLikedSorted("duration_asc");
+    const sorted = await trackRepository.liked().rows({ sort: "duration_asc" });
 
     expect(sorted.map(t => t.id)).toContain(odd);
   });
@@ -128,16 +128,16 @@ describe("sorted listings cover the whole key range", () => {
     const odd = "t-liked-odd" as TrackId;
     await db.tracks.put(track(9103, { id: odd, title: "￿￿", likedAt: 5 }));
 
-    const sorted = await trackRepository.findLikedSorted("title_asc");
+    const sorted = await trackRepository.liked().rows({ sort: "title_asc" });
 
     expect(sorted.map(t => t.id)).toContain(odd);
   });
 });
 
-describe("findPaginated", () => {
+describe("members().rows newest first", () => {
   it("does not read the rows it skips", async () => {
     const { result, reads } = await measureRecordReads(() =>
-      trackRepository.findPaginated(OFFSET, LIMIT),
+      trackRepository.members().rows({ sort: "date_added_desc", offset: OFFSET, limit: LIMIT }),
     );
 
     expect(result).toHaveLength(LIMIT);
@@ -145,9 +145,9 @@ describe("findPaginated", () => {
   });
 });
 
-describe("findIdsByArtistId", () => {
+describe("byArtist(id).members().ids", () => {
   it("returns the artist's member ids, shadow rows excluded", async () => {
-    const ids = await trackRepository.findIdsByArtistId(ARTIST);
+    const ids = await trackRepository.byArtist(ARTIST).members().ids();
 
     expect(ids).toHaveLength(MEMBERS);
     expect(ids.some(id => id.startsWith("s"))).toBe(false);
@@ -158,7 +158,7 @@ describe("findIdsByArtistId", () => {
   // the library's shadow set.
   it("reads only the artist's own rows", async () => {
     const { valueReads } = await measureRecordReads(() =>
-      trackRepository.findIdsByArtistId(ARTIST),
+      trackRepository.byArtist(ARTIST).members().ids(),
     );
 
     expect(valueReads).toBeLessThanOrEqual(MEMBERS + SHADOWS);
@@ -166,29 +166,21 @@ describe("findIdsByArtistId", () => {
 });
 
 describe("library-membership counts", () => {
-  it("countByAlbumIds returns an empty map without reading anything", async () => {
-    const { result, reads } = await measureRecordReads(() => trackRepository.countByAlbumIds([]));
-
-    expect(result.size).toBe(0);
-    expect(reads).toBe(0);
-  });
-
-  it("countByArtistIds counts a shared track once and ignores artists not asked for", async () => {
+  it("byArtist(id).members().count counts a shared track once and ignores artists not asked for", async () => {
     const other = "ar2" as ArtistId;
     await db.tracks.put(track(9001, { id: "shared" as TrackId, artistIds: [ARTIST, other] }));
 
-    const counts = await trackRepository.countByArtistIds([ARTIST]);
+    const count = await trackRepository.byArtist(ARTIST).members().count();
 
-    expect(counts.get(ARTIST)).toBe(MEMBERS + 1);
-    expect(counts.has(other)).toBe(false);
+    expect(count).toBe(MEMBERS + 1);
   });
 
-  it("countByAlbumIds counts members without materializing the library", async () => {
+  it("inAlbum(id).members().count counts members without materializing the library", async () => {
     const { result, valueReads } = await measureRecordReads(() =>
-      trackRepository.countByAlbumIds([ALBUM]),
+      trackRepository.inAlbum(ALBUM).members().count(),
     );
 
-    expect(result.get(ALBUM)).toBe(MEMBERS);
+    expect(result).toBe(MEMBERS);
     expect(valueReads).toBeLessThanOrEqual(SHADOWS);
   });
 
@@ -196,7 +188,7 @@ describe("library-membership counts", () => {
   // the set is not small for anyone with a source connected. The count reads
   // the artist's own rows and no row of another artist, so its cost follows
   // the artist and not that set.
-  it("countByArtistIds materializes no row for shadows of other artists", async () => {
+  it("byArtist(id).members().count materializes no row for shadows of other artists", async () => {
     const other = "ar-other" as ArtistId;
     await db.tracks.bulkPut(
       Array.from({ length: 300 }, (_, i) =>
@@ -204,10 +196,10 @@ describe("library-membership counts", () => {
     );
 
     const { result, valueReads } = await measureRecordReads(() =>
-      trackRepository.countByArtistIds([ARTIST]),
+      trackRepository.byArtist(ARTIST).members().count(),
     );
 
-    expect(result.get(ARTIST)).toBe(MEMBERS);
+    expect(result).toBe(MEMBERS);
     expect(valueReads).toBe(MEMBERS + SHADOWS);
   });
 });

@@ -172,7 +172,7 @@ describe("trackRepository.findByIds", () => {
   });
 });
 
-describe("trackRepository.countByAlbumIds", () => {
+describe("trackRepository.inAlbum(id).members().count", () => {
   it("counts library tracks only, skipping shadow rows", async () => {
     await db.tracks.bulkAdd([
       track("t1", { albumId: "album-a" as AlbumId }),
@@ -180,26 +180,24 @@ describe("trackRepository.countByAlbumIds", () => {
       track("t3", { albumId: "album-a" as AlbumId, pinned: 0 }),
     ]);
 
-    const counts = await trackRepository.countByAlbumIds(["album-a", "album-b"] as AlbumId[]);
-
-    expect(counts.get("album-a" as AlbumId)).toBe(2);
-    expect(counts.get("album-b" as AlbumId)).toBe(0);
+    expect(await trackRepository.inAlbum("album-a" as AlbumId).members().count()).toBe(2);
+    expect(await trackRepository.inAlbum("album-b" as AlbumId).members().count()).toBe(0);
   });
 
-  it("returns an empty map for empty input", async () => {
-    expect((await trackRepository.countByAlbumIds([])).size).toBe(0);
+  it("withIds([]).count is zero for empty input", async () => {
+    expect(await trackRepository.withIds([]).count()).toBe(0);
   });
 });
 
 describe("trackRepository bulk writes", () => {
-  it("setAlbumTitleByAlbumId rewrites the denormalized title of every track in the album", async () => {
+  it("inAlbum(id).modify rewrites the denormalized title of every track in the album", async () => {
     await db.tracks.bulkAdd([
       track("t1", { albumId: "al1" as AlbumId, albumTitle: "Old" }),
       track("t2", { albumId: "al1" as AlbumId, albumTitle: "Old" }),
       track("t3", { albumId: "al2" as AlbumId, albumTitle: "Other" }),
     ]);
 
-    const changed = await trackRepository.setAlbumTitleByAlbumId("al1" as AlbumId, "New");
+    const changed = await trackRepository.inAlbum("al1" as AlbumId).modify({ albumTitle: "New" });
 
     expect(changed).toBe(2);
     expect((await db.tracks.toArray()).map(t => t.albumTitle).sort()).toEqual(["New", "New", "Other"]);

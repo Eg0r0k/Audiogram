@@ -117,11 +117,13 @@ describe("unitOfWork.run", () => {
     const counts = await unitOfWork.run(["tracks"], async (uow) => {
       await uow.tracks.create(track("t2", { artistIds: [ar1, ar2] }));
       await uow.tracks.create(track("t3", { artistIds: [ar2], pinned: 0 }));
-      return uow.tracks.countByArtistIds([ar1, ar2]);
+      return [
+        await uow.tracks.byArtist(ar1).members().count(),
+        await uow.tracks.byArtist(ar2).members().count(),
+      ];
     });
 
-    expect(counts.get(ar1)).toBe(2);
-    expect(counts.get(ar2)).toBe(1);
+    expect(counts).toEqual([2, 1]);
   });
 
   it("writes through the transaction, not the global connection", async () => {

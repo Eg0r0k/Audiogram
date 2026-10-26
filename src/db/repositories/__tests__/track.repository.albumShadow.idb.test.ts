@@ -53,13 +53,13 @@ describe("album listings skip shadow rows (idb)", () => {
   // The paged listing moved to the query layer (an album's order is cached
   // per sort there); queries/__tests__/album-tracks-paging.integration.test.ts
   // covers this same album against it.
-  it("countByAlbumId and sumDurationByAlbumId count library members only", async () => {
-    expect(await trackRepository.countByAlbumId(ALBUM)).toBe(1);
-    expect(await trackRepository.sumDurationByAlbumId(ALBUM)).toBe(100);
+  it("inAlbum(id).members() count and sumDuration count library members only", async () => {
+    expect(await trackRepository.inAlbum(ALBUM).members().count()).toBe(1);
+    expect(await trackRepository.inAlbum(ALBUM).members().sumDuration()).toBe(100);
   });
 
-  it("findByAlbumId still returns every row for the cascades", async () => {
-    const all = await trackRepository.findByAlbumId(ALBUM);
+  it("inAlbum(id).rows still returns every row for the cascades", async () => {
+    const all = await trackRepository.inAlbum(ALBUM).rows();
     expect(all).toHaveLength(3);
   });
 });

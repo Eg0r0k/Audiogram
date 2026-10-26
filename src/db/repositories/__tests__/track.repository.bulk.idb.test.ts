@@ -58,11 +58,11 @@ describe("trackRepository bulk helpers (idb)", () => {
     expect((await db.tracks.get(TrackId("t-1")))?.likedAt).toBe(10);
   });
 
-  it("findAllIdsSorted returns ids in sort order without entities", async () => {
-    const byTitle = await trackRepository.findAllIdsSorted("title_asc");
+  it("members().ids returns ids in sort order without entities", async () => {
+    const byTitle = await trackRepository.members().ids("title_asc");
     expect(byTitle).toEqual([TrackId("t-2"), TrackId("t-1"), TrackId("t-3")]);
 
-    const newestFirst = await trackRepository.findAllIdsSorted("date_added_desc");
+    const newestFirst = await trackRepository.members().ids("date_added_desc");
     expect(newestFirst).toEqual([TrackId("t-3"), TrackId("t-2"), TrackId("t-1")]);
   });
 });

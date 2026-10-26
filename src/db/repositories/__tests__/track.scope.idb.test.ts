@@ -185,7 +185,7 @@ describe("TrackScope", () => {
     expect(await trackRepository.withIds([]).rows()).toEqual([]);
   });
 
-  it("withIds(ids).rows with a sort orders like findSortedByIds did", async () => {
+  it("withIds(ids).rows with a sort orders by the plain index of the sort field", async () => {
     const ids = [...SEED].reverse().map(row => row.id).concat(TrackId("nope"));
     const sorts: [TrackSortKey, keyof TrackEntity][] = [
       ["title_asc", "title"],
