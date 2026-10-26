@@ -2,7 +2,6 @@ import { computed, onScopeDispose, shallowRef, triggerRef, watch, type Ref, type
 import { useInfiniteQuery, useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { formatTotalDuration } from "@/lib/format/time";
-import type { TrackId } from "@/types/ids";
 import type { LikedData } from "@/types/media-data";
 import type { Track } from "@/types/track";
 import { queryKeys } from "@/queries/query-keys";
@@ -10,7 +9,7 @@ import { libraryQueries } from "@/queries/library.queries";
 import { likedTrackScope, loadTrackRelations, searchLikedTracks, trackQueries } from "@/queries/track.queries";
 import type { PaginatedTracksResult, TrackPageParam } from "@/queries/types";
 import type { TrackSortKey } from "@/modules/tracks/types";
-import { LivePages } from "@/modules/favorite/lib/livePages";
+import { LivePages, uniqueById } from "@/modules/tracks/lib/livePages";
 
 const PAGE_SIZE = 50;
 
@@ -19,16 +18,6 @@ interface LikedList {
   count: number;
   seconds: number;
 }
-
-// A row liked between a window's upper bound and the open page's resume key lands in both.
-const uniqueById = (tracks: Track[]): Track[] => {
-  const seen = new Set<TrackId>();
-  return tracks.filter((track) => {
-    if (seen.has(track.id)) return false;
-    seen.add(track.id);
-    return true;
-  });
-};
 
 export const useLikedTracksPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) => {
   const { t } = useI18n();

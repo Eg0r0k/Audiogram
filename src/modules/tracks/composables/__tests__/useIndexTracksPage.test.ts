@@ -1,23 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
+import "fake-indexeddb/auto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, ref } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
+import { db } from "@/db";
+import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
+import { TrackScope } from "@/db/repositories/track.scope";
+import { queryKeys } from "@/queries/query-keys";
+import { AlbumId, TrackId } from "@/types/ids";
 
 const PAGE_SIZE = 50;
-const LIBRARY_TOTAL = 500; // 10 pages
+const LIBRARY_TOTAL = 500;
 
-// getAllTracksPaginated returns real rows so the flattened list length (what
-// VirtualScrollable uses as itemCount) can be asserted; its key is the index
-// of the row a page ends on.
-vi.mock("@/queries/track.queries", () => ({
-  getAllTracksPaginated: vi.fn(async (after: readonly number[] | null) => {
-    const start = after === null ? 0 : after[0] + 1;
-    const tracks = Array.from(
-      { length: Math.max(0, Math.min(PAGE_SIZE, LIBRARY_TOTAL - start)) },
-      (_, i) => ({ id: `track-${start + i}` }),
-    );
-    return { tracks, nextOffset: null, last: tracks.length === PAGE_SIZE ? [start + PAGE_SIZE - 1] : null, total: LIBRARY_TOTAL };
-  }),
+vi.mock("@/queries/track.queries", async importOriginal => ({
+  ...await importOriginal<typeof import("@/queries/track.queries")>(),
   searchTracksPaginated: vi.fn(async (_query: string, offset: number) => ({
     tracks: [{ id: `hit-${offset}` }],
     nextOffset: offset === 0 ? 1 : null,
@@ -25,10 +21,36 @@ vi.mock("@/queries/track.queries", () => ({
   })),
 }));
 
-import { getAllTracksPaginated, searchTracksPaginated } from "@/queries/track.queries";
+import { searchTracksPaginated } from "@/queries/track.queries";
 import { useIndexTracksPage } from "../useIndexTracksPage";
 
-function mountComposable(search = "") {
+const name = (index: number) => `track-${String(index).padStart(3, "0")}`;
+
+// Added oldest first, so the default order (newest first) reads track-499, track-498, ...
+const SEED: TrackEntity[] = Array.from({ length: LIBRARY_TOTAL }, (_, i) => ({
+  id: TrackId(name(i)),
+  title: name(i),
+  artistName: "A",
+  albumTitle: "",
+  artistIds: [],
+  albumId: AlbumId("al1"),
+  tagIds: [],
+  source: TrackSource.LOCAL_INTERNAL,
+  pinned: 1,
+  state: TrackState.READY,
+  storagePath: `tracks/${name(i)}.mp3`,
+  duration: 100,
+  format: {},
+  playCount: 0,
+  addedAt: 1000 + i,
+}));
+
+const until = async (holds: () => boolean) => {
+  for (let i = 0; i < 400 && !holds(); i++) await new Promise(resolve => setTimeout(resolve, 5));
+  expect(holds()).toBe(true);
+};
+
+const mountComposable = (search = "") => {
   let api!: ReturnType<typeof useIndexTracksPage>;
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
@@ -43,33 +65,45 @@ function mountComposable(search = "") {
     { global: { plugins: [[VueQueryPlugin, { queryClient }]] } },
   );
   return { api, wrapper, queryClient };
-}
+};
 
 describe("useIndexTracksPage", () => {
-  it("reads the list through the paged query alone, without a duration scan", async () => {
-    const { wrapper, queryClient } = mountComposable();
-    await flushPromises();
+  beforeEach(async () => {
+    await db.open();
+    await Promise.all(db.tables.map(table => table.clear()));
+    await db.tracks.bulkAdd(SEED);
+  });
 
-    expect(queryClient.getQueryCache().getAll()).toHaveLength(1);
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("reads the list through live pages and the member count alone, without a duration scan", async () => {
+    const sumDuration = vi.spyOn(TrackScope.prototype, "sumDuration");
+    const { api, wrapper, queryClient } = mountComposable();
+    await until(() => !api.isLoading.value);
+
+    const fetched = queryClient.getQueryCache().getAll().filter(query => query.state.data !== undefined);
+    expect(fetched.map(query => query.queryKey)).toEqual([queryKeys.tracks.memberCount()]);
+    expect(api.total.value).toBe(LIBRARY_TOTAL);
+    expect(api.tracks.value).toHaveLength(PAGE_SIZE);
+    expect(sumDuration).not.toHaveBeenCalled();
 
     wrapper.unmount();
   });
 
   it("keeps every page so a 500-track library scrolls to the last row (no maxPages cap)", async () => {
     const { api, wrapper } = mountComposable();
-    await flushPromises();
+    await until(() => !api.isLoading.value);
 
-    // Exhaust the infinite query the way the virtualizer's loadMore would.
     let guard = 0;
     while (api.hasNextPage.value && guard < 50) {
       await api.fetchNextPage();
-      await flushPromises();
       guard++;
     }
 
-    // maxPages would cap the flattened array (VirtualScrollable's itemCount) at
-    // 200, freezing the container height; without it the whole library loads.
     expect(api.tracks.value.length).toBe(LIBRARY_TOTAL);
+    expect(api.tracks.value.map(track => track.id).slice(-1)).toEqual([name(0)]);
     expect(api.hasNextPage.value).toBe(false);
 
     wrapper.unmount();
@@ -77,21 +111,29 @@ describe("useIndexTracksPage", () => {
 
   it("keeps the loaded list on screen when only the next page fails", async () => {
     const { api, wrapper } = mountComposable();
-    await flushPromises();
-    vi.mocked(getAllTracksPaginated).mockRejectedValueOnce(new Error("idb"));
+    await until(() => !api.isLoading.value);
+    const failure = new Error("idb");
+    vi.spyOn(TrackScope.prototype, "page").mockRejectedValueOnce(failure);
 
     await api.fetchNextPage();
-    await flushPromises();
 
     expect(api.isError.value).toBe(false);
     expect(api.isFetchNextPageError.value).toBe(true);
+    expect(api.error.value).toBe(failure);
+    expect(api.isFetchingNextPage.value).toBe(false);
     expect(api.tracks.value).toHaveLength(PAGE_SIZE);
+
+    await api.fetchNextPage();
+
+    expect(api.isFetchNextPageError.value).toBe(false);
+    expect(api.tracks.value).toHaveLength(PAGE_SIZE * 2);
 
     wrapper.unmount();
   });
 
   it("a search pages the index by offset from the first hit", async () => {
-    vi.mocked(getAllTracksPaginated).mockClear();
+    vi.mocked(searchTracksPaginated).mockClear();
+    const page = vi.spyOn(TrackScope.prototype, "page");
     const { api, wrapper } = mountComposable("abba");
     await flushPromises();
 
@@ -101,7 +143,7 @@ describe("useIndexTracksPage", () => {
     expect(vi.mocked(searchTracksPaginated).mock.calls.map(call => call[1])).toEqual([0, 1]);
     expect(api.tracks.value.map(track => track.id)).toEqual(["hit-0", "hit-1"]);
     expect(api.hasNextPage.value).toBe(false);
-    expect(getAllTracksPaginated).not.toHaveBeenCalled();
+    expect(page).not.toHaveBeenCalled();
 
     wrapper.unmount();
   });

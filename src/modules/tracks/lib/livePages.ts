@@ -57,6 +57,16 @@ const follow = <R>(querier: () => Promise<R>, next: (value: R) => void, fail: (c
   return subscription;
 };
 
+// A row written between a window's upper bound and the open page's resume key lands in both.
+export const uniqueById = <T extends { id: unknown }>(rows: T[]): T[] => {
+  const seen = new Set<T["id"]>();
+  return rows.filter((row) => {
+    if (seen.has(row.id)) return false;
+    seen.add(row.id);
+    return true;
+  });
+};
+
 export class LivePages<T> {
   private slots: Slot<T>[] = [];
   private pending: PendingPage<T> | null = null;

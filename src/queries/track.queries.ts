@@ -136,6 +136,7 @@ const invalidateTrackRelations = async (queryClient: QueryClient) => {
 
 // Live lists project the scope inside their own queriers; D1 keeps the repository import here.
 export const likedTrackScope = (): TrackScope => trackRepository.liked();
+export const memberTrackScope = (): TrackScope => trackRepository.members();
 
 export async function getLikedTracks() {
   return trackRepository.liked().rows();
@@ -204,6 +205,11 @@ export const trackQueries = {
     queryOptions({
       queryKey: queryKeys.tracks.likedTotalDuration(),
       queryFn: getLikedTotalDuration,
+    }),
+  memberCount: () =>
+    queryOptions({
+      queryKey: queryKeys.tracks.memberCount(),
+      queryFn: () => trackRepository.members().count(),
     }),
 } as const;
 
