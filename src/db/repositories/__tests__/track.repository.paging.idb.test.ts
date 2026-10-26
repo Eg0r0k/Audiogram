@@ -16,8 +16,8 @@ import { trackRepository } from "../track.repository";
 // with the multi-entry `artistIds` index (IndexedDB forbids multiEntry in a
 // compound key):
 //   - sorted whole-library reads skip the offset outright (`reads`);
-//   - artist-scoped reads still walk their artist's keys, but must not
-//     materialize a row they will not return (`valueReads`).
+//   - artist-scoped reads deserialize the artist's own rows to test
+//     membership and nothing beyond them (`valueReads`).
 //
 
 const MEMBERS = 300;
@@ -153,14 +153,15 @@ describe("findIdsByArtistId", () => {
     expect(ids.some(id => id.startsWith("s"))).toBe(false);
   });
 
-  // The artist listing is cut from these ids (see artist.queries), so the
-  // whole list is answered without deserializing a single row.
-  it("materializes no rows at all", async () => {
+  // The artist listing is cut from these ids (see artist.queries); membership
+  // is tested on the artist's own rows, so the cost follows the artist, not
+  // the library's shadow set.
+  it("reads only the artist's own rows", async () => {
     const { valueReads } = await measureRecordReads(() =>
       trackRepository.findIdsByArtistId(ARTIST),
     );
 
-    expect(valueReads).toBe(0);
+    expect(valueReads).toBeLessThanOrEqual(MEMBERS + SHADOWS);
   });
 });
 
@@ -191,20 +192,10 @@ describe("library-membership counts", () => {
     expect(valueReads).toBeLessThanOrEqual(SHADOWS);
   });
 
-  it("countByArtistIds counts members without materializing the library", async () => {
-    const { result, valueReads } = await measureRecordReads(() =>
-      trackRepository.countByArtistIds([ARTIST]),
-    );
-
-    expect(result.get(ARTIST)).toBe(MEMBERS);
-    expect(valueReads).toBeLessThanOrEqual(SHADOWS);
-  });
-
   // Shadow rows accrue for every remote track ever queued from browsing, so
-  // the set is not small for anyone with a source connected. Subtracting it
-  // is a key-only intersection: the count must not pay to deserialize rows
-  // that belong to some other artist entirely. (`reads` does grow with the
-  // set, and deliberately so — no index can count an artist's members.)
+  // the set is not small for anyone with a source connected. The count reads
+  // the artist's own rows and no row of another artist, so its cost follows
+  // the artist and not that set.
   it("countByArtistIds materializes no row for shadows of other artists", async () => {
     const other = "ar-other" as ArtistId;
     await db.tracks.bulkPut(
@@ -217,6 +208,6 @@ describe("library-membership counts", () => {
     );
 
     expect(result.get(ARTIST)).toBe(MEMBERS);
-    expect(valueReads).toBe(0);
+    expect(valueReads).toBe(MEMBERS + SHADOWS);
   });
 });

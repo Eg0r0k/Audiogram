@@ -2,17 +2,10 @@ import { db } from "@/db";
 import type { TrackEntity } from "@/db/entities";
 import { DbError } from "@/db/errors/db.errors";
 import { tableOf, type TableSource } from "@/db/tables";
-import { isDescendingSort, trackSortField, type TrackSortKey } from "@/types/track-sort";
+import type { TrackSortKey } from "@/types/track-sort";
 import type { AlbumId, ArtistId, TagId, TrackId } from "@/types/ids";
-import Dexie, { type Collection } from "dexie";
 import { BaseRepository, guarded } from "./base.repository";
-
-// Dexie's own floor and ceiling of the IndexedDB key space. They span numbers
-// and strings alike, so a sort field needs no per-type bounds and no table
-// saying which type it holds: a field left out of such a table would silently
-// page through an empty range instead of failing.
-const FIELD_FLOOR: unknown = Dexie.minKey;
-const FIELD_CEILING: unknown = Dexie.maxKey;
+import { TrackScope, type TrackScopeSource } from "./track.scope";
 
 export interface TrackLyricsChanges {
   lyricsPath: string | null;
@@ -25,108 +18,80 @@ export class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     super(tableOf(source, "tracks"));
   }
 
-  /**
-   * Listings and counts skip shadow rows (pinned = 0); point lookups and
-   * deletion cascades stay unscoped on purpose.
-   *
-   * Membership rides an index wherever one can express it
-   * (`[pinned+<sortField>]`, `[albumId+pinned]`). The multi-entry `artistIds`
-   * index cannot carry `pinned` alongside it, so those reads subtract this
-   * set instead. The two are not the same predicate: the ranges select
-   * `pinned === 1`, this selects "not 0". They agree only because
-   * `pinned` is required on TrackEntity; migrations.integration.test.ts is
-   * what holds that, since nothing downstream could detect the loss.
-   */
-  private shadowTrackIds(): Promise<TrackId[]> {
-    return this.table.where("pinned").equals(0).primaryKeys();
+  all(): TrackScope {
+    return this.scope({ kind: "all" });
   }
 
-  private getSortedCollection(sortKey: TrackSortKey): Collection<TrackEntity, TrackId> {
-    const field = trackSortField(sortKey);
-    const collection = this.table
-      .where(`[pinned+${field}]`)
-      .between([1, FIELD_FLOOR], [1, FIELD_CEILING], true, true);
-    return isDescendingSort(sortKey) ? collection.reverse() : collection;
+  members(): TrackScope {
+    return this.all().members();
   }
 
-  private getSortedLikedCollection(sortKey: TrackSortKey): Collection<TrackEntity, TrackId> {
-    const field = trackSortField(sortKey);
-    // The sort field spans the whole key space; `likedAt` is what narrows the
-    // range, and an unliked row carries none at all, so it is not in this
-    // index to begin with.
-    const collection = this.table.where(`[${field}+likedAt]`).between(
-      [FIELD_FLOOR, 1],
-      [FIELD_CEILING, Infinity],
-    );
-    return isDescendingSort(sortKey) ? collection.reverse() : collection;
+  liked(): TrackScope {
+    return new TrackScope(this.table, { source: { kind: "all" }, members: false, liked: true });
   }
 
-  async findLikedSorted(sortKey: TrackSortKey): Promise<TrackEntity[]> {
-    return guarded(() => this.getSortedLikedCollection(sortKey).toArray());
+  inAlbum(albumId: AlbumId): TrackScope {
+    return this.scope({ kind: "album", albumId });
   }
 
-  async findLikedSortedPaginated(
+  byArtist(artistId: ArtistId): TrackScope {
+    return this.scope({ kind: "artist", artistId });
+  }
+
+  withTag(tagId: TagId): TrackScope {
+    return this.scope({ kind: "tag", tagId });
+  }
+
+  withIds(ids: readonly TrackId[]): TrackScope {
+    return this.scope({ kind: "ids", ids });
+  }
+
+  private scope(source: TrackScopeSource): TrackScope {
+    return new TrackScope(this.table, { source, members: false, liked: false });
+  }
+
+  findLikedSorted(sortKey: TrackSortKey): Promise<TrackEntity[]> {
+    return this.liked().rows({ sort: sortKey });
+  }
+
+  findLikedSortedPaginated(
     sortKey: TrackSortKey,
     offset: number,
     limit: number,
   ): Promise<TrackEntity[]> {
-    return guarded(() => this.getSortedLikedCollection(sortKey)
-      .offset(offset)
-      .limit(limit)
-      .toArray());
+    return this.liked().rows({ sort: sortKey, offset, limit });
   }
 
-  async findAllSortedPaginated(
+  findAllSortedPaginated(
     sortKey: TrackSortKey,
     offset: number,
     limit: number,
   ): Promise<TrackEntity[]> {
-    return guarded(() => this.getSortedCollection(sortKey)
-      .offset(offset)
-      .limit(limit)
-      .toArray());
+    return this.members().rows({ sort: sortKey, offset, limit });
   }
 
   async findByAlbumId(albumId: AlbumId): Promise<TrackEntity[]> {
-    return guarded(async () => {
-      const all = await this.table
-        .where("albumId")
-        .equals(albumId)
-        .toArray();
-      all.sort((a, b) =>
-        (a.diskNo ?? 1) - (b.diskNo ?? 1) || (a.trackNo ?? 0) - (b.trackNo ?? 0),
-      );
-      return all;
-    });
+    const all = await this.inAlbum(albumId).rows();
+    return all.sort((a, b) =>
+      (a.diskNo ?? 1) - (b.diskNo ?? 1) || (a.trackNo ?? 0) - (b.trackNo ?? 0),
+    );
   }
 
-  async findByArtistId(artistId: ArtistId): Promise<TrackEntity[]> {
-    return guarded(() => this.table
-      .where("artistIds")
-      .equals(artistId)
-      .toArray());
+  findByArtistId(artistId: ArtistId): Promise<TrackEntity[]> {
+    return this.byArtist(artistId).rows();
   }
 
-  async deleteByAlbumId(albumId: AlbumId): Promise<number> {
-    return guarded(() => this.table
-      .where("albumId")
-      .equals(albumId)
-      .delete());
+  deleteByAlbumId(albumId: AlbumId): Promise<number> {
+    return this.inAlbum(albumId).delete();
   }
 
-  async deleteByArtistId(artistId: ArtistId): Promise<number> {
-    return guarded(() => this.table
-      .where("artistIds")
-      .equals(artistId)
-      .delete());
+  deleteByArtistId(artistId: ArtistId): Promise<number> {
+    return this.byArtist(artistId).delete();
   }
 
   /** Library members only — a shadow row under a library album is the streaming twin of a downloaded track. */
-  async countByAlbumId(albumId: AlbumId): Promise<number> {
-    return guarded(() => this.table
-      .where("[albumId+pinned]")
-      .equals([albumId, 1])
-      .count());
+  countByAlbumId(albumId: AlbumId): Promise<number> {
+    return this.inAlbum(albumId).members().count();
   }
 
   async countByAlbumIds(albumIds: AlbumId[]): Promise<Map<AlbumId, number>> {
@@ -147,134 +112,63 @@ export class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     });
   }
 
-  /**
-   * Each artist's own index entries minus the shadow set, intersected as
-   * keys: neither side deserializes a row.
-   */
   async countByArtistIds(artistIds: ArtistId[]): Promise<Map<ArtistId, number>> {
     return guarded(async () => {
       const counts = new Map<ArtistId, number>();
       for (const id of artistIds) counts.set(id, 0);
       if (artistIds.length === 0) return counts;
 
+      // One transaction, so the counts share a snapshot instead of each
+      // opening its own.
       await db.transaction("r", "tracks", async () => {
-        const [shadowIds, perArtist] = await Promise.all([
-          this.shadowTrackIds(),
-          Promise.all(artistIds.map(id => this.table.where("artistIds").equals(id).primaryKeys())),
-        ]);
-        const shadows = new Set<TrackId>(shadowIds);
-
-        artistIds.forEach((id, index) => {
-          let members = 0;
-          for (const trackId of new Set(perArtist[index])) {
-            if (!shadows.has(trackId)) members++;
-          }
-          counts.set(id, members);
-        });
+        const counted = await Promise.all(artistIds.map(id => this.byArtist(id).members().count()));
+        artistIds.forEach((id, index) => counts.set(id, counted[index]));
       });
       return counts;
     });
   }
 
-  /** Keys only — the set a search inside the album is scoped to. Same rows `countByAlbumId` counts. */
-  async findIdsByAlbumId(albumId: AlbumId): Promise<TrackId[]> {
-    return guarded(() => this.table.where("albumId").equals(albumId).primaryKeys());
+  /** Keys only, shadow rows included: the set a search inside the album is scoped to. */
+  findIdsByAlbumId(albumId: AlbumId): Promise<TrackId[]> {
+    return this.inAlbum(albumId).ids();
   }
 
-  /** Keys only; library members. The artist listing is cut from these. */
-  async findIdsByArtistId(artistId: ArtistId): Promise<TrackId[]> {
-    return guarded(() => this.memberIdsByArtistId(artistId));
+  /** Library members. The artist listing is cut from these. */
+  findIdsByArtistId(artistId: ArtistId): Promise<TrackId[]> {
+    return this.byArtist(artistId).members().ids();
   }
 
-  /**
-   * The artist's member track ids, in index order. Both reads are key-only,
-   * so nothing is deserialized to answer "which of these are members".
-   */
-  private async memberIdsByArtistId(artistId: ArtistId): Promise<TrackId[]> {
-    return db.transaction("r", "tracks", async () => {
-      const [ids, shadowIds] = await Promise.all([
-        this.table.where("artistIds").equals(artistId).primaryKeys(),
-        this.shadowTrackIds(),
-      ]);
-      if (shadowIds.length === 0) return ids;
-      const shadows = new Set<TrackId>(shadowIds);
-      return ids.filter(id => !shadows.has(id));
-    });
+  sumDurationByAlbumId(albumId: AlbumId): Promise<number> {
+    return this.inAlbum(albumId).members().sumDuration();
   }
 
-  async sumDurationByAlbumId(albumId: AlbumId): Promise<number> {
-    return guarded(async () => {
-      let total = 0;
-      await this.table
-        .where("[albumId+pinned]")
-        .equals([albumId, 1])
-        .each((track) => { total += track.duration; });
-      return total;
-    });
+  sumDurationByArtistId(artistId: ArtistId): Promise<number> {
+    return this.byArtist(artistId).sumDuration();
   }
 
-  async sumDurationByArtistId(artistId: ArtistId): Promise<number> {
-    return guarded(async () => {
-      let total = 0;
-      await this.table
-        .where("artistIds")
-        .equals(artistId)
-        .each((track) => { total += track.duration; });
-      return total;
-    });
+  sumDurationByTrackIds(trackIds: TrackId[]): Promise<number> {
+    return this.withIds(trackIds).sumDuration();
   }
 
-  async sumDurationByTrackIds(trackIds: TrackId[]): Promise<number> {
-    return guarded(async () => {
-      if (trackIds.length === 0) {
-        return 0;
-      }
-      let total = 0;
-      await this.table
-        .where("id")
-        .anyOf(trackIds)
-        .each((track) => { total += track.duration; });
-      return total;
-    });
+  findPaginated(offset: number, limit: number): Promise<TrackEntity[]> {
+    return this.members().rows({ sort: "date_added_desc", offset, limit });
   }
 
-  async findPaginated(offset: number, limit: number): Promise<TrackEntity[]> {
-    return this.findAllSortedPaginated("date_added_desc", offset, limit);
-  }
-
-  async findAllSorted(sortKey: TrackSortKey): Promise<TrackEntity[]> {
-    return guarded(() => this.getSortedCollection(sortKey).toArray());
+  findAllSorted(sortKey: TrackSortKey): Promise<TrackEntity[]> {
+    return this.members().rows({ sort: sortKey });
   }
 
   /** Ids only, in the same order as `findAllSorted` — for whole-library selection. */
-  async findAllIdsSorted(sortKey: TrackSortKey): Promise<TrackId[]> {
-    return guarded(() => this.getSortedCollection(sortKey).primaryKeys());
+  findAllIdsSorted(sortKey: TrackSortKey): Promise<TrackId[]> {
+    return this.members().ids(sortKey);
   }
 
-  async findSortedByIds(ids: TrackId[], sortKey: TrackSortKey): Promise<TrackEntity[]> {
-    return guarded(async () => {
-      if (ids.length === 0) {
-        return [];
-      }
-
-      const field = trackSortField(sortKey);
-      const isDesc = isDescendingSort(sortKey);
-
-      const tracks = await this.table
-        .where("id")
-        .anyOf(ids)
-        .sortBy(field);
-
-      if (isDesc) {
-        tracks.reverse();
-      }
-
-      return tracks;
-    });
+  findSortedByIds(ids: TrackId[], sortKey: TrackSortKey): Promise<TrackEntity[]> {
+    return this.withIds(ids).rows({ sort: sortKey });
   }
 
-  async countAll(): Promise<number> {
-    return guarded(() => this.table.where("pinned").equals(1).count());
+  countAll(): Promise<number> {
+    return this.members().count();
   }
 
   async setLiked(id: TrackId, isLiked: boolean): Promise<void> {
@@ -310,11 +204,8 @@ export class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
   }
 
   /** Rewrites the denormalized album title on every track of the album. */
-  async setAlbumTitleByAlbumId(albumId: AlbumId, albumTitle: string): Promise<number> {
-    return guarded(() => this.table
-      .where("albumId")
-      .equals(albumId)
-      .modify({ albumTitle }));
+  setAlbumTitleByAlbumId(albumId: AlbumId, albumTitle: string): Promise<number> {
+    return this.inAlbum(albumId).modify({ albumTitle });
   }
 
   async setLyrics(id: TrackId, lyrics: TrackLyricsChanges): Promise<void> {
@@ -346,44 +237,25 @@ export class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     });
   }
 
-  async findLiked(): Promise<TrackEntity[]> {
-    return guarded(() => this.table
-      .where("likedAt").above(0)
-      .reverse()
-      .toArray());
+  findLiked(): Promise<TrackEntity[]> {
+    return this.liked().rows();
   }
 
-  async sumDurationByLiked(): Promise<number> {
-    return guarded(async () => {
-      let total = 0;
-      await this.table
-        .where("likedAt")
-        .above(0)
-        .each((track) => { total += track.duration; });
-      return total;
-    });
+  sumDurationByLiked(): Promise<number> {
+    return this.liked().sumDuration();
   }
 
   /** Keys only — the set a search inside the liked list is scoped to. */
-  async findLikedIds(): Promise<TrackId[]> {
-    return guarded(() => this.table.where("likedAt").above(0).primaryKeys());
+  findLikedIds(): Promise<TrackId[]> {
+    return this.liked().ids();
   }
 
-  async findLikedPaginated(offset: number, limit: number): Promise<TrackEntity[]> {
-    return guarded(() => this.table
-      .where("likedAt")
-      .above(0)
-      .reverse()
-      .offset(offset)
-      .limit(limit)
-      .toArray());
+  findLikedPaginated(offset: number, limit: number): Promise<TrackEntity[]> {
+    return this.liked().rows({ offset, limit });
   }
 
-  async countLiked(): Promise<number> {
-    return guarded(() => this.table
-      .where("likedAt")
-      .above(0)
-      .count());
+  countLiked(): Promise<number> {
+    return this.liked().count();
   }
 
   async addTagToTrack(trackId: TrackId, tagId: TagId): Promise<void> {
@@ -417,11 +289,8 @@ export class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     });
   }
 
-  async findByTagId(tagId: TagId): Promise<TrackEntity[]> {
-    return guarded(() => this.table
-      .where("tagIds")
-      .equals(tagId)
-      .toArray());
+  findByTagId(tagId: TagId): Promise<TrackEntity[]> {
+    return this.withTag(tagId).rows();
   }
 
   async findByStoragePath(path: string): Promise<TrackEntity | undefined> {
@@ -459,8 +328,8 @@ export class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     return guarded(() => this.table.where("storagePath").startsWith(prefix).toArray());
   }
 
-  async findAllIds(): Promise<TrackId[]> {
-    return guarded(() => this.table.toCollection().primaryKeys());
+  findAllIds(): Promise<TrackId[]> {
+    return this.all().ids();
   }
 }
 
