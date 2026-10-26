@@ -41,7 +41,9 @@ export class AppDatabase extends Dexie {
   queueSnapshot!: Table<QueueSnapshotEntity, QueueSnapshotEntity["id"]>;
 
   constructor() {
-    super("AudiogramDB");
+    // Dexie's optimistic cache compares compound keys part by part and stops at an undefined part, so an
+    // unliked row stayed inside a liked range until reload; live queries re-read IndexedDB instead.
+    super("AudiogramDB", { cache: "disabled" });
 
     this.version(9).stores({
       tracks: "&id, title, artistName, albumTitle, *artistIds, albumId, *tagIds, state, likedAt, addedAt, duration, playCount, storagePath, fingerprint, [title+likedAt], [addedAt+likedAt], [duration+likedAt], [artistName+likedAt], [albumTitle+likedAt], [playCount+likedAt]",

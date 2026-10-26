@@ -382,6 +382,27 @@ describe("TrackScope keyset pages", () => {
     }
   });
 
+  it("window with from null starts at the top of the index", async () => {
+    for (const [name, scope] of KEYSET_SCOPES()) {
+      for (const sort of [undefined, "title_asc", "date_added_desc", "plays_desc"] as const) {
+        if (name === "members" && sort === undefined) continue;
+        const label = `${name} ${sort}`;
+        const expected = idsOf(await scope.rows({ sort }));
+        const { lasts } = await walkPages(scope, sort, 4);
+
+        expect(idsOf(await scope.window({ sort, from: null, to: lasts[1] })), label).toEqual(expected.slice(0, 7));
+        expect(idsOf(await scope.window({ sort, from: null, to: null })), label).toEqual(expected);
+      }
+    }
+
+    const liked = trackRepository.liked();
+    const head = await liked.page({ limit: 4 });
+    await trackRepository.setLiked(TrackId("m2"), true);
+
+    expect(idsOf(await liked.window({ from: null, to: head.last }))[0]).toBe("m2");
+    expect(idsOf(await liked.window({ from: head.first!, to: head.last }))).not.toContain("m2");
+  });
+
   it("page on an album scope rejects", async () => {
     await expect(trackRepository.inAlbum(AL1).members().page({ sort: "title_asc", limit: 5 }))
       .rejects.toThrow("page() needs an index-ordered scope");

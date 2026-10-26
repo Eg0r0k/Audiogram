@@ -71,7 +71,7 @@ const resolveNullableNumber = (
   return next === null ? undefined : next;
 };
 
-async function loadTrackRelations(tracks: TrackEntity[]): Promise<Track[]> {
+export async function loadTrackRelations(tracks: TrackEntity[]): Promise<Track[]> {
   if (tracks.length === 0) {
     return [];
   }
@@ -133,6 +133,9 @@ const invalidateTrackRelations = async (queryClient: QueryClient) => {
   await settleLibraryReads(queryClient);
   invalidateForTrackMutation(queryClient, { kind: "relations" });
 };
+
+// Live lists project the scope inside their own queriers; D1 keeps the repository import here.
+export const likedTrackScope = (): TrackScope => trackRepository.liked();
 
 export async function getLikedTracks() {
   return trackRepository.liked().rows();

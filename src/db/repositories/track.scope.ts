@@ -62,7 +62,7 @@ export interface TrackPage {
 
 export interface TrackWindowOptions {
   sort?: TrackSortKey;
-  from: TrackIndexKey;
+  from: TrackIndexKey | null;
   to: TrackIndexKey | null;
 }
 
@@ -79,6 +79,8 @@ export interface TrackPlan {
   keyOrder?: readonly TrackId[];
   keyOf?: (row: TrackEntity) => TrackIndexKey;
   seek?: TrackSeek;
+  // Re-checked on the rows a liked walk returns: a stale row's key carries an undefined likedAt that a range check misses.
+  postFilter?: TrackFilter;
 }
 
 interface Keyset {
@@ -203,8 +205,12 @@ export const plan = (spec: TrackScopeSpec, sort?: TrackSortKey): TrackPlan => {
     keyOrder: walk.keyOrder,
     keyOf: keyset?.keyOf,
     seek,
+    postFilter: spec.liked ? isLiked : undefined,
   };
 };
+
+const keep = (planned: TrackPlan, rows: TrackEntity[]): TrackEntity[] =>
+  planned.postFilter ? rows.filter(planned.postFilter) : rows;
 
 const keysetOf = (planned: TrackPlan, projection: string) => {
   const { keyOf, seek } = planned;
@@ -251,23 +257,27 @@ export class TrackScope {
   // A full page at the very end still returns a key; the page after it is empty.
   page({ sort, after = null, limit }: TrackPageOptions): Promise<TrackPage> {
     return guarded(async () => {
-      const { keyOf, seek } = keysetOf(plan(this.spec, sort), "page");
+      const planned = plan(this.spec, sort);
+      const { keyOf, seek } = keysetOf(planned, "page");
       const start = after === null ? null : { key: after, inclusive: false };
-      const rows = await seek(this.table, start, null).limit(limit).toArray();
-      const full = rows.length > 0 && rows.length === limit;
+      const read = await seek(this.table, start, null).limit(limit).toArray();
+      const full = read.length > 0 && read.length === limit;
+      const rows = keep(planned, read);
       return {
         rows,
         first: rows.length > 0 ? keyOf(rows[0]) : null,
-        last: full ? keyOf(rows[rows.length - 1]) : null,
+        last: full ? keyOf(read[read.length - 1]) : null,
       };
     });
   }
 
   window({ sort, from, to }: TrackWindowOptions): Promise<TrackEntity[]> {
-    return guarded(() => {
-      const { seek } = keysetOf(plan(this.spec, sort), "window");
+    return guarded(async () => {
+      const planned = plan(this.spec, sort);
+      const { seek } = keysetOf(planned, "window");
+      const start = from === null ? null : { key: from, inclusive: true };
       const end = to === null ? null : { key: to, inclusive: false };
-      return seek(this.table, { key: from, inclusive: true }, end).toArray();
+      return keep(planned, await seek(this.table, start, end).toArray());
     });
   }
 
@@ -322,11 +332,11 @@ export class TrackScope {
       const { filter } = planned;
       const found = await this.table.bulkGet(unique(planned.keyOrder));
       const rows = found.filter((row): row is TrackEntity => row !== undefined && (!filter || filter(row)));
-      return slicePage(rows, offset, limit);
+      return slicePage(keep(planned, rows), offset, limit);
     }
     if (planned.inMemorySort) {
-      return slicePage(sortRows(await planned.build(this.table).toArray(), planned.inMemorySort), offset, limit);
+      return slicePage(sortRows(keep(planned, await planned.build(this.table).toArray()), planned.inMemorySort), offset, limit);
     }
-    return pageOf(planned.build(this.table), offset, limit).toArray();
+    return keep(planned, await pageOf(planned.build(this.table), offset, limit).toArray());
   }
 }

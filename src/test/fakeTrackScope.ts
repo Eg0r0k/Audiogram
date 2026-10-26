@@ -56,7 +56,7 @@ export const fakeTrackScope = (rows: readonly TrackEntity[]): FakeTrackScope => 
     }),
     window: vi.fn<TrackScope["window"]>(async ({ sort, from, to }) => {
       const all = ordered(rows, sort);
-      return all.slice(positionOf(all, from), to === null ? undefined : positionOf(all, to));
+      return all.slice(from === null ? 0 : positionOf(all, from), to === null ? undefined : positionOf(all, to));
     }),
     ids: vi.fn<TrackScope["ids"]>(async sort => ordered(rows, sort).map(row => row.id)),
     count: vi.fn<TrackScope["count"]>(async () => rows.length),
