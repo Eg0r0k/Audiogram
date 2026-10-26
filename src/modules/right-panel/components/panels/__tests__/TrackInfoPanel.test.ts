@@ -1,27 +1,22 @@
-import { fireEvent, render, screen } from "@testing-library/vue";
+import "fake-indexeddb/auto";
+import { fireEvent, render, screen, waitFor } from "@testing-library/vue";
 import { flushPromises } from "@vue/test-utils";
 import { shownToasts } from "@/test/toasts";
-import { VueQueryPlugin } from "@tanstack/vue-query";
+import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
+import { db } from "@/db";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
+import { deleteTracksAndSync, updateTrackMetadataAndSync } from "@/queries/track.queries";
+import { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import type { Track } from "@/types/track";
 import TrackInfoPanel from "../TrackInfoPanel.vue";
 
 const queries = vi.hoisted(() => ({ getTrackEntityById: vi.fn() }));
-vi.mock("@/queries/track.queries", () => ({
-  trackQueries: {
-    detail: (id: string) => ({ queryKey: ["tracks", id], queryFn: () => queries.getTrackEntityById(id) }),
-  },
+vi.mock("@/queries/track.queries", async importOriginal => ({
+  ...(await importOriginal<typeof import("@/queries/track.queries")>()),
+  getTrackEntityById: queries.getTrackEntityById,
 }));
-vi.mock("@/queries/localCopy.queries", async () => {
-  const { skipToken } = await import("@tanstack/vue-query");
-  return {
-    localCopyQueries: {
-      byRemoteId: () => ({ queryKey: ["tracks", "localCopy", "none"], queryFn: skipToken }),
-    },
-  };
-});
 const deletion = vi.hoisted(() => ({ deleteWithUndo: vi.fn() }));
 vi.mock("@/modules/tracks/composables/useTrackDeletion", () => ({
   useTrackDeletion: () => deletion,
@@ -79,10 +74,19 @@ const renderPanel = (track: Track) => render(TrackInfoPanel, {
   global: { plugins: [i18n, VueQueryPlugin], stubs },
 });
 
+const readStoredRows = async () => {
+  const actual = await vi.importActual<typeof import("@/queries/track.queries")>("@/queries/track.queries");
+  queries.getTrackEntityById.mockImplementation(actual.getTrackEntityById);
+};
+
 describe("TrackInfoPanel", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     queries.getTrackEntityById.mockReset();
     i18n.global.locale.value = "en";
+    await db.open();
+    await Promise.all(db.tables.map(table => table.clear()));
+    await db.artists.add({ id: ArtistId("ar1"), name: "Portishead", pinned: 1, addedAt: 1, updatedAt: 1 });
+    await db.albums.add({ id: AlbumId("al1"), title: "Dummy", artistId: ArtistId("ar1"), pinned: 1, addedAt: 1, updatedAt: 1 });
   });
 
   it("shows the stored track over the payload snapshot once the detail query resolves", async () => {
@@ -120,5 +124,36 @@ describe("TrackInfoPanel", () => {
     expect(alert).toHaveTextContent("Failed to delete track");
     expect(deleteButton.nextElementSibling).toBe(alert);
     expect(shownToasts("destructive")).toHaveLength(0);
+  });
+
+  it("TrackInfoPanel: follows the row after a write", async () => {
+    await readStoredRows();
+    await db.tracks.add(entity({ pinned: 1, artistIds: [ArtistId("ar1"), ArtistId("ar2")] }));
+    renderPanel(payloadTrack());
+    expect(await screen.findByText("ar1, ar2")).toBeInTheDocument();
+
+    await updateTrackMetadataAndSync(new QueryClient(), payloadTrack(), {
+      title: "Roads",
+      artistNames: ["Portishead"],
+      albumId: AlbumId("al1"),
+    });
+
+    expect(await screen.findByText("Roads")).toBeInTheDocument();
+    expect(screen.queryByText("Glory Box")).not.toBeInTheDocument();
+  });
+
+  it("TrackInfoPanel: the storage path follows the local copy after a write", async () => {
+    await readStoredRows();
+    const remoteId = TrackId("nd:s1");
+    await db.tracks.bulkAdd([
+      entity({ id: remoteId, source: TrackSource.REMOTE_SUBSONIC, storagePath: "" }),
+      entity({ id: TrackId("t-copy"), sourceRef: remoteId, storagePath: "tracks/t-copy.flac", pinned: 1 }),
+    ]);
+    renderPanel({ ...payloadTrack(), id: remoteId, source: TrackSource.REMOTE_SUBSONIC, storagePath: "" });
+    expect(await screen.findByText("tracks/t-copy.flac")).toBeInTheDocument();
+
+    await deleteTracksAndSync(new QueryClient(), [TrackId("t-copy")]);
+
+    await waitFor(() => expect(screen.queryByText("tracks/t-copy.flac")).not.toBeInTheDocument());
   });
 });

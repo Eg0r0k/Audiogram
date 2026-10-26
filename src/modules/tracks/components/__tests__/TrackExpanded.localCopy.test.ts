@@ -1,13 +1,16 @@
-import { render } from "@testing-library/vue";
+import "fake-indexeddb/auto";
+import { render, waitFor } from "@testing-library/vue";
 import { flushPromises } from "@vue/test-utils";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { createPinia } from "pinia";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
+import { db } from "@/db";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
+import { trackRepository } from "@/db/repositories";
+import { deleteTracksAndSync } from "@/queries/track.queries";
 import type { Track } from "@/types/track";
-import { localCopyQueries } from "@/queries/localCopy.queries";
-import { TrackId } from "@/types/ids";
+import { AlbumId, TrackId } from "@/types/ids";
 
 vi.mock("vue-router", () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -49,41 +52,73 @@ const catalogTrack: Track = {
   sourceDto: { id: TrackId("nd:s1"), title: "Song" },
 };
 
-// Infinite staleness keeps a seeded copy from being re-read through Dexie.
-const createClient = () => new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
+const COPY: TrackEntity = {
+  id: TrackId("t-copy"),
+  title: "Song",
+  artistName: "Artist One",
+  albumTitle: "",
+  artistIds: [],
+  albumId: AlbumId(""),
+  tagIds: [],
+  source: TrackSource.LOCAL_INTERNAL,
+  sourceRef: TrackId("nd:s1"),
+  pinned: 1,
+  state: TrackState.READY,
+  storagePath: "tracks/t-copy.flac",
+  duration: 100,
+  format: {},
+  playCount: 0,
+  addedAt: 1,
+};
 
-const renderRow = (track: Track, queryClient: QueryClient) => render(TrackExpanded, {
+const renderRow = (track: Track) => render(TrackExpanded, {
   props: { track, index: 1 },
   global: {
-    plugins: [createPinia(), [VueQueryPlugin, { queryClient }], i18n],
+    plugins: [createPinia(), [VueQueryPlugin, { queryClient: new QueryClient() }], i18n],
     directives: { ripple: {} },
     stubs: { NuxtImage: true, SourceDownloadButton: true },
   },
 });
 
 const downloadedLabel = () => i18n.global.t("downloads.done");
+const markOf = (container: Element) => container.querySelector(`[aria-label="${downloadedLabel()}"]`);
 
 describe("TrackExpanded downloaded mark", () => {
-  it("a local library row creates no local-copy query", async () => {
-    const queryClient = createClient();
+  beforeEach(async () => {
+    await db.open();
+    await Promise.all(db.tables.map(table => table.clear()));
+  });
 
-    const { container } = renderRow(localTrack, queryClient);
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("a local library row creates no local-copy query", async () => {
+    const lookup = vi.spyOn(trackRepository, "findBySourceRef");
+
+    const { container } = renderRow(localTrack);
     await flushPromises();
 
-    expect(queryClient.getQueryCache().findAll({ queryKey: ["tracks", "localCopy"] })).toEqual([]);
-    expect(container.querySelector(`[aria-label="${downloadedLabel()}"]`)).toBeNull();
+    expect(lookup).not.toHaveBeenCalled();
+    expect(markOf(container)).toBeNull();
   });
 
   it("a catalog row shows the downloaded mark when a local copy exists", async () => {
-    const queryClient = createClient();
-    const copy = { id: TrackId("t-copy"), sourceRef: "nd:s1" } as unknown as TrackEntity;
-    queryClient.setQueryData(localCopyQueries.byRemoteId(TrackId("nd:s1")).queryKey, copy);
+    await db.tracks.add(COPY);
 
-    const { container } = renderRow(catalogTrack, queryClient);
-    await flushPromises();
+    const { container } = renderRow(catalogTrack);
 
-    const mark = container.querySelector(`[aria-label="${downloadedLabel()}"]`);
-    expect(mark).not.toBeNull();
-    expect(mark?.getAttribute("title")).toBe(downloadedLabel());
+    await waitFor(() => expect(markOf(container)).not.toBeNull());
+    expect(markOf(container)?.getAttribute("title")).toBe(downloadedLabel());
+  });
+
+  it("DownloadedMark: follows the row after a write", async () => {
+    await db.tracks.add(COPY);
+    const { container } = renderRow(catalogTrack);
+    await waitFor(() => expect(markOf(container)).not.toBeNull());
+
+    await deleteTracksAndSync(new QueryClient(), [COPY.id]);
+
+    await waitFor(() => expect(markOf(container)).toBeNull());
   });
 });

@@ -1,11 +1,11 @@
 import { computed, type ComputedRef } from "vue";
 import { refDebounced } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
-import { useQuery } from "@tanstack/vue-query";
 import type { Track } from "@/types/track";
 import type { SourceKind } from "@/types/track-ref";
 import type { TrackId } from "@/types/ids";
-import { trackQueries } from "@/queries/track.queries";
+import { useLiveQuery } from "@/composables/useLiveQuery";
+import { idsTrackScope, loadTrackRelations } from "@/queries/track.queries";
 import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
 import { useSourcePlaylists, useSourceSearch } from "@/modules/sources/composables/useSourceCatalog";
 import {
@@ -51,8 +51,12 @@ const useLibraryResults = (enabled: ComputedRef<boolean>): SearchPaneResults => 
 
   // The index stores ids; the rows behind them come from Dexie.
   const trackIds = computed(() => groups.value.track.map(item => item.entityId as TrackId));
-  const { data: hydrated } = useQuery(computed(() => trackQueries.byIds(trackIds.value)));
-  const trackRows = computed<Track[]>(() => hydrated.value ?? []);
+  const { data: hydrated } = useLiveQuery(
+    async () => loadTrackRelations(await idsTrackScope(trackIds.value).rows()),
+    () => trackIds.value,
+    { enabled: () => trackIds.value.length > 0 },
+  );
+  const trackRows = computed<Track[]>(() => (trackIds.value.length > 0 ? hydrated.value ?? [] : []));
 
   return {
     isLoading: computed(() => enabled.value && isSearching.value),

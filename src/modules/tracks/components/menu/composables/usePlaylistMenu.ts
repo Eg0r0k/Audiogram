@@ -1,10 +1,11 @@
 import { computed, type MaybeRefOrGetter } from "vue";
-import { useQuery, useQueryClient } from "@tanstack/vue-query";
+import { useQueryClient } from "@tanstack/vue-query";
 import { reportError } from "@/app/error-feedback";
 import { useI18n } from "vue-i18n";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 import {
   createPlaylistAndSync,
-  playlistQueries,
+  getPlaylists,
 } from "@/queries/playlist.queries";
 
 interface UsePlaylistMenuOptions {
@@ -15,9 +16,7 @@ export function usePlaylistMenu(options: UsePlaylistMenuOptions = {}) {
   const queryClient = useQueryClient();
   const { t } = useI18n();
 
-  const { data: playlistsData, isLoading } = useQuery({
-    ...playlistQueries.all(),
-    staleTime: Infinity,
+  const { data: playlistsData, isLoading } = useLiveQuery(getPlaylists, () => [], {
     enabled: options.enabled ?? true,
   });
 

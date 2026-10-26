@@ -4,16 +4,18 @@ import type { TrackChapterMark } from "@/db/entities";
 import { queryKeys } from "@/queries/query-keys";
 import type { TrackId } from "@/types/ids";
 
+export const readTrackChapters = async (trackId: TrackId): Promise<TrackChapterMark[]> => {
+  // Ephemeral tracks all map to the empty id: never any chapters.
+  if (!trackId) return [];
+  const entity = await trackChaptersRepository.findById(trackId);
+  return entity?.chapters ?? [];
+};
+
 export const trackChaptersQueries = {
   detail: (trackId: TrackId) =>
     queryOptions({
       queryKey: queryKeys.trackChapters.detail(trackId),
-      queryFn: async (): Promise<TrackChapterMark[]> => {
-        // Ephemeral tracks all map to the empty id never any chapters.
-        if (!trackId) return [];
-        const entity = await trackChaptersRepository.findById(trackId);
-        return entity?.chapters ?? [];
-      },
+      queryFn: () => readTrackChapters(trackId),
       staleTime: Infinity,
     }),
 } as const;

@@ -27,10 +27,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { useQuery } from "@tanstack/vue-query";
 import { Button } from "@/components/ui/button";
 import type { SourceTrackDTO } from "@/modules/sources/types";
-import { localCopyQueries } from "@/queries/localCopy.queries";
+import { useLiveQuery } from "@/composables/useLiveQuery";
+import { getLocalCopy } from "@/queries/localCopy.queries";
 import { downloadDtoWithFeedback } from "../downloadFeedback";
 import { useDownloadsStore } from "../store/downloads.store";
 import { Spinner } from "@/components/ui/spinner";
@@ -46,8 +46,8 @@ const downloadsStore = useDownloadsStore();
 
 const activeJob = computed(() => downloadsStore.byTrackId[props.dto.id]);
 
-const { data: localCopy } = useQuery(computed(() => localCopyQueries.byRemoteId(props.dto.id)));
-const hasCopy = computed(() => !!localCopy.value);
+const { data: localCopy } = useLiveQuery(async () => getLocalCopy(props.dto.id), () => [props.dto.id]);
+const hasCopy = computed(() => localCopy.value?.sourceRef === props.dto.id);
 
 const label = computed(() => {
   const job = activeJob.value;

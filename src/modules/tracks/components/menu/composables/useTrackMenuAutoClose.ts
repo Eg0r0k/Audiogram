@@ -1,13 +1,11 @@
 import { computed, toValue, watch, type MaybeRefOrGetter, type Ref } from "vue";
-import { useQuery } from "@tanstack/vue-query";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
 import { isLibraryTrack } from "@/types/track";
-import { playlistQueries } from "@/queries/playlist.queries";
-import { PlaylistId } from "@/types/ids";
+import { getPlaylistLibraryRow } from "@/queries/playlist.queries";
+import type { PlaylistId } from "@/types/ids";
 import type { TrackContext } from "../type";
-
-const NO_PLAYLIST_ID = PlaylistId("__track-menu-auto-close-none__");
 
 export function useTrackMenuAutoClose(
   isOpen: Ref<boolean>,
@@ -19,17 +17,12 @@ export function useTrackMenuAutoClose(
   const { activeTrack, activeQueueItemId, closeMenu, closeDropdown } = useTrackMenu();
   const queueStore = useQueueStore();
 
-  // A real (cheap, Dexie-backed) queryFn, NOT skipToken: playlist mutations
-  // invalidate ["playlists", id], and when this observer is the only one on
-  // that key a skipToken entry cannot be refetched — tanstack retries into
-  // "Attempted to invoke queryFn when set to skipToken" spam. The enabled
-  // gate keeps the no-playlist case a genuinely disabled query, which
-  // invalidation skips.
   const playlistId = computed(() => toValue(options.playlistId));
-  const { data: playlistDetail } = useQuery(computed(() => playlistQueries.detail(
-    playlistId.value ?? NO_PLAYLIST_ID,
-    playlistId.value !== undefined,
-  )));
+  const livePlaylist = useLiveQuery(
+    async () => (playlistId.value ? getPlaylistLibraryRow(playlistId.value) : null),
+    () => [playlistId.value],
+    { enabled: () => playlistId.value !== undefined },
+  );
 
   const isEntityGone = computed(() => {
     if (!isOpen.value) return false;
@@ -46,9 +39,9 @@ export function useTrackMenuAutoClose(
       }
       case "playlist": {
         if (!isLibraryTrack(track)) return false;
-        const trackIds = playlistDetail.value?.trackIds;
-        if (!trackIds) return false;
-        return !trackIds.includes(track.id);
+        const playlist = livePlaylist.data.value;
+        if (!playlist || playlist.id !== playlistId.value) return false;
+        return !playlist.trackIds.includes(track.id);
       }
       default:
         return false;

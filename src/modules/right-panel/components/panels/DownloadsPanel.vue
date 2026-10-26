@@ -133,7 +133,6 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty";
 import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia, ItemDescription, ItemTitle } from "@/components/ui/item";
-import { useQuery } from "@tanstack/vue-query";
 import { Button } from "@/components/ui/button";
 import { Scrollable } from "@/components/ui/scrollable";
 import RightPanelHeader from "@/modules/right-panel/components/RightPanelHeader.vue";
@@ -144,7 +143,8 @@ import { reportError } from "@/app/error-feedback";
 import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
 import { formatDownloadProgress } from "@/modules/downloads/lib/formatDownloadProgress";
-import { trackQueries } from "@/queries/track.queries";
+import { idsTrackScope } from "@/queries/track.queries";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 import type { TrackId } from "@/types/ids";
 import { Spinner } from "@/components/ui/spinner";
 import IconAlertCircle from "~icons/tabler/alert-circle";
@@ -183,7 +183,11 @@ const dismiss = (entry: FailedDownload) => {
     .catch((error: unknown) => getLogger().error(`[Downloads] Dismissing ${entry.jobId} failed: ${formatError(error)}`));
 };
 
-const { data: titleRows } = useQuery(computed(() => trackQueries.byIds(trackIds.value)));
+const { data: titleRows } = useLiveQuery(
+  async () => idsTrackScope(trackIds.value).rows(),
+  () => trackIds.value,
+  { enabled: () => trackIds.value.length > 0 },
+);
 
 const titles = computed(() => {
   const map = new Map<TrackId, string>();

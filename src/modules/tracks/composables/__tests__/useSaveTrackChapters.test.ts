@@ -7,7 +7,7 @@ import { shownToasts } from "@/test/toasts";
 
 const saveTrackChapters = vi.hoisted(() => vi.fn());
 
-vi.mock("@/queries/trackChapters.queries", () => ({ saveTrackChapters, trackChaptersQueries: {} }));
+vi.mock("@/queries/trackChapters.queries", () => ({ saveTrackChapters, readTrackChapters: vi.fn() }));
 vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn(), remove: vi.fn() } }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock("@/app/i18n", () => ({ i18n: { global: { t: (key: string) => key } } }));

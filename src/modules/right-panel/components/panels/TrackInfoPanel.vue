@@ -217,7 +217,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import InlineError from "@/components/common/InlineError.vue";
 import { Button } from "@/components/ui/button";
@@ -225,9 +224,10 @@ import Scrollable from "@/components/ui/scrollable/Scrollable.vue";
 import { formatDuration } from "@/lib/format/time";
 import { formatBitrate, formatSampleRate } from "@/lib/format/audio";
 import { getLogger } from "@/lib/logger";
-import { trackQueries } from "@/queries/track.queries";
+import { getTrackEntityById } from "@/queries/track.queries";
 import { useTrackDeletion } from "@/modules/tracks/composables/useTrackDeletion";
-import { localCopyQueries } from "@/queries/localCopy.queries";
+import { getLocalCopy } from "@/queries/localCopy.queries";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 import { mapTrack, type Track } from "@/types/track";
 import { isRemoteTrack } from "@/modules/tracks/lib/trackPredicates";
 import { resolveTrackFormat, trackSourceLabelKey, trackStateLabelKey } from "@/modules/tracks/lib/trackDetails";
@@ -265,14 +265,30 @@ const rightPanel = useRightPanelStore();
 
 const payloadTrack = computed(() => props.payload.track);
 
-const { data: entity } = useQuery(computed(() => trackQueries.detail(payloadTrack.value.id)));
+const liveEntity = useLiveQuery(
+  async () => getTrackEntityById(payloadTrack.value.id),
+  () => [payloadTrack.value.id],
+);
+
+// A read for the previous payload stays until the next one lands.
+const entity = computed(() =>
+  (liveEntity.data.value?.id === payloadTrack.value.id ? liveEntity.data.value : undefined));
 
 const track = computed<Track>(() =>
   entity.value ? mapTrack(entity.value) : payloadTrack.value);
 
-const { data: localCopy } = useQuery(computed(() =>
-  localCopyQueries.byRemoteId(isRemoteTrack(track.value) ? track.value.id : null),
-));
+const remoteId = computed(() => (isRemoteTrack(track.value) ? track.value.id : null));
+
+const liveCopy = useLiveQuery(
+  async () => (remoteId.value ? getLocalCopy(remoteId.value) : null),
+  () => [remoteId.value],
+  { enabled: () => remoteId.value !== null },
+);
+
+const localCopy = computed(() => {
+  const copy = liveCopy.data.value;
+  return remoteId.value !== null && copy?.sourceRef === remoteId.value ? copy : undefined;
+});
 
 const storagePathValue = computed(() =>
   track.value.storagePath || localCopy.value?.storagePath || "—",

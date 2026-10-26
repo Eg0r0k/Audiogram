@@ -1,3 +1,4 @@
+import "fake-indexeddb/auto";
 import { fireEvent, render } from "@testing-library/vue";
 import { flushPromises } from "@vue/test-utils";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
@@ -16,7 +17,6 @@ import { useDownloadsStore, type DownloadRuntime } from "@/modules/downloads/sto
 import { sources, type SourceProvider, type SourceTrackDTO } from "@/modules/sources";
 import { sourceTrackToDisplay } from "@/modules/sources/lib/display";
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
-import { localCopyQueries } from "@/queries/localCopy.queries";
 import { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 import type { EphemeralTrack, PlayerTrack, Track } from "@/types/track";
 import {
@@ -39,23 +39,20 @@ const slotData = vi.hoisted(() => ({
   playlists: [] as { id: string; name: string }[] | "pending",
   artistsPending: false,
   artistNames: { "ar-1": "Artist One", "ar-2": "Artist Two" } as Record<string, string>,
+  localCopy: null as TrackEntity | null,
 }));
 
-vi.mock("@/queries/playlist.queries", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/queries/playlist.queries")>();
-  return {
-    ...actual,
-    playlistQueries: {
-      ...actual.playlistQueries,
-      all: () => ({
-        queryKey: ["menu-characterization", "playlists"],
-        queryFn: () => (slotData.playlists === "pending"
-          ? new Promise<never>(() => undefined)
-          : Promise.resolve(slotData.playlists)),
-      }),
-    },
-  };
-});
+vi.mock("@/queries/playlist.queries", async importOriginal => ({
+  ...(await importOriginal<typeof import("@/queries/playlist.queries")>()),
+  getPlaylists: () => (slotData.playlists === "pending"
+    ? new Promise<never>(() => undefined)
+    : Promise.resolve(slotData.playlists)),
+}));
+
+vi.mock("@/queries/localCopy.queries", async importOriginal => ({
+  ...(await importOriginal<typeof import("@/queries/localCopy.queries")>()),
+  getLocalCopy: () => Promise.resolve(slotData.localCopy),
+}));
 
 vi.mock("@/queries/artist.queries", async importOriginal => ({
   ...(await importOriginal<typeof import("@/queries/artist.queries")>()),
@@ -406,9 +403,7 @@ const renderMenu = async (input: MenuInput) => {
   const pinia = createPinia();
   const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
   const { fixture } = input;
-  if (fixture.remoteId) {
-    queryClient.setQueryData(localCopyQueries.byRemoteId(fixture.remoteId).queryKey, fixture.localCopy ? COPY_ROW : null);
-  }
+  slotData.localCopy = fixture.remoteId && fixture.localCopy ? COPY_ROW : null;
   if (fixture.job) useDownloadsStore(pinia).upsert(fixture.job);
   useTrackMenu().openMenu(fixture.subject, 0, { target: input.context });
 
@@ -421,6 +416,9 @@ const renderMenu = async (input: MenuInput) => {
   });
   await flushPromises();
   await flushPromises();
+  await flushPromises();
+  // Dexie starts a live read on a timer, so microtask flushes alone never see its first result.
+  await new Promise(resolve => setTimeout(resolve, 20));
   await flushPromises();
 
   const read = (): MenuView => ({

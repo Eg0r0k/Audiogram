@@ -52,14 +52,13 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { refDebounced } from "@vueuse/core";
-import { keepPreviousData, useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { EntitySelectPanel } from "@/components/entity-select";
 import { identityKey } from "@/lib/artist-names";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";
 import { type AlbumWithArtistName, searchAlbumsWithArtistName } from "@/queries/album.queries";
-import { queryKeys } from "@/queries/query-keys";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { usePanelUiBack } from "@/modules/right-panel/composables/usePanelUiBack";
 import type { RightPanelEntitySelectPayload } from "@/modules/right-panel/types";
@@ -94,14 +93,10 @@ const toggleAlbum = (album: AlbumWithArtistName) => {
 
 const PICKER_LIMIT = 1000;
 
-const { data } = useQuery({
-  queryKey: computed(() => queryKeys.albums.search(normalizedSearch.value)),
-  queryFn: () => searchAlbumsWithArtistName(normalizedSearch.value, PICKER_LIMIT),
-  placeholderData: keepPreviousData,
-  // Renaming an artist does not invalidate album keys, so the captions are
-  // read fresh on every open instead of trusting the default stale time.
-  staleTime: 0,
-});
+const { data } = useLiveQuery(
+  async () => searchAlbumsWithArtistName(normalizedSearch.value, PICKER_LIMIT),
+  () => [normalizedSearch.value],
+);
 const suggestions = computed(() =>
   [...(data.value ?? [])].sort((a, b) => a.title.localeCompare(b.title)),
 );

@@ -1,12 +1,19 @@
+import "fake-indexeddb/auto";
 import { render, screen } from "@testing-library/vue";
 import userEvent from "@testing-library/user-event";
-import { VueQueryPlugin } from "@tanstack/vue-query";
+import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
+import { db } from "@/db";
+import type { ArtistEntity } from "@/db/entities";
+import { updateArtistAndSync } from "@/queries/artist.queries";
 import ArtistSelectPanel from "../ArtistSelectPanel.vue";
 
 const queries = vi.hoisted(() => ({ searchArtists: vi.fn() }));
-vi.mock("@/queries/artist.queries", () => queries);
+vi.mock("@/queries/artist.queries", async importOriginal => ({
+  ...(await importOriginal<typeof import("@/queries/artist.queries")>()),
+  ...queries,
+}));
 vi.mock("@/components/ui/EntityCoverImage.vue", () => ({ default: { template: "<span />" } }));
 
 const stubs = {
@@ -62,5 +69,21 @@ describe("ArtistSelectPanel", () => {
     await userEvent.click(screen.getByTestId("fab"));
 
     expect(onConfirm).toHaveBeenCalledWith({ names: [] });
+  });
+
+  it("ArtistSelectPanel: follows the row after a write", async () => {
+    const actual = await vi.importActual<typeof import("@/queries/artist.queries")>("@/queries/artist.queries");
+    queries.searchArtists.mockImplementation(actual.searchArtists);
+    const rows = artists as ArtistEntity[];
+    await db.open();
+    await Promise.all(db.tables.map(table => table.clear()));
+    await db.artists.bulkAdd(rows);
+    renderPanel(["Alpha"]);
+    await screen.findByText("Beta");
+
+    await updateArtistAndSync(new QueryClient(), rows[1], { name: "Gamma" });
+
+    expect(await screen.findByText("Gamma")).toBeInTheDocument();
+    expect(screen.queryByText("Beta")).toBeNull();
   });
 });

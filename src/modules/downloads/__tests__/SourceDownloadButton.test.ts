@@ -1,11 +1,15 @@
+import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/vue";
+import { render, screen, waitFor } from "@testing-library/vue";
 import { createPinia } from "pinia";
 import { createI18n } from "vue-i18n";
 import { VueQueryPlugin } from "@tanstack/vue-query";
-import { TrackId } from "@/types/ids";
+import { db } from "@/db";
+import { TrackSource, TrackState } from "@/db/entities";
+import { AlbumId, TrackId } from "@/types/ids";
 import type { SourceTrackDTO } from "@/modules/sources/types";
 import { downloadSubject } from "../service/enqueue";
+import { removeLocalCopy } from "../service/removeCopy";
 import SourceDownloadButton from "../components/SourceDownloadButton.vue";
 import { shownToasts } from "@/test/toasts";
 
@@ -15,9 +19,10 @@ vi.mock("../service/enqueue", () => ({
 
 vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 
-vi.mock("@/db/repositories", () => ({
-  trackRepository: { findBySourceRef: vi.fn().mockResolvedValue({ isErr: () => false, isOk: () => true, value: undefined }) },
-}));
+vi.mock("@/db/storage", async () => {
+  const { okAsync } = await import("neverthrow");
+  return { storageService: { deleteFile: vi.fn(() => okAsync(undefined)) } };
+});
 
 const dto: SourceTrackDTO = {
   id: TrackId("yt:abc123def45"),
@@ -41,8 +46,10 @@ function renderButton() {
 }
 
 describe("SourceDownloadButton", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await db.open();
+    await Promise.all(db.tables.map(table => table.clear()));
   });
 
   it("queues a download for the row dto", async () => {
@@ -68,5 +75,32 @@ describe("SourceDownloadButton", () => {
     await vi.waitFor(() => {
       expect(shownToasts("info")).toHaveLength(1);
     });
+  });
+
+  it("SourceDownloadButton: follows the row after a write", async () => {
+    await db.tracks.add({
+      id: TrackId("t-copy"),
+      title: "T",
+      artistName: "",
+      albumTitle: "",
+      artistIds: [],
+      albumId: AlbumId(""),
+      tagIds: [],
+      source: TrackSource.LOCAL_INTERNAL,
+      sourceRef: dto.id,
+      pinned: 1,
+      state: TrackState.READY,
+      storagePath: "tracks/t-copy.m4a",
+      duration: 100,
+      format: {},
+      playCount: 0,
+      addedAt: 1,
+    });
+    renderButton();
+    await waitFor(() => expect(screen.queryByRole("button")).toBeNull());
+
+    await removeLocalCopy(dto.id);
+
+    expect(await screen.findByRole("button")).toBeInTheDocument();
   });
 });

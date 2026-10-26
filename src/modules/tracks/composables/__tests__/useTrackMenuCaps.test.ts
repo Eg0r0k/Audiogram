@@ -1,18 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
+import "fake-indexeddb/auto";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, nextTick, shallowRef, type Ref } from "vue";
-import { mount } from "@vue/test-utils";
+import { mount, type VueWrapper } from "@vue/test-utils";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
-import { TrackSource, TrackState } from "@/db/entities";
+import { db } from "@/db";
+import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
+import { trackRepository } from "@/db/repositories";
+import { deleteTracksAndSync } from "@/queries/track.queries";
 import type { Track } from "@/types/track";
-import { TrackId } from "@/types/ids";
+import { AlbumId, TrackId } from "@/types/ids";
 import { ytTrackId } from "@/types/track-ref";
 import type { TrackMenuSubject } from "../../components/menu/type";
 
-const copyMock = vi.hoisted(() => ({ findBySourceRef: vi.fn() }));
-
-vi.mock("@/db/repositories", () => ({
-  trackRepository: copyMock,
-}));
+const readCopy = trackRepository.findBySourceRef.bind(trackRepository);
+const copyMock = { findBySourceRef: vi.spyOn(trackRepository, "findBySourceRef") };
 
 const registryMock = vi.hoisted(() => ({
   providers: {} as Record<string, { capabilities: { download: boolean } }>,
@@ -49,17 +50,19 @@ function makeLibraryTrack(overrides: Partial<Track> = {}): Track {
   } as Track;
 }
 
+const mounted: VueWrapper[] = [];
+
 function mountCaps(subject: Ref<TrackMenuSubject | null>) {
   let caps!: Ref<TrackMenuCaps>;
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
   });
-  mount(defineComponent({
+  mounted.push(mount(defineComponent({
     setup() {
       caps = useTrackMenuCaps(subject);
       return () => h("div");
     },
-  }), { global: { plugins: [[VueQueryPlugin, { queryClient }]] } });
+  }), { global: { plugins: [[VueQueryPlugin, { queryClient }]] } }));
   return caps;
 }
 
@@ -70,7 +73,35 @@ async function flushQueries() {
   await nextTick();
 }
 
+const until = async (holds: () => boolean) => {
+  for (let i = 0; i < 400 && !holds(); i++) await new Promise(resolve => setTimeout(resolve, 5));
+  expect(holds()).toBe(true);
+};
+
+const copyRow = (sourceRef: TrackId): TrackEntity => ({
+  id: TrackId("local-copy"),
+  title: "Song",
+  artistName: "Artist",
+  albumTitle: "",
+  artistIds: [],
+  albumId: AlbumId(""),
+  tagIds: [],
+  source: TrackSource.LOCAL_INTERNAL,
+  sourceRef,
+  pinned: 1,
+  state: TrackState.READY,
+  storagePath: "tracks/local-copy.m4a",
+  duration: 100,
+  format: {},
+  playCount: 0,
+  addedAt: 1,
+});
+
 describe("useTrackMenuCaps", () => {
+  afterEach(() => {
+    for (const wrapper of mounted.splice(0)) wrapper.unmount();
+  });
+
   it("marks a pinned local library track: exportable, no remote abilities", () => {
     const subject = shallowRef<TrackMenuSubject | null>({ kind: "library", track: makeLibraryTrack() });
 
@@ -110,10 +141,10 @@ describe("useTrackMenuCaps", () => {
 
   it("a downloaded local copy flips canDownload off and canExportFile on", async () => {
     copyMock.findBySourceRef.mockResolvedValue({
-      id: "local-1",
+      id: TrackId("local-1"),
       storagePath: "tracks/local-1.m4a",
       sourceRef: ytTrackId("abc"),
-    });
+    } as TrackEntity);
     registryMock.providers = { yt: { capabilities: { download: true } } };
     const subject = shallowRef<TrackMenuSubject | null>({
       kind: "library",
@@ -205,5 +236,26 @@ describe("useTrackMenuCaps", () => {
       canExportFile: false,
       canDownload: false,
     });
+  });
+
+  it("useTrackMenuCaps: follows the row after a write", async () => {
+    copyMock.findBySourceRef.mockImplementation(readCopy);
+    registryMock.providers = { yt: { capabilities: { download: true } } };
+    await db.open();
+    await Promise.all(db.tables.map(table => table.clear()));
+    await db.tracks.add(copyRow(ytTrackId("abc")));
+    const subject = shallowRef<TrackMenuSubject | null>({
+      kind: "remote",
+      dto: { id: ytTrackId("abc"), title: "Remote song" },
+    });
+
+    const caps = mountCaps(subject);
+    await until(() => caps.value.hasLocalCopy);
+    expect(caps.value.canDownload).toBe(false);
+
+    await deleteTracksAndSync(new QueryClient(), [TrackId("local-copy")]);
+
+    await until(() => !caps.value.hasLocalCopy);
+    expect(caps.value.canDownload).toBe(true);
   });
 });

@@ -47,7 +47,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { refDebounced } from "@vueuse/core";
-import { keepPreviousData, useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { EntitySelectPanel } from "@/components/entity-select";
 import { identityKey, sameArtistNames } from "@/lib/artist-names";
@@ -55,7 +54,7 @@ import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from "@/componen
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";
 import type { ArtistEntity } from "@/db/entities";
 import { searchArtists } from "@/queries/artist.queries";
-import { queryKeys } from "@/queries/query-keys";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { usePanelUiBack } from "@/modules/right-panel/composables/usePanelUiBack";
 import type { RightPanelEntitySelectPayload } from "@/modules/right-panel/types";
@@ -85,11 +84,10 @@ const toggleName = (name: string) => {
 
 const PICKER_LIMIT = 1000;
 
-const { data } = useQuery({
-  queryKey: computed(() => queryKeys.artists.search(normalizedSearch.value)),
-  queryFn: () => searchArtists(normalizedSearch.value, PICKER_LIMIT),
-  placeholderData: keepPreviousData,
-});
+const { data } = useLiveQuery(
+  async () => searchArtists(normalizedSearch.value, PICKER_LIMIT),
+  () => [normalizedSearch.value],
+);
 const suggestions = computed(() =>
   [...(data.value ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
 );

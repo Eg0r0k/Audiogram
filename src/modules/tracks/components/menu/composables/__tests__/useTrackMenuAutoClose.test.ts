@@ -1,9 +1,11 @@
+import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, nextTick, reactive, shallowRef, type Ref } from "vue";
 import { mount } from "@vue/test-utils";
-import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
+import { QueryClient } from "@tanstack/vue-query";
+import { db } from "@/db";
+import { removeTrackFromPlaylistAndSync } from "@/queries/playlist.queries";
 import type { Track } from "@/types/track";
-import { queryKeys } from "@/queries/query-keys";
 import { PlaylistId, QueueItemId, TrackId } from "@/types/ids";
 
 const queueState = reactive({
@@ -12,23 +14,6 @@ const queueState = reactive({
 
 vi.mock("@/modules/queue/store/queue.store", () => ({
   useQueueStore: () => queueState,
-}));
-
-// Real queryFn shape (the composable must never observe this key with
-// skipToken — see the invalidation regression below); rejects by default so
-// seeded-cache tests keep their data exactly like the real db-less env.
-const fetchPlaylistMock = vi.hoisted(() =>
-  vi.fn<(id: unknown) => Promise<unknown>>(async () => {
-    throw new Error("no playlist backend in this test");
-  }));
-vi.mock("@/queries/playlist.queries", () => ({
-  playlistQueries: {
-    detail: (id: unknown, enabled = true) => ({
-      queryKey: ["playlists", id],
-      queryFn: () => fetchPlaylistMock(id),
-      enabled,
-    }),
-  },
 }));
 
 import { useTrackMenu } from "@/modules/tracks/composables/useTrackMenu";
@@ -54,11 +39,7 @@ function makeTrack(id = "track-1"): Track {
   } as unknown as Track;
 }
 
-function mountAutoClose(
-  isOpen: Ref<boolean>,
-  context: TrackContext,
-  queryClient: QueryClient,
-) {
+function mountAutoClose(isOpen: Ref<boolean>, context: TrackContext) {
   return mount(defineComponent({
     setup() {
       useTrackMenuAutoClose(isOpen, {
@@ -67,22 +48,25 @@ function mountAutoClose(
       });
       return () => h("div");
     },
-  }), { global: { plugins: [[VueQueryPlugin, { queryClient }]] } });
+  }));
 }
 
-function createQueryClient() {
-  return new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
-  });
-}
+const quiet = () => new Promise(resolve => setTimeout(resolve, 50));
+
+const until = async (holds: () => boolean) => {
+  for (let i = 0; i < 400 && !holds(); i++) await new Promise(resolve => setTimeout(resolve, 5));
+  expect(holds()).toBe(true);
+};
 
 describe("useTrackMenuAutoClose", () => {
   const menu = useTrackMenu();
 
-  beforeEach(() => {
+  beforeEach(async () => {
     queueState.queue = [];
     menu.closeMenu();
     menu.closeDropdown();
+    await db.open();
+    await Promise.all(db.tables.map(table => table.clear()));
   });
 
   describe("контекст queue", () => {
@@ -92,7 +76,7 @@ describe("useTrackMenuAutoClose", () => {
 
       menu.openMenu(makeTrack(), 0, { queueItemId: itemId, target: "queue" });
       const isOpen = shallowRef(true);
-      const wrapper = mountAutoClose(isOpen, "queue", createQueryClient());
+      const wrapper = mountAutoClose(isOpen, "queue");
 
       queueState.queue = [{ id: QueueItemId("q-2") }];
       await nextTick();
@@ -107,7 +91,7 @@ describe("useTrackMenuAutoClose", () => {
 
       menu.openMenu(makeTrack(), 0, { queueItemId: itemId, target: "queue" });
       const isOpen = shallowRef(true);
-      const wrapper = mountAutoClose(isOpen, "queue", createQueryClient());
+      const wrapper = mountAutoClose(isOpen, "queue");
 
       queueState.queue = [{ id: itemId }, { id: QueueItemId("q-2") }];
       await nextTick();
@@ -123,7 +107,7 @@ describe("useTrackMenuAutoClose", () => {
       // The shell is mounted closed and opened later, like the real
       // dropdown: the "gone" check runs on the open transition.
       const isOpen = shallowRef(false);
-      const wrapper = mountAutoClose(isOpen, "queue", createQueryClient());
+      const wrapper = mountAutoClose(isOpen, "queue");
       menu.openMenu(makeTrack(), 0, { queueItemId: itemId, target: "queue" });
       isOpen.value = true;
       await nextTick();
@@ -138,7 +122,7 @@ describe("useTrackMenuAutoClose", () => {
 
       menu.openMenu(makeTrack(), 0, { queueItemId: itemId, target: "queue" });
       const isOpen = shallowRef(false);
-      const wrapper = mountAutoClose(isOpen, "queue", createQueryClient());
+      const wrapper = mountAutoClose(isOpen, "queue");
 
       queueState.queue = [];
       await nextTick();
@@ -149,75 +133,29 @@ describe("useTrackMenuAutoClose", () => {
   });
 
   describe("контекст playlist", () => {
-    it("рефетчит деталь плейлиста при инвалидации — регресс skipToken-спама после добавления треков", async () => {
+    it("useTrackMenuAutoClose: follows the row after a write", async () => {
       const track = makeTrack("t-1");
-      const queryClient = createQueryClient();
-      const flush = () => new Promise(resolve => setTimeout(resolve, 0));
-
-      fetchPlaylistMock.mockResolvedValueOnce({
-        id: PLAYLIST_ID,
-        name: "P",
-        trackIds: [track.id],
-      });
+      await db.playlists.add({ id: PLAYLIST_ID, name: "P", trackIds: [track.id, TrackId("t-2")], addedAt: 1, updatedAt: 1 });
 
       menu.openMenu(track, 0, { target: "playlist" });
       const isOpen = shallowRef(true);
-      const wrapper = mountAutoClose(isOpen, "playlist", queryClient);
-      await flush();
-      expect(fetchPlaylistMock).toHaveBeenCalledTimes(1);
+      const wrapper = mountAutoClose(isOpen, "playlist");
+      await quiet();
       expect(menu.isContextMenuOpen.value).toBe(true);
 
-      // The add-tracks mutation invalidates ["playlists", id]; the observer
-      // must refetch through its real queryFn (skipToken here produced
-      // "Attempted to invoke queryFn when set to skipToken" retry spam).
-      fetchPlaylistMock.mockResolvedValueOnce({
-        id: PLAYLIST_ID,
-        name: "P",
-        trackIds: [],
-      });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.playlists.detail(PLAYLIST_ID) });
-      await flush();
-      await nextTick();
+      await removeTrackFromPlaylistAndSync(new QueryClient(), PLAYLIST_ID, track.id);
 
-      expect(fetchPlaylistMock).toHaveBeenCalledTimes(2);
-      expect(menu.isContextMenuOpen.value).toBe(false);
+      await until(() => !menu.isContextMenuOpen.value);
       wrapper.unmount();
     });
 
-    it("закрывает меню, когда трек удалён из кэша плейлиста", async () => {
-      const track = makeTrack("t-1");
-      const queryClient = createQueryClient();
-      queryClient.setQueryData(queryKeys.playlists.detail(PLAYLIST_ID), {
-        id: PLAYLIST_ID,
-        name: "P",
-        trackIds: [track.id, "t-2"],
-      });
-
-      menu.openMenu(track, 0, { target: "playlist" });
-      const isOpen = shallowRef(true);
-      const wrapper = mountAutoClose(isOpen, "playlist", queryClient);
-      await nextTick();
-
-      queryClient.setQueryData(queryKeys.playlists.detail(PLAYLIST_ID), {
-        id: PLAYLIST_ID,
-        name: "P",
-        trackIds: ["t-2"],
-      });
-      await nextTick();
-      await nextTick();
-
-      expect(menu.isContextMenuOpen.value).toBe(false);
-      wrapper.unmount();
-    });
-
-    it("не закрывает при пустом кэше плейлиста", async () => {
+    it("stays open while the playlist has no row", async () => {
       const track = makeTrack("t-1");
 
       menu.openMenu(track, 0, { target: "playlist" });
       const isOpen = shallowRef(true);
-      const wrapper = mountAutoClose(isOpen, "playlist", createQueryClient());
-      await nextTick();
-      await nextTick();
+      const wrapper = mountAutoClose(isOpen, "playlist");
+      await quiet();
 
       expect(menu.isContextMenuOpen.value).toBe(true);
       wrapper.unmount();

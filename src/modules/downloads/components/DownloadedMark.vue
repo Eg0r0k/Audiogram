@@ -9,8 +9,8 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useQuery } from "@tanstack/vue-query";
-import { localCopyQueries } from "@/queries/localCopy.queries";
+import { useLiveQuery } from "@/composables/useLiveQuery";
+import { getLocalCopy } from "@/queries/localCopy.queries";
 import type { TrackId } from "@/types/ids";
 import IconCheck from "~icons/tabler/check";
 
@@ -18,6 +18,6 @@ const props = defineProps<{
   trackId: TrackId;
 }>();
 
-const { data: localCopy } = useQuery(computed(() => localCopyQueries.byRemoteId(props.trackId)));
-const isDownloaded = computed(() => !!localCopy.value);
+const { data: localCopy } = useLiveQuery(async () => getLocalCopy(props.trackId), () => [props.trackId]);
+const isDownloaded = computed(() => localCopy.value?.sourceRef === props.trackId);
 </script>

@@ -1,8 +1,8 @@
 import { computed, type Ref } from "vue";
-import { useQuery } from "@tanstack/vue-query";
 import { parseTrackRef, type SourceKind } from "@/types/track-ref";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 import { sources } from "@/modules/sources";
-import { localCopyQueries } from "@/queries/localCopy.queries";
+import { getLocalCopy } from "@/queries/localCopy.queries";
 import { ephemeralRemoteDto, trackHasLocalFile } from "@/modules/tracks/lib/trackPredicates";
 import type { TrackId } from "@/types/ids";
 import type { TrackMenuSubject } from "../components/menu/type";
@@ -54,9 +54,9 @@ function sourceCanDownload(kind: SourceKind): boolean {
 
 /**
  * Computes the capability set for the active menu subject. The synchronous
- * part derives from the subject itself; the local copy comes from the
- * `localCopyQueries.byRemoteId(trackId)` query (cache-synced by the download
- * manager, which imports the download as a local track).
+ * part derives from the subject itself; the local copy is a live read of the
+ * row whose `sourceRef` is the track id (the download manager imports the
+ * download as a local track).
  *
  * Shells compute this once per active subject and hand it to the menu
  * model as ready-made booleans.
@@ -66,12 +66,17 @@ export function useTrackMenuCaps(subject: Ref<TrackMenuSubject | null>): Ref<Tra
   const source = computed<SourceKind>(() => (trackId.value ? parseTrackRef(trackId.value).kind : "local"));
   const isRemote = computed(() => source.value !== "local");
 
-  const { data: localCopy } = useQuery(computed(() => localCopyQueries.byRemoteId(isRemote.value ? trackId.value : null)));
+  const remoteId = computed(() => (isRemote.value ? trackId.value : null));
+  const { data: localCopy } = useLiveQuery(
+    async () => (remoteId.value ? getLocalCopy(remoteId.value) : null),
+    () => [remoteId.value],
+    { enabled: () => remoteId.value !== null },
+  );
 
   return computed<TrackMenuCaps>(() => {
     const current = subject.value;
     const isLibrary = current?.kind === "library";
-    const hasLocalCopy = !!localCopy.value;
+    const hasLocalCopy = remoteId.value !== null && localCopy.value?.sourceRef === remoteId.value;
     const hasLocalFile = isLibrary && trackHasLocalFile(current.track);
 
     return {

@@ -1,13 +1,16 @@
+import "fake-indexeddb/auto";
 import { fireEvent, render, screen } from "@testing-library/vue";
-import { VueQueryPlugin } from "@tanstack/vue-query";
+import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
+import { db } from "@/db";
 import type { AlbumEntity } from "@/db/entities";
 import type { RightPanelEntitySelectPayload } from "@/modules/right-panel/types";
-import { searchAlbumsWithArtistName } from "@/queries/album.queries";
+import { searchAlbumsWithArtistName, updateAlbumAndSync } from "@/queries/album.queries";
 import AlbumSelectPanel from "../AlbumSelectPanel.vue";
 
-vi.mock("@/queries/album.queries", () => ({
+vi.mock("@/queries/album.queries", async importOriginal => ({
+  ...(await importOriginal<typeof import("@/queries/album.queries")>()),
   searchAlbumsWithArtistName: vi.fn(),
 }));
 vi.mock("@/components/ui/EntityCoverImage.vue", () => ({
@@ -109,5 +112,21 @@ describe("AlbumSelectPanel", () => {
     await fireEvent.click(screen.getByText("Attached"));
 
     expect(screen.queryByTestId("fab")).not.toBeInTheDocument();
+  });
+
+  it("AlbumSelectPanel: follows the row after a write", async () => {
+    const actual = await vi.importActual<typeof import("@/queries/album.queries")>("@/queries/album.queries");
+    vi.mocked(searchAlbumsWithArtistName).mockImplementation(actual.searchAlbumsWithArtistName);
+    await db.open();
+    await Promise.all(db.tables.map(table => table.clear()));
+    await db.artists.add({ id: "ar" as AlbumEntity["artistId"], name: "Artist", pinned: 1, addedAt: 1, updatedAt: 1 });
+    await db.albums.bulkAdd(albums);
+    renderPanel();
+    await screen.findByText("Other");
+
+    await updateAlbumAndSync(new QueryClient(), albums[1], { title: "Renamed" });
+
+    expect(await screen.findByText("Renamed")).toBeInTheDocument();
+    expect(screen.queryByText("Other")).not.toBeInTheDocument();
   });
 });

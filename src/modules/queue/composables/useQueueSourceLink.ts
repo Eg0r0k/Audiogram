@@ -1,21 +1,40 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import type { RouteLocationRaw } from "vue-router";
-import { useQuery } from "@tanstack/vue-query";
 import { routeLocation } from "@/app/router/route-locations";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import { remoteCatalogKindOf, remoteListKindOf } from "@/modules/sources/lib/catalog-kind";
 import { sourceKindOf } from "@/modules/sources/lib/display";
 import { useSourcePlaylistMeta, useSourcePlaylists } from "@/modules/sources/composables/useSourceCatalog";
-import { albumQueries } from "@/queries/album.queries";
-import { artistQueries } from "@/queries/artist.queries";
-import { playlistQueries } from "@/queries/playlist.queries";
+import { getAlbumLibraryRow } from "@/queries/album.queries";
+import { getArtistLibraryRow } from "@/queries/artist.queries";
+import { getPlaylistLibraryRow } from "@/queries/playlist.queries";
 
 export interface QueueSourceLink {
   label: string;
   /** Absent for an origin that has a name but no page (recommendations). */
   to?: RouteLocationRaw;
 }
+
+const useLibraryRow = <Id extends string, Row extends { id: Id }>(
+  id: () => Id | null,
+  read: (id: Id) => Promise<Row | null>,
+) => {
+  const live = useLiveQuery(
+    async () => {
+      const current = id();
+      return current ? read(current) : null;
+    },
+    () => [id()],
+    { enabled: () => id() !== null },
+  );
+  // The previous id's row stays until the next read lands; it must not name this one.
+  return computed(() => {
+    const row = live.data.value;
+    return row && row.id === id() ? row : undefined;
+  });
+};
 
 /**
  * Where the current queue item was queued from, as something to navigate
@@ -38,11 +57,10 @@ export const useQueueSourceLink = () => {
   const artistId = computed(() => (source.value?.type === "artist" ? source.value.artistId : null));
   const playlistId = computed(() => (source.value?.type === "playlist" ? source.value.playlistId : null));
 
-  // Row-or-null, not `detail`: a catalog id legitimately has no row, and
-  // asking `detail` about one would raise "not found" on every queue change.
-  const { data: album } = useQuery(computed(() => albumQueries.libraryRow(albumId.value)));
-  const { data: artist } = useQuery(computed(() => artistQueries.libraryRow(artistId.value)));
-  const { data: playlist } = useQuery(computed(() => playlistQueries.libraryRow(playlistId.value)));
+  // Row-or-null, not the throwing lookup: a catalog id legitimately has no row.
+  const album = useLibraryRow(() => albumId.value, getAlbumLibraryRow);
+  const artist = useLibraryRow(() => artistId.value, getArtistLibraryRow);
+  const playlist = useLibraryRow(() => playlistId.value, getPlaylistLibraryRow);
 
   // A remote playlist has no name on the track either, unlike an album or an
   // artist. Where the source lists its playlists, the sidebar has already

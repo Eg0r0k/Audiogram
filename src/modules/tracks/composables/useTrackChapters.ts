@@ -1,9 +1,10 @@
 import { computed, type ComputedRef } from "vue";
 import { useI18n } from "vue-i18n";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
+import { useMutation, useQueryClient } from "@tanstack/vue-query";
 import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
-import { trackChaptersQueries, saveTrackChapters } from "@/queries/trackChapters.queries";
+import { useLiveQuery } from "@/composables/useLiveQuery";
+import { readTrackChapters, saveTrackChapters } from "@/queries/trackChapters.queries";
 import type { TrackChapterMark } from "@/db/entities";
 import type { TrackId } from "@/types/ids";
 
@@ -15,7 +16,9 @@ interface ChaptersSave {
 const saveFailedToastId = (trackId: TrackId) => `chapters-save-failed:${trackId}`;
 
 export function useTrackChapters(trackId: ComputedRef<TrackId>) {
-  return useQuery(computed(() => trackChaptersQueries.detail(trackId.value)));
+  const live = useLiveQuery(async () => readTrackChapters(trackId.value), () => [trackId.value]);
+  // The previous track's chapters stay until the next read lands; they are not this track's.
+  return { ...live, data: computed(() => (live.isStale.value ? undefined : live.data.value)) };
 }
 
 export function useSaveTrackChapters() {
