@@ -155,6 +155,31 @@ export async function getPlaylistTotalDuration(playlistId: PlaylistId): Promise<
   if (playlist.trackIds.length === 0) return 0;
   return trackRepository.withIds(playlist.trackIds).sumDuration();
 }
+
+// An id without a row is skipped and the ids after it fill its place, so a short read still means the end.
+export const readPlaylistTracks = async (
+  playlistId: PlaylistId,
+  sortKey: TrackSortKey | null,
+  limit: number,
+): Promise<TrackEntity[]> => {
+  const trackIds = (await playlistRepository.findById(playlistId))?.trackIds ?? [];
+  if (sortKey) return trackRepository.withIds(trackIds).rows({ sort: sortKey, limit });
+  const rows: TrackEntity[] = [];
+  let from = 0;
+  while (rows.length < limit && from < trackIds.length) {
+    const to = from + limit - rows.length;
+    rows.push(...(await trackRepository.withIds(trackIds.slice(from, to)).rows()));
+    from = to;
+  }
+  return rows;
+};
+
+export const readPlaylistTotals = async (playlistId: PlaylistId): Promise<{ count: number; seconds: number }> => {
+  const trackIds = (await playlistRepository.findById(playlistId))?.trackIds ?? [];
+  const seconds = trackIds.length === 0 ? 0 : await trackRepository.withIds(trackIds).sumDuration();
+  return { count: trackIds.length, seconds };
+};
+
 export const playlistQueries = {
   all: () =>
     queryOptions({

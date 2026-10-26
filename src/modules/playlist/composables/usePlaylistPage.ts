@@ -1,6 +1,6 @@
-import { computed, type Ref } from "vue";
+import { computed, shallowRef, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
+import { useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
 import { PlaylistId } from "@/types/ids";
 import { formatTotalDuration } from "@/lib/format/time";
 import { getLogger } from "@/lib/logger";
@@ -10,9 +10,10 @@ import type { PlaylistData } from "@/types/media-data";
 import { queryKeys } from "@/queries/query-keys";
 import {
   deletePlaylistAndSync,
+  getPlaylistByIdOrThrow,
   getPlaylistPageData,
-  getPlaylistTracksPaginated,
-  playlistQueries,
+  readPlaylistTotals,
+  readPlaylistTracks,
   removeTrackFromPlaylistAndSync,
   type PlaylistChanges,
   updatePlaylistAndSync,
@@ -20,8 +21,10 @@ import {
 import { searchPlaylistTracks } from "@/queries/track.queries";
 import { fetchSourcePlaylist } from "@/queries/source.queries";
 import { routeLocation } from "@/app/router/route-locations";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 import type { Track } from "@/types/track";
 import type { TrackSortKey } from "@/modules/tracks/types";
+import { useLiveTrackList } from "@/modules/tracks/composables/useLiveTrackList";
 import { useSourcePlaylist, useSourcePlaylistPages } from "@/modules/sources/composables/useSourceCatalog";
 import { useCatalogEntity } from "@/modules/sources/composables/useCatalogEntity";
 import { pagedPlaylistKindOf } from "@/modules/sources/lib/catalog-kind";
@@ -32,14 +35,22 @@ import { formatError } from "@/lib/errors";
 
 export type { PlaylistChanges } from "@/queries/playlist.queries";
 
-export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) {
+interface PlaylistList {
+  tracks: Track[];
+  count: number;
+  seconds: number;
+}
+
+export const usePlaylistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) => {
   const route = useRoute();
   const normalizedSearchQuery = computed(() => searchQuery.value.trim());
+  const isSearching = computed(() => normalizedSearchQuery.value !== "");
   const router = useRouter();
   const queryClient = useQueryClient();
   const { t } = useI18n();
 
-  const playlistId = computed(() => PlaylistId(route.params.id as string));
+  // Pages are keyed by fullPath, so the id is fixed per instance; a page sliding out must not read the next route's id.
+  const playlistId = shallowRef(PlaylistId(route.params.id as string));
 
   // Remote playlists route as "<kind>:<serverId>" — read-only live pages.
   // The provider takes the branded id and unwraps it itself, exactly like
@@ -68,37 +79,83 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
       : wholeQuery.isError.value)),
   };
 
-  const {
-    data: playlistData,
-    isLoading: isLocalPlaylistLoading,
-    isError: isLocalError,
-    error,
-    refetch,
-  } = useQuery(computed(() => playlistQueries.detail(playlistId.value, localEnabled.value)));
+  const liveHeader = useLiveQuery(
+    async () => getPlaylistByIdOrThrow(playlistId.value),
+    () => [playlistId.value],
+    { enabled: localEnabled },
+  );
 
-  const { isError, isLoading: isPlaylistLoading } = path.pathState(remoteState, {
-    isLoading: isLocalPlaylistLoading,
-    isError: isLocalError,
+  // One read for both, so the count and the duration change together.
+  const liveTotals = useLiveQuery(
+    async () => readPlaylistTotals(playlistId.value),
+    () => [playlistId.value],
+    { enabled: localEnabled },
+  );
+
+  const list = useLiveTrackList({
+    read: limit => readPlaylistTracks(playlistId.value, sortKey.value, limit),
+    deps: () => [playlistId.value, sortKey.value],
+    enabled: computed(() => localEnabled.value && !isSearching.value),
   });
 
-  const playlist = path.libraryRow(playlistData);
+  // A failed re-read keeps the last row, so a playlist deleted under the page stays until the delete navigates away.
+  const header = liveHeader.data;
+  const headerError = computed(() => (header.value ? undefined : liveHeader.error.value));
+
+  const playlist = path.libraryRow(header);
 
   const {
-    data: infiniteData,
-    fetchNextPage: fetchNextLocalPage,
-    hasNextPage: hasNextLocalPage,
-    isLoading: isLocalTracksLoading,
-    isFetchingNextPage: isFetchingNextLocalPage,
-    isFetchNextPageError: isFetchNextLocalPageError,
+    data: searchData,
+    isError: isSearchError,
+    isFetchNextPageError: isSearchFetchNextPageError,
+    error: searchError,
+    refetch: refetchSearch,
+    fetchNextPage: fetchNextSearchPage,
+    hasNextPage: hasNextSearchPage,
+    isFetchingNextPage: isFetchingNextSearchPage,
   } = useInfiniteQuery({
     queryKey: computed(() => queryKeys.playlists.tracksPage(playlistId.value, sortKey.value, normalizedSearchQuery.value)),
-    queryFn: ({ pageParam = 0 }) => normalizedSearchQuery.value
-      ? searchPlaylistTracks(playlistId.value, normalizedSearchQuery.value, pageParam, undefined, sortKey.value)
-      : getPlaylistTracksPaginated(playlistId.value, pageParam, undefined, sortKey.value),
+    queryFn: ({ pageParam }) =>
+      searchPlaylistTracks(playlistId.value, normalizedSearchQuery.value, pageParam, undefined, sortKey.value),
     initialPageParam: 0,
     getNextPageParam: lastPage => lastPage.nextOffset,
-    placeholderData: previousData => previousData,
-    enabled: computed(() => !isRemote.value && !!playlist.value),
+    enabled: computed(() => !!playlist.value && isSearching.value),
+  });
+
+  const liveList = computed<PlaylistList | undefined>(() => {
+    const totals = liveTotals.data.value;
+    return list.isLoading.value || !totals ? undefined : { tracks: list.tracks.value, ...totals };
+  });
+
+  // A filtered list reports the matches' own count and duration.
+  const searchList = computed<PlaylistList | undefined>(() => {
+    const data = searchData.value;
+    if (!data) return undefined;
+    const [first] = data.pages;
+    return {
+      tracks: data.pages.flatMap(page => page.tracks),
+      count: first.total,
+      seconds: first.totalDuration ?? liveTotals.data.value?.seconds ?? 0,
+    };
+  });
+
+  // A sort or search switch keeps the shown list until the next one has its first page.
+  const shownList = computed<PlaylistList | undefined>(previous =>
+    (isSearching.value ? searchList.value : liveList.value) ?? previous,
+  );
+
+  // TanStack reports "no error" as null; the live reads as undefined.
+  const listError = computed(() => {
+    if (isSearching.value) {
+      return isSearchError.value && !isSearchFetchNextPageError.value ? searchError.value ?? undefined : undefined;
+    }
+    return list.isError.value ? list.error.value : liveTotals.error.value;
+  });
+  const localError = computed(() => headerError.value ?? listError.value);
+
+  const { isError, isLoading: isPlaylistLoading } = path.pathState(remoteState, {
+    isLoading: computed(() => !header.value && headerError.value === undefined),
+    isError: computed(() => localError.value !== undefined),
   });
 
   const remoteDtos = computed(() =>
@@ -118,25 +175,37 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
   const tracks = computed(() =>
     isRemote.value
       ? remoteTracks.value
-      : infiniteData.value?.pages.flatMap(page => page.tracks) ?? [],
+      : shownList.value?.tracks ?? [],
   );
 
-  const fetchNextPage = () =>
-    (isPaged.value ? pagedQuery.fetchNextPage() : fetchNextLocalPage());
-  const hasNextPage = computed(() =>
-    (isPaged.value ? pagedQuery.hasNextPage.value : hasNextLocalPage.value),
-  );
-  const isFetchingNextPage = computed(() =>
-    (isPaged.value ? pagedQuery.isFetchingNextPage.value : isFetchingNextLocalPage.value),
-  );
-  const isFetchNextPageError = computed(() =>
-    (isPaged.value ? pagedQuery.isFetchNextPageError.value : isFetchNextLocalPageError.value),
-  );
+  const fetchNextPage = async () => {
+    if (isPaged.value) {
+      await pagedQuery.fetchNextPage();
+      return;
+    }
+    if (isSearching.value) {
+      await fetchNextSearchPage();
+      return;
+    }
+    await list.fetchNextPage();
+  };
+  const hasNextPage = computed(() => {
+    if (isPaged.value) return pagedQuery.hasNextPage.value;
+    return isSearching.value ? hasNextSearchPage.value : list.hasNextPage.value;
+  });
+  const isFetchingNextPage = computed(() => {
+    if (isPaged.value) return pagedQuery.isFetchingNextPage.value;
+    return isSearching.value ? isFetchingNextSearchPage.value : list.isFetchingNextPage.value;
+  });
+  const isFetchNextPageError = computed(() => {
+    if (isPaged.value) return pagedQuery.isFetchNextPageError.value;
+    return isSearching.value ? isSearchFetchNextPageError.value : list.isFetchNextPageError.value;
+  });
   // On the whole-playlist path the tracks came with the playlist itself, so
   // there is no second load to wait on.
   const isTracksLoading = computed(() => {
     if (isPaged.value) return pagedQuery.isLoading.value;
-    return isRemote.value ? false : isLocalTracksLoading.value;
+    return isRemote.value ? false : shownList.value === undefined && localError.value === undefined;
   });
 
   /**
@@ -151,7 +220,7 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
 
   const trackCount = computed(() => {
     if (!isRemote.value) {
-      return infiniteData.value?.pages[0]?.total ?? playlist.value?.trackIds.length ?? 0;
+      return shownList.value?.count ?? playlist.value?.trackIds.length ?? 0;
     }
     // While a cursor remains, the source's own count is the only estimate of
     // the whole; once it runs out the loaded rows ARE the playlist.
@@ -161,15 +230,11 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
     return remoteTracks.value.length;
   });
 
-  const { data: playlistTotalDurationSeconds } = useQuery(
-    computed(() => playlistQueries.totalDuration(playlistId.value, !isRemote.value)),
-  );
-
   const totalDuration = computed(() =>
     formatTotalDuration(
       isRemote.value
         ? remoteTracks.value.reduce((sum, track) => sum + track.duration, 0)
-        : infiniteData.value?.pages[0]?.totalDuration ?? playlistTotalDurationSeconds.value ?? 0,
+        : shownList.value?.seconds ?? 0,
       t,
     ),
   );
@@ -182,6 +247,18 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
   const isLoading = computed(() =>
     isPlaylistLoading.value || isCoverLoading.value || isTracksLoading.value,
   );
+
+  const error = computed(() => localError.value ?? list.error.value);
+
+  const refetch = async () => {
+    liveHeader.refetch();
+    liveTotals.refetch();
+    if (isSearching.value) {
+      await refetchSearch();
+      return;
+    }
+    list.refetch();
+  };
 
   const playlistDetailData = computed<PlaylistData | null>(() => {
     if (isRemote.value) {
@@ -302,4 +379,4 @@ export function usePlaylistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: 
     isFetchingNextPage,
     isFetchNextPageError,
   };
-}
+};
