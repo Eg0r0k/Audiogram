@@ -5,7 +5,7 @@
     :title="title"
     :items="tracks"
     :get-key="(track: Track) => track.id"
-    :is-loading="isInitialLoading"
+    :is-loading="isLoading"
     :confirm-count="selectedCount"
     :show-back="rightPanel.depth > 0"
     @confirm="handleConfirm"
@@ -45,7 +45,7 @@
 import LoadMoreError from "@/components/common/LoadMoreError.vue";
 import { refDebounced } from "@vueuse/core";
 import { Empty, EmptyDescription } from "@/components/ui/empty";
-import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
+import { useMutation, useQueryClient } from "@tanstack/vue-query";
 import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { reportError } from "@/app/error-feedback";
@@ -54,16 +54,13 @@ import { EntitySelectPanel } from "@/components/entity-select";
 import TrackSelectRow from "../TrackSelectRow.vue";
 import TrackRowLoading from "../TrackRowLoading.vue";
 import { addTracksToPlaylistAndSync } from "@/queries/playlist.queries";
-import { queryKeys } from "@/queries/query-keys";
 import {
   addTracksToAlbumAndSync,
   addTracksToArtistAndSync,
   favoriteTracksAndSync,
-  getAllTracksPaginated,
   getTracksByIds,
-  searchTracksPaginated,
 } from "@/queries/track.queries";
-import type { PaginatedTracksResult, TrackPageParam } from "@/queries/types";
+import { useAddTracksList } from "@/modules/tracks/composables/useAddTracksList";
 import { unique } from "@/lib/math";
 import { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
@@ -87,33 +84,17 @@ const searchInput = ref("");
 const debouncedSearchQuery = refDebounced(searchInput, 200);
 
 const normalizedEntityId = computed(() => String(props.payload.entityId));
-const normalizedSearchQuery = computed(() => debouncedSearchQuery.value.trim());
 const hasEntityId = computed(() => props.payload.entityType === "favorite" || normalizedEntityId.value.length > 0);
 
 const {
-  data: infiniteData,
-  fetchNextPage,
-  hasNextPage,
+  tracks,
+  normalizedSearchQuery,
   isLoading,
+  hasNextPage,
   isFetchingNextPage,
   isFetchNextPageError,
-} = useInfiniteQuery({
-  queryKey: computed(() => queryKeys.tracks.allPaginated(normalizedSearchQuery.value)),
-  queryFn: ({ pageParam }) => {
-    if (normalizedSearchQuery.value) {
-      return searchTracksPaginated(normalizedSearchQuery.value, typeof pageParam === "number" ? pageParam : 0);
-    }
-    return getAllTracksPaginated(typeof pageParam === "number" ? null : pageParam);
-  },
-  initialPageParam: null as TrackPageParam,
-  getNextPageParam: (lastPage: PaginatedTracksResult) => lastPage.last === undefined ? lastPage.nextOffset : lastPage.last,
-  enabled: hasEntityId,
-  placeholderData: keepPreviousData,
-});
-
-const tracks = computed(() =>
-  infiniteData.value?.pages.flatMap(page => page.tracks) ?? [],
-);
+  fetchNextPage,
+} = useAddTracksList(debouncedSearchQuery, hasEntityId);
 
 const {
   selectedIds,
@@ -144,7 +125,6 @@ const selectedTracks = computed(() => {
   const ids = selectedIds.value;
   return tracks.value.filter(track => ids.has(track.id));
 });
-const isInitialLoading = computed(() => isLoading.value && tracks.value.length === 0);
 const emptyLabel = computed(() =>
   normalizedSearchQuery.value.length > 0
     ? t("search.noResults.title", { query: normalizedSearchQuery.value })
