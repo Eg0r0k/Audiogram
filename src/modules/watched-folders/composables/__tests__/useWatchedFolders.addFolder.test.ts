@@ -50,7 +50,7 @@ vi.mock("@/services/importer.service", () => ({
   musicLibraryEngine: { syncFolder: vi.fn(async () => ({ added: 0, removed: 0 })) },
 }));
 vi.mock("@/services/library-gc", () => ({ cleanupAfterTrackRemoval: vi.fn() }));
-vi.mock("@/db", () => ({ db: {} }));
+vi.mock("@/db/repositories", () => ({ trackRepository: {} }));
 vi.mock("@/db/unit-of-work", () => ({ unitOfWork: {} }));
 vi.mock("@/modules/watched-folders/service/folder-watcher", () => ({
   startWatching: vi.fn(),

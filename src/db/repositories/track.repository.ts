@@ -328,6 +328,10 @@ export class TrackRepository extends BaseRepository<TrackEntity, TrackId> {
     return guarded(() => this.table.where("storagePath").startsWith(prefix).toArray());
   }
 
+  async countByStoragePathPrefix(prefix: string): Promise<number> {
+    return guarded(() => this.table.where("storagePath").startsWith(prefix).count());
+  }
+
   findAllIds(): Promise<TrackId[]> {
     return this.all().ids();
   }

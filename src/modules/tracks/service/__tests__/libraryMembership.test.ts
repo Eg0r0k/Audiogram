@@ -107,6 +107,16 @@ describe("removeTrackFromLibrary", () => {
     expect(await db.artists.count()).toBe(2);
   });
 
+  it("deletes the album/artist rows when only shadow rows still reference them", async () => {
+    await ensurePinned({ kind: "remote", dto: { ...dto, id: ndTrackId("song2"), title: "Second" } }, { pinned: 0 });
+
+    await removeTrackFromLibrary(TRACK_ID);
+
+    expect(await db.albums.count()).toBe(0);
+    expect(await db.artists.count()).toBe(0);
+    expect((await db.tracks.get(ndTrackId("song2")))?.pinned).toBe(0);
+  });
+
   it("de-indexes the track and every deleted album/artist", async () => {
     await removeTrackFromLibrary(TRACK_ID);
 

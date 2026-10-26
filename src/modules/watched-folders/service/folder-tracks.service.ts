@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { trackRepository } from "@/db/repositories";
 import { unitOfWork } from "@/db/unit-of-work";
 import type { TrackEntity } from "@/db/entities";
 import { cleanupAfterTrackRemoval } from "@/services/library-gc";
@@ -11,7 +11,7 @@ import { cleanupAfterTrackRemoval } from "@/services/library-gc";
  */
 
 const under = (folderPath: string) =>
-  db.tracks.where("storagePath").startsWith(folderPath + "/");
+  trackRepository.findByStoragePathPrefix(folderPath + "/");
 
 const outsideNested = (tracks: TrackEntity[], nestedPaths: string[]) =>
   (nestedPaths.length === 0
@@ -21,14 +21,14 @@ const outsideNested = (tracks: TrackEntity[], nestedPaths: string[]) =>
 export const getFolderTracks = async (
   folderPath: string,
   nestedPaths: string[] = [],
-): Promise<TrackEntity[]> => outsideNested(await under(folderPath).toArray(), nestedPaths);
+): Promise<TrackEntity[]> => outsideNested(await under(folderPath), nestedPaths);
 
-/** Counts without materialising the rows when there is nothing to exclude. */
+/** Counts on the index when there is nothing to exclude. */
 export const countFolderTracks = async (
   folderPath: string,
   nestedPaths: string[] = [],
 ): Promise<number> => {
-  if (nestedPaths.length === 0) return under(folderPath).count();
+  if (nestedPaths.length === 0) return trackRepository.countByStoragePathPrefix(folderPath + "/");
   return (await getFolderTracks(folderPath, nestedPaths)).length;
 };
 
@@ -42,8 +42,8 @@ export const deleteFolderTracks = async (tracks: TrackEntity[]): Promise<void> =
 
   await unitOfWork.run(
     ["tracks", "albums", "artists", "covers"],
-    async () => {
-      await db.tracks.bulkDelete(tracks.map(track => track.id));
+    async (uow) => {
+      await uow.tracks.deleteMany(tracks.map(track => track.id));
       await cleanupAfterTrackRemoval(tracks);
     },
   );
@@ -51,10 +51,10 @@ export const deleteFolderTracks = async (tracks: TrackEntity[]): Promise<void> =
 
 /** Rebases every row of a moved folder onto its new location. */
 export const relinkFolderTracks = async (oldPath: string, newPath: string): Promise<void> => {
-  const tracks = await under(oldPath).toArray();
+  const tracks = await under(oldPath);
   if (tracks.length === 0) return;
 
-  await db.tracks.bulkPut(tracks.map(track => ({
+  await trackRepository.upsertMany(tracks.map(track => ({
     ...track,
     // Rows came off the storagePath index, so the path is always present.
     storagePath: newPath + (track.storagePath ?? "").slice(oldPath.length),

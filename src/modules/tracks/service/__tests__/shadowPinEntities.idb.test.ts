@@ -152,6 +152,20 @@ describe("library membership creates and deletes the rows", () => {
     expect((await db.tracks.get(ytVideo.id))?.artistIds).toEqual([]);
   });
 
+  it("removing the last library track strips the deleted local artist from the shadow rows that named it", async () => {
+    const second: SourceTrackDTO = { ...ytVideo, id: ytTrackId("v2"), title: "Another Video" };
+    await ensurePinned({ kind: "remote", dto: ytVideo });
+    await ensurePinned({ kind: "remote", dto: second }, { pinned: 0 });
+    const [uploader] = await getArtists();
+    expect((await db.tracks.get(second.id))?.artistIds).toEqual([uploader?.id]);
+
+    await removeTrackFromLibrary(ytVideo.id);
+
+    expect(await db.artists.count()).toBe(0);
+    expect((await db.tracks.get(ytVideo.id))?.artistIds).toEqual([]);
+    expect((await db.tracks.get(second.id))?.artistIds).toEqual([]);
+  });
+
   it("keeps the rows while another library track still references them", async () => {
     await ensurePinned({ kind: "remote", dto: ndSong });
     await ensurePinned({ kind: "remote", dto: { ...ndSong, id: ndTrackId("song2"), title: "Second" } });

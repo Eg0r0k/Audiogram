@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import type { TrackEntity } from "@/db/entities";
 import { trackRepository } from "@/db/repositories";
-import { unitOfWork } from "@/db/unit-of-work";
+import { unitOfWork, type RepositoryMap } from "@/db/unit-of-work";
 import { getLogger } from "@/lib/logger";
 import { syncSearchIndex } from "@/services/search/searchIndex";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
@@ -57,9 +57,9 @@ export async function removeTrackFromLibrary(trackId: TrackId): Promise<void> {
 
       // Album and artist rows exist only for library members, so the ones
       // this track was the last library reference of go with it.
-      if (track?.albumId) await deleteAlbumIfUnreferenced(track.albumId);
+      if (track?.albumId) await deleteAlbumIfUnreferenced(uow, track.albumId);
       for (const artistId of new Set(track?.artistIds ?? [])) {
-        await deleteArtistIfUnreferenced(artistId);
+        await deleteArtistIfUnreferenced(uow, artistId);
       }
       return track;
     },
@@ -76,8 +76,8 @@ export async function removeTrackFromLibrary(trackId: TrackId): Promise<void> {
 }
 
 /** Runs inside the caller's transaction. */
-const deleteAlbumIfUnreferenced = async (albumId: AlbumId): Promise<void> => {
-  const stillPinned = await db.tracks.where("[albumId+pinned]").equals([albumId, 1]).count();
+const deleteAlbumIfUnreferenced = async (uow: Pick<RepositoryMap, "tracks">, albumId: AlbumId): Promise<void> => {
+  const stillPinned = await uow.tracks.inAlbum(albumId).members().count();
   if (stillPinned > 0) return;
   await db.albums.delete(albumId);
 };
@@ -86,9 +86,9 @@ const deleteAlbumIfUnreferenced = async (albumId: AlbumId): Promise<void> => {
  * Runs inside the caller's transaction, after the album check, so an album
  * that just left no longer holds its artist.
  */
-const deleteArtistIfUnreferenced = async (artistId: ArtistId): Promise<void> => {
+const deleteArtistIfUnreferenced = async (uow: Pick<RepositoryMap, "tracks">, artistId: ArtistId): Promise<void> => {
   const [pinnedTracks, albums] = await Promise.all([
-    db.tracks.where("artistIds").equals(artistId).and(candidate => candidate.pinned === 1).count(),
+    uow.tracks.byArtist(artistId).members().count(),
     db.albums.where("artistId").equals(artistId).count(),
   ]);
   if (pinnedTracks > 0 || albums > 0) return;
@@ -96,7 +96,7 @@ const deleteArtistIfUnreferenced = async (artistId: ArtistId): Promise<void> => 
   // A source id stays on the shadow rows as a link to the source's catalog;
   // an unprefixed one would point at a library page that no longer exists.
   if (sourceKindOfId(artistId) === "local") {
-    await db.tracks.where("artistIds").equals(artistId).modify((track) => {
+    await uow.tracks.byArtist(artistId).modify((track) => {
       track.artistIds = track.artistIds.filter(id => id !== artistId);
     });
   }

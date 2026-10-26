@@ -21,7 +21,7 @@ vi.mock("@tanstack/vue-query", () => ({ useQueryClient: () => ({}) }));
 vi.mock("@/queries/library.queries", () => ({ invalidateLibraryData: vi.fn() }));
 vi.mock("@/services/importer.service", () => ({ musicLibraryEngine: {} }));
 vi.mock("@/services/library-gc", () => ({ cleanupAfterTrackRemoval: vi.fn() }));
-vi.mock("@/db", () => ({ db: {} }));
+vi.mock("@/db/repositories", () => ({ trackRepository: {} }));
 vi.mock("@/db/unit-of-work", () => ({ unitOfWork: {} }));
 vi.mock("@/modules/watched-folders/service/folder-watcher", () => ({
   startWatching: vi.fn(async () => stopWatcher),
