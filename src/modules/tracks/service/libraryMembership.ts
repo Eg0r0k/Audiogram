@@ -41,7 +41,7 @@ export async function promoteTrackToLibrary(trackId: TrackId): Promise<void> {
  */
 export async function removeTrackFromLibrary(trackId: TrackId): Promise<void> {
   const track = await unitOfWork.run(
-    ["tracks", "albums", "artists", "playlists"],
+    ["tracks", "counters", "albums", "artists", "playlists"],
     async (uow) => {
       const track = await uow.tracks.findById(trackId);
 

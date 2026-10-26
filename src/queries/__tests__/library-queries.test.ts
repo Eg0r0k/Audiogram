@@ -10,6 +10,8 @@ vi.mock("@/modules/covers/lib/cover-cache", () => ({
   coverCache: { invalidateAll: vi.fn(), invalidate: vi.fn(), set: vi.fn() },
 }));
 import { coverCache } from "@/modules/covers/lib/cover-cache";
+vi.mock("../track.queries", () => ({ rebuildCounters: vi.fn() }));
+import { rebuildCounters } from "../track.queries";
 
 const createMockQueryClient = (): QueryClient => {
   const mocks = {
@@ -62,6 +64,7 @@ describe("library.queries", () => {
       expect(realClient.getQueryData(queryKeys.trackChapters.detail(TrackId("t-1")))).toBeUndefined();
       expect(realClient.getQueryData(queryKeys.stats.streaks())).toBeUndefined();
       expect(coverCache.invalidateAll).toHaveBeenCalled();
+      expect(rebuildCounters).toHaveBeenCalledOnce();
       unsubscribe();
     });
   });

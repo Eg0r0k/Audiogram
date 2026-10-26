@@ -75,7 +75,7 @@ describe("ensurePinned", () => {
     const result = await ensurePinned({ kind: "remote", dto });
 
     expect(uow.run).toHaveBeenCalledTimes(1);
-    expect(uow.run).toHaveBeenCalledWith(["tracks", "albums", "artists"], expect.any(Function));
+    expect(uow.run).toHaveBeenCalledWith(["tracks", "counters", "albums", "artists"], expect.any(Function));
     expect(repos.track.upsert).toHaveBeenCalledTimes(1);
     expect(repos.album.upsert).toHaveBeenCalledTimes(1);
     expect(repos.artist.upsertMany).toHaveBeenCalledTimes(1);

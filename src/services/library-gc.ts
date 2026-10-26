@@ -98,7 +98,7 @@ export async function cleanupAfterTrackRemoval(removed: RemovedTrackRef[]): Prom
 export async function sweepOrphanedEntities(): Promise<{ albums: number; artists: number }> {
   // One transaction: the sweep runs at startup concurrently with the
   // download-manager init and queue restore.
-  const result = await unitOfWork.run(TABLE_NAMES, async () => {
+  const result = await unitOfWork.run(TABLE_NAMES, async (uow) => {
     const referencedAlbums = new Set(await uniqueKeysOf(db.tracks, "albumId") as AlbumId[]);
     const orphanAlbums = (await db.albums.toCollection().primaryKeys()).filter(id => !referencedAlbums.has(id));
     await deleteAlbumsWithCovers(orphanAlbums);
@@ -121,6 +121,9 @@ export async function sweepOrphanedEntities(): Promise<{ albums: number; artists
     if (orphanCoverIds.length > 0) {
       await db.covers.bulkDelete(orphanCoverIds);
     }
+
+    // Once per launch the counters are recounted, so a track write that bypassed TrackRepository cannot leave them drifting.
+    await uow.counters.rebuild();
 
     return { albums: orphanAlbums.length, artists: orphanArtists.length };
   });

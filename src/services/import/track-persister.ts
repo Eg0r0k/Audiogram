@@ -182,7 +182,7 @@ export async function persistTracks(
   const referencedAlbumIds = unique(tracksToCreate.map(track => track.albumId).filter(Boolean));
 
   await unitOfWork.run(
-    ["tracks", "artists", "albums", "covers"],
+    ["tracks", "counters", "artists", "albums", "covers"],
     async (uow) => {
       if (artistsToCreate.size > 0) {
         await uow.artists.createMany([...artistsToCreate.values()]);

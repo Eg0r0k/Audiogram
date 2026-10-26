@@ -1,4 +1,5 @@
 import type { Transaction } from "dexie";
+import { addCounterDeltas, counterDeltas, NO_COUNTER_DELTAS, toCounters, type CountedTrack } from "./counters";
 import { LEGACY_QUEUE_STORAGE_KEY, QUEUE_CURSOR_STORAGE_KEY, QUEUE_SNAPSHOT_ID, type PinnedFlag } from "./entities";
 import { sourceKindOfId } from "@/types/track-ref";
 
@@ -273,4 +274,13 @@ export const upgradeToV19 = async (tx: Pick<Transaction, "table" | "on">): Promi
       // The table already holds the queue; a stale old key only costs space.
     }
   });
+};
+
+// One pass in primary-key order: an index created earlier in this same upgrade is not reliable to query.
+export const upgradeToV21 = async (tx: UpgradeTransaction): Promise<void> => {
+  let totals = NO_COUNTER_DELTAS;
+  await tx.table("tracks").each((row: CountedTrack) => {
+    totals = addCounterDeltas(totals, counterDeltas(undefined, row));
+  });
+  await tx.table("counters").bulkPut(Object.values(toCounters(totals)));
 };

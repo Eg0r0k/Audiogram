@@ -73,7 +73,7 @@ export class FolderSyncService {
 
     if (removedTracks.length > 0) {
       await unitOfWork.run(
-        ["tracks", "albums", "artists", "covers"],
+        ["tracks", "counters", "albums", "artists", "covers"],
         async (uow) => {
           await uow.tracks.deleteMany(removedTracks.map(t => t.id));
           // Cascade: albums/artists that lost their last reference die with them.
@@ -124,7 +124,7 @@ export class FolderSyncService {
     const track = await trackRepository.findByStoragePath(absolutePath);
     if (!track) return false;
     await unitOfWork.run(
-      ["tracks", "albums", "artists", "covers"],
+      ["tracks", "counters", "albums", "artists", "covers"],
       async (uow) => {
         await uow.tracks.delete(track.id);
         await cleanupAfterTrackRemoval([track]);

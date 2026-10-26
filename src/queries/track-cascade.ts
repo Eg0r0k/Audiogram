@@ -14,7 +14,7 @@ import { removeTracksFromCaches, syncPlaylistCaches } from "./cache";
 //
 
 /** Transaction scope a track purge needs; pass to `unitOfWork.run`. */
-export const TRACK_CASCADE_TABLES = ["tracks", "albums", "artists", "playlists", "covers"] as const;
+export const TRACK_CASCADE_TABLES = ["tracks", "counters", "albums", "artists", "playlists", "covers"] as const;
 
 export type TrackCascadeScope = Scope<(typeof TRACK_CASCADE_TABLES)[number]>;
 

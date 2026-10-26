@@ -75,7 +75,7 @@ describe("v19 -> v20 upgrade", () => {
   it("a v19 database opens at v20 with its rows intact", async () => {
     const db = await openUpgraded();
 
-    expect(db.verno).toBe(20);
+    expect(db.verno).toBeGreaterThanOrEqual(20);
     expect(await db.tracks.orderBy("id").toArray()).toEqual([...ROWS].sort((a, b) => a.id.localeCompare(b.id)));
     expect(await db.tracks.where("[pinned+addedAt+id]").between([1, Dexie.minKey], [1, Dexie.maxKey]).primaryKeys())
       .toEqual(["t2", "t3", "t1"]);

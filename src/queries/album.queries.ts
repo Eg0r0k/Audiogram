@@ -264,7 +264,7 @@ export async function updateAlbumAndSync(
     };
 
     // The album row and its tracks' denormalized title change together.
-    await unitOfWork.run(["albums", "tracks"], async (uow) => {
+    await unitOfWork.run(["albums", "tracks", "counters"], async (uow) => {
       await uow.albums.update(currentAlbum.id, { title });
       await uow.tracks.inAlbum(currentAlbum.id).modify({ albumTitle: title });
     });

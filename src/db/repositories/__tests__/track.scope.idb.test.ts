@@ -7,6 +7,7 @@ import { unitOfWork } from "@/db/unit-of-work";
 import { measureRecordReads } from "@/test/idb-meter";
 import { AlbumId, ArtistId, TagId, TrackId } from "@/types/ids";
 import type { TrackSortKey } from "@/types/track-sort";
+import { counterRepository } from "../counter.repository";
 import { trackRepository } from "../track.repository";
 import type { TrackIndexKey, TrackScope } from "../track.scope";
 
@@ -225,11 +226,38 @@ describe("TrackScope", () => {
     expect((await db.tracks.toCollection().primaryKeys()).sort()).toEqual(["s1", "s2"]);
   });
 
+  it("scope.delete and scope.modify adjust the counters for the rows they touch", async () => {
+    const counted = (likedCount: number, seconds: number, members: number) => ({
+      liked: { id: "liked", count: likedCount, seconds },
+      members: { id: "members", count: members, seconds: 0 },
+    });
+    const recount = async () => {
+      const rows = await db.tracks.toArray();
+      const liked = rows.filter(row => (row.likedAt ?? 0) > 0);
+      return counted(liked.length, liked.reduce((sum, row) => sum + row.duration, 0), rows.filter(row => row.pinned === 1).length);
+    };
+    await counterRepository.rebuild();
+    expect(await counterRepository.getAll()).toEqual(counted(5, 2900, 8));
+
+    await trackRepository.inAlbum(AL2).modify((row) => { row.pinned = 1; });
+    expect(await counterRepository.getAll()).toEqual(counted(5, 2900, 10));
+
+    await trackRepository.byArtist(AR1).modify((row) => { row.duration += 1; });
+    expect(await counterRepository.getAll()).toEqual(counted(5, 2903, 10));
+
+    expect(await trackRepository.inAlbum(AL1).modify({ likedAt: undefined })).toBe(6);
+    expect(await counterRepository.getAll()).toEqual(counted(2, 1600, 10));
+
+    expect(await trackRepository.byArtist(AR2).delete()).toBe(6);
+    expect(await counterRepository.getAll()).toEqual(counted(0, 0, 4));
+    expect(await counterRepository.getAll()).toEqual(await recount());
+  });
+
   it("a scope bound through unitOfWork.run reads and writes inside the transaction", async () => {
     let countInside = 0;
     let renamedInside = 0;
 
-    const failure = await unitOfWork.run(["tracks"], async (uow) => {
+    const failure = await unitOfWork.run(["tracks", "counters"], async (uow) => {
       await uow.tracks.create(track("m9", { ...first }));
       // Outside Dexie's zone only the scope's own binding reaches the open transaction.
       countInside = await Dexie.ignoreTransaction(() => uow.tracks.inAlbum(AL1).members().count());

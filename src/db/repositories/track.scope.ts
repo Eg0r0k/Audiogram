@@ -1,9 +1,11 @@
 import Dexie, { type Collection, type Table, type UpdateSpec } from "dexie";
+import { tallying, touchesCounters } from "@/db/counters";
 import type { TrackEntity } from "@/db/entities";
 import { unique } from "@/lib/math";
 import type { AlbumId, ArtistId, TagId, TrackId } from "@/types/ids";
 import { isDescendingSort, trackSortField, type TrackSortKey } from "@/types/track-sort";
 import { guarded } from "./base.repository";
+import type { CounterRepository } from "./counter.repository";
 
 // Dexie's own floor and ceiling of the IndexedDB key space. They span numbers
 // and strings alike, so a sort field needs no per-type bounds and no table
@@ -244,10 +246,11 @@ export class TrackScope {
   constructor(
     private readonly table: TrackTable,
     private readonly spec: TrackScopeSpec,
+    private readonly counters: CounterRepository,
   ) {}
 
   members(): TrackScope {
-    return new TrackScope(this.table, { ...this.spec, members: true });
+    return new TrackScope(this.table, { ...this.spec, members: true }, this.counters);
   }
 
   rows(options: TrackRowsOptions = {}): Promise<TrackEntity[]> {
@@ -315,16 +318,22 @@ export class TrackScope {
   }
 
   modify(changes: UpdateSpec<TrackEntity> | ((row: TrackEntity) => void)): Promise<number> {
-    return guarded(() => {
-      const collection = plan(this.spec).build(this.table);
-      // TypeScript picks one of Dexie's modify overloads per branch; the union matches neither.
-      if (typeof changes === "function") return collection.modify(changes);
-      return collection.modify(changes);
-    });
+    const collection = () => plan(this.spec).build(this.table);
+    if (typeof changes === "function") return this.counters.counting(tally => collection().modify(tallying(tally, changes)));
+    if (!touchesCounters(changes)) return guarded(() => collection().modify(changes));
+    return this.counters.countingByIds(() => collection().primaryKeys(), () => collection().modify(changes));
   }
 
   delete(): Promise<number> {
-    return guarded(() => plan(this.spec).build(this.table).delete());
+    return this.counters.counting(async (tally) => {
+      const ids: TrackId[] = [];
+      await plan(this.spec).build(this.table).each((row) => {
+        tally(row, undefined);
+        ids.push(row.id);
+      });
+      await this.table.bulkDelete(ids);
+      return ids.length;
+    });
   }
 
   private async read(planned: TrackPlan, { offset = 0, limit }: TrackRowsOptions): Promise<TrackEntity[]> {

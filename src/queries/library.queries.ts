@@ -11,6 +11,7 @@ import { markRecommenderContextDirty } from "@/modules/recommendations/service/r
 import { queryOptions, type QueryClient } from "@tanstack/vue-query";
 import type { AlbumId, ArtistId } from "@/types/ids";
 import { settleLibraryReads } from "./cache";
+import { rebuildCounters } from "./track.queries";
 import type { LibrarySummaryData } from "./types";
 
 export const getLibrarySummary = async (): Promise<LibrarySummaryData> => {
@@ -78,4 +79,5 @@ export const invalidateLibraryData = async (queryClient: QueryClient): Promise<v
 export const clearLibraryData = async (queryClient: QueryClient): Promise<void> => {
   await queryClient.resetQueries();
   coverCache.invalidateAll();
+  await rebuildCounters();
 };

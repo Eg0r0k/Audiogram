@@ -4,6 +4,7 @@ import { AlbumRepository } from "./repositories/album.repository";
 import { ArtistRepository } from "./repositories/artist.repository";
 import { AudioFeaturesRepository } from "./repositories/audioFeatures.repository";
 import { guarded } from "./repositories/base.repository";
+import { CounterRepository } from "./repositories/counter.repository";
 import { CoverRepository } from "./repositories/cover.repository";
 import { DownloadJobRepository } from "./repositories/downloadJob.repository";
 import { FolderRepository } from "./repositories/folder.repository";
@@ -18,7 +19,8 @@ import { TrackChaptersRepository } from "./repositories/trackChapters.repository
 import type { TableName, TableSource } from "./tables";
 
 export const REPOSITORY_TABLES = {
-  tracks: ["tracks"],
+  tracks: ["tracks", "counters"],
+  counters: ["counters", "tracks"],
   artists: ["artists"],
   albums: ["albums"],
   playlists: ["playlists"],
@@ -38,6 +40,7 @@ export type RepositoryName = keyof typeof REPOSITORY_TABLES;
 
 export interface RepositoryMap {
   tracks: TrackRepository;
+  counters: CounterRepository;
   artists: ArtistRepository;
   albums: AlbumRepository;
   playlists: PlaylistRepository;
@@ -62,6 +65,7 @@ export type Scope<K extends TableName> = {
 
 const REPOSITORY_FACTORIES: { [R in RepositoryName]: (source: TableSource) => RepositoryMap[R] } = {
   tracks: source => new TrackRepository(source),
+  counters: source => new CounterRepository(source),
   artists: source => new ArtistRepository(source),
   albums: source => new AlbumRepository(source),
   playlists: source => new PlaylistRepository(source),

@@ -50,7 +50,7 @@ interface PinContext {
   now: number;
 }
 
-type PinScope = Scope<"tracks" | "albums" | "artists">;
+type PinScope = Scope<"tracks" | "counters" | "albums" | "artists">;
 
 /**
  * Guarantees a Dexie row for the subject and returns it as a Track: library
@@ -115,7 +115,7 @@ const runPinBatch = async (
 ): Promise<PinnedEntry[]> => {
   const artistsBefore = ctx.snapshot.rows.length;
   try {
-    return await unitOfWork.run(["tracks", "albums", "artists"], async (uow) => {
+    return await unitOfWork.run(["tracks", "counters", "albums", "artists"], async (uow) => {
       const pinned: PinnedEntry[] = [];
       for (const entry of batch) pinned.push(await pinOneRemote(entry, ctx, uow));
       return pinned;

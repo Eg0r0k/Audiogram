@@ -242,7 +242,7 @@ export async function createArtistAndSync(
 }
 
 /** Recomputes the denormalized artistName of the artist's tracks. Dexie-only: safe inside a transaction. */
-async function syncTrackArtistNames(uow: Scope<"tracks" | "artists">, artistId: ArtistId, nextArtistName: string) {
+async function syncTrackArtistNames(uow: Scope<"tracks" | "counters" | "artists">, artistId: ArtistId, nextArtistName: string) {
   const tracks = await uow.tracks.byArtist(artistId).rows();
 
   if (tracks.length === 0) {
@@ -297,7 +297,7 @@ export async function updateArtistAndSync(
 
   if (Object.keys(updateData).length > 0) {
     // Artist row and its tracks' denormalized names move together.
-    await unitOfWork.run(["artists", "tracks"], async (uow) => {
+    await unitOfWork.run(["artists", "tracks", "counters"], async (uow) => {
       await uow.artists.update(currentArtist.id, updateData);
       if (updateData.name) {
         await syncTrackArtistNames(uow, currentArtist.id, nextArtist.name);

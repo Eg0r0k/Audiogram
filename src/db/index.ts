@@ -3,6 +3,8 @@ import type {
   AlbumEntity,
   ArtistEntity,
   AudioFeaturesEntity,
+  CounterEntity,
+  CounterId,
   CoverEntity,
   DownloadJobEntity,
   ListenEventEntity,
@@ -16,7 +18,7 @@ import type {
   TrackChapterEntity,
   TrackEntity,
 } from "./entities";
-import { upgradeToV10, upgradeToV12, upgradeToV14, upgradeToV15, upgradeToV16, upgradeToV18, upgradeToV19 } from "./migrations";
+import { upgradeToV10, upgradeToV12, upgradeToV14, upgradeToV15, upgradeToV16, upgradeToV18, upgradeToV19, upgradeToV21 } from "./migrations";
 import type { DbError } from "./errors/db.errors";
 import { toDbError } from "./errors/db.errors";
 import { getLogger } from "@/lib/logger";
@@ -39,6 +41,7 @@ export class AppDatabase extends Dexie {
   downloadJobs!: Table<DownloadJobEntity, string>;
   recommenderModels!: Table<RecommenderModelEntity, "weights">;
   queueSnapshot!: Table<QueueSnapshotEntity, QueueSnapshotEntity["id"]>;
+  counters!: Table<CounterEntity, CounterId>;
 
   constructor() {
     // Dexie's optimistic cache compares compound keys part by part and stops at an undefined part, so an
@@ -136,6 +139,11 @@ export class AppDatabase extends Dexie {
       tracks: "&id, title, artistName, albumTitle, *artistIds, albumId, *tagIds, likedAt, addedAt, duration, playCount, storagePath, fingerprint, pinned, sourceRef, [albumId+pinned], [likedAt+id], [title+likedAt+id], [addedAt+likedAt+id], [duration+likedAt+id], [artistName+likedAt+id], [albumTitle+likedAt+id], [playCount+likedAt+id], [pinned+title+id], [pinned+artistName+id], [pinned+albumTitle+id], [pinned+addedAt+id], [pinned+duration+id], [pinned+playCount+id]",
     });
 
+    // + counters: the liked and member totals, adjusted by TrackRepository inside every track write (upgradeToV21).
+    this.version(21).stores({
+      counters: "&id",
+    }).upgrade(upgradeToV21);
+
     this.tracks = this.table("tracks");
     this.artists = this.table("artists");
     this.albums = this.table("albums");
@@ -151,6 +159,7 @@ export class AppDatabase extends Dexie {
     this.downloadJobs = this.table("downloadJobs");
     this.recommenderModels = this.table("recommenderModels");
     this.queueSnapshot = this.table("queueSnapshot");
+    this.counters = this.table("counters");
   }
 }
 

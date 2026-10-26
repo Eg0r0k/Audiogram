@@ -259,3 +259,12 @@ export const QUEUE_CURSOR_STORAGE_KEY = "audiogram-queue-v2";
 
 /** Before v19 the whole snapshot lived in localStorage under this key. */
 export const LEGACY_QUEUE_STORAGE_KEY = "audiogram-queue-v1";
+
+export type CounterId = "liked" | "members";
+
+export interface CounterEntity {
+  id: CounterId;
+  count: number;
+  // Stays 0 for "members".
+  seconds: number;
+}

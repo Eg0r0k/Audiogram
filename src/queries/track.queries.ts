@@ -1,7 +1,9 @@
+import type { Counters } from "@/db/counters";
 import type { AlbumEntity, ArtistEntity, TrackEntity } from "@/db/entities";
 import {
   albumRepository,
   artistRepository,
+  counterRepository,
   coverRepository,
   playlistRepository,
   trackRepository,
@@ -138,6 +140,9 @@ const invalidateTrackRelations = async (queryClient: QueryClient) => {
 export const likedTrackScope = (): TrackScope => trackRepository.liked();
 export const memberTrackScope = (): TrackScope => trackRepository.members();
 export const idsTrackScope = (ids: readonly TrackId[]): TrackScope => trackRepository.withIds(ids);
+
+export const readCounters = async (): Promise<Counters> => counterRepository.getAll();
+export const rebuildCounters = async (): Promise<Counters> => counterRepository.rebuild();
 
 export async function getLikedTracks() {
   return trackRepository.liked().rows();

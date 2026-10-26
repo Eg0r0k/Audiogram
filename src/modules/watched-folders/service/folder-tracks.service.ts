@@ -41,7 +41,7 @@ export const deleteFolderTracks = async (tracks: TrackEntity[]): Promise<void> =
   if (tracks.length === 0) return;
 
   await unitOfWork.run(
-    ["tracks", "albums", "artists", "covers"],
+    ["tracks", "counters", "albums", "artists", "covers"],
     async (uow) => {
       await uow.tracks.deleteMany(tracks.map(track => track.id));
       await cleanupAfterTrackRemoval(tracks);

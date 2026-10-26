@@ -45,7 +45,7 @@ beforeEach(async () => {
 
 describe("unitOfWork.run", () => {
   it("commits writes made through the bound repositories", async () => {
-    await unitOfWork.run(["tracks", "artists"], async (uow) => {
+    await unitOfWork.run(["tracks", "counters", "artists"], async (uow) => {
       await uow.tracks.create(track("t1"));
       await uow.artists.create(artist("ar1"));
     });
@@ -61,7 +61,7 @@ describe("unitOfWork.run", () => {
     const artistsBefore = await db.artists.toArray();
     const boom = new Error("boom");
 
-    const failure = await unitOfWork.run(["tracks", "artists"], async (uow) => {
+    const failure = await unitOfWork.run(["tracks", "counters", "artists"], async (uow) => {
       await uow.tracks.update(TrackId("t1"), { title: "changed" });
       await uow.tracks.create(track("t2"));
       await uow.artists.create(artist("ar2"));
@@ -78,7 +78,7 @@ describe("unitOfWork.run", () => {
   it("passes an AppFailure thrown by the work through unchanged", async () => {
     const failure = new AppFailure({ domain: "source", kind: "NOT_FOUND", message: "gone" });
 
-    const thrown = await unitOfWork.run(["tracks"], async (uow) => {
+    const thrown = await unitOfWork.run(["tracks", "counters"], async (uow) => {
       await uow.tracks.create(track("t1"));
       throw failure;
     }).catch((error: unknown) => error);
@@ -90,15 +90,16 @@ describe("unitOfWork.run", () => {
   it("exposes exactly the repositories whose tables are in scope", async () => {
     const keysFor = (tables: readonly TableName[]) => unitOfWork.run(tables, uow => Promise.resolve(Object.keys(uow)));
 
-    expect(await keysFor(["tracks"])).toEqual(["tracks"]);
-    expect((await keysFor(["tags", "tracks"])).sort()).toEqual(["tags", "tracks"]);
-    expect((await keysFor(["listenEvents", "tracks", "tags"])).sort()).toEqual(["stats", "tags", "tracks"]);
+    expect(await keysFor(["tracks"])).toEqual([]);
+    expect((await keysFor(["tracks", "counters"])).sort()).toEqual(["counters", "tracks"]);
+    expect((await keysFor(["tags", "tracks"])).sort()).toEqual(["tags"]);
+    expect((await keysFor(["listenEvents", "tracks", "tags"])).sort()).toEqual(["stats", "tags"]);
   });
 
   it("joins a repository's internal transaction to the unit of work", async () => {
     let createdInside = 0;
 
-    const failure = await unitOfWork.run(["tags", "tracks"], async (uow) => {
+    const failure = await unitOfWork.run(["tags", "tracks", "counters"], async (uow) => {
       await uow.tags.findOrCreate("x");
       createdInside = (await uow.tags.findAll()).length;
       throw new Error("abort after the tag");
@@ -114,7 +115,7 @@ describe("unitOfWork.run", () => {
     const ar2 = ArtistId("ar2");
     await db.tracks.add(track("t1", { artistIds: [ar1] }));
 
-    const counts = await unitOfWork.run(["tracks"], async (uow) => {
+    const counts = await unitOfWork.run(["tracks", "counters"], async (uow) => {
       await uow.tracks.create(track("t2", { artistIds: [ar1, ar2] }));
       await uow.tracks.create(track("t3", { artistIds: [ar2], pinned: 0 }));
       return [
@@ -129,7 +130,7 @@ describe("unitOfWork.run", () => {
   it("writes through the transaction, not the global connection", async () => {
     let seenInside: TrackEntity | undefined;
 
-    await unitOfWork.run(["tracks"], async (uow) => {
+    await unitOfWork.run(["tracks", "counters"], async (uow) => {
       // Outside Dexie's zone only an explicit binding reaches the open transaction.
       await Dexie.ignoreTransaction(() => uow.tracks.create(track("t1")));
       seenInside = await uow.tracks.findById(TrackId("t1"));
