@@ -4,6 +4,7 @@ import { TrackSource, TrackState } from "@/db/entities";
 import { QueryClient } from "@tanstack/vue-query";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import type { Track } from "@/types/track";
+import { fakeTrackRepository, type FakeTrackScopes } from "@/test/fakeTrackScope";
 
 const repositories = vi.hoisted(() => ({
   albumRepository: {
@@ -19,17 +20,6 @@ const repositories = vi.hoisted(() => ({
     create: vi.fn(),
   },
   trackRepository: {
-    findByAlbumId: vi.fn(),
-    findSortedByIds: vi.fn(),
-    countAll: vi.fn(),
-    findAllSortedPaginated: vi.fn(),
-    findPaginated: vi.fn(),
-    findLiked: vi.fn(),
-    findLikedSorted: vi.fn(),
-    findLikedSortedPaginated: vi.fn(),
-    findLikedPaginated: vi.fn(),
-    countLiked: vi.fn(),
-    sumDurationByLiked: vi.fn(),
     findById: vi.fn(),
     update: vi.fn(),
     setLiked: vi.fn(),
@@ -59,9 +49,13 @@ import {
   updateTrackMetadataAndSync,
 } from "../track.queries";
 
+const useTrackScopes = (scopes: FakeTrackScopes) =>
+  Object.assign(repositories.trackRepository, fakeTrackRepository(scopes));
+
 describe("track.queries", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useTrackScopes({});
   });
 
   it("returns tracks in Dexie album order for album_asc", async () => {
@@ -120,14 +114,13 @@ describe("track.queries", () => {
       albumTitle: albumB.title,
     };
 
-    repositories.trackRepository.findAllSortedPaginated.mockResolvedValue([trackA, trackB]);
+    const tracks = useTrackScopes({ members: [trackB, trackA] });
     repositories.artistRepository.findByIds.mockResolvedValue([artist]);
     repositories.albumRepository.findByIds.mockResolvedValue([albumA, albumB]);
-    repositories.trackRepository.countAll.mockResolvedValue(2);
 
     const result = await getTracksPaginated(0, "", 50, "album_asc");
 
-    expect(repositories.trackRepository.findAllSortedPaginated).toHaveBeenCalledWith("album_asc", 0, 51);
+    expect(tracks.members().rows).toHaveBeenCalledWith({ sort: "album_asc", offset: 0, limit: 51 });
     expect(result.tracks.map(track => track.id)).toEqual([trackA.id, trackB.id]);
     expect(result.total).toBe(2);
   });
@@ -147,30 +140,29 @@ describe("track.queries", () => {
       addedAt: 1,
     });
     const rows = (from: number, count: number) => Array.from({ length: count }, (_, i) => row(from + i));
+    let members: ReturnType<ReturnType<typeof useTrackScopes>["members"]>;
 
     beforeEach(() => {
       repositories.artistRepository.findByIds.mockResolvedValue([]);
       repositories.albumRepository.findByIds.mockResolvedValue([]);
-      repositories.trackRepository.countAll.mockResolvedValue(1000);
+      members = useTrackScopes({ members: rows(0, 1000) }).members();
     });
 
     it("counts the library for the first page only", async () => {
-      repositories.trackRepository.findAllSortedPaginated.mockResolvedValue(rows(0, 51));
       const first = await getTracksPaginated(0, "", 50, "album_asc");
       expect(first.total).toBe(1000);
       expect(first.tracks).toHaveLength(50);
       expect(first.nextOffset).toBe(50);
 
-      repositories.trackRepository.countAll.mockClear();
-      repositories.trackRepository.findPaginated.mockResolvedValue(rows(50, 51));
+      members.count.mockClear();
       const second = await getTracksPaginated(50, "", 50, null);
-      expect(repositories.trackRepository.countAll).not.toHaveBeenCalled();
+      expect(members.count).not.toHaveBeenCalled();
+      expect(members.rows).toHaveBeenLastCalledWith({ sort: "date_added_desc", offset: 50, limit: 51 });
       expect(second.tracks).toHaveLength(50);
       expect(second.nextOffset).toBe(100);
     });
 
     it("ends the list on a page that comes back short", async () => {
-      repositories.trackRepository.findAllSortedPaginated.mockResolvedValue(rows(950, 50));
       const last = await getTracksPaginated(950, "", 50, "album_asc");
       expect(last.tracks).toHaveLength(50);
       expect(last.nextOffset).toBeNull();
@@ -234,24 +226,24 @@ describe("track.queries", () => {
       repositories.albumRepository.findByIds.mockResolvedValue([album]);
     });
 
-    it("without sortKey calls findLiked() and returns mapped tracks", async () => {
-      repositories.trackRepository.findLiked.mockResolvedValue(likedTracks);
+    it("without sortKey reads the liked scope in its own order and returns mapped tracks", async () => {
+      const liked = useTrackScopes({ liked: likedTracks }).liked();
 
       const result = await getLikedTracksPageData();
 
-      expect(repositories.trackRepository.findLiked).toHaveBeenCalledOnce();
-      expect(repositories.trackRepository.findLikedSorted).not.toHaveBeenCalled();
+      expect(liked.rows).toHaveBeenCalledOnce();
+      expect(liked.rows).toHaveBeenCalledWith();
       expect(result.tracks.map(t => t.id)).toEqual([trackA.id, trackB.id]);
       expect(result.tracks.every(t => t.isLiked)).toBe(true);
     });
 
-    it("with sortKey calls findLikedSorted() and returns mapped tracks", async () => {
-      repositories.trackRepository.findLikedSorted.mockResolvedValue(likedTracks);
+    it("with sortKey reads the liked scope sorted and returns mapped tracks", async () => {
+      const liked = useTrackScopes({ liked: [trackB, trackA] }).liked();
 
       const result = await getLikedTracksPageData("title_asc");
 
-      expect(repositories.trackRepository.findLikedSorted).toHaveBeenCalledWith("title_asc");
-      expect(repositories.trackRepository.findLiked).not.toHaveBeenCalled();
+      expect(liked.rows).toHaveBeenCalledOnce();
+      expect(liked.rows).toHaveBeenCalledWith({ sort: "title_asc" });
       expect(result.tracks.map(t => t.id)).toEqual([trackA.id, trackB.id]);
     });
   });
@@ -294,38 +286,32 @@ describe("track.queries", () => {
       repositories.albumRepository.findByIds.mockResolvedValue([album]);
     });
 
-    it("without sortKey calls findLikedPaginated + countLiked, not sumDurationByLiked", async () => {
-      repositories.trackRepository.findLikedPaginated.mockResolvedValue([track]);
-      repositories.trackRepository.countLiked.mockResolvedValue(1);
-      repositories.trackRepository.sumDurationByLiked.mockResolvedValue(100);
+    it("without sortKey pages and counts the liked scope without summing its durations", async () => {
+      const liked = useTrackScopes({ liked: [track] }).liked();
 
       const result = await getLikedTracksPaginated(0, 50);
 
-      expect(repositories.trackRepository.findLikedPaginated).toHaveBeenCalledWith(0, 50);
-      expect(repositories.trackRepository.countLiked).toHaveBeenCalledOnce();
-      expect(repositories.trackRepository.sumDurationByLiked).not.toHaveBeenCalled();
+      expect(liked.rows).toHaveBeenCalledWith({ offset: 0, limit: 50 });
+      expect(liked.count).toHaveBeenCalledOnce();
+      expect(liked.sumDuration).not.toHaveBeenCalled();
       expect(result.total).toBe(1);
       expect(result.tracks).toHaveLength(1);
     });
 
-    it("with sortKey calls findLikedSortedPaginated instead of double-fetch", async () => {
-      repositories.trackRepository.findLikedSortedPaginated.mockResolvedValue([track]);
-      repositories.trackRepository.countLiked.mockResolvedValue(1);
-      repositories.trackRepository.sumDurationByLiked.mockResolvedValue(100);
+    it("with sortKey pages the sorted liked scope in one read instead of double-fetch", async () => {
+      const liked = useTrackScopes({ liked: [track] }).liked();
 
       const result = await getLikedTracksPaginated(0, 50, "title_asc");
 
-      expect(repositories.trackRepository.findLikedSortedPaginated).toHaveBeenCalledWith("title_asc", 0, 50);
-      expect(repositories.trackRepository.findLiked).not.toHaveBeenCalled();
-      expect(repositories.trackRepository.findSortedByIds).not.toHaveBeenCalled();
+      expect(liked.rows).toHaveBeenCalledOnce();
+      expect(liked.rows).toHaveBeenCalledWith({ sort: "title_asc", offset: 0, limit: 50 });
+      expect(repositories.trackRepository.withIds).not.toHaveBeenCalled();
       expect(result.tracks).toHaveLength(1);
       expect(result.total).toBe(1);
     });
 
     it("returns nextOffset=null when no more pages", async () => {
-      repositories.trackRepository.findLikedPaginated.mockResolvedValue([track]);
-      repositories.trackRepository.countLiked.mockResolvedValue(1);
-      repositories.trackRepository.sumDurationByLiked.mockResolvedValue(100);
+      useTrackScopes({ liked: [track] });
 
       const result = await getLikedTracksPaginated(0, 50);
 
@@ -333,9 +319,7 @@ describe("track.queries", () => {
     });
 
     it("returns nextOffset when more pages exist", async () => {
-      repositories.trackRepository.findLikedPaginated.mockResolvedValue([track]);
-      repositories.trackRepository.countLiked.mockResolvedValue(100);
-      repositories.trackRepository.sumDurationByLiked.mockResolvedValue(10000);
+      useTrackScopes({ liked: [track] }).liked().count.mockResolvedValue(100);
 
       const result = await getLikedTracksPaginated(0, 50);
 

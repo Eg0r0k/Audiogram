@@ -134,7 +134,7 @@ const invalidateTrackRelations = async (queryClient: QueryClient) => {
 };
 
 export async function getLikedTracks() {
-  return trackRepository.findLiked();
+  return trackRepository.liked().rows();
 }
 
 export async function getTrackEntityById(trackId: TrackId) {
@@ -143,7 +143,7 @@ export async function getTrackEntityById(trackId: TrackId) {
 
 export async function getLikedTracksPageData(sortKey: TrackSortKey | null = null): Promise<LikedTracksPageData> {
   const tracks = sortKey
-    ? await trackRepository.findLikedSorted(sortKey)
+    ? await trackRepository.liked().rows({ sort: sortKey })
     : await getLikedTracks();
   const mappedTracks = await loadTrackRelations(tracks);
 
@@ -157,11 +157,10 @@ export async function getLikedTracksPaginated(
   limit = PAGE_SIZE,
   sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> {
+  const liked = trackRepository.liked();
   const [tracks, total] = await Promise.all([
-    sortKey
-      ? trackRepository.findLikedSortedPaginated(sortKey, offset, limit)
-      : trackRepository.findLikedPaginated(offset, limit),
-    trackRepository.countLiked(),
+    liked.rows({ sort: sortKey ?? undefined, offset, limit }),
+    liked.count(),
   ]);
 
   const mappedTracks = await loadTrackRelations(tracks);
@@ -205,11 +204,10 @@ export async function getAllTracksPaginated(
   limit = PAGE_SIZE,
   sortKey?: TrackSortKey | null,
 ): Promise<PaginatedTracksResult> {
+  const members = trackRepository.members();
   const [rawTracks, counted] = await Promise.all([
-    sortKey
-      ? trackRepository.findAllSortedPaginated(sortKey, offset, limit + 1)
-      : trackRepository.findPaginated(offset, limit + 1),
-    offset === 0 ? trackRepository.countAll() : null,
+    members.rows({ sort: sortKey ?? DEFAULT_TRACK_SORT_KEY, offset, limit: limit + 1 }),
+    offset === 0 ? members.count() : null,
   ]);
 
   const hasMore = rawTracks.length > limit;
@@ -232,7 +230,7 @@ async function searchedTracksSorted(
   const response = await searchDocuments(query, "track", { offset: 0 });
   const ids = response.results.map(item => item.entityId as TrackId);
   return {
-    tracks: await trackRepository.findSortedByIds(ids, sortKey),
+    tracks: await trackRepository.withIds(ids).rows({ sort: sortKey }),
     matches: matchesByEntity(response.results),
   };
 }
@@ -291,7 +289,7 @@ export const searchTracksWithin = async (
   const totalDuration = response.totalDuration;
 
   if (sortKey) {
-    const sorted = await trackRepository.findSortedByIds(hitIds, sortKey);
+    const sorted = await trackRepository.withIds(hitIds).rows({ sort: sortKey });
     return { tracks: await loadTrackRelations(sorted.slice(offset, end)), nextOffset, total, totalDuration };
   }
 
@@ -305,7 +303,7 @@ export const searchAlbumTracks = async (
   limit = PAGE_SIZE,
   sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> => {
-  const ids = await trackRepository.findIdsByAlbumId(albumId);
+  const ids = await trackRepository.inAlbum(albumId).ids();
   return searchTracksWithin(ids, query, offset, limit, sortKey);
 };
 
@@ -316,7 +314,7 @@ export const searchArtistTracks = async (
   limit = PAGE_SIZE,
   sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> => {
-  const ids = await trackRepository.findIdsByArtistId(artistId);
+  const ids = await trackRepository.byArtist(artistId).members().ids();
   return searchTracksWithin(ids, query, offset, limit, sortKey);
 };
 
@@ -326,7 +324,7 @@ export const searchLikedTracks = async (
   limit = PAGE_SIZE,
   sortKey: TrackSortKey | null = null,
 ): Promise<PaginatedTracksResult> => {
-  const ids = await trackRepository.findLikedIds();
+  const ids = await trackRepository.liked().ids();
   return searchTracksWithin(ids, query, offset, limit, sortKey);
 };
 
@@ -366,7 +364,7 @@ export async function getAllTracksForQueue(sortKey: TrackSortKey | null, searchQ
     }
     return loadTrackRelations((await searchedTracksSorted(q, sortKey)).tracks);
   }
-  const rawTracks = await trackRepository.findAllSorted(sortKey ?? DEFAULT_TRACK_SORT_KEY);
+  const rawTracks = await trackRepository.members().rows({ sort: sortKey ?? DEFAULT_TRACK_SORT_KEY });
   return loadTrackRelations(rawTracks);
 }
 
@@ -384,7 +382,7 @@ export async function getAllTrackIds(sortKey: TrackSortKey | null, searchQuery =
     const response = await searchDocuments(q, "track", { offset: 0 });
     return response.results.map(item => item.entityId as TrackId);
   }
-  return trackRepository.findAllIdsSorted(sortKey ?? DEFAULT_TRACK_SORT_KEY);
+  return trackRepository.members().ids(sortKey ?? DEFAULT_TRACK_SORT_KEY);
 }
 
 /** `null` keeps the order of `ids` — the caller's list order. */
@@ -395,7 +393,7 @@ export async function getTracksByIdsSorted(ids: TrackId[], sortKey: TrackSortKey
     const entities = ids.map(id => byId.get(id)).filter((track): track is TrackEntity => !!track);
     return loadTrackRelations(entities);
   }
-  const entities = await trackRepository.findSortedByIds(ids, sortKey);
+  const entities = await trackRepository.withIds(ids).rows({ sort: sortKey });
   return loadTrackRelations(entities);
 }
 
@@ -451,7 +449,7 @@ export async function deleteTracksAndSync(
 }
 
 export async function getLikedTotalDuration(): Promise<number> {
-  return trackRepository.sumDurationByLiked();
+  return trackRepository.liked().sumDuration();
 }
 
 export async function addTracksToAlbumAndSync(

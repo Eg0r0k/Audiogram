@@ -1,5 +1,6 @@
 import { COMMANDS, invokeCommand } from "@/app/tauri-commands";
 import { db } from "@/db";
+import { trackRepository } from "@/db/repositories";
 import { storageService } from "@/db/storage";
 import { hasNativeSupport } from "@/db/storage/IFileStorage";
 import { platformCaps } from "@/lib/environment/platformCaps";
@@ -86,7 +87,7 @@ async function getDbSize(fileBytes: number): Promise<number> {
 
   if (!platformCaps.hasFs) {
     try {
-      const tracks = await db.tracks.count();
+      const tracks = await trackRepository.all().count();
       const artists = await db.artists.count();
       const albums = await db.albums.count();
       const tags = await db.tags.count();
@@ -106,7 +107,7 @@ export async function collectStorageInfo(): Promise<StorageInfo> {
     getQuotaInfo(),
     getStoragePath(),
     Promise.all([
-      db.tracks.where("pinned").equals(1).count(),
+      trackRepository.members().count(),
       db.albums.where("pinned").equals(1).count(),
       db.artists.where("pinned").equals(1).count(),
       db.listenEvents.count(),
@@ -138,7 +139,7 @@ export async function clearLyricsData(): Promise<void> {
     await Promise.all(result.value.map(file => storageService.deleteFile(file)));
   }
 
-  await db.tracks.toCollection().modify((track) => {
+  await trackRepository.all().modify((track) => {
     delete track.lyricsPath;
     delete track.lyricsFileName;
     delete track.lyricsOffsetMs;

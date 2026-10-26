@@ -36,6 +36,7 @@ vi.mock("@/services/library-gc", async (importOriginal) => {
 import { db } from "@/db";
 import { DbError } from "@/db/errors/db.errors";
 import { trackRepository } from "@/db/repositories";
+import { TrackScope } from "@/db/repositories/track.scope";
 import { ArtistRepository } from "@/db/repositories/artist.repository";
 import { PlaylistRepository } from "@/db/repositories/playlist.repository";
 import { syncSearchIndex } from "@/services/search/searchIndex";
@@ -231,10 +232,11 @@ describe("deletion transactionality (integration)", () => {
   it("deleteAlbumAndSync (remote): a rename racing the cascade survives", async () => {
     const album = await seedRemoteAlbum();
 
-    const spy = vi.spyOn(trackRepository, "findByAlbumId")
-      .mockImplementationOnce(async (id) => {
+    const readRows = TrackScope.prototype.rows;
+    const spy = vi.spyOn(TrackScope.prototype, "rows")
+      .mockImplementationOnce(async function (this: TrackScope, options) {
         await db.playlists.update(playlistId, { name: "Renamed mid-flight" });
-        return (await db.tracks.toArray()).filter(track => track.albumId === id);
+        return readRows.call(this, options);
       });
     try {
       await deleteAlbumAndSync(queryClient, album, { deleteTracks: true });

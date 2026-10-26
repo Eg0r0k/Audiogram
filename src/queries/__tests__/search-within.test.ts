@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import { TrackId } from "@/types/ids";
+import { fakeTrackRepository } from "@/test/fakeTrackScope";
 
 const repositories = vi.hoisted(() => ({
   trackRepository: {
     findByIds: vi.fn(),
-    findSortedByIds: vi.fn(),
   },
   artistRepository: { findByIds: vi.fn(async () => []) },
   albumRepository: { findByIds: vi.fn(async () => []) },
@@ -45,9 +45,7 @@ describe("searchTracksWithin", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     repositories.trackRepository.findByIds.mockImplementation(async (ids: string[]) => ids.map(entity));
-    repositories.trackRepository.findSortedByIds.mockImplementation(async (ids: string[]) =>
-      [...ids].sort().map(entity),
-    );
+    Object.assign(repositories.trackRepository, fakeTrackRepository({ withIds: ids => ids.map(entity) }));
   });
 
   it("scopes the index search to the ids and pages the hits in relevance order", async () => {
@@ -68,7 +66,9 @@ describe("searchTracksWithin", () => {
 
     const page = await searchTracksWithin([TrackId("t1"), TrackId("t2"), TrackId("t3")], "q", 1, 2, "title_asc");
 
-    expect(repositories.trackRepository.findSortedByIds).toHaveBeenCalledWith(["t3", "t1", "t2"], "title_asc");
+    const hitIds = [TrackId("t3"), TrackId("t1"), TrackId("t2")];
+    expect(repositories.trackRepository.withIds).toHaveBeenCalledWith(hitIds);
+    expect(repositories.trackRepository.withIds(hitIds).rows).toHaveBeenCalledWith({ sort: "title_asc" });
     expect(page.tracks.map(track => track.id)).toEqual(["t2", "t3"]);
     expect(page).toMatchObject({ total: 3, nextOffset: null });
   });

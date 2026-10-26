@@ -21,7 +21,7 @@ export const getLibrarySummary = async (): Promise<LibrarySummaryData> => {
     albumRepository.findPinned(),
     playlistRepository.findAll(),
     folderRepository.findAll(),
-    trackRepository.countLiked(),
+    trackRepository.liked().count(),
   ]);
 
   return {
@@ -36,9 +36,8 @@ export const getLibrarySummary = async (): Promise<LibrarySummaryData> => {
 // Per-item, for the delete dialog: the summary used to count every album
 // and artist up front, one IndexedDB read each, for this one number.
 export const getLibraryItemTrackCount = async (type: "album" | "artist", id: AlbumId | ArtistId): Promise<number> => {
-  if (type === "album") return trackRepository.countByAlbumId(id as AlbumId);
-  const counts = await trackRepository.countByArtistIds([id as ArtistId]);
-  return counts.get(id as ArtistId) ?? 0;
+  if (type === "album") return trackRepository.inAlbum(id as AlbumId).members().count();
+  return trackRepository.byArtist(id as ArtistId).members().count();
 };
 
 export const libraryQueries = {

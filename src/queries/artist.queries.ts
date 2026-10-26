@@ -49,9 +49,8 @@ export interface ArtistChanges {
 const PAGE_SIZE = 50;
 
 async function getArtistTrackEntities(artistId: ArtistId, sortKey: TrackSortKey | null) {
-  const allTracks = await trackRepository.findByArtistId(artistId);
   // A local artist can absorb remote tracks via substitution — skip shadows.
-  const artistTracks = allTracks.filter(track => track.pinned !== 0);
+  const artistTracks = await trackRepository.byArtist(artistId).members().rows();
 
   if (!sortKey) {
     return artistTracks;
@@ -112,10 +111,8 @@ export async function getArtistPageData(artistId: ArtistId, sortKey: TrackSortKe
 /**
  * The artist's member ids in list order. `artistIds` is multi-entry, and
  * IndexedDB forbids multiEntry inside a compound key, so membership cannot
- * ride along with it: the list is built by subtracting the shadow set, once
- * per (artist, sort) rather than once per page. That set holds every remote
- * track ever queued from browsing, so it belongs to no artist in particular
- * and only grows — paging against it directly costs the whole set per page.
+ * ride along with it: the list filters every row of the artist by `pinned`,
+ * once per (artist, sort) rather than once per page.
  *
  * `staleTime: Infinity` because the invalidation registry is what expires it,
  * never the clock — `affectedKeys.artists.tracksPages` pairs it with the
@@ -126,11 +123,10 @@ export async function getArtistPageData(artistId: ArtistId, sortKey: TrackSortKe
 const artistTrackOrder = (artistId: ArtistId, sortKey: TrackSortKey | null) =>
   queryOptions({
     queryKey: queryKeys.artists.trackOrder(artistId, sortKey),
-    // Unsorted needs no row at all — the ids come straight off the index.
     queryFn: async (): Promise<TrackId[]> =>
       sortKey
         ? (await getArtistTrackEntities(artistId, sortKey)).map(track => track.id)
-        : trackRepository.findIdsByArtistId(artistId),
+        : trackRepository.byArtist(artistId).members().ids(),
     staleTime: Infinity,
   });
 
@@ -237,7 +233,7 @@ export async function createArtistAndSync(
 
 /** Recomputes the denormalized artistName of the artist's tracks. Dexie-only: safe inside a transaction. */
 async function syncTrackArtistNames(uow: Scope<"tracks" | "artists">, artistId: ArtistId, nextArtistName: string) {
-  const tracks = await uow.tracks.findByArtistId(artistId);
+  const tracks = await uow.tracks.byArtist(artistId).rows();
 
   if (tracks.length === 0) {
     return;
@@ -301,15 +297,15 @@ export async function updateArtistAndSync(
     await settleLibraryReads(queryClient);
     syncArtistCaches(queryClient, nextArtist);
 
-    const [albums, tracks] = await Promise.all([
+    const [albums, trackIds] = await Promise.all([
       albumRepository.findByArtistId(currentArtist.id),
-      trackRepository.findByArtistId(currentArtist.id),
+      trackRepository.byArtist(currentArtist.id).ids(),
     ]);
 
     await syncSearchIndex({
       artists: [currentArtist.id],
       albums: albums.map(album => album.id),
-      tracks: tracks.map(track => track.id),
+      tracks: trackIds,
     });
   }
 
@@ -337,9 +333,9 @@ export async function deleteArtistAndSync(
 
   const cascadeTracks = options.deleteTracks === true;
   const albums = await albumRepository.findByArtistId(artistEntity.id);
-  const rawTracks = await trackRepository.findByArtistId(artistEntity.id);
+  const rawTracks = await trackRepository.byArtist(artistEntity.id).rows();
   const albumTracks = (await Promise.all(
-    albums.map(album => trackRepository.findByAlbumId(album.id)),
+    albums.map(album => trackRepository.inAlbum(album.id).rows()),
   )).flat();
   const affectedTracks = [...indexById([...rawTracks, ...albumTracks]).values()];
   const affectedTrackIds = affectedTracks.map(track => track.id);

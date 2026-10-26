@@ -4,6 +4,10 @@ import { TrackSource, TrackState } from "@/db/entities";
 import { buildAlbumDoc, buildPlaylistDoc, buildTrackDoc } from "../buildDocuments";
 
 vi.mock("@/db", () => ({ db: {} }));
+vi.mock("@/db/repositories", async () => {
+  const { fakeTrackRepository } = await import("@/test/fakeTrackScope");
+  return { trackRepository: fakeTrackRepository({}) };
+});
 
 const artist = { id: "ar1", name: "Portishead", pinned: 1, addedAt: 0, updatedAt: 0 } as ArtistEntity;
 const album = { id: "al1", title: "Dummy", artistId: "ar1", year: 1994, pinned: 1, addedAt: 0, updatedAt: 0 } as AlbumEntity;

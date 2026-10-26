@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import type { AlbumEntity, ArtistEntity, PinnedFlag, PlaylistEntity, TrackEntity } from "@/db/entities";
+import { trackRepository } from "@/db/repositories";
 import { fileNameFromPath } from "@/lib/files/path";
 import { indexById } from "@/lib/math";
 import type { SearchDocument, SearchEntityType } from "./types";
@@ -74,7 +75,7 @@ export function buildPlaylistDoc(playlist: PlaylistEntity): SearchDocument {
 
 export async function buildAllSearchDocuments(): Promise<SearchDocument[]> {
   const [allTracks, artists, albums, playlists] = await Promise.all([
-    db.tracks.toArray(),
+    trackRepository.findAll(),
     db.artists.toArray(),
     db.albums.toArray(),
     db.playlists.toArray(),

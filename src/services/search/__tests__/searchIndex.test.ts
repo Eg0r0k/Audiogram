@@ -3,6 +3,7 @@ import type * as SearchIndexModule from "../searchIndex";
 import type { SearchDocument } from "../types";
 import { TrackSource, TrackState } from "@/db/entities";
 import { TrackId } from "@/types/ids";
+import { fakeTrackRepository } from "@/test/fakeTrackScope";
 
 const { buildAllSearchDocuments, repositories } = vi.hoisted(() => ({
   buildAllSearchDocuments: vi.fn(),
@@ -19,7 +20,7 @@ vi.mock("../buildDocuments", async importOriginal => ({
   buildAllSearchDocuments,
 }));
 vi.mock("@/db/repositories", () => repositories);
-vi.mock("@/db", () => ({ db: { tracks: { where: () => ({ equals: () => ({ count: async () => 0 }) }) } } }));
+vi.mock("@/db", () => ({ db: {} }));
 vi.mock("@/lib/logger", () => ({
   getLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
 }));
@@ -38,6 +39,7 @@ const alphaDoc: SearchDocument = {
 beforeEach(async () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   buildAllSearchDocuments.mockReset().mockResolvedValue([]);
+  Object.assign(repositories.trackRepository, fakeTrackRepository({ members: [] }));
   vi.resetModules();
   // Dynamic import on purpose: the module holds the live index, recreated per test.
   searchIndex = await import("../searchIndex");
@@ -142,5 +144,19 @@ describe("searchTracks hydration by id", () => {
     expect(total).toBe(1);
     expect(totalDuration).toBe(100);
     expect(repositories.trackRepository.findByIds).toHaveBeenCalledWith(["t1"]);
+  });
+});
+
+describe("dev projection check", () => {
+  it("compares the built index against the library member count", async () => {
+    buildAllSearchDocuments.mockResolvedValue([alphaDoc]);
+    const member = { id: TrackId("t1"), duration: 100, pinned: 1 };
+    const tracks = fakeTrackRepository({ members: [member, { ...member, id: TrackId("t2") }] as never });
+    Object.assign(repositories.trackRepository, tracks);
+
+    await searchIndex.initSearchIndex();
+
+    expect(tracks.members().count).toHaveBeenCalledOnce();
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("1 track documents in the index vs 2 track rows"));
   });
 });

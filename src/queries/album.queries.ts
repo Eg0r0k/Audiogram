@@ -1,4 +1,4 @@
-import type { AlbumEntity } from "@/db/entities";
+import type { AlbumEntity, TrackEntity } from "@/db/entities";
 import {
   albumRepository,
   artistRepository,
@@ -134,7 +134,7 @@ export async function getAlbumTracksPaginated(
     // order is cached until the registry expires it, so between a delete and
     // that invalidation it still names rows that are gone, and the list would
     // advertise a number it cannot fill. The count reads no row.
-    trackRepository.countByAlbumId(albumId),
+    trackRepository.inAlbum(albumId).members().count(),
   ]);
 
   const pageIds = order.slice(offset, offset + limit);
@@ -163,14 +163,16 @@ export async function getAlbumTracksPaginated(
 }
 
 export async function getAlbumTotalDuration(albumId: AlbumId): Promise<number> {
-  return trackRepository.sumDurationByAlbumId(albumId);
+  return trackRepository.inAlbum(albumId).members().sumDuration();
 }
 
+const byDiscAndTrack = (a: TrackEntity, b: TrackEntity): number =>
+  (a.diskNo ?? 1) - (b.diskNo ?? 1) || (a.trackNo ?? 0) - (b.trackNo ?? 0);
+
 async function getAlbumTrackEntities(albumId: AlbumId, sortKey: TrackSortKey | null) {
-  // Shadow rows (a liked catalog track next to its downloaded copy) are not
-  // listed; findByAlbumId keeps them for the cascades.
-  const albumTracks = (await trackRepository.findByAlbumId(albumId))
-    .filter(track => track.pinned !== 0);
+  // Shadow rows (a liked catalog track next to its downloaded copy) are not listed.
+  const albumTracks = (await trackRepository.inAlbum(albumId).members().rows())
+    .sort(byDiscAndTrack);
 
   if (!sortKey) {
     return albumTracks;
@@ -257,10 +259,10 @@ export async function updateAlbumAndSync(
     // The album row and its tracks' denormalized title change together.
     await unitOfWork.run(["albums", "tracks"], async (uow) => {
       await uow.albums.update(currentAlbum.id, { title });
-      await uow.tracks.setAlbumTitleByAlbumId(currentAlbum.id, title);
+      await uow.tracks.inAlbum(currentAlbum.id).modify({ albumTitle: title });
     });
 
-    updatedTrackIds = await trackRepository.findIdsByAlbumId(currentAlbum.id);
+    updatedTrackIds = await trackRepository.inAlbum(currentAlbum.id).ids();
 
     await settleLibraryReads(queryClient);
     syncAlbumCaches(queryClient, nextAlbum);
@@ -295,7 +297,7 @@ export async function deleteAlbumAndSync(
     return;
   }
 
-  const rawTracks = await trackRepository.findByAlbumId(albumEntity.id);
+  const rawTracks = await trackRepository.inAlbum(albumEntity.id).rows();
   const cascadeTracks = options.deleteTracks === true;
   const trackIds = rawTracks.map(track => track.id);
   const now = Date.now();

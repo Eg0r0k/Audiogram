@@ -19,10 +19,10 @@ import { getArtistTracksPaginated } from "../artist.queries";
 // membership cannot ride along with it. The list is therefore built in
 // memory — and must be built once per (artist, sort), not once per page.
 //
-// The shadow set is what makes rebuilding expensive. It holds every remote
-// track ever queued from browsing, so it belongs to no artist in particular
-// and grows for as long as a source stays connected; subtracting it per page
-// makes scrolling one artist cost the whole set over and over.
+// Membership is decided on the artist's own rows (byArtist().members()), so
+// the shadow set, which holds every remote track ever queued from browsing
+// and grows for as long as a source stays connected, is never read for an
+// artist listing; the tests below hold that line.
 //
 
 const ARTIST = ArtistId("ar-1");
@@ -120,9 +120,7 @@ describe.each([
     expect(valueReads).toBeLessThan(SIZE * PAGES / 2);
   });
 
-  // Keys, not rows: the shadow set is subtracted through primaryKeys(), which
-  // never materializes a row, so valueReads cannot see this at all.
-  it("does not subtract the shadow set again for every page", async () => {
+  it("reads no shadow row of another artist while paging", async () => {
     await seedUnrelatedShadows();
 
     const { reads } = await measureRecordReads(async () => {
@@ -131,7 +129,7 @@ describe.each([
       }
     });
 
-    // One subtraction for the listing, not one (or two) per page.
-    expect(reads).toBeLessThan(SHADOWS * 2);
+    // Order plus pages read the artist's rows only; the 2000 shadows stay unread.
+    expect(reads).toBeLessThan(SHADOWS);
   });
 });

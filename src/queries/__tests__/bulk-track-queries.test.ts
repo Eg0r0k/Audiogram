@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/vue-query";
 import { TrackId } from "@/types/ids";
+import { fakeTrackRepository, type FakeTrackScopes } from "@/test/fakeTrackScope";
 
 const repositories = vi.hoisted(() => ({
   trackRepository: {
-    findAllIdsSorted: vi.fn(),
-    findSortedByIds: vi.fn(),
     findByIds: vi.fn(),
     likeMany: vi.fn(),
     unlikeMany: vi.fn(),
@@ -55,21 +54,28 @@ const entity = (id: string, title: string): TrackEntity => ({
   addedAt: 0,
 });
 
+const useTrackScopes = (scopes: FakeTrackScopes) =>
+  Object.assign(repositories.trackRepository, fakeTrackRepository(scopes));
+
+const titled = (ids: readonly TrackId[]) => ids.map(id => entity(id, id.toUpperCase()));
+
 describe("bulk track queries", () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
     vi.clearAllMocks();
     queryClient = new QueryClient();
+    useTrackScopes({});
   });
 
   it("getAllTrackIds without a search goes through the id-only sorted query", async () => {
-    repositories.trackRepository.findAllIdsSorted.mockResolvedValue([TrackId("b"), TrackId("a")]);
+    const tracks = useTrackScopes({ members: [entity("b", "B"), entity("a", "A")] });
 
     const ids = await getAllTrackIds("title_asc", "   ");
 
-    expect(ids).toEqual(["b", "a"]);
-    expect(repositories.trackRepository.findAllIdsSorted).toHaveBeenCalledWith("title_asc");
+    expect(ids).toEqual(["a", "b"]);
+    expect(tracks.members().ids).toHaveBeenCalledWith("title_asc");
+    expect(tracks.members().rows).not.toHaveBeenCalled();
     expect(search.searchDocuments).not.toHaveBeenCalled();
   });
 
@@ -84,15 +90,15 @@ describe("bulk track queries", () => {
 
     expect(ids).toEqual(["x", "y"]);
     expect(search.searchDocuments).toHaveBeenCalledWith("que", "track", { offset: 0 });
-    expect(repositories.trackRepository.findAllIdsSorted).not.toHaveBeenCalled();
+    expect(repositories.trackRepository.members).not.toHaveBeenCalled();
   });
 
   it("getAllTrackIds without a sort falls back to the newest-first index order", async () => {
-    repositories.trackRepository.findAllIdsSorted.mockResolvedValue([]);
+    const tracks = useTrackScopes({ members: [] });
 
     await getAllTrackIds(null, "");
 
-    expect(repositories.trackRepository.findAllIdsSorted).toHaveBeenCalledWith("date_added_desc");
+    expect(tracks.members().ids).toHaveBeenCalledWith("date_added_desc");
   });
 
   // Searching without a chosen sort lists hits by relevance; a chosen sort
@@ -108,17 +114,18 @@ describe("bulk track queries", () => {
 
       expect(page.tracks.map(t => t.id)).toEqual(["b", "a"]);
       expect(search.searchTracks).toHaveBeenCalledWith("que", 0, 50);
-      expect(repositories.trackRepository.findSortedByIds).not.toHaveBeenCalled();
+      expect(repositories.trackRepository.withIds).not.toHaveBeenCalled();
     });
 
     it("getTracksPaginated with a search and a sort pages the sorted hits", async () => {
       search.searchDocuments.mockResolvedValue(hits);
-      repositories.trackRepository.findSortedByIds.mockResolvedValue([entity("a", "A"), entity("b", "B"), entity("c", "C")]);
+      const tracks = useTrackScopes({ withIds: titled });
 
       const page = await getTracksPaginated(2, "que", 2, "title_asc");
 
       expect(search.searchDocuments).toHaveBeenCalledWith("que", "track", { offset: 0 });
-      expect(repositories.trackRepository.findSortedByIds).toHaveBeenCalledWith(["b", "a", "c"], "title_asc");
+      expect(tracks.withIds).toHaveBeenCalledWith(["b", "a", "c"]);
+      expect(tracks.withIds([TrackId("b"), TrackId("a"), TrackId("c")]).rows).toHaveBeenCalledWith({ sort: "title_asc" });
       expect(page.tracks.map(t => t.id)).toEqual(["c"]);
       expect(page.total).toBe(3);
       expect(page.nextOffset).toBeNull();
@@ -132,17 +139,18 @@ describe("bulk track queries", () => {
 
       expect(tracks.map(t => t.id)).toEqual(["b", "a"]);
       expect(search.searchTracks).toHaveBeenCalledWith("que", 0, undefined);
-      expect(repositories.trackRepository.findSortedByIds).not.toHaveBeenCalled();
+      expect(repositories.trackRepository.withIds).not.toHaveBeenCalled();
     });
 
     it("getAllTracksForQueue with a search and a sort sorts the hits", async () => {
       search.searchDocuments.mockResolvedValue(hits);
-      repositories.trackRepository.findSortedByIds.mockResolvedValue([entity("a", "A"), entity("b", "B"), entity("c", "C")]);
+      const scopes = useTrackScopes({ withIds: titled });
 
       const tracks = await getAllTracksForQueue("title_asc", "que");
 
       expect(tracks.map(t => t.id)).toEqual(["a", "b", "c"]);
-      expect(repositories.trackRepository.findSortedByIds).toHaveBeenCalledWith(["b", "a", "c"], "title_asc");
+      expect(scopes.withIds).toHaveBeenCalledWith(["b", "a", "c"]);
+      expect(scopes.withIds([TrackId("b"), TrackId("a"), TrackId("c")]).rows).toHaveBeenCalledWith({ sort: "title_asc" });
     });
 
     it("getTracksByIdsSorted without a sort keeps the given id order", async () => {
@@ -151,7 +159,7 @@ describe("bulk track queries", () => {
       const tracks = await getTracksByIdsSorted([TrackId("b"), TrackId("a")], null);
 
       expect(tracks.map(t => t.id)).toEqual(["b", "a"]);
-      expect(repositories.trackRepository.findSortedByIds).not.toHaveBeenCalled();
+      expect(repositories.trackRepository.withIds).not.toHaveBeenCalled();
     });
   });
 

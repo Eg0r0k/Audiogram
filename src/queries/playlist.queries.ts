@@ -77,7 +77,7 @@ export async function getPlaylistPageData(
 
   let rawTracks: TrackEntity[];
   if (sortKey) {
-    rawTracks = await trackRepository.findSortedByIds(playlist.trackIds, sortKey);
+    rawTracks = await trackRepository.withIds(playlist.trackIds).rows({ sort: sortKey });
   }
   else {
     const unorderedTracks = await trackRepository.findByIds(playlist.trackIds);
@@ -153,7 +153,7 @@ export async function getPlaylistTracksPaginated(
 export async function getPlaylistTotalDuration(playlistId: PlaylistId): Promise<number> {
   const playlist = await getPlaylistByIdOrThrow(playlistId);
   if (playlist.trackIds.length === 0) return 0;
-  return trackRepository.sumDurationByTrackIds(playlist.trackIds);
+  return trackRepository.withIds(playlist.trackIds).sumDuration();
 }
 export const playlistQueries = {
   all: () =>

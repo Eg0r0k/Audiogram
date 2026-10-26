@@ -54,8 +54,8 @@ describe("getLibrarySummary", () => {
   it("counts no tracks per album or artist", async () => {
     await db.albums.put({ id: AlbumId("al-1"), title: "A", artistId: ArtistId("a-1"), pinned: 1, addedAt: 1, updatedAt: 1 } as never);
     await db.artists.put({ id: ArtistId("a-1"), name: "N", pinned: 1, addedAt: 1, updatedAt: 1 } as never);
-    const byAlbum = vi.spyOn(trackRepository, "countByAlbumIds");
-    const byArtist = vi.spyOn(trackRepository, "countByArtistIds");
+    const byAlbum = vi.spyOn(trackRepository, "inAlbum");
+    const byArtist = vi.spyOn(trackRepository, "byArtist");
 
     const summary = await getLibrarySummary();
 

@@ -9,7 +9,6 @@ import {
 } from "./buildDocuments";
 import { createSearchEngine, type SearchEngine } from "./searchEngine";
 import type { SearchDocument, SearchEntityType, SearchFilter, SearchOptions, SearchResponse } from "./types";
-import { db } from "@/db";
 import { albumRepository, artistRepository, playlistRepository, trackRepository } from "@/db/repositories";
 import { countTrackDocuments, trackProjectionMismatch } from "./projectionCheck";
 import { matchesByEntity } from "./searchMatches";
@@ -34,7 +33,7 @@ async function assertProjectionInDev(documents: SearchDocument[]): Promise<void>
   if (!import.meta.env.DEV) return;
   try {
     // The index carries library members only — compare against that count.
-    const dbTrackCount = await db.tracks.where("pinned").equals(1).count();
+    const dbTrackCount = await trackRepository.members().count();
     const drift = trackProjectionMismatch(dbTrackCount, countTrackDocuments(documents));
     if (drift) console.error(drift);
   }

@@ -36,6 +36,10 @@ vi.mock("@/db", () => ({
     tables: tableList,
   },
 }));
+vi.mock("@/db/repositories", async () => {
+  const { fakeTrackRepository } = await import("@/test/fakeTrackScope");
+  return { trackRepository: fakeTrackRepository({}) };
+});
 vi.mock("@/db/storage", () => ({
   storageService: { listFiles, deleteFile: vi.fn() },
 }));
