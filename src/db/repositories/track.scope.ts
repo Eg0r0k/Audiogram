@@ -11,10 +11,22 @@ import { guarded } from "./base.repository";
 // page through an empty range instead of failing.
 const FIELD_FLOOR: unknown = Dexie.minKey;
 const FIELD_CEILING: unknown = Dexie.maxKey;
+// IndexedDB rejects a key that holds one array object twice, and Dexie.maxKey is one array.
+const ID_CEILING: unknown = structuredClone(Dexie.maxKey);
 
 type TrackTable = Table<TrackEntity, TrackId>;
 type TrackCollection = Collection<TrackEntity, TrackId>;
 type TrackFilter = (row: TrackEntity) => boolean;
+
+// Opaque to callers: they only pass back a key a page returned.
+export type TrackIndexKey = readonly (string | number)[];
+
+type IndexBound = readonly unknown[];
+
+interface SeekEnd {
+  key: TrackIndexKey;
+  inclusive: boolean;
+}
 
 export type TrackScopeSource
   = | { kind: "all" }
@@ -36,6 +48,25 @@ export interface TrackRowsOptions {
   limit?: number;
 }
 
+export interface TrackPageOptions {
+  sort?: TrackSortKey;
+  after?: TrackIndexKey | null;
+  limit: number;
+}
+
+export interface TrackPage {
+  rows: TrackEntity[];
+  last: TrackIndexKey | null;
+}
+
+export interface TrackWindowOptions {
+  sort?: TrackSortKey;
+  from: TrackIndexKey;
+  to: TrackIndexKey | null;
+}
+
+type TrackSeek = (table: TrackTable, start: SeekEnd | null, end: SeekEnd | null) => TrackCollection;
+
 export interface TrackPlan {
   kind: "collection";
   index: string;
@@ -45,6 +76,14 @@ export interface TrackPlan {
   filter?: TrackFilter;
   inMemorySort?: TrackSortKey;
   keyOrder?: readonly TrackId[];
+  keyOf?: (row: TrackEntity) => TrackIndexKey;
+  seek?: TrackSeek;
+}
+
+interface Keyset {
+  lower: IndexBound;
+  upper: IndexBound;
+  keyOf: (row: TrackEntity) => TrackIndexKey;
 }
 
 interface Walk {
@@ -56,6 +95,7 @@ interface Walk {
   coversLiked?: boolean;
   inMemorySort?: TrackSortKey;
   keyOrder?: readonly TrackId[];
+  keyset?: Keyset;
 }
 
 const isMember: TrackFilter = row => row.pinned === 1;
@@ -68,33 +108,42 @@ const filterOf = (members: boolean, liked: boolean): TrackFilter | undefined => 
   return undefined;
 };
 
+const keysetWalk = (index: string, keyset: Keyset, reverse: boolean, covers: Pick<Walk, "coversMembers" | "coversLiked">): Walk => ({
+  index,
+  open: table => table.where(index).between(keyset.lower, keyset.upper, true, true),
+  ordered: true,
+  reverse,
+  keyset,
+  ...covers,
+});
+
 const likedWalk = (sort: TrackSortKey | undefined): Walk => {
   if (!sort) {
-    return { index: "likedAt", open: table => table.where("likedAt").above(0), ordered: true, reverse: true, coversLiked: true };
+    return keysetWalk("[likedAt+id]", {
+      lower: [1, FIELD_FLOOR],
+      upper: [Infinity, ID_CEILING],
+      keyOf: row => [row.likedAt ?? 0, row.id],
+    }, true, { coversLiked: true });
   }
-  const index = `[${trackSortField(sort)}+likedAt]`;
+  const field = trackSortField(sort);
   // The sort field spans the whole key space; `likedAt` is what narrows the
   // range, and an unliked row carries none at all, so it is not in this
   // index to begin with.
-  return {
-    index,
-    open: table => table.where(index).between([FIELD_FLOOR, 1], [FIELD_CEILING, Infinity]),
-    ordered: true,
-    reverse: isDescendingSort(sort),
-    coversLiked: true,
-  };
+  return keysetWalk(`[${field}+likedAt+id]`, {
+    lower: [FIELD_FLOOR, 1, FIELD_FLOOR],
+    upper: [FIELD_CEILING, Infinity, ID_CEILING],
+    keyOf: row => [row[field], row.likedAt ?? 0, row.id],
+  }, isDescendingSort(sort), { coversLiked: true });
 };
 
 const membersWalk = (sort: TrackSortKey | undefined): Walk => {
   if (!sort) return { index: "pinned", open: table => table.where("pinned").equals(1), coversMembers: true };
-  const index = `[pinned+${trackSortField(sort)}]`;
-  return {
-    index,
-    open: table => table.where(index).between([1, FIELD_FLOOR], [1, FIELD_CEILING], true, true),
-    ordered: true,
-    reverse: isDescendingSort(sort),
-    coversMembers: true,
-  };
+  const field = trackSortField(sort);
+  return keysetWalk(`[pinned+${field}+id]`, {
+    lower: [1, FIELD_FLOOR, FIELD_FLOOR],
+    upper: [1, FIELD_CEILING, ID_CEILING],
+    keyOf: row => [1, row[field], row.id],
+  }, isDescendingSort(sort), { coversMembers: true });
 };
 
 const allWalk = (spec: TrackScopeSpec, sort: TrackSortKey | undefined): Walk => {
@@ -127,20 +176,39 @@ export const plan = (spec: TrackScopeSpec, sort?: TrackSortKey): TrackPlan => {
   const walk = walkOf(spec, sort);
   const filter = filterOf(spec.members && !walk.coversMembers, spec.liked && !walk.coversLiked);
   const reverse = walk.reverse ?? false;
+  const { keyset } = walk;
+  const finish = (opened: TrackCollection): TrackCollection => {
+    const filtered = filter ? opened.and(filter) : opened;
+    return reverse ? filtered.reverse() : filtered;
+  };
+  // Start and end are in sort order, so a descending walk seeks down from its start.
+  const seek: TrackSeek | undefined = keyset && ((table, start, end) => {
+    const [low, high] = reverse ? [end, start] : [start, end];
+    return finish(table.where(walk.index).between(
+      low?.key ?? keyset.lower,
+      high?.key ?? keyset.upper,
+      low?.inclusive ?? true,
+      high?.inclusive ?? true,
+    ));
+  });
   return {
     kind: "collection",
     index: walk.index,
     ordered: walk.ordered ?? false,
     reverse,
-    build: (table) => {
-      const opened = walk.open(table);
-      const filtered = filter ? opened.and(filter) : opened;
-      return reverse ? filtered.reverse() : filtered;
-    },
+    build: table => finish(walk.open(table)),
     filter,
     inMemorySort: walk.inMemorySort,
     keyOrder: walk.keyOrder,
+    keyOf: keyset?.keyOf,
+    seek,
   };
+};
+
+const keysetOf = (planned: TrackPlan, projection: string) => {
+  const { keyOf, seek } = planned;
+  if (!keyOf || !seek) throw new Error(`${projection}() needs an index-ordered scope`);
+  return { keyOf, seek };
 };
 
 // The plain `<`/`>` comparison Dexie's `sortBy` uses, so an in-memory sort
@@ -177,6 +245,25 @@ export class TrackScope {
 
   rows(options: TrackRowsOptions = {}): Promise<TrackEntity[]> {
     return guarded(() => this.read(plan(this.spec, options.sort), options));
+  }
+
+  // A full page at the very end still returns a key; the page after it is empty.
+  page({ sort, after = null, limit }: TrackPageOptions): Promise<TrackPage> {
+    return guarded(async () => {
+      const { keyOf, seek } = keysetOf(plan(this.spec, sort), "page");
+      const start = after === null ? null : { key: after, inclusive: false };
+      const rows = await seek(this.table, start, null).limit(limit).toArray();
+      const full = rows.length > 0 && rows.length === limit;
+      return { rows, last: full ? keyOf(rows[rows.length - 1]) : null };
+    });
+  }
+
+  window({ sort, from, to }: TrackWindowOptions): Promise<TrackEntity[]> {
+    return guarded(() => {
+      const { seek } = keysetOf(plan(this.spec, sort), "window");
+      const end = to === null ? null : { key: to, inclusive: false };
+      return seek(this.table, { key: from, inclusive: true }, end).toArray();
+    });
   }
 
   ids(sort?: TrackSortKey): Promise<TrackId[]> {

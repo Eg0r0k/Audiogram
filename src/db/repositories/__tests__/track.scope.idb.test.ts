@@ -8,7 +8,7 @@ import { measureRecordReads } from "@/test/idb-meter";
 import { AlbumId, ArtistId, TagId, TrackId } from "@/types/ids";
 import type { TrackSortKey } from "@/types/track-sort";
 import { trackRepository } from "../track.repository";
-import type { TrackScope } from "../track.scope";
+import type { TrackIndexKey, TrackScope } from "../track.scope";
 
 const AL1 = AlbumId("al1");
 const AL2 = AlbumId("al2");
@@ -134,7 +134,7 @@ describe("TrackScope", () => {
 
     const ascending = ["m2", "m7", "m1", "m3", "m5", "m4", "m6", "m8"];
     expect(idsOf(await members.rows({ sort: "title_asc" }))).toEqual(ascending);
-    expect(where).toHaveBeenCalledWith("[pinned+title]");
+    expect(where).toHaveBeenCalledWith("[pinned+title+id]");
 
     const pages = [
       await members.rows({ sort: "title_asc", offset: 0, limit: 3 }),
@@ -243,5 +243,130 @@ describe("TrackScope", () => {
     expect(await db.tracks.get(TrackId("m9"))).toBeUndefined();
     expect(await trackRepository.inAlbum(AL1).members().count()).toBe(4);
     expect((await trackRepository.inAlbum(AL1).rows()).every(row => row.albumTitle === "First")).toBe(true);
+  });
+});
+
+const SORTS: TrackSortKey[] = [
+  "date_added_desc", "date_added_asc", "title_asc", "title_desc", "artist_asc", "artist_desc",
+  "album_asc", "album_desc", "duration_asc", "duration_desc", "plays_desc",
+];
+
+const SAME_MS = 500;
+
+// Every sort field repeats across these rows, and a dozen of them share one like timestamp.
+const KEYSET_ROWS: TrackEntity[] = Array.from({ length: 40 }, (_, i) => track(`k${String((i * 17) % 40).padStart(2, "0")}`, {
+  title: ["Alpha", "Bravo", "Charlie"][i % 3],
+  artistName: ["A", "B"][i % 2],
+  albumTitle: i % 4 === 0 ? "Fourth" : "",
+  duration: i % 3 === 0 ? 200 : 180,
+  playCount: i % 5 === 0 ? 3 : 0,
+  addedAt: 100 + Math.floor(i / 4),
+  likedAt: i < 12 ? SAME_MS : i % 3 === 0 ? 600 + i : undefined,
+  pinned: i % 9 === 8 ? 0 : 1,
+}));
+
+const KEYSET_SCOPES = (): [string, TrackScope][] => [
+  ["members", trackRepository.members()],
+  ["liked", trackRepository.liked()],
+  ["liked.members", trackRepository.liked().members()],
+];
+
+const walkPages = async (scope: TrackScope, sort: TrackSortKey | undefined, limit: number) => {
+  const pages: TrackEntity[][] = [];
+  const lasts: TrackIndexKey[] = [];
+  let after: TrackIndexKey | null = null;
+  do {
+    const page = await scope.page({ sort, after, limit });
+    pages.push(page.rows);
+    after = page.last;
+    if (after) lasts.push(after);
+  } while (after !== null && pages.length <= 100);
+  return { pages, lasts };
+};
+
+describe("TrackScope keyset pages", () => {
+  beforeEach(async () => {
+    await db.tracks.bulkAdd(KEYSET_ROWS);
+  });
+
+  it("page resumes exactly after the returned key across rows sharing the sort value", async () => {
+    for (const [name, scope] of KEYSET_SCOPES()) {
+      const sorts = name === "members" ? SORTS : [undefined, ...SORTS];
+      for (const sort of sorts) {
+        const label = `${name} ${sort}`;
+        const expected = idsOf(await scope.rows({ sort }));
+        const { pages } = await walkPages(scope, sort, 7);
+
+        expect(expected.length, label).toBeGreaterThan(14);
+        expect(pages.slice(0, -1).every(page => page.length === 7), label).toBe(true);
+        expect(pages.flatMap(idsOf), label).toEqual(expected);
+      }
+    }
+  });
+
+  it("page returns last null when the page is short", async () => {
+    const members = trackRepository.members();
+    const total = await members.count();
+
+    const short = await members.page({ sort: "plays_desc", limit: total + 1 });
+    expect(short.rows).toHaveLength(total);
+    expect(short.last).toBeNull();
+
+    const exact = await members.page({ sort: "plays_desc", limit: total });
+    expect(exact.rows).toHaveLength(total);
+    expect(exact.last).not.toBeNull();
+    expect(await members.page({ sort: "plays_desc", after: exact.last, limit: total })).toEqual({ rows: [], last: null });
+  });
+
+  it("liked pages in like order resume across rows liked in the same millisecond", async () => {
+    const liked = trackRepository.liked();
+    const expected = idsOf(await liked.rows());
+    const sameMs = KEYSET_ROWS.filter(row => row.likedAt === SAME_MS).map(row => row.id).sort().reverse();
+
+    const { pages } = await walkPages(liked, undefined, 5);
+    const walked = pages.flatMap(idsOf);
+
+    expect(walked).toEqual(expected);
+    expect(new Set(walked).size).toBe(walked.length);
+    expect(walked.filter(id => sameMs.includes(id))).toEqual(sameMs);
+    expect(pages.filter(page => page.some(row => row.likedAt === SAME_MS)).length).toBeGreaterThan(1);
+  });
+
+  it("window returns the rows with from <= key < to and nothing else", async () => {
+    for (const [name, scope] of KEYSET_SCOPES()) {
+      for (const sort of [undefined, "title_asc", "duration_desc", "date_added_desc"] as const) {
+        if (name === "members" && sort === undefined) continue;
+        const label = `${name} ${sort}`;
+        const expected = idsOf(await scope.rows({ sort }));
+        const { lasts } = await walkPages(scope, sort, 3);
+
+        expect(idsOf(await scope.window({ sort, from: lasts[0], to: lasts[2] })), label).toEqual(expected.slice(2, 8));
+        expect(idsOf(await scope.window({ sort, from: lasts[1], to: lasts[1] })), label).toEqual([]);
+      }
+    }
+  });
+
+  it("window with to null runs to the end of the index", async () => {
+    for (const [name, scope] of KEYSET_SCOPES()) {
+      for (const sort of [undefined, "album_asc", "plays_desc"] as const) {
+        if (name === "members" && sort === undefined) continue;
+        const label = `${name} ${sort}`;
+        const expected = idsOf(await scope.rows({ sort }));
+        const { lasts } = await walkPages(scope, sort, 4);
+
+        expect(idsOf(await scope.window({ sort, from: lasts[1], to: null })), label).toEqual(expected.slice(7));
+      }
+    }
+  });
+
+  it("page on an album scope rejects", async () => {
+    await expect(trackRepository.inAlbum(AL1).members().page({ sort: "title_asc", limit: 5 }))
+      .rejects.toThrow("page() needs an index-ordered scope");
+    await expect(trackRepository.inAlbum(AL1).page({ limit: 5 }))
+      .rejects.toThrow("page() needs an index-ordered scope");
+    await expect(trackRepository.members().page({ limit: 5 }))
+      .rejects.toThrow("page() needs an index-ordered scope");
+    await expect(trackRepository.inAlbum(AL1).window({ sort: "title_asc", from: [1, "Alpha", "m2"], to: null }))
+      .rejects.toThrow("window() needs an index-ordered scope");
   });
 });

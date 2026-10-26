@@ -39,57 +39,77 @@ const TAG = TagId("tg1");
 const row = (overrides: Partial<TrackEntity>) => ({ pinned: 1, ...overrides }) as TrackEntity;
 
 describe("plan", () => {
-  it("members sorted by title plans [pinned+title] ascending", () => {
+  it("members sorted by title plans [pinned+title+id] ascending", () => {
     const planned = plan(spec(ALL, { members: true }), "title_asc");
 
-    expect(planned).toMatchObject({ kind: "collection", index: "[pinned+title]", ordered: true, reverse: false });
+    expect(planned).toMatchObject({ kind: "collection", index: "[pinned+title+id]", ordered: true, reverse: false });
     expect(planned.inMemorySort).toBeUndefined();
     expect(callsOf(planned)).toEqual([
-      ["where", "[pinned+title]"],
-      ["between", [1, Dexie.minKey], [1, Dexie.maxKey], true, true],
+      ["where", "[pinned+title+id]"],
+      ["between", [1, Dexie.minKey, Dexie.minKey], [1, Dexie.maxKey, Dexie.maxKey], true, true],
     ]);
   });
 
-  it("members sorted by date_added_desc plans [pinned+addedAt] reversed", () => {
+  it("members sorted by title plans [pinned+title+id] with a key of [1, title, id]", () => {
+    const planned = plan(spec(ALL, { members: true }), "title_asc");
+
+    expect(planned.index).toBe("[pinned+title+id]");
+    expect(planned.keyOf?.(row({ id: TrackId("t1"), title: "Bravo" }))).toEqual([1, "Bravo", "t1"]);
+  });
+
+  it("members sorted by date_added_desc plans [pinned+addedAt+id] reversed", () => {
     const planned = plan(spec(ALL, { members: true }), "date_added_desc");
 
-    expect(planned).toMatchObject({ kind: "collection", index: "[pinned+addedAt]", ordered: true, reverse: true });
+    expect(planned).toMatchObject({ kind: "collection", index: "[pinned+addedAt+id]", ordered: true, reverse: true });
     expect(callsOf(planned)).toEqual([
-      ["where", "[pinned+addedAt]"],
-      ["between", [1, Dexie.minKey], [1, Dexie.maxKey], true, true],
+      ["where", "[pinned+addedAt+id]"],
+      ["between", [1, Dexie.minKey, Dexie.minKey], [1, Dexie.maxKey, Dexie.maxKey], true, true],
       ["reverse"],
     ]);
+    expect(planned.keyOf?.(row({ id: TrackId("t1"), addedAt: 42 }))).toEqual([1, 42, "t1"]);
   });
 
-  it("liked sorted by a field plans [field+likedAt] and ignores membership", () => {
+  it("liked sorted by a field plans [field+likedAt+id] and ignores membership", () => {
     const planned = plan(spec(ALL, { liked: true }), "duration_desc");
 
-    expect(planned).toMatchObject({ kind: "collection", index: "[duration+likedAt]", ordered: true, reverse: true });
+    expect(planned).toMatchObject({ kind: "collection", index: "[duration+likedAt+id]", ordered: true, reverse: true });
     expect(callsOf(planned)).toEqual([
-      ["where", "[duration+likedAt]"],
-      ["between", [Dexie.minKey, 1], [Dexie.maxKey, Infinity]],
+      ["where", "[duration+likedAt+id]"],
+      ["between", [Dexie.minKey, 1, Dexie.minKey], [Dexie.maxKey, Infinity, Dexie.maxKey], true, true],
       ["reverse"],
     ]);
 
     const members = plan(spec(ALL, { liked: true, members: true }), "duration_desc");
-    expect(members).toMatchObject({ kind: "collection", index: "[duration+likedAt]", reverse: true });
+    expect(members).toMatchObject({ kind: "collection", index: "[duration+likedAt+id]", reverse: true });
     expect(callsOf(members)).toEqual([
-      ["where", "[duration+likedAt]"],
-      ["between", [Dexie.minKey, 1], [Dexie.maxKey, Infinity]],
+      ["where", "[duration+likedAt+id]"],
+      ["between", [Dexie.minKey, 1, Dexie.minKey], [Dexie.maxKey, Infinity, Dexie.maxKey], true, true],
       ["and", expect.any(Function)],
       ["reverse"],
     ]);
   });
 
-  it("liked without a sort plans likedAt above 0, most recent first", () => {
+  it("liked sorted by duration plans [duration+likedAt+id]", () => {
+    const planned = plan(spec(ALL, { liked: true }), "duration_asc");
+
+    expect(planned).toMatchObject({ kind: "collection", index: "[duration+likedAt+id]", ordered: true, reverse: false });
+    expect(callsOf(planned)).toEqual([
+      ["where", "[duration+likedAt+id]"],
+      ["between", [Dexie.minKey, 1, Dexie.minKey], [Dexie.maxKey, Infinity, Dexie.maxKey], true, true],
+    ]);
+    expect(planned.keyOf?.(row({ id: TrackId("t1"), duration: 120, likedAt: 7 }))).toEqual([120, 7, "t1"]);
+  });
+
+  it("liked without a sort plans [likedAt+id] reversed", () => {
     const planned = plan(spec(ALL, { liked: true }));
 
-    expect(planned).toMatchObject({ kind: "collection", index: "likedAt", ordered: true, reverse: true });
+    expect(planned).toMatchObject({ kind: "collection", index: "[likedAt+id]", ordered: true, reverse: true });
     expect(callsOf(planned)).toEqual([
-      ["where", "likedAt"],
-      ["above", 0],
+      ["where", "[likedAt+id]"],
+      ["between", [1, Dexie.minKey], [Infinity, Dexie.maxKey], true, true],
       ["reverse"],
     ]);
+    expect(planned.keyOf?.(row({ id: TrackId("t1"), likedAt: 7 }))).toEqual([7, "t1"]);
   });
 
   it("an album with members plans [albumId+pinned]; without members plans albumId", () => {
@@ -113,6 +133,12 @@ describe("plan", () => {
       ["equals", ALBUM],
       ["and", expect.any(Function)],
     ]);
+  });
+
+  it("an album scope has no keyset key", () => {
+    expect(plan(spec({ kind: "album", albumId: ALBUM }, { members: true }), "title_asc").keyOf).toBeUndefined();
+    expect(plan(spec({ kind: "album", albumId: ALBUM }, { members: true })).keyOf).toBeUndefined();
+    expect(plan(spec({ kind: "album", albumId: ALBUM }, { liked: true }), "duration_asc").keyOf).toBeUndefined();
   });
 
   it("an album with a sort keeps the index and sorts in memory", () => {

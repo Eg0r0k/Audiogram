@@ -129,6 +129,11 @@ export class AppDatabase extends Dexie {
       queueSnapshot: "&id",
     }).upgrade(upgradeToV19);
 
+    // Index-only: the twelve v17 compound indexes become id-tailed ones (plus [likedAt+id]) so a page can resume after an exact key.
+    this.version(20).stores({
+      tracks: "&id, title, artistName, albumTitle, *artistIds, albumId, *tagIds, likedAt, addedAt, duration, playCount, storagePath, fingerprint, pinned, sourceRef, [albumId+pinned], [likedAt+id], [title+likedAt+id], [addedAt+likedAt+id], [duration+likedAt+id], [artistName+likedAt+id], [albumTitle+likedAt+id], [playCount+likedAt+id], [pinned+title+id], [pinned+artistName+id], [pinned+albumTitle+id], [pinned+addedAt+id], [pinned+duration+id], [pinned+playCount+id]",
+    });
+
     this.tracks = this.table("tracks");
     this.artists = this.table("artists");
     this.albums = this.table("albums");
@@ -149,19 +154,24 @@ export class AppDatabase extends Dexie {
 
 export const db = new AppDatabase();
 
+const SLOW_OPEN_MS = 1_000;
+
 /**
  * Explicit open so a failure is classified once, at startup, instead of
  * surfacing as an opaque error on the first query. Dexie still auto-opens
  * on first use, so callers that skip this keep working.
  */
 export const openDatabase = async (): Promise<Result<void, DbError>> => {
+  const startedAt = performance.now();
   try {
     await db.open();
-    return ok(undefined);
   }
   catch (error) {
     return err(toDbError(error));
   }
+  const took = Math.round(performance.now() - startedAt);
+  if (took > SLOW_OPEN_MS) getLogger().info(`[DB] open took ${took} ms (schema v${db.verno})`);
+  return ok(undefined);
 };
 
 // Another connection (a second window/instance) is upgrading the schema.
