@@ -1,10 +1,9 @@
 import { computed, shallowRef, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { ArtistId } from "@/types/ids";
 import type { ArtistData } from "@/types/media-data";
 import type { Track } from "@/types/track";
-import { queryKeys } from "@/queries/query-keys";
 import { getLogger } from "@/lib/logger";
 import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
 import {
@@ -16,12 +15,12 @@ import {
   type ArtistChanges,
   updateArtistAndSync,
 } from "@/queries/artist.queries";
-import { searchArtistTracks } from "@/queries/track.queries";
 import { statsQueries } from "@/queries/stats.queries";
 import { routeLocation } from "@/app/router/route-locations";
 import { useLiveQuery } from "@/composables/useLiveQuery";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { useLiveTrackList } from "@/modules/tracks/composables/useLiveTrackList";
+import { useLiveSearchList } from "@/modules/tracks/composables/useLiveSearchList";
 import { useSourceArtist } from "@/modules/sources/composables/useSourceCatalog";
 import { useCatalogEntity } from "@/modules/sources/composables/useCatalogEntity";
 import { THUMB_SIZE_CARD } from "@/lib/media/cover-sizes";
@@ -97,22 +96,11 @@ export const useArtistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Re
 
   const artist = path.libraryRow(artistRow);
 
-  const {
-    data: searchData,
-    isError: isSearchError,
-    isFetchNextPageError: isSearchFetchNextPageError,
-    error: searchError,
-    refetch: refetchSearch,
-    fetchNextPage: fetchNextSearchPage,
-    hasNextPage: hasNextSearchPage,
-    isFetchingNextPage: isFetchingNextSearchPage,
-  } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.artists.tracksPage(artistId.value, sortKey.value, normalizedSearchQuery.value)),
-    queryFn: ({ pageParam }) =>
-      searchArtistTracks(artistId.value, normalizedSearchQuery.value, pageParam, undefined, sortKey.value),
-    initialPageParam: 0,
-    getNextPageParam: lastPage => lastPage.nextOffset,
-    enabled: computed(() => !!artist.value && isSearching.value),
+  const search = useLiveSearchList({
+    query: () => normalizedSearchQuery.value,
+    sort: () => sortKey.value,
+    within: () => artistTrackScope(artistId.value).members().ids(),
+    enabled: computed(() => !!artist.value),
   });
 
   const liveList = computed<ArtistList | undefined>(() => {
@@ -122,10 +110,9 @@ export const useArtistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Re
 
   // A filtered list reports the matches' own count.
   const searchList = computed<ArtistList | undefined>(() => {
-    const data = searchData.value;
-    if (!data) return undefined;
-    const [first] = data.pages;
-    return { tracks: data.pages.flatMap(page => page.tracks), count: first.total };
+    const found = search.list.value;
+    if (!found) return undefined;
+    return { tracks: found.tracks, count: found.total };
   });
 
   // A sort or search switch keeps the shown list until the next one has its first page.
@@ -133,11 +120,8 @@ export const useArtistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Re
     (isSearching.value ? searchList.value : liveList.value) ?? previous,
   );
 
-  // TanStack reports "no error" as null; the live reads as undefined.
   const listError = computed(() => {
-    if (isSearching.value) {
-      return isSearchError.value && !isSearchFetchNextPageError.value ? searchError.value ?? undefined : undefined;
-    }
+    if (isSearching.value) return search.isError.value ? search.error.value : undefined;
     return list.isError.value ? list.error.value : liveTrackCount.error.value;
   });
   const localError = computed(() => headerError.value ?? listError.value ?? liveAlbums.error.value);
@@ -250,28 +234,28 @@ export const useArtistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Re
     };
   });
 
-  const hasNextTrackPage = computed(() => isSearching.value ? hasNextSearchPage.value : list.hasNextPage.value);
+  const hasNextTrackPage = computed(() => isSearching.value ? search.hasNextPage.value : list.hasNextPage.value);
   const isFetchingNextTrackPage = computed(() => isSearching.value
-    ? isFetchingNextSearchPage.value
+    ? search.isFetchingNextPage.value
     : list.isFetchingNextPage.value);
   const isFetchNextTrackPageError = computed(() => isSearching.value
-    ? isSearchFetchNextPageError.value
+    ? search.isFetchNextPageError.value
     : list.isFetchNextPageError.value);
 
   const fetchNextTrackPage = async () => {
     if (isSearching.value) {
-      await fetchNextSearchPage();
+      await search.fetchNextPage();
       return;
     }
     await list.fetchNextPage();
   };
 
-  const refetch = async () => {
+  const refetch = () => {
     liveArtist.refetch();
     liveTrackCount.refetch();
     liveAlbums.refetch();
     if (isSearching.value) {
-      await refetchSearch();
+      search.refetch();
       return;
     }
     list.refetch();

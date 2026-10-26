@@ -1,9 +1,7 @@
 import { computed, onScopeDispose, shallowRef, toValue, triggerRef, watch, type MaybeRefOrGetter, type Ref, type ShallowRef } from "vue";
-import { useInfiniteQuery } from "@tanstack/vue-query";
-import { queryKeys } from "@/queries/query-keys";
-import { loadTrackRelations, memberTrackScope, searchTracksPaginated } from "@/queries/track.queries";
-import type { PaginatedTracksResult, TrackPageParam } from "@/queries/types";
+import { loadTrackRelations, memberTrackScope } from "@/queries/track.queries";
 import { LivePages, uniqueById } from "@/modules/tracks/lib/livePages";
+import { useLiveSearchList } from "@/modules/tracks/composables/useLiveSearchList";
 import type { Track } from "@/types/track";
 import { DEFAULT_TRACK_SORT_KEY } from "@/types/track-sort";
 
@@ -14,20 +12,10 @@ export const useAddTracksList = (searchQuery: Ref<string>, enabled: MaybeRefOrGe
   const isSearching = computed(() => normalizedSearchQuery.value !== "");
   const isEnabled = computed(() => toValue(enabled));
 
-  const {
-    data: searchData,
-    isError: isSearchError,
-    isFetchNextPageError: isSearchFetchNextPageError,
-    fetchNextPage: fetchNextSearchPage,
-    hasNextPage: hasNextSearchPage,
-    isFetchingNextPage: isFetchingNextSearchPage,
-  } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.tracks.allPaginated(normalizedSearchQuery.value)),
-    queryFn: ({ pageParam }) =>
-      searchTracksPaginated(normalizedSearchQuery.value, typeof pageParam === "number" ? pageParam : 0),
-    initialPageParam: null as TrackPageParam,
-    getNextPageParam: (lastPage: PaginatedTracksResult) => lastPage.last === undefined ? lastPage.nextOffset : lastPage.last,
-    enabled: computed(() => isEnabled.value && isSearching.value),
+  const search = useLiveSearchList({
+    query: () => normalizedSearchQuery.value,
+    sort: () => null,
+    enabled: isEnabled,
   });
 
   const pages: ShallowRef<LivePages<Track>> = shallowRef(new LivePages<Track>({
@@ -47,11 +35,9 @@ export const useAddTracksList = (searchQuery: Ref<string>, enabled: MaybeRefOrGe
   const liveTracks = computed(() =>
     pages.value.isLoaded ? uniqueById(pages.value.pages.flatMap(page => page.rows)) : undefined,
   );
-  const searchTracks = computed(() => searchData.value?.pages.flatMap(page => page.tracks));
+  const searchTracks = computed(() => search.list.value?.tracks);
 
-  const isError = computed(() => isSearching.value
-    ? isSearchError.value && !isSearchFetchNextPageError.value
-    : pages.value.error !== undefined);
+  const isError = computed(() => isSearching.value ? search.isError.value : pages.value.error !== undefined);
 
   // A switch keeps the shown rows until the next list has its first page, so the selection is not pruned by an empty flash.
   const shownTracks = computed<Track[] | undefined>(previous =>
@@ -60,15 +46,15 @@ export const useAddTracksList = (searchQuery: Ref<string>, enabled: MaybeRefOrGe
 
   const tracks = computed(() => shownTracks.value ?? []);
   const isLoading = computed(() => isEnabled.value && shownTracks.value === undefined && !isError.value);
-  const hasNextPage = computed(() => isSearching.value ? hasNextSearchPage.value : pages.value.hasMore);
-  const isFetchingNextPage = computed(() => isSearching.value ? isFetchingNextSearchPage.value : pages.value.isLoadingMore);
+  const hasNextPage = computed(() => isSearching.value ? search.hasNextPage.value : pages.value.hasMore);
+  const isFetchingNextPage = computed(() => isSearching.value ? search.isFetchingNextPage.value : pages.value.isLoadingMore);
   const isFetchNextPageError = computed(() => isSearching.value
-    ? isSearchFetchNextPageError.value
+    ? search.isFetchNextPageError.value
     : pages.value.loadMoreError !== undefined);
 
   const fetchNextPage = async () => {
     if (isSearching.value) {
-      await fetchNextSearchPage();
+      await search.fetchNextPage();
       return;
     }
     await pages.value.loadMore();

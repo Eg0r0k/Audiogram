@@ -6,6 +6,7 @@ import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { db } from "@/db";
 import { TrackSource, TrackState, type AlbumEntity, type TrackEntity } from "@/db/entities";
 import { TrackScope } from "@/db/repositories/track.scope";
+import { resetSearchIndex, syncSearchIndex } from "@/services/search/searchIndex";
 import { updateAlbumAndSync } from "@/queries/album.queries";
 import { addTracksToAlbumAndSync, getTracksByIds } from "@/queries/track.queries";
 import { AlbumId, ArtistId, TrackId } from "@/types/ids";
@@ -99,6 +100,7 @@ describe("useAlbumPage on live reads", () => {
     await db.artists.add({ id: ARTIST, name: "Artist", pinned: 1, addedAt: 1, updatedAt: 1 });
     await db.albums.bulkAdd([ALBUM_ROW, { ...ALBUM_ROW, id: AlbumId("al2"), title: "Other" }]);
     await db.tracks.bulkAdd(SEED);
+    resetSearchIndex();
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     routing.route.params.id = "al1";
   });
@@ -189,5 +191,35 @@ describe("useAlbumPage on live reads", () => {
     expect(api.album.value?.id).toBe(ALBUM);
     expect(ids(api)).toEqual(before);
     expect(rows).not.toHaveBeenCalled();
+  });
+
+  it("album: a search string reads live rows and follows the index", async () => {
+    const writer = new QueryClient();
+    await db.tracks.update(TrackId("t005"), { title: "Glory Box" });
+    await db.tracks.update(TrackId("t006"), { title: "Glory Days" });
+    await db.tracks.update(TrackId("x000"), { title: "Glory Elsewhere" });
+    const api = mountPage(ref(null), ref("glory"));
+    await until(() => api.tracks.value.length === 2);
+
+    expect([...ids(api)].sort()).toEqual([TrackId("t005"), TrackId("t006")]);
+    expect(api.trackCount.value).toBe(2);
+    expect(api.albumData.value?.duration).toBe("common.minutesShort:3");
+
+    const [track] = await getTracksByIds([TrackId("x000")]);
+    await addTracksToAlbumAndSync(writer, ALBUM, [track]);
+    await until(() => ids(api).includes(TrackId("x000")));
+
+    expect(api.trackCount.value).toBe(3);
+    expect(api.albumData.value?.duration).toBe("common.minutesShort:13");
+    expect(api.tracks.value.find(row => row.id === TrackId("x000"))?.albumName).toBe("Album");
+
+    await db.tracks.update(TrackId("t006"), { title: "Sunny" });
+    await until(() => api.tracks.value.find(row => row.id === TrackId("t006"))?.title === "Sunny");
+    await syncSearchIndex({ tracks: [TrackId("t006")] });
+    await until(() => !ids(api).includes(TrackId("t006")));
+
+    expect([...ids(api)].sort()).toEqual([TrackId("t005"), TrackId("x000")]);
+    expect(api.trackCount.value).toBe(2);
+    expect(api.isError.value).toBe(false);
   });
 });

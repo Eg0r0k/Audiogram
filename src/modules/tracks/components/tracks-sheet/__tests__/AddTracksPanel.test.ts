@@ -9,6 +9,7 @@ import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
 import { TrackScope } from "@/db/repositories/track.scope";
 import { EntityResolver } from "@/services/entity-resolver";
 import { persistTracks } from "@/services/import/track-persister";
+import { resetSearchIndex, syncSearchIndex } from "@/services/search/searchIndex";
 import type { TrackToSave } from "@/services/types";
 import type { Track } from "@/types/track";
 import { AlbumId, TrackId } from "@/types/ids";
@@ -33,9 +34,10 @@ vi.mock("@/modules/queue/store/queue.store", () => ({ useQueueStore: () => queue
 
 const stubs = {
   EntitySelectPanel: {
-    props: ["items"],
-    emits: ["confirm"],
+    props: ["items", "search"],
+    emits: ["confirm", "update:search"],
     template: `<div>
+      <input data-testid="search" :value="search" @input="$emit('update:search', $event.target.value)" />
       <template v-for="(item, index) in items" :key="item.id">
         <slot name="row" :item="item" :index="index" />
       </template>
@@ -114,6 +116,7 @@ describe("AddTracksPanel", () => {
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
     await db.tracks.add(STORED);
+    resetSearchIndex();
   });
 
   afterEach(() => {
@@ -164,5 +167,22 @@ describe("AddTracksPanel", () => {
 
     await screen.findByTestId("row-new");
     expect(shownRows()).toEqual(["row-new", "row-t1"]);
+  });
+
+  it("add-tracks: a search string reads live rows and follows the index", async () => {
+    await db.tracks.add({ ...STORED, id: TrackId("t2"), title: "Teardrop", storagePath: "tracks/t2.mp3" });
+    renderPanel({ entityType: "favorite", entityId: "" });
+    await screen.findByTestId("row-t2");
+
+    await userEvent.type(screen.getByTestId("search"), "glory");
+    await waitFor(() => expect(shownRows()).toEqual(["row-t1"]));
+
+    await importTrack("glory-new");
+    await syncSearchIndex({ tracks: [TrackId("glory-new")] });
+    await screen.findByTestId("row-glory-new");
+
+    await db.tracks.update(TrackId("t1"), { title: "Roads" });
+    await syncSearchIndex({ tracks: [TrackId("t1")] });
+    await waitFor(() => expect(shownRows()).toEqual(["row-glory-new"]));
   });
 });

@@ -15,9 +15,19 @@ import { matchesByEntity } from "./searchMatches";
 import { mapTracks, type Track } from "@/types/track";
 import { indexById, unique } from "@/lib/math";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
+import { getLogger } from "@/lib/logger";
+import { formatError } from "@/lib/errors";
+import { createEventHook } from "@vueuse/core";
 
 let engine: SearchEngine | null = null;
 let initPromise: Promise<SearchEngine> | null = null;
+
+const indexChanged = createEventHook<void>();
+export const onSearchIndexChanged = indexChanged.on;
+
+const notifyIndexChanged = () => {
+  indexChanged.trigger().catch(error => getLogger().error(`[Search] Index change hook failed: ${formatError(error)}`));
+};
 
 /**
  * Discards the in-session index without rebuilding. The next search (or
@@ -176,9 +186,11 @@ export const syncSearchIndex = async (changes: SearchIndexChanges): Promise<void
   const live = await ensureEngine();
   live.remove(dropped);
   live.upsert(documents);
+  notifyIndexChanged();
 };
 
 export async function rebuildSearchIndex() {
   resetSearchIndex();
   await initSearchIndex();
+  notifyIndexChanged();
 }

@@ -7,18 +7,24 @@ import { db } from "@/db";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
 import { trackRepository } from "@/db/repositories/track.repository";
 import { TrackScope, type TrackPage, type TrackPageOptions, type TrackWindowOptions } from "@/db/repositories/track.scope";
-import type { PaginatedTracksResult } from "@/queries/types";
+import { resetSearchIndex } from "@/services/search/searchIndex";
 import type { Track } from "@/types/track";
 import { AlbumId, TrackId } from "@/types/ids";
 import type { TrackSortKey } from "@/modules/tracks/types";
 
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
-vi.mock("@/queries/track.queries", async importOriginal => ({
-  ...await importOriginal<typeof import("@/queries/track.queries")>(),
-  searchLikedTracks: vi.fn(),
-}));
+vi.mock("@/queries/track.queries", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/queries/track.queries")>();
+  return { ...actual, searchTrackIds: vi.fn(actual.searchTrackIds) };
+});
 
-import { getTracksByIds, searchLikedTracks, toggleTrackLikeAndSync } from "@/queries/track.queries";
+import {
+  getTracksByIds,
+  searchTrackIds,
+  toggleTrackLikeAndSync,
+  updateTrackMetadataAndSync,
+  type SearchedTrackIds,
+} from "@/queries/track.queries";
 import { useLikedTracksPage } from "../useLikedTracksPage";
 
 const PAGE_SIZE = 50;
@@ -98,6 +104,8 @@ describe("useLikedTracksPage on live pages", () => {
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
     await db.tracks.bulkAdd(SEED);
+    resetSearchIndex();
+    vi.mocked(searchTrackIds).mockClear();
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     pageSpy = vi.spyOn(TrackScope.prototype, "page");
     windowSpy = vi.spyOn(TrackScope.prototype, "window");
@@ -196,8 +204,8 @@ describe("useLikedTracksPage on live pages", () => {
     await loadPages(api, 1);
     const live = ids(api);
     const matches = api.tracks.value.slice(0, 2);
-    let answer!: (page: PaginatedTracksResult) => void;
-    vi.mocked(searchLikedTracks).mockImplementation(() => new Promise((resolve) => { answer = resolve; }));
+    let answer!: (found: SearchedTrackIds) => void;
+    vi.mocked(searchTrackIds).mockImplementationOnce(() => new Promise((resolve) => { answer = resolve; }));
 
     const shown: number[] = [];
     const loading: boolean[] = [];
@@ -205,14 +213,18 @@ describe("useLikedTracksPage on live pages", () => {
     watch(api.isLoading, value => loading.push(value), { flush: "sync" });
 
     searchQuery.value = "t11";
+    await until(() => vi.mocked(searchTrackIds).mock.calls.length > 0);
     await flushPromises();
 
-    expect(vi.mocked(searchLikedTracks)).toHaveBeenCalledWith("t11", 0, undefined, null);
+    const [query, within, sort] = vi.mocked(searchTrackIds).mock.calls[0];
+    expect([query, sort]).toEqual(["t11", null]);
+    expect([...within ?? []].sort()).toEqual(ascending(0, 120));
     expect(ids(api)).toEqual(live);
 
-    answer({ tracks: matches, nextOffset: null, total: 2, totalDuration: 200 });
+    answer({ ids: matches.map(track => track.id), matches: {}, total: 2, totalDuration: 200 });
     await until(() => api.tracks.value.length === 2);
 
+    expect(ids(api)).toEqual(matches.map(track => track.id));
     expect(api.likedData.value.trackCount).toBe(2);
     expect(api.hasNextPage.value).toBe(false);
 
@@ -227,5 +239,32 @@ describe("useLikedTracksPage on live pages", () => {
     expect(api.likedData.value.trackCount).toBe(120);
     expect(shown.every(length => length > 0)).toBe(true);
     expect(loading).toEqual([]);
+  });
+
+  it("liked: a search string reads live rows and follows the index", async () => {
+    const writer = new QueryClient();
+    await db.tracks.update(TrackId("t005"), { title: "Glory Box" });
+    await db.tracks.update(TrackId("t006"), { title: "Glory Days" });
+    await db.tracks.update(TrackId("a000"), { title: "Glory Unliked" });
+    const api = mountPage(ref(null), ref("glory"));
+    await until(() => api.tracks.value.length === 2);
+
+    expect([...ids(api)].sort()).toEqual([TrackId("t005"), TrackId("t006")]);
+    expect(api.likedData.value.trackCount).toBe(2);
+
+    await toggleTrackLikeAndSync(writer, await trackOf("a000"));
+    await until(() => ids(api).includes(TrackId("a000")));
+
+    expect(api.likedData.value.trackCount).toBe(3);
+
+    await toggleTrackLikeAndSync(writer, await trackOf("t005"));
+    await until(() => !ids(api).includes(TrackId("t005")));
+
+    await updateTrackMetadataAndSync(writer, await trackOf("t006"), { title: "Sunny", artistNames: ["A"] });
+    await until(() => !ids(api).includes(TrackId("t006")));
+
+    expect(ids(api)).toEqual([TrackId("a000")]);
+    expect(api.likedData.value.trackCount).toBe(1);
+    expect(api.isError.value).toBe(false);
   });
 });

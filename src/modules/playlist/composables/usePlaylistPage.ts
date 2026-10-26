@@ -1,6 +1,6 @@
 import { computed, shallowRef, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
+import { useMutation, useQueryClient } from "@tanstack/vue-query";
 import { PlaylistId } from "@/types/ids";
 import { formatTotalDuration } from "@/lib/format/time";
 import { getLogger } from "@/lib/logger";
@@ -11,6 +11,7 @@ import { queryKeys } from "@/queries/query-keys";
 import {
   deletePlaylistAndSync,
   getPlaylistByIdOrThrow,
+  getPlaylistLibraryRow,
   getPlaylistPageData,
   readPlaylistTotals,
   readPlaylistTracks,
@@ -25,6 +26,7 @@ import { useLiveQuery } from "@/composables/useLiveQuery";
 import type { Track } from "@/types/track";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { useLiveTrackList } from "@/modules/tracks/composables/useLiveTrackList";
+import { useLiveSearchList } from "@/modules/tracks/composables/useLiveSearchList";
 import { useSourcePlaylist, useSourcePlaylistPages } from "@/modules/sources/composables/useSourceCatalog";
 import { useCatalogEntity } from "@/modules/sources/composables/useCatalogEntity";
 import { pagedPlaylistKindOf } from "@/modules/sources/lib/catalog-kind";
@@ -104,22 +106,11 @@ export const usePlaylistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: 
 
   const playlist = path.libraryRow(header);
 
-  const {
-    data: searchData,
-    isError: isSearchError,
-    isFetchNextPageError: isSearchFetchNextPageError,
-    error: searchError,
-    refetch: refetchSearch,
-    fetchNextPage: fetchNextSearchPage,
-    hasNextPage: hasNextSearchPage,
-    isFetchingNextPage: isFetchingNextSearchPage,
-  } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.playlists.tracksPage(playlistId.value, sortKey.value, normalizedSearchQuery.value)),
-    queryFn: ({ pageParam }) =>
-      searchPlaylistTracks(playlistId.value, normalizedSearchQuery.value, pageParam, undefined, sortKey.value),
-    initialPageParam: 0,
-    getNextPageParam: lastPage => lastPage.nextOffset,
-    enabled: computed(() => !!playlist.value && isSearching.value),
+  const search = useLiveSearchList({
+    query: () => normalizedSearchQuery.value,
+    sort: () => sortKey.value,
+    within: async () => (await getPlaylistLibraryRow(playlistId.value))?.trackIds ?? [],
+    enabled: computed(() => !!playlist.value),
   });
 
   const liveList = computed<PlaylistList | undefined>(() => {
@@ -129,14 +120,9 @@ export const usePlaylistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: 
 
   // A filtered list reports the matches' own count and duration.
   const searchList = computed<PlaylistList | undefined>(() => {
-    const data = searchData.value;
-    if (!data) return undefined;
-    const [first] = data.pages;
-    return {
-      tracks: data.pages.flatMap(page => page.tracks),
-      count: first.total,
-      seconds: first.totalDuration ?? liveTotals.data.value?.seconds ?? 0,
-    };
+    const found = search.list.value;
+    if (!found) return undefined;
+    return { tracks: found.tracks, count: found.total, seconds: found.totalDuration };
   });
 
   // A sort or search switch keeps the shown list until the next one has its first page.
@@ -144,11 +130,8 @@ export const usePlaylistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: 
     (isSearching.value ? searchList.value : liveList.value) ?? previous,
   );
 
-  // TanStack reports "no error" as null; the live reads as undefined.
   const listError = computed(() => {
-    if (isSearching.value) {
-      return isSearchError.value && !isSearchFetchNextPageError.value ? searchError.value ?? undefined : undefined;
-    }
+    if (isSearching.value) return search.isError.value ? search.error.value : undefined;
     return list.isError.value ? list.error.value : liveTotals.error.value;
   });
   const localError = computed(() => headerError.value ?? listError.value);
@@ -184,22 +167,22 @@ export const usePlaylistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: 
       return;
     }
     if (isSearching.value) {
-      await fetchNextSearchPage();
+      await search.fetchNextPage();
       return;
     }
     await list.fetchNextPage();
   };
   const hasNextPage = computed(() => {
     if (isPaged.value) return pagedQuery.hasNextPage.value;
-    return isSearching.value ? hasNextSearchPage.value : list.hasNextPage.value;
+    return isSearching.value ? search.hasNextPage.value : list.hasNextPage.value;
   });
   const isFetchingNextPage = computed(() => {
     if (isPaged.value) return pagedQuery.isFetchingNextPage.value;
-    return isSearching.value ? isFetchingNextSearchPage.value : list.isFetchingNextPage.value;
+    return isSearching.value ? search.isFetchingNextPage.value : list.isFetchingNextPage.value;
   });
   const isFetchNextPageError = computed(() => {
     if (isPaged.value) return pagedQuery.isFetchNextPageError.value;
-    return isSearching.value ? isSearchFetchNextPageError.value : list.isFetchNextPageError.value;
+    return isSearching.value ? search.isFetchNextPageError.value : list.isFetchNextPageError.value;
   });
   // On the whole-playlist path the tracks came with the playlist itself, so
   // there is no second load to wait on.
@@ -250,11 +233,11 @@ export const usePlaylistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: 
 
   const error = computed(() => localError.value ?? list.error.value);
 
-  const refetch = async () => {
+  const refetch = () => {
     liveHeader.refetch();
     liveTotals.refetch();
     if (isSearching.value) {
-      await refetchSearch();
+      search.refetch();
       return;
     }
     list.refetch();

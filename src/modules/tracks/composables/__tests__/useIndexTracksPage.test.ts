@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, ref } from "vue";
-import { flushPromises, mount } from "@vue/test-utils";
+import { mount } from "@vue/test-utils";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { db } from "@/db";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
@@ -14,14 +14,10 @@ const LIBRARY_TOTAL = 500;
 
 vi.mock("@/queries/track.queries", async importOriginal => ({
   ...await importOriginal<typeof import("@/queries/track.queries")>(),
-  searchTracksPaginated: vi.fn(async (_query: string, offset: number) => ({
-    tracks: [{ id: `hit-${offset}` }],
-    nextOffset: offset === 0 ? 1 : null,
-    total: 2,
-  })),
+  searchTrackIds: vi.fn(),
 }));
 
-import { searchTracksPaginated } from "@/queries/track.queries";
+import { searchTrackIds } from "@/queries/track.queries";
 import { useIndexTracksPage } from "../useIndexTracksPage";
 
 const name = (index: number) => `track-${String(index).padStart(3, "0")}`;
@@ -131,18 +127,22 @@ describe("useIndexTracksPage", () => {
     wrapper.unmount();
   });
 
-  it("a search pages the index by offset from the first hit", async () => {
-    vi.mocked(searchTracksPaginated).mockClear();
+  it("a search reads its hit ids one page at a time, without the live pages", async () => {
+    const hits = Array.from({ length: 60 }, (_, i) => TrackId(name(i)));
+    vi.mocked(searchTrackIds).mockClear().mockResolvedValueOnce({ ids: hits, matches: {}, total: 60, totalDuration: 6000 });
     const page = vi.spyOn(TrackScope.prototype, "page");
     const { api, wrapper } = mountComposable("abba");
-    await flushPromises();
+    await until(() => !api.isLoading.value);
+
+    expect(api.tracks.value.map(track => track.id)).toEqual(hits.slice(0, PAGE_SIZE));
+    expect(api.total.value).toBe(60);
+    expect(api.hasNextPage.value).toBe(true);
 
     await api.fetchNextPage();
-    await flushPromises();
 
-    expect(vi.mocked(searchTracksPaginated).mock.calls.map(call => call[1])).toEqual([0, 1]);
-    expect(api.tracks.value.map(track => track.id)).toEqual(["hit-0", "hit-1"]);
+    expect(api.tracks.value.map(track => track.id)).toEqual(hits);
     expect(api.hasNextPage.value).toBe(false);
+    expect(vi.mocked(searchTrackIds)).toHaveBeenCalledTimes(1);
     expect(page).not.toHaveBeenCalled();
 
     wrapper.unmount();

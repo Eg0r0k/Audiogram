@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { TrackSource, TrackState, type PlaylistEntity, type TrackEntity } from "@/db/entities";
 import { playlistRepository } from "@/db/repositories";
 import { TrackScope } from "@/db/repositories/track.scope";
+import { resetSearchIndex, syncSearchIndex } from "@/services/search/searchIndex";
 import { addTracksToPlaylistAndSync, removeTrackFromPlaylistWithUndo } from "@/queries/playlist.queries";
 import { deleteTracksAndSync, getTracksByIds } from "@/queries/track.queries";
 import { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
@@ -102,6 +103,7 @@ describe("usePlaylistPage on live reads", () => {
     await db.albums.add({ id: ALBUM, title: "Album", artistId: ARTIST, pinned: 1, addedAt: 1, updatedAt: 1 });
     await db.tracks.bulkAdd(SEED);
     await db.playlists.add(PLAYLIST_ROW);
+    resetSearchIndex();
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     routing.route.params.id = "p1";
   });
@@ -220,5 +222,38 @@ describe("usePlaylistPage on live reads", () => {
     expect(api.playlist.value?.id).toBe(PLAYLIST);
     expect(ids(api)).toEqual(before);
     expect(rows).not.toHaveBeenCalled();
+  });
+
+  it("playlist: a search string reads live rows and follows the index", async () => {
+    const writer = new QueryClient();
+    await db.tracks.update(TrackId("t005"), { title: "Glory Box" });
+    await db.tracks.update(TrackId("t006"), { title: "Glory Days" });
+    await db.tracks.update(TrackId("x000"), { title: "Glory Extra" });
+    const api = mountPage(ref(null), ref("glory"));
+    await until(() => api.tracks.value.length === 2);
+
+    expect([...ids(api)].sort()).toEqual([TrackId("t005"), TrackId("t006")]);
+    expect(api.trackCount.value).toBe(2);
+    expect(api.totalDuration.value).toBe("common.minutesShort:3");
+
+    const [track] = await getTracksByIds([TrackId("x000")]);
+    await addTracksToPlaylistAndSync(writer, PLAYLIST, [track]);
+    await until(() => ids(api).includes(TrackId("x000")));
+
+    expect(api.trackCount.value).toBe(3);
+    expect(api.totalDuration.value).toBe("common.minutesShort:13");
+
+    await removeTrackFromPlaylistWithUndo(writer, PLAYLIST, TrackId("t005"));
+    await until(() => !ids(api).includes(TrackId("t005")));
+
+    await db.tracks.update(TrackId("t006"), { title: "Sunny" });
+    await until(() => api.tracks.value.find(row => row.id === TrackId("t006"))?.title === "Sunny");
+    await syncSearchIndex({ tracks: [TrackId("t006")] });
+    await until(() => !ids(api).includes(TrackId("t006")));
+
+    expect(ids(api)).toEqual([TrackId("x000")]);
+    expect(api.trackCount.value).toBe(1);
+    expect(api.totalDuration.value).toBe("common.minutesShort:10");
+    expect(api.isError.value).toBe(false);
   });
 });

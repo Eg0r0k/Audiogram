@@ -6,6 +6,7 @@ import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { db } from "@/db";
 import { TrackSource, TrackState, type AlbumEntity, type ArtistEntity, type TrackEntity } from "@/db/entities";
 import { TrackScope } from "@/db/repositories/track.scope";
+import { resetSearchIndex, syncSearchIndex } from "@/services/search/searchIndex";
 import { createAlbumAndSync } from "@/queries/album.queries";
 import { getArtistPageData, updateArtistAndSync } from "@/queries/artist.queries";
 import { deleteTracksAndSync } from "@/queries/track.queries";
@@ -117,6 +118,7 @@ describe("useArtistPage on live reads", () => {
       album("al4", { pinned: 0, year: 2020 }),
     ]);
     await db.tracks.bulkAdd(SEED);
+    resetSearchIndex();
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     writer = new QueryClient();
     routing.route.params.id = "ar1";
@@ -203,5 +205,30 @@ describe("useArtistPage on live reads", () => {
     expect(ids(api)).toEqual(before);
     expect(albumIds(api)).toEqual([AlbumId("al2"), AlbumId("al1")]);
     expect(rows).not.toHaveBeenCalled();
+  });
+
+  it("artist: a search string reads live rows and follows the index", async () => {
+    const api = mountPage(ref(null), ref("zz"));
+    await until(() => api.tracks.value.length === 20);
+
+    expect([...ids(api)].sort()).toEqual(Array.from({ length: 20 }, (_, i) => TrackId(name(i * 3))));
+    expect(api.trackCount.value).toBe(20);
+
+    await deleteTracksAndSync(writer, [TrackId(name(3))]);
+    await until(() => !ids(api).includes(TrackId(name(3))));
+
+    expect(api.trackCount.value).toBe(19);
+
+    await db.tracks.update(TrackId(name(1)), { title: "zz top" });
+    await quiet();
+
+    expect(ids(api)).not.toContain(TrackId(name(1)));
+
+    await syncSearchIndex({ tracks: [TrackId(name(1))] });
+    await until(() => ids(api).includes(TrackId(name(1))));
+
+    expect(api.trackCount.value).toBe(20);
+    expect(api.tracks.value.find(track => track.id === TrackId(name(1)))?.title).toBe("zz top");
+    expect(api.isError.value).toBe(false);
   });
 });

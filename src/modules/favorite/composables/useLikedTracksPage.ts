@@ -1,15 +1,14 @@
 import { computed, onScopeDispose, shallowRef, triggerRef, watch, type Ref, type ShallowRef } from "vue";
-import { useInfiniteQuery, useQuery } from "@tanstack/vue-query";
+import { useQuery } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { formatTotalDuration } from "@/lib/format/time";
 import type { LikedData } from "@/types/media-data";
 import type { Track } from "@/types/track";
-import { queryKeys } from "@/queries/query-keys";
 import { libraryQueries } from "@/queries/library.queries";
-import { likedTrackScope, loadTrackRelations, searchLikedTracks, trackQueries } from "@/queries/track.queries";
-import type { PaginatedTracksResult, TrackPageParam } from "@/queries/types";
+import { likedTrackScope, loadTrackRelations, trackQueries } from "@/queries/track.queries";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { LivePages, uniqueById } from "@/modules/tracks/lib/livePages";
+import { useLiveSearchList } from "@/modules/tracks/composables/useLiveSearchList";
 
 const PAGE_SIZE = 50;
 
@@ -24,22 +23,10 @@ export const useLikedTracksPage = (sortKey: Ref<TrackSortKey | null>, searchQuer
   const normalizedSearchQuery = computed(() => searchQuery.value.trim());
   const isSearching = computed(() => normalizedSearchQuery.value !== "");
 
-  const {
-    data: searchData,
-    isError: isSearchError,
-    isFetchNextPageError: isSearchFetchNextPageError,
-    error: searchError,
-    refetch: refetchSearch,
-    fetchNextPage: fetchNextSearchPage,
-    hasNextPage: hasNextSearchPage,
-    isFetchingNextPage: isFetchingNextSearchPage,
-  } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.tracks.likedPageInfinite(sortKey.value, normalizedSearchQuery.value)),
-    queryFn: ({ pageParam }) =>
-      searchLikedTracks(normalizedSearchQuery.value, typeof pageParam === "number" ? pageParam : 0, undefined, sortKey.value),
-    initialPageParam: null as TrackPageParam,
-    getNextPageParam: (lastPage: PaginatedTracksResult) => lastPage.last === undefined ? lastPage.nextOffset : lastPage.last,
-    enabled: isSearching,
+  const search = useLiveSearchList({
+    query: () => normalizedSearchQuery.value,
+    sort: () => sortKey.value,
+    within: () => likedTrackScope().ids(),
   });
 
   const pages: ShallowRef<LivePages<Track>> = shallowRef(new LivePages<Track>({
@@ -75,14 +62,9 @@ export const useLikedTracksPage = (sortKey: Ref<TrackSortKey | null>, searchQuer
 
   // A filtered list reports the matches' own count and duration.
   const searchList = computed<LikedList | undefined>(() => {
-    const data = searchData.value;
-    if (!data) return undefined;
-    const [first] = data.pages;
-    return {
-      tracks: data.pages.flatMap(page => page.tracks),
-      count: first.total,
-      seconds: first.totalDuration ?? likedSeconds.data.value ?? 0,
-    };
+    const found = search.list.value;
+    if (!found) return undefined;
+    return { tracks: found.tracks, count: found.total, seconds: found.totalDuration };
   });
 
   // A sort or search switch keeps the shown list until the next one has its first page.
@@ -96,28 +78,26 @@ export const useLikedTracksPage = (sortKey: Ref<TrackSortKey | null>, searchQuer
   const liveError = computed(() => pages.value.error ?? summary.error.value ?? likedSeconds.error.value ?? undefined);
 
   // A failed next page is shown at the end of the list it failed to extend.
-  const isError = computed(() => isSearching.value
-    ? isSearchError.value && !isSearchFetchNextPageError.value
-    : liveError.value !== undefined);
+  const isError = computed(() => isSearching.value ? search.isError.value : liveError.value !== undefined);
   const isLoading = computed(() => shownList.value === undefined && !isError.value);
-  const error = computed(() => isSearching.value ? searchError.value : liveError.value ?? pages.value.loadMoreError);
-  const hasNextPage = computed(() => isSearching.value ? hasNextSearchPage.value : pages.value.hasMore);
-  const isFetchingNextPage = computed(() => isSearching.value ? isFetchingNextSearchPage.value : pages.value.isLoadingMore);
+  const error = computed(() => isSearching.value ? search.error.value : liveError.value ?? pages.value.loadMoreError);
+  const hasNextPage = computed(() => isSearching.value ? search.hasNextPage.value : pages.value.hasMore);
+  const isFetchingNextPage = computed(() => isSearching.value ? search.isFetchingNextPage.value : pages.value.isLoadingMore);
   const isFetchNextPageError = computed(() => isSearching.value
-    ? isSearchFetchNextPageError.value
+    ? search.isFetchNextPageError.value
     : pages.value.loadMoreError !== undefined);
 
   const fetchNextPage = async () => {
     if (isSearching.value) {
-      await fetchNextSearchPage();
+      await search.fetchNextPage();
       return;
     }
     await pages.value.loadMore();
   };
 
-  const refetch = async () => {
+  const refetch = () => {
     if (isSearching.value) {
-      await refetchSearch();
+      search.refetch();
       return;
     }
     summary.refetch().catch(() => {});

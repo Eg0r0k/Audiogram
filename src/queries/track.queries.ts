@@ -137,6 +137,7 @@ const invalidateTrackRelations = async (queryClient: QueryClient) => {
 // Live lists project the scope inside their own queriers; D1 keeps the repository import here.
 export const likedTrackScope = (): TrackScope => trackRepository.liked();
 export const memberTrackScope = (): TrackScope => trackRepository.members();
+export const idsTrackScope = (ids: readonly TrackId[]): TrackScope => trackRepository.withIds(ids);
 
 export async function getLikedTracks() {
   return trackRepository.liked().rows();
@@ -265,6 +266,26 @@ export async function searchTracksPaginated(
     matches,
   };
 }
+
+export interface SearchedTrackIds {
+  ids: TrackId[];
+  matches: Record<string, SearchMatch>;
+  total: number;
+  totalDuration: number;
+}
+
+// A sort re-sorts every hit, so a list reads any prefix of `ids` as its top rows.
+export const searchTrackIds = async (
+  query: string,
+  within: readonly TrackId[] | undefined,
+  sortKey: TrackSortKey | null,
+): Promise<SearchedTrackIds> => {
+  if (within?.length === 0) return { ids: [], matches: {}, total: 0, totalDuration: 0 };
+  const response = await searchDocuments(query, "track", { offset: 0, within: within ? new Set(within) : undefined });
+  const hits = response.results.map(item => item.entityId as TrackId);
+  const ids = sortKey ? await trackRepository.withIds(hits).ids(sortKey) : hits;
+  return { ids, matches: matchesByEntity(response.results), total: ids.length, totalDuration: response.totalDuration };
+};
 
 /**
  * A search scoped to one collection's rows: hits are filtered inside the

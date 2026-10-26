@@ -1,10 +1,9 @@
 import { computed, shallowRef, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
+import { useMutation, useQueryClient } from "@tanstack/vue-query";
 import { AlbumId } from "@/types/ids";
 import type { AlbumData } from "@/types/media-data";
 import type { Track } from "@/types/track";
-import { queryKeys } from "@/queries/query-keys";
 import { formatTotalDuration } from "@/lib/format/time";
 import { getLogger } from "@/lib/logger";
 import { useI18n } from "vue-i18n";
@@ -16,12 +15,12 @@ import {
   type AlbumChanges,
   updateAlbumAndSync,
 } from "@/queries/album.queries";
-import { searchAlbumTracks } from "@/queries/track.queries";
 import { getArtistLibraryRow } from "@/queries/artist.queries";
 import { routeLocation } from "@/app/router/route-locations";
 import { useLiveQuery } from "@/composables/useLiveQuery";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { useLiveTrackList } from "@/modules/tracks/composables/useLiveTrackList";
+import { useLiveSearchList } from "@/modules/tracks/composables/useLiveSearchList";
 import { useSourceAlbum } from "@/modules/sources/composables/useSourceCatalog";
 import { useCatalogEntity } from "@/modules/sources/composables/useCatalogEntity";
 import { sourceAlbumToAlbumData, sourceTrackToDisplay } from "@/modules/sources/lib/display";
@@ -88,22 +87,11 @@ export const useAlbumPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
     return row ? { id: row.id, name: row.name } : null;
   });
 
-  const {
-    data: searchData,
-    isError: isSearchError,
-    isFetchNextPageError: isSearchFetchNextPageError,
-    error: searchError,
-    refetch: refetchSearch,
-    fetchNextPage: fetchNextSearchPage,
-    hasNextPage: hasNextSearchPage,
-    isFetchingNextPage: isFetchingNextSearchPage,
-  } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.albums.tracksPage(albumId.value, sortKey.value, normalizedSearchQuery.value)),
-    queryFn: ({ pageParam }) =>
-      searchAlbumTracks(albumId.value, normalizedSearchQuery.value, pageParam, undefined, sortKey.value),
-    initialPageParam: 0,
-    getNextPageParam: lastPage => lastPage.nextOffset,
-    enabled: computed(() => !!album.value && isSearching.value),
+  const search = useLiveSearchList({
+    query: () => normalizedSearchQuery.value,
+    sort: () => sortKey.value,
+    within: () => albumTrackScope(albumId.value).ids(),
+    enabled: computed(() => !!album.value),
   });
 
   const liveList = computed<AlbumList | undefined>(() => {
@@ -113,14 +101,9 @@ export const useAlbumPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
 
   // A filtered list reports the matches' own count and duration.
   const searchList = computed<AlbumList | undefined>(() => {
-    const data = searchData.value;
-    if (!data) return undefined;
-    const [first] = data.pages;
-    return {
-      tracks: data.pages.flatMap(page => page.tracks),
-      count: first.total,
-      seconds: first.totalDuration ?? liveTotals.data.value?.seconds ?? 0,
-    };
+    const found = search.list.value;
+    if (!found) return undefined;
+    return { tracks: found.tracks, count: found.total, seconds: found.totalDuration };
   });
 
   // A sort or search switch keeps the shown list until the next one has its first page.
@@ -128,11 +111,8 @@ export const useAlbumPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
     (isSearching.value ? searchList.value : liveList.value) ?? previous,
   );
 
-  // TanStack reports "no error" as null; the live reads as undefined.
   const listError = computed(() => {
-    if (isSearching.value) {
-      return isSearchError.value && !isSearchFetchNextPageError.value ? searchError.value ?? undefined : undefined;
-    }
+    if (isSearching.value) return search.isError.value ? search.error.value : undefined;
     return list.isError.value ? list.error.value : liveTotals.error.value;
   });
   const localError = computed(() => headerError.value ?? listError.value);
@@ -207,25 +187,25 @@ export const useAlbumPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
     };
   });
 
-  const hasNextPage = computed(() => isSearching.value ? hasNextSearchPage.value : list.hasNextPage.value);
-  const isFetchingNextPage = computed(() => isSearching.value ? isFetchingNextSearchPage.value : list.isFetchingNextPage.value);
+  const hasNextPage = computed(() => isSearching.value ? search.hasNextPage.value : list.hasNextPage.value);
+  const isFetchingNextPage = computed(() => isSearching.value ? search.isFetchingNextPage.value : list.isFetchingNextPage.value);
   const isFetchNextPageError = computed(() => isSearching.value
-    ? isSearchFetchNextPageError.value
+    ? search.isFetchNextPageError.value
     : list.isFetchNextPageError.value);
 
   const fetchNextPage = async () => {
     if (isSearching.value) {
-      await fetchNextSearchPage();
+      await search.fetchNextPage();
       return;
     }
     await list.fetchNextPage();
   };
 
-  const refetch = async () => {
+  const refetch = () => {
     liveHeader.refetch();
     liveTotals.refetch();
     if (isSearching.value) {
-      await refetchSearch();
+      search.refetch();
       return;
     }
     list.refetch();

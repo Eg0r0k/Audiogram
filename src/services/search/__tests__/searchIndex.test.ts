@@ -112,6 +112,27 @@ describe("syncSearchIndex", () => {
   });
 });
 
+describe("onSearchIndexChanged", () => {
+  it("fires onSearchIndexChanged after a sync and after a rebuild", async () => {
+    buildAllSearchDocuments.mockResolvedValue([alphaDoc]);
+    repositories.trackRepository.findByIds.mockResolvedValue([]);
+    const seen: number[] = [];
+    searchIndex.onSearchIndexChanged(async () => {
+      seen.push((await searchIndex.searchDocuments("alpha", "all")).total);
+    });
+
+    await searchIndex.syncSearchIndex({});
+    expect(seen).toEqual([]);
+
+    await searchIndex.syncSearchIndex({ tracks: [TrackId("t1")] });
+    await vi.waitFor(() => expect(seen).toEqual([0]));
+
+    await searchIndex.rebuildSearchIndex();
+    await vi.waitFor(() => expect(seen).toEqual([0, 1]));
+    expect(buildAllSearchDocuments).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("searchTracks hydration by id", () => {
   it("plays the DB storagePath, not anything embedded in the index", async () => {
     buildAllSearchDocuments.mockResolvedValue([alphaDoc]);
