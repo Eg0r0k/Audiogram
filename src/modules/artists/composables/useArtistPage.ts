@@ -1,23 +1,27 @@
-import { computed, type Ref } from "vue";
+import { computed, shallowRef, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
 import { ArtistId } from "@/types/ids";
 import type { ArtistData } from "@/types/media-data";
+import type { Track } from "@/types/track";
 import { queryKeys } from "@/queries/query-keys";
 import { getLogger } from "@/lib/logger";
 import { useEntityCover } from "@/modules/covers/composables/useEntityCover";
 import {
-  artistQueries,
+  artistTrackScope,
   deleteArtistAndSync,
-  getArtistAlbumsPaginated,
-  getArtistTracksPaginated,
+  getArtistByIdOrThrow,
+  readArtistAlbums,
+  readArtistTracks,
   type ArtistChanges,
   updateArtistAndSync,
 } from "@/queries/artist.queries";
 import { searchArtistTracks } from "@/queries/track.queries";
 import { statsQueries } from "@/queries/stats.queries";
 import { routeLocation } from "@/app/router/route-locations";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 import type { TrackSortKey } from "@/modules/tracks/types";
+import { useLiveTrackList } from "@/modules/tracks/composables/useLiveTrackList";
 import { useSourceArtist } from "@/modules/sources/composables/useSourceCatalog";
 import { useCatalogEntity } from "@/modules/sources/composables/useCatalogEntity";
 import { THUMB_SIZE_CARD } from "@/lib/media/cover-sizes";
@@ -42,50 +46,105 @@ function sourceAlbumToLibraryAlbum(dto: SourceAlbumDTO): AlbumEntity {
   };
 }
 
-export function useArtistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) {
+interface ArtistList {
+  tracks: Track[];
+  count: number;
+}
+
+export const useArtistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) => {
   const route = useRoute();
   const normalizedSearchQuery = computed(() => searchQuery.value.trim());
+  const isSearching = computed(() => normalizedSearchQuery.value !== "");
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const artistId = computed(() => ArtistId(route.params.id as string));
+  // Pages are keyed by fullPath, so the id is fixed per instance; a page sliding out must not read the next route's id.
+  const artistId = shallowRef(ArtistId(route.params.id as string));
 
   const path = useCatalogEntity("artists", artistId);
   const { remoteKind, isRemote, remoteId, localEnabled } = path;
 
   const remoteQuery = useSourceArtist(remoteKind, remoteId);
 
-  const {
-    data: artistData,
-    isLoading: isLocalArtistLoading,
-    isError: isLocalError,
-    error,
-    refetch,
-  } = useQuery(computed(() => artistQueries.detail(artistId.value, localEnabled.value)));
+  const liveArtist = useLiveQuery(
+    async () => getArtistByIdOrThrow(artistId.value),
+    () => [artistId.value],
+    { enabled: localEnabled },
+  );
 
-  const { isError, isLoading: isArtistLoading } = path.pathState(remoteQuery, {
-    isLoading: isLocalArtistLoading,
-    isError: isLocalError,
+  // An artist's own rows are few, so its track count stays live.
+  const liveTrackCount = useLiveQuery(
+    async () => artistTrackScope(artistId.value).members().count(),
+    () => [artistId.value],
+    { enabled: localEnabled },
+  );
+
+  const liveAlbums = useLiveQuery(
+    async () => readArtistAlbums(artistId.value),
+    () => [artistId.value],
+    { enabled: localEnabled },
+  );
+
+  const list = useLiveTrackList({
+    read: limit => readArtistTracks(artistId.value, sortKey.value, limit),
+    deps: () => [artistId.value, sortKey.value],
+    enabled: computed(() => localEnabled.value && !isSearching.value),
   });
 
-  const artist = path.libraryRow(artistData);
+  // A failed re-read keeps the last row, so an artist deleted under the page stays until the delete navigates away.
+  const artistRow = liveArtist.data;
+  const headerError = computed(() => (artistRow.value ? undefined : liveArtist.error.value));
+
+  const artist = path.libraryRow(artistRow);
 
   const {
-    data: tracksInfiniteData,
-    fetchNextPage: fetchNextTrackPage,
-    hasNextPage: hasNextTrackPage,
-    isLoading: isTracksLoading,
-    isFetchingNextPage: isFetchingNextTrackPage,
-    isFetchNextPageError: isFetchNextTrackPageError,
+    data: searchData,
+    isError: isSearchError,
+    isFetchNextPageError: isSearchFetchNextPageError,
+    error: searchError,
+    refetch: refetchSearch,
+    fetchNextPage: fetchNextSearchPage,
+    hasNextPage: hasNextSearchPage,
+    isFetchingNextPage: isFetchingNextSearchPage,
   } = useInfiniteQuery({
     queryKey: computed(() => queryKeys.artists.tracksPage(artistId.value, sortKey.value, normalizedSearchQuery.value)),
-    queryFn: ({ pageParam = 0, client }) => normalizedSearchQuery.value
-      ? searchArtistTracks(artistId.value, normalizedSearchQuery.value, pageParam, undefined, sortKey.value)
-      : getArtistTracksPaginated(artistId.value, pageParam, undefined, sortKey.value, client),
+    queryFn: ({ pageParam }) =>
+      searchArtistTracks(artistId.value, normalizedSearchQuery.value, pageParam, undefined, sortKey.value),
     initialPageParam: 0,
     getNextPageParam: lastPage => lastPage.nextOffset,
-    placeholderData: previousData => previousData,
-    enabled: computed(() => !isRemote.value && !!artist.value),
+    enabled: computed(() => !!artist.value && isSearching.value),
+  });
+
+  const liveList = computed<ArtistList | undefined>(() => {
+    const count = liveTrackCount.data.value;
+    return list.isLoading.value || count === undefined ? undefined : { tracks: list.tracks.value, count };
+  });
+
+  // A filtered list reports the matches' own count.
+  const searchList = computed<ArtistList | undefined>(() => {
+    const data = searchData.value;
+    if (!data) return undefined;
+    const [first] = data.pages;
+    return { tracks: data.pages.flatMap(page => page.tracks), count: first.total };
+  });
+
+  // A sort or search switch keeps the shown list until the next one has its first page.
+  const shownList = computed<ArtistList | undefined>(previous =>
+    (isSearching.value ? searchList.value : liveList.value) ?? previous,
+  );
+
+  // TanStack reports "no error" as null; the live reads as undefined.
+  const listError = computed(() => {
+    if (isSearching.value) {
+      return isSearchError.value && !isSearchFetchNextPageError.value ? searchError.value ?? undefined : undefined;
+    }
+    return list.isError.value ? list.error.value : liveTrackCount.error.value;
+  });
+  const localError = computed(() => headerError.value ?? listError.value ?? liveAlbums.error.value);
+
+  const { isError, isLoading: isArtistLoading } = path.pathState(remoteQuery, {
+    isLoading: computed(() => !artistRow.value && headerError.value === undefined),
+    isError: computed(() => localError.value !== undefined),
   });
 
   // A catalog artist has no Dexie rows to page through; its top tracks ride
@@ -94,23 +153,10 @@ export function useArtistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Re
   const tracks = computed(() =>
     (isRemote.value
       ? (remoteQuery.data.value?.tracks ?? []).map(sourceTrackToDisplay)
-      : tracksInfiniteData.value?.pages.flatMap(page => page.tracks) ?? []),
+      : shownList.value?.tracks ?? []),
   );
 
   const canSort = computed(() => !isRemote.value);
-
-  const {
-    data: albumsInfiniteData,
-    fetchNextPage: fetchNextAlbumPage,
-    hasNextPage: hasNextAlbumPage,
-    isFetchingNextPage: isFetchingNextAlbumPage,
-  } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.artists.albums(artistId.value)),
-    queryFn: ({ pageParam = 0 }) => getArtistAlbumsPaginated(artistId.value, pageParam),
-    initialPageParam: 0,
-    getNextPageParam: lastPage => lastPage.nextOffset,
-    enabled: computed(() => !isRemote.value && !!artist.value),
-  });
 
   const remoteAlbums = computed(() => remoteQuery.data.value?.albums ?? []);
 
@@ -127,8 +173,13 @@ export function useArtistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Re
   const albums = computed(() =>
     isRemote.value
       ? remoteAlbums.value.map(sourceAlbumToLibraryAlbum)
-      : albumsInfiniteData.value?.pages.flatMap(page => page.albums) ?? [],
+      : liveAlbums.data.value ?? [],
   );
+
+  // The shelf reads every album of the artist at once, so it never has a next page.
+  const hasNextAlbumPage = computed(() => false);
+  const isFetchingNextAlbumPage = computed(() => false);
+  const fetchNextAlbumPage = () => Promise.resolve();
 
   // A shelf only catalog artists have: sources that carry no artist
   // playlists omit the field and the section never renders.
@@ -149,13 +200,13 @@ export function useArtistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Re
   );
 
   const trackCount = computed(
-    () => (isRemote.value ? 0 : tracksInfiniteData.value?.pages[0]?.total ?? 0),
+    () => (isRemote.value ? 0 : shownList.value?.count ?? 0),
   );
 
   const albumCount = computed(() =>
     isRemote.value
       ? remoteQuery.data.value?.artist.albumCount ?? remoteAlbums.value.length
-      : albumsInfiniteData.value?.pages[0]?.total ?? 0,
+      : liveAlbums.data.value?.length ?? 0,
   );
 
   const {
@@ -167,9 +218,19 @@ export function useArtistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Re
     computed(() => statsQueries.artistPlays(artistId.value)),
   );
 
-  const isLoading = computed(
-    () => isArtistLoading.value || isCoverLoading.value || isTracksLoading.value,
+  const isTracksLoading = computed(() =>
+    !isRemote.value && shownList.value === undefined && localError.value === undefined,
   );
+
+  const isShelfLoading = computed(() =>
+    !isRemote.value && liveAlbums.data.value === undefined && localError.value === undefined,
+  );
+
+  const isLoading = computed(
+    () => isArtistLoading.value || isCoverLoading.value || isTracksLoading.value || isShelfLoading.value,
+  );
+
+  const error = computed(() => localError.value ?? list.error.value);
 
   const artistDataMapped = computed<ArtistData | null>(() => {
     if (isRemote.value) {
@@ -189,9 +250,36 @@ export function useArtistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Re
     };
   });
 
+  const hasNextTrackPage = computed(() => isSearching.value ? hasNextSearchPage.value : list.hasNextPage.value);
+  const isFetchingNextTrackPage = computed(() => isSearching.value
+    ? isFetchingNextSearchPage.value
+    : list.isFetchingNextPage.value);
+  const isFetchNextTrackPageError = computed(() => isSearching.value
+    ? isSearchFetchNextPageError.value
+    : list.isFetchNextPageError.value);
+
+  const fetchNextTrackPage = async () => {
+    if (isSearching.value) {
+      await fetchNextSearchPage();
+      return;
+    }
+    await list.fetchNextPage();
+  };
+
+  const refetch = async () => {
+    liveArtist.refetch();
+    liveTrackCount.refetch();
+    liveAlbums.refetch();
+    if (isSearching.value) {
+      await refetchSearch();
+      return;
+    }
+    list.refetch();
+  };
+
   const { mutateAsync: deleteArtist } = useMutation({
     mutationFn: (options: { deleteTracks?: boolean } = {}) =>
-      deleteArtistAndSync(queryClient, artistData.value ?? null, options),
+      deleteArtistAndSync(queryClient, artist.value, options),
     onSuccess: () => {
       router.push(routeLocation.home())
         .catch(error => getLogger().error(`[Artist] Navigation home after delete failed: ${formatError(error)}`));
@@ -237,4 +325,4 @@ export function useArtistPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Re
     hasNextAlbumPage,
     isFetchingNextAlbumPage,
   };
-}
+};

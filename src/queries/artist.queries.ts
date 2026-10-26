@@ -1,4 +1,4 @@
-import type { ArtistEntity } from "@/db/entities";
+import type { AlbumEntity, ArtistEntity, TrackEntity } from "@/db/entities";
 import {
   albumRepository,
   artistRepository,
@@ -6,6 +6,7 @@ import {
   trackRepository,
 } from "@/db/repositories";
 import { DbError } from "@/db/errors/db.errors";
+import type { TrackScope } from "@/db/repositories/track.scope";
 import { unitOfWork, type Scope } from "@/db/unit-of-work";
 import { queryKeys } from "@/queries/query-keys";
 import { syncSearchIndex } from "@/services/search/searchIndex";
@@ -190,6 +191,15 @@ export async function getArtistAlbumsPaginated(
     total,
   };
 }
+
+export const artistTrackScope = (artistId: ArtistId): TrackScope => trackRepository.byArtist(artistId);
+
+// The queue reads through getArtistPageData; the scope's own sort would order descending ties differently.
+export const readArtistTracks = async (artistId: ArtistId, sortKey: TrackSortKey | null, limit: number): Promise<TrackEntity[]> =>
+  (await getArtistTrackEntities(artistId, sortKey)).slice(0, limit);
+
+export const readArtistAlbums = (artistId: ArtistId): Promise<AlbumEntity[]> =>
+  albumRepository.findByArtistIdPaginated(artistId, 0, Infinity);
 
 export const artistQueries = {
   detail: (artistId: ArtistId, enabled = true) =>
