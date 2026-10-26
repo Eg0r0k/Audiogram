@@ -49,6 +49,14 @@ const nextEmission = <T>(source: Readonly<Ref<T>>): Promise<T> =>
 
 const membersCount = () => trackRepository.members().count();
 
+const deferred = () => {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+};
+
 describe("useLiveQuery", () => {
   let scope: EffectScope;
   let subscribe: MockInstance<Subscribe>;
@@ -206,5 +214,25 @@ describe("useLiveQuery", () => {
     expect(live.isLoading.value).toBe(true);
     expect(live.data.value).toBeUndefined();
     expect(subscriptionAt(0).closed).toBe(true);
+  });
+
+  it("a write during the first run is not lost", async () => {
+    const gate = deferred();
+    // A promise resolved inside a querier pulls whoever awaits it into Dexie's liveQuery zone, where a write throws.
+    let hasRead = false;
+    const live = start(async () => {
+      const count = await membersCount();
+      hasRead = true;
+      await gate.promise;
+      return count;
+    });
+
+    await vi.waitFor(() => expect(hasRead).toBe(true));
+    await trackRepository.create(track("m4"));
+    gate.resolve();
+
+    await vi.waitFor(() => expect(live.data.value).toBe(4));
+    expect(live.error.value).toBeUndefined();
+    expect(live.isLoading.value).toBe(false);
   });
 });

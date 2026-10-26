@@ -1,5 +1,6 @@
-import { liveQuery, type Subscription } from "dexie";
+import type { Subscription } from "dexie";
 import type { TrackEntity } from "@/db/entities";
+import { liveRead } from "@/db/liveRead";
 import type { TrackIndexKey, TrackScope } from "@/db/repositories/track.scope";
 import type { TrackSortKey } from "@/types/track-sort";
 
@@ -47,7 +48,7 @@ const emptySlot = <T>(after: TrackIndexKey | null): Slot<T> => ({
 
 // Dexie may run a querier again after it threw, or never; the subscription ends here instead.
 const follow = <R>(querier: () => Promise<R>, next: (value: R) => void, fail: (cause: unknown) => void): Subscription => {
-  const subscription = liveQuery(querier).subscribe({
+  const subscription = liveRead(querier).subscribe({
     next,
     error: (cause: unknown) => {
       subscription.unsubscribe();

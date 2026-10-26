@@ -50,6 +50,16 @@ const observableProto = Object.getPrototypeOf(liveQuery(() => 0)) as { subscribe
 
 const quiet = () => new Promise(resolve => setTimeout(resolve, 50));
 
+const deferred = () => {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+};
+
+const readWindow = TrackScope.prototype.window;
+
 describe("LivePages", () => {
   let pageSpy: MockInstance<(options: TrackPageOptions) => Promise<TrackPage>>;
   let windowSpy: MockInstance<(options: TrackWindowOptions) => Promise<TrackEntity[]>>;
@@ -278,5 +288,34 @@ describe("LivePages", () => {
 
     expect(pages.error).toBeUndefined();
     expect(rowsOf(pages)).toEqual([descending("t", 70, 120)]);
+  });
+
+  it("a row deleted while a new window is taking its first read is not left behind", async () => {
+    const gate = deferred();
+    // A promise resolved inside a querier pulls whoever awaits it into Dexie's liveQuery zone, where a write throws.
+    let hasRead = false;
+    windowSpy.mockImplementationOnce(async function (this: TrackScope, options) {
+      const rows = await readWindow.call(this, options);
+      hasRead = true;
+      await gate.promise;
+      return rows;
+    });
+    const pages = create();
+    pages.start();
+    await until(() => pages.isLoaded);
+    await pages.loadMore();
+    await vi.waitFor(() => expect(hasRead).toBe(true));
+
+    await trackRepository.delete(TrackId("t100"));
+    gate.resolve();
+
+    await vi.waitFor(() => expect(pages.pages[0].rows).not.toContain(TrackId("t100")));
+    await quiet();
+
+    expect(rowsOf(pages)).toEqual([
+      descending("t", 70, 120).filter(id => id !== TrackId("t100")),
+      descending("t", 20, 70),
+    ]);
+    expect(pages.error).toBeUndefined();
   });
 });

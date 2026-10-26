@@ -1,4 +1,4 @@
-import { liveQuery, type Subscription } from "dexie";
+import type { Subscription } from "dexie";
 import {
   onScopeDispose,
   ref,
@@ -9,6 +9,7 @@ import {
   type Ref,
   type ShallowRef,
 } from "vue";
+import { liveRead } from "@/db/liveRead";
 
 export interface UseLiveQueryOptions {
   enabled?: MaybeRefOrGetter<boolean>;
@@ -46,7 +47,7 @@ export const useLiveQuery = <T>(
   const subscribe = () => {
     unsubscribe();
     // An async querier keeps Dexie's zone across its awaits, and a sync throw reaches error.
-    subscription = liveQuery(async () => querier()).subscribe({
+    subscription = liveRead(async () => querier()).subscribe({
       next: (value) => {
         data.value = value;
         error.value = undefined;
