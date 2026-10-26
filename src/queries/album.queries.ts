@@ -6,6 +6,7 @@ import {
   trackRepository,
 } from "@/db/repositories";
 import { DbError } from "@/db/errors/db.errors";
+import type { TrackScope } from "@/db/repositories/track.scope";
 import { unitOfWork } from "@/db/unit-of-work";
 import { queryKeys } from "@/queries/query-keys";
 import { syncSearchIndex } from "@/services/search/searchIndex";
@@ -180,6 +181,12 @@ async function getAlbumTrackEntities(albumId: AlbumId, sortKey: TrackSortKey | n
 
   return sortTracks(albumTracks, sortKey);
 }
+
+export const albumTrackScope = (albumId: AlbumId): TrackScope => trackRepository.inAlbum(albumId);
+
+// The album order is not an index order, so a limited read still sorts every row of the album first.
+export const readAlbumTracks = async (albumId: AlbumId, sortKey: TrackSortKey | null, limit: number): Promise<TrackEntity[]> =>
+  (await getAlbumTrackEntities(albumId, sortKey)).slice(0, limit);
 
 export const albumQueries = {
   detail: (albumId: AlbumId, enabled = true) =>

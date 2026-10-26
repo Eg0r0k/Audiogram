@@ -1,23 +1,27 @@
-import { computed, type Ref } from "vue";
+import { computed, shallowRef, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/vue-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { AlbumId } from "@/types/ids";
 import type { AlbumData } from "@/types/media-data";
+import type { Track } from "@/types/track";
 import { queryKeys } from "@/queries/query-keys";
 import { formatTotalDuration } from "@/lib/format/time";
 import { getLogger } from "@/lib/logger";
 import { useI18n } from "vue-i18n";
 import {
-  albumQueries,
+  albumTrackScope,
   deleteAlbumAndSync,
-  getAlbumTracksPaginated,
+  getAlbumByIdOrThrow,
+  readAlbumTracks,
   type AlbumChanges,
   updateAlbumAndSync,
 } from "@/queries/album.queries";
 import { searchAlbumTracks } from "@/queries/track.queries";
-import { artistQueries } from "@/queries/artist.queries";
+import { getArtistLibraryRow } from "@/queries/artist.queries";
 import { routeLocation } from "@/app/router/route-locations";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 import type { TrackSortKey } from "@/modules/tracks/types";
+import { useLiveTrackList } from "@/modules/tracks/composables/useLiveTrackList";
 import { useSourceAlbum } from "@/modules/sources/composables/useSourceCatalog";
 import { useCatalogEntity } from "@/modules/sources/composables/useCatalogEntity";
 import { sourceAlbumToAlbumData, sourceTrackToDisplay } from "@/modules/sources/lib/display";
@@ -26,51 +30,116 @@ import { formatError } from "@/lib/errors";
 
 export type { AlbumChanges } from "@/queries/album.queries";
 
-export function useAlbumPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) {
+interface AlbumList {
+  tracks: Track[];
+  count: number;
+  seconds: number;
+}
+
+export const useAlbumPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Ref<string>) => {
   const route = useRoute();
   const normalizedSearchQuery = computed(() => searchQuery.value.trim());
+  const isSearching = computed(() => normalizedSearchQuery.value !== "");
   const router = useRouter();
   const queryClient = useQueryClient();
   const { t } = useI18n();
 
-  const albumId = computed(() => AlbumId(route.params.id as string));
+  // Pages are keyed by fullPath, so the id is fixed per instance; a page sliding out must not read the next route's id.
+  const albumId = shallowRef(AlbumId(route.params.id as string));
 
   const path = useCatalogEntity("albums", albumId);
   const { remoteKind, isRemote, remoteId, localEnabled } = path;
 
   const remoteQuery = useSourceAlbum(remoteKind, remoteId);
 
-  const {
-    data: albumData,
-    isLoading: isLocalAlbumLoading,
-    isError: isLocalError,
-    error,
-    refetch,
-  } = useQuery(computed(() => albumQueries.detail(albumId.value, localEnabled.value)));
+  const liveHeader = useLiveQuery(
+    async () => {
+      const album = await getAlbumByIdOrThrow(albumId.value);
+      return { album, artist: await getArtistLibraryRow(album.artistId) };
+    },
+    () => [albumId.value],
+    { enabled: localEnabled },
+  );
 
-  const { isError, isLoading: isAlbumLoading } = path.pathState(remoteQuery, {
-    isLoading: isLocalAlbumLoading,
-    isError: isLocalError,
+  // An album's own rows are few, so its count and duration stay live.
+  const liveTotals = useLiveQuery(
+    async () => {
+      const members = albumTrackScope(albumId.value).members();
+      return { count: await members.count(), seconds: await members.sumDuration() };
+    },
+    () => [albumId.value],
+    { enabled: localEnabled },
+  );
+
+  const list = useLiveTrackList({
+    read: limit => readAlbumTracks(albumId.value, sortKey.value, limit),
+    deps: () => [albumId.value, sortKey.value],
+    enabled: computed(() => localEnabled.value && !isSearching.value),
   });
 
-  const album = path.libraryRow(albumData);
+  // A failed re-read keeps the last row, so an album deleted under the page stays until the delete navigates away.
+  const header = liveHeader.data;
+  const headerError = computed(() => (header.value ? undefined : liveHeader.error.value));
+
+  const album = path.libraryRow(computed(() => header.value?.album));
+
+  const artist = computed(() => {
+    const row = header.value?.artist;
+    return row ? { id: row.id, name: row.name } : null;
+  });
 
   const {
-    data: infiniteData,
-    fetchNextPage,
-    hasNextPage,
-    isLoading: isTracksLoading,
-    isFetchingNextPage,
-    isFetchNextPageError,
+    data: searchData,
+    isError: isSearchError,
+    isFetchNextPageError: isSearchFetchNextPageError,
+    error: searchError,
+    refetch: refetchSearch,
+    fetchNextPage: fetchNextSearchPage,
+    hasNextPage: hasNextSearchPage,
+    isFetchingNextPage: isFetchingNextSearchPage,
   } = useInfiniteQuery({
     queryKey: computed(() => queryKeys.albums.tracksPage(albumId.value, sortKey.value, normalizedSearchQuery.value)),
-    queryFn: ({ pageParam = 0, client }) => normalizedSearchQuery.value
-      ? searchAlbumTracks(albumId.value, normalizedSearchQuery.value, pageParam, undefined, sortKey.value)
-      : getAlbumTracksPaginated(albumId.value, pageParam, undefined, sortKey.value, client),
+    queryFn: ({ pageParam }) =>
+      searchAlbumTracks(albumId.value, normalizedSearchQuery.value, pageParam, undefined, sortKey.value),
     initialPageParam: 0,
     getNextPageParam: lastPage => lastPage.nextOffset,
-    placeholderData: previousData => previousData,
-    enabled: computed(() => !isRemote.value && !!album.value),
+    enabled: computed(() => !!album.value && isSearching.value),
+  });
+
+  const liveList = computed<AlbumList | undefined>(() => {
+    const totals = liveTotals.data.value;
+    return list.isLoading.value || !totals ? undefined : { tracks: list.tracks.value, ...totals };
+  });
+
+  // A filtered list reports the matches' own count and duration.
+  const searchList = computed<AlbumList | undefined>(() => {
+    const data = searchData.value;
+    if (!data) return undefined;
+    const [first] = data.pages;
+    return {
+      tracks: data.pages.flatMap(page => page.tracks),
+      count: first.total,
+      seconds: first.totalDuration ?? liveTotals.data.value?.seconds ?? 0,
+    };
+  });
+
+  // A sort or search switch keeps the shown list until the next one has its first page.
+  const shownList = computed<AlbumList | undefined>(previous =>
+    (isSearching.value ? searchList.value : liveList.value) ?? previous,
+  );
+
+  // TanStack reports "no error" as null; the live reads as undefined.
+  const listError = computed(() => {
+    if (isSearching.value) {
+      return isSearchError.value && !isSearchFetchNextPageError.value ? searchError.value ?? undefined : undefined;
+    }
+    return list.isError.value ? list.error.value : liveTotals.error.value;
+  });
+  const localError = computed(() => headerError.value ?? listError.value);
+
+  const { isError, isLoading: isAlbumLoading } = path.pathState(remoteQuery, {
+    isLoading: computed(() => !header.value && headerError.value === undefined),
+    isError: computed(() => localError.value !== undefined),
   });
 
   const remoteTracks = computed(() =>
@@ -85,37 +154,24 @@ export function useAlbumPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
   const canSort = computed(() => !isRemote.value);
 
   const tracks = computed(() =>
-    isRemote.value
-      ? remoteTracks.value
-      : infiniteData.value?.pages.flatMap(page => page.tracks) ?? [],
+    isRemote.value ? remoteTracks.value : shownList.value?.tracks ?? [],
   );
 
   const trackCount = computed(() =>
-    isRemote.value
-      ? remoteTracks.value.length
-      : infiniteData.value?.pages[0]?.total ?? 0,
+    isRemote.value ? remoteTracks.value.length : shownList.value?.count ?? 0,
   );
 
-  const { data: albumTotalDurationSeconds } = useQuery(
-    computed(() => albumQueries.totalDuration(albumId.value, !isRemote.value)),
-  );
-
-  // A filtered list reports the matches' own duration, like their count.
   const totalDuration = computed(() =>
     formatTotalDuration(
       isRemote.value
         ? remoteTracks.value.reduce((sum, track) => sum + track.duration, 0)
-        : infiniteData.value?.pages[0]?.totalDuration ?? albumTotalDurationSeconds.value ?? 0,
+        : shownList.value?.seconds ?? 0,
       t,
     ),
   );
 
-  const { data: artistData } = useQuery(
-    computed(() => artistQueries.libraryRow(album.value?.artistId ?? null)),
-  );
-
-  const artist = computed(() =>
-    artistData.value ? { id: artistData.value.id, name: artistData.value.name } : null,
+  const isTracksLoading = computed(() =>
+    !isRemote.value && shownList.value === undefined && localError.value === undefined,
   );
 
   // Remote albums show their source's art; only a library album has a
@@ -128,6 +184,8 @@ export function useAlbumPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
   const isLoading = computed(() =>
     isAlbumLoading.value || isCoverLoading.value || isTracksLoading.value,
   );
+
+  const error = computed(() => localError.value ?? list.error.value);
 
   const albumDataMapped = computed<AlbumData | null>(() => {
     if (isRemote.value) {
@@ -149,9 +207,33 @@ export function useAlbumPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
     };
   });
 
+  const hasNextPage = computed(() => isSearching.value ? hasNextSearchPage.value : list.hasNextPage.value);
+  const isFetchingNextPage = computed(() => isSearching.value ? isFetchingNextSearchPage.value : list.isFetchingNextPage.value);
+  const isFetchNextPageError = computed(() => isSearching.value
+    ? isSearchFetchNextPageError.value
+    : list.isFetchNextPageError.value);
+
+  const fetchNextPage = async () => {
+    if (isSearching.value) {
+      await fetchNextSearchPage();
+      return;
+    }
+    await list.fetchNextPage();
+  };
+
+  const refetch = async () => {
+    liveHeader.refetch();
+    liveTotals.refetch();
+    if (isSearching.value) {
+      await refetchSearch();
+      return;
+    }
+    list.refetch();
+  };
+
   const { mutateAsync: deleteAlbum } = useMutation({
     mutationFn: (options: { deleteTracks?: boolean } = {}) =>
-      deleteAlbumAndSync(queryClient, albumData.value ?? null, options),
+      deleteAlbumAndSync(queryClient, album.value, options),
     onSuccess: () => {
       router.push(routeLocation.home())
         .catch(error => getLogger().error(`[Album] Navigation home after delete failed: ${formatError(error)}`));
@@ -190,4 +272,4 @@ export function useAlbumPage(sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
     isFetchingNextPage,
     isFetchNextPageError,
   };
-}
+};
