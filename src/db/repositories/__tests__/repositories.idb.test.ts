@@ -228,7 +228,7 @@ describe("albumRepository / artistRepository pinned lookups", () => {
     expect((await artistRepository.findPinned()).map(a => a.id)).toEqual(["ar1"]);
   });
 
-  it("countByArtistId and findByArtistIdPaginated skip shadow albums and order newest first", async () => {
+  it("findByArtistIdPaginated skips shadow albums and orders newest first", async () => {
     await db.albums.bulkAdd([
       album("al1", { year: 2001 }),
       album("al2", { year: 2003 }),
@@ -237,7 +237,6 @@ describe("albumRepository / artistRepository pinned lookups", () => {
       album("al5", { artistId: "ar2" as ArtistId }),
     ]);
 
-    expect(await albumRepository.countByArtistId("ar1" as ArtistId)).toBe(3);
     const page1 = await albumRepository.findByArtistIdPaginated("ar1" as ArtistId, 0, 2);
     const page2 = await albumRepository.findByArtistIdPaginated("ar1" as ArtistId, 2, 2);
     expect(page1.map(a => a.year)).toEqual([2003, 2002]);

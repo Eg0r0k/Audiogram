@@ -193,7 +193,6 @@ async function handleConfirm() {
   try {
     await confirmSelection();
     toaster.add({ title: t("sheet.tracksAdded"), color: "success" });
-    await props.payload.onConfirmed?.();
     closePanel();
   }
   catch (error) {

@@ -158,13 +158,10 @@ export async function getLikedTracksPageData(sortKey: TrackSortKey | null = null
 async function searchedTracksSorted(
   query: string,
   sortKey: TrackSortKey,
-): Promise<{ tracks: TrackEntity[]; matches: Record<string, SearchMatch> }> {
+): Promise<TrackEntity[]> {
   const response = await searchDocuments(query, "track", { offset: 0 });
   const ids = response.results.map(item => item.entityId as TrackId);
-  return {
-    tracks: await trackRepository.withIds(ids).rows({ sort: sortKey }),
-    matches: matchesByEntity(response.results),
-  };
+  return trackRepository.withIds(ids).rows({ sort: sortKey });
 }
 
 export interface SearchedTrackIds {
@@ -269,7 +266,7 @@ export async function getAllTracksForQueue(sortKey: TrackSortKey | null, searchQ
     if (!sortKey) {
       return (await searchIndexedTracks(q, 0, undefined)).tracks;
     }
-    return loadTrackRelations((await searchedTracksSorted(q, sortKey)).tracks);
+    return loadTrackRelations(await searchedTracksSorted(q, sortKey));
   }
   const rawTracks = await trackRepository.members().rows({ sort: sortKey ?? DEFAULT_TRACK_SORT_KEY });
   return loadTrackRelations(rawTracks);

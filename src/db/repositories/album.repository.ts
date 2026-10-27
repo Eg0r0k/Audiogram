@@ -43,15 +43,6 @@ export class AlbumRepository extends TimestampedRepository<AlbumEntity, AlbumId>
     });
   }
 
-  // Artist-page listing: shadow albums can reference a local artist via
-  // substitution — skip them.
-  async countByArtistId(artistId: ArtistId): Promise<number> {
-    return guarded(() => this.table
-      .where("[artistId+pinned]")
-      .equals([artistId, 1])
-      .count());
-  }
-
   async findByArtistIdPaginated(
     artistId: ArtistId,
     offset: number,
