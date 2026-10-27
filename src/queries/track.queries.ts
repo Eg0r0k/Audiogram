@@ -26,7 +26,6 @@ import { AlbumId as createAlbumId, ArtistId as createArtistId } from "@/types/id
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 import type { QueryClient } from "@tanstack/vue-query";
 import { removeCoverCache, updateCoverCache } from "@/modules/covers/lib/cover-cache";
-import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import { unique } from "@/lib/math";
 import {
   purgeTracksInTx,
@@ -310,7 +309,6 @@ export async function setTracksLikedAndSync(
     ? await trackRepository.likeMany(ids, Date.now())
     : await trackRepository.unlikeMany(ids);
 
-  markRecommenderContextDirty();
   return changed;
 }
 
@@ -374,7 +372,6 @@ export async function addTracksToAlbumAndSync(
     await trackRepository.updateMany(updates);
   }
 
-  markRecommenderContextDirty();
   await syncSearchIndex({ tracks: trackIds });
 }
 
@@ -410,7 +407,6 @@ export async function addTracksToArtistAndSync(
     await trackRepository.updateMany(updates);
   }
 
-  markRecommenderContextDirty();
   await syncSearchIndex({ tracks: trackIds });
 }
 
@@ -419,8 +415,6 @@ export async function favoriteTracksAndSync(tracks: Track[]) {
 
   // Rows already liked keep their original likedAt.
   await trackRepository.likeMany(trackIds, Date.now());
-
-  markRecommenderContextDirty();
 }
 
 export async function toggleTrackLikeAndSync(
@@ -439,7 +433,6 @@ export async function toggleTrackLikeAndSync(
 
   const nextTrack: Track = { ...track, isLiked: nextValue };
 
-  markRecommenderContextDirty();
   refreshStatsTrackRows(queryClient);
 
   return nextTrack;
@@ -456,7 +449,6 @@ const afterLyricsWrite = (
   track: Track,
   fields: Pick<TrackEntity, "lyricsPath" | "lyricsFileName" | "lyricsOffsetMs">,
 ): Track => {
-  markRecommenderContextDirty();
   refreshStatsTrackRows(queryClient);
   return { ...track, ...fields };
 };
@@ -612,7 +604,6 @@ export async function updateTrackMetadataAndSync(
     diskNo: nextDiskNo,
   };
 
-  markRecommenderContextDirty();
   await syncSearchIndex({ tracks: [currentTrack.id] });
   refreshStatsTrackRows(queryClient);
 

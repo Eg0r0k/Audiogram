@@ -11,7 +11,6 @@ import { syncSearchIndex } from "@/services/search/searchIndex";
 import { deleteOwnedFiles } from "@/services/track-files";
 import type { TrackId } from "@/types/ids";
 import { removeCoverCache } from "@/modules/covers/lib/cover-cache";
-import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import { unique } from "@/lib/math";
 import { TRACK_CASCADE_TABLES } from "./track-cascade";
 import { deleteTracksAndSync } from "./track.queries";
@@ -112,7 +111,6 @@ export const deleteTracksWithUndo = async (ids: TrackId[]): Promise<TrackDeletio
     // invalidation would make every visible cover blink.
     for (const cover of covers) removeCoverCache(cover.ownerType, cover.ownerId);
     for (const id of trackIds) removeCoverCache("track", id);
-    markRecommenderContextDirty();
   };
 
   return { deleted, restore, finalize };

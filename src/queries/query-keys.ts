@@ -1,12 +1,7 @@
-import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
+import type { AlbumId, ArtistId } from "@/types/ids";
 import type { SourceKind } from "@/types/track-ref";
 
 export const queryKeys = {
-  recommendations: {
-    all: () => ["recommendations"] as const,
-    forTrack: (trackId: TrackId, limit: number) =>
-      ["recommendations", "forTrack", trackId, limit] as const,
-  },
   source: {
     /** Every remote catalog answer, whatever source it came from. */
     all: () => ["source"] as const,

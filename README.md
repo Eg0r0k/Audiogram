@@ -52,7 +52,7 @@ Sleep timer, audio output device selection, hardware media keys and global hotke
 
 Listening statistics: time listened, streaks, top tracks, artists and genres, hour-of-day and completion charts, for a week, month, year or all time.
 
-Recommendations are computed locally. Audio analysis (Essentia) runs on your machine, so suggestions come from your own collection and nothing gets uploaded.
+Nothing about your collection gets uploaded: the library, its covers and the listening history stay on your machine.
 
 ### Desktop integration
 
@@ -131,7 +131,6 @@ pnpm tauri android dev  # Android (needs Android SDK + NDK)
 - LAN sync of the library between devices, without a server
 - Portable Windows build
 - Code signing for Windows and macOS builds
-- Better recommendations (done)
 
 Found a bug or have an idea? [Open an issue](https://github.com/Eg0r0k/Audiogram/issues).
 

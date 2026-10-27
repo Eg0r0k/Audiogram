@@ -7,7 +7,6 @@ import {
 } from "@/db/repositories";
 import { queryKeys } from "@/queries/query-keys";
 import { coverCache } from "@/modules/covers/lib/cover-cache";
-import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import type { QueryClient } from "@tanstack/vue-query";
 import type { AlbumId, ArtistId } from "@/types/ids";
 import { rebuildCounters } from "./track.queries";
@@ -35,7 +34,6 @@ export const getLibraryItemTrackCount = async (type: "album" | "artist", id: Alb
 
 // After a bulk change to the local library (import, pin, rescan).
 export const invalidateLibraryData = (): void => {
-  markRecommenderContextDirty();
   coverCache.invalidateAll();
 };
 
@@ -43,7 +41,6 @@ const WIPED_ROOTS = [
   queryKeys.source.all(),
   queryKeys.youtube.all(),
   queryKeys.stats.all(),
-  queryKeys.recommendations.all(),
 ];
 
 /**

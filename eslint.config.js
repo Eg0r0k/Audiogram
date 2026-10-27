@@ -11,7 +11,7 @@ import sonarjs from "eslint-plugin-sonarjs";
 // ARCHITECTURE.md §3. A module is core once three or more modules need its
 // domain code; everything else is a feature.
 const CORE_MODULES = ["sources", "tracks", "queue", "player", "covers", "library", "settings", "downloads", "right-panel", "search"];
-const FEATURE_MODULES = ["albums", "artists", "playlist", "favorite", "media-hero", "watched-folders", "update", "recommendations", "hotkeys", "youtube"];
+const FEATURE_MODULES = ["albums", "artists", "playlist", "favorite", "media-hero", "watched-folders", "update", "hotkeys", "youtube"];
 
 // Files that still break M1/M2. This list only shrinks.
 const KNOWN_LAYER_VIOLATIONS = [];

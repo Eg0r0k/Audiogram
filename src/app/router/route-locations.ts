@@ -60,7 +60,6 @@ export const routeLocation = {
   ytPlaylist: (id: string): RouteLocationRaw => routeLocation.playlist(ytPlaylistId(id), { catalog: true }),
   ytAlbum: (id: string): RouteLocationRaw => routeLocation.album(ytAlbumId(id), { catalog: true }),
   ytArtist: (id: string): RouteLocationRaw => routeLocation.artist(ytArtistId(id), { catalog: true }),
-  devRecoStand: (): RouteLocationRaw => ({ name: ROUTE_NAMES.DEV_RECO_STAND }),
   devMascotStand: (): RouteLocationRaw => ({ name: ROUTE_NAMES.DEV_MASCOT_STAND }),
 } as const;
 

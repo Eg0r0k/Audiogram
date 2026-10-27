@@ -74,7 +74,6 @@ import { useExternalLinkInterceptor } from "@/composables/useExternalLinkInterce
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useCssVar, useEventListener } from "@vueuse/core";
 import NetworkStatusToast from "@/components/NetworkStatusToast.vue";
-import { useAnalysisQueueLifecycle } from "@/modules/recommendations/composables/useAnalysisQueueLifecycle";
 import { getLogger } from "@/lib/logger";
 import { applyStartupWindow } from "@/modules/settings/service/startup-window";
 import { formatError } from "@/lib/errors";
@@ -168,7 +167,6 @@ useNowPlayingTitle();
 
 useExternalLinkInterceptor();
 
-useAnalysisQueueLifecycle();
 useAppUpdates();
 useChangelogOnStartup();
 

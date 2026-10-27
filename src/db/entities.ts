@@ -1,5 +1,4 @@
 import type { AlbumId, ArtistId, PlaylistId, RadioStationId, SidebarFolderId, TagId, TrackId } from "@/types/ids";
-import type { ComponentWeights } from "@/modules/recommendations/lib/scoring";
 
 export enum TrackSource {
   LOCAL_INTERNAL = "local_internal",
@@ -228,6 +227,14 @@ export interface TrackChapterEntity {
   trackId: TrackId;
   chapters: TrackChapterMark[];
   updatedAt: number;
+}
+
+export interface ComponentWeights {
+  audio: number;
+  trackTransition: number;
+  artistTransition: number;
+  affinity: number;
+  explore: number;
 }
 
 /** Single row, keyed "weights" — the recommender's currently trained model. */

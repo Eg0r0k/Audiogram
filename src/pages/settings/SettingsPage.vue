@@ -63,12 +63,6 @@
       />
       <SettingsLink
         v-if="isDev"
-        :to="routeLocation.devRecoStand()"
-        :icon="IconFlask"
-        title="Dev: стенд рекомендаций"
-      />
-      <SettingsLink
-        v-if="isDev"
         :to="routeLocation.devMascotStand()"
         :icon="IconMoodSmile"
         title="Dev: маскоты-заглушки"
@@ -87,7 +81,6 @@ import IconBooks from "~icons/tabler/books";
 import IconDatabase from "~icons/tabler/database";
 import IconServer from "~icons/tabler/server";
 import IconInfo from "~icons/tabler/info-circle";
-import IconFlask from "~icons/tabler/flask";
 import IconMoodSmile from "~icons/tabler/mood-smile";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsLink from "@/modules/settings/components/SettingsLink.vue";

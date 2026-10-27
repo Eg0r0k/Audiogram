@@ -2,14 +2,13 @@ import type { PlaylistEntity, TrackEntity } from "@/db/entities";
 import type { Scope } from "@/db/unit-of-work";
 import { syncSearchIndex } from "@/services/search/searchIndex";
 import { cleanupAfterTrackRemoval } from "@/services/library-gc";
-import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import type { TrackId } from "@/types/ids";
 
 //
 // Deleting a container (album, artist, playlist) can take its tracks with it.
 // The cascade is the same wherever it is triggered from, so it lives here:
 // rows die inside the caller's transaction, everything outside the database
-// (the search index, the recommender context) is synced strictly after the commit.
+// (the search index) is synced strictly after the commit.
 //
 
 /** Transaction scope a track purge needs; pass to `unitOfWork.run`. */
@@ -68,6 +67,5 @@ export const purgeTracksInTx = async (
 export const syncAfterTrackPurge = async (trackIds: readonly TrackId[]) => {
   if (trackIds.length === 0) return;
 
-  markRecommenderContextDirty();
   await syncSearchIndex({ tracks: trackIds });
 };

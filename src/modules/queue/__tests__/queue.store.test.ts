@@ -4,11 +4,10 @@ import type { QueueItem } from "../types";
 import { createPinia, setActivePinia } from "pinia";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import { err, ok } from "neverthrow";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { queueSnapshotRepository, trackRepository } from "@/db/repositories";
 import { TrackSource, TrackState, type TrackEntity } from "@/db/entities";
-import { getRecommendations } from "@/modules/recommendations/service/recommender.service";
-import { registerAutoplaySource } from "../lib/queue-autoplay";
+import { registerAutoplaySource, type AutoplaySource } from "../lib/queue-autoplay";
 import { PlaybackFailure, registerPlaybackPort, type PlaybackPort } from "../lib/playback-port";
 import { createPlayerPlaybackPort } from "@/modules/player/lib/queue-playback-port";
 import { usePlayerStore } from "@/modules/player/store/player.store";
@@ -33,10 +32,9 @@ vi.mock("@/db/repositories", () => ({
   },
 }));
 
-vi.mock("@/modules/recommendations/service/recommender.service", () => ({
-  getRecommendations: vi.fn(),
-}));
 vi.mock("../lib/shadow-pin", () => ({ shadowPinRemoteTracks: vi.fn() }));
+
+const getRecommendations = vi.fn<AutoplaySource>();
 
 function createTrack(id: string, title: string = "Test Track"): Track {
   return {
@@ -144,6 +142,10 @@ describe("queue.store", () => {
     vi.mocked(getRecommendations).mockResolvedValue([]);
     registerAutoplaySource(getRecommendations);
     registerPlaybackPort(createPlayerPlaybackPort());
+  });
+
+  afterEach(() => {
+    registerAutoplaySource(null);
   });
 
   describe("initial state", () => {

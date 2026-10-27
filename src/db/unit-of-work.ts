@@ -2,7 +2,6 @@ import type { Transaction } from "dexie";
 import { db } from ".";
 import { AlbumRepository } from "./repositories/album.repository";
 import { ArtistRepository } from "./repositories/artist.repository";
-import { AudioFeaturesRepository } from "./repositories/audioFeatures.repository";
 import { guarded } from "./repositories/base.repository";
 import { CounterRepository } from "./repositories/counter.repository";
 import { CoverRepository } from "./repositories/cover.repository";
@@ -11,7 +10,6 @@ import { FolderRepository } from "./repositories/folder.repository";
 import { PlaylistRepository } from "./repositories/playlist.repository";
 import { QueueSnapshotRepository } from "./repositories/queueSnapshot.repository";
 import { RadioStationRepository } from "./repositories/radio.repository";
-import { RecommenderModelRepository } from "./repositories/recommenderModel.repository";
 import { StatsRepository } from "./repositories/stats.repository";
 import { TagRepository } from "./repositories/tag.repository";
 import { TrackRepository } from "./repositories/track.repository";
@@ -28,10 +26,8 @@ export const REPOSITORY_TABLES = {
   covers: ["covers"],
   tags: ["tags", "tracks"],
   downloadJobs: ["downloadJobs"],
-  audioFeatures: ["audioFeatures", "tracks"],
   trackChapters: ["trackChapters"],
   radioStations: ["radioStations"],
-  recommenderModels: ["recommenderModels"],
   queueSnapshot: ["queueSnapshot"],
   stats: ["listenEvents", "tracks", "tags"],
 } as const satisfies Record<string, readonly TableName[]>;
@@ -48,10 +44,8 @@ export interface RepositoryMap {
   covers: CoverRepository;
   tags: TagRepository;
   downloadJobs: DownloadJobRepository;
-  audioFeatures: AudioFeaturesRepository;
   trackChapters: TrackChaptersRepository;
   radioStations: RadioStationRepository;
-  recommenderModels: RecommenderModelRepository;
   queueSnapshot: QueueSnapshotRepository;
   stats: StatsRepository;
 }
@@ -73,10 +67,8 @@ const REPOSITORY_FACTORIES: { [R in RepositoryName]: (source: TableSource) => Re
   covers: source => new CoverRepository(source),
   tags: source => new TagRepository(source),
   downloadJobs: source => new DownloadJobRepository(source),
-  audioFeatures: source => new AudioFeaturesRepository(source),
   trackChapters: source => new TrackChaptersRepository(source),
   radioStations: source => new RadioStationRepository(source),
-  recommenderModels: source => new RecommenderModelRepository(source),
   queueSnapshot: source => new QueueSnapshotRepository(source),
   stats: source => new StatsRepository(source),
 };

@@ -25,8 +25,6 @@ vi.mock("@/modules/settings/store/storage", () => ({
 vi.mock("@/components/dialogs/summonDialog", () => ({ summonDialog: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn() }) }));
 vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
-vi.mock("@/modules/recommendations/service/recommender-context.service", () => ({ markRecommenderContextDirty: vi.fn() }));
-vi.mock("@/modules/recommendations/service/recommender-model.service", () => ({ invalidateWeightsCache: vi.fn() }));
 
 const slot = { template: "<div><slot /></div>" };
 

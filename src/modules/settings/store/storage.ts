@@ -112,7 +112,6 @@ export function useStorageSettings() {
     try {
       await clearTimingsData();
       await queryClient.invalidateQueries({ queryKey: queryKeys.stats.all() });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.recommendations.all() });
       await refresh();
     }
     finally {

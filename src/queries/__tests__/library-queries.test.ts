@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryObserver } from "@tanstack/vue-query";
-import { TrackId } from "@/types/ids";
 import {
   clearLibraryData,
   invalidateLibraryData,
@@ -12,10 +11,6 @@ vi.mock("@/modules/covers/lib/cover-cache", () => ({
 import { coverCache } from "@/modules/covers/lib/cover-cache";
 vi.mock("../track.queries", () => ({ rebuildCounters: vi.fn() }));
 import { rebuildCounters } from "../track.queries";
-vi.mock("@/modules/recommendations/service/recommender-context.service", () => ({
-  markRecommenderContextDirty: vi.fn(),
-}));
-import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 
 describe("library.queries", () => {
   beforeEach(() => {
@@ -27,10 +22,10 @@ describe("library.queries", () => {
       for (let i = 0; i < 5; i++) await new Promise(resolve => setTimeout(resolve, 0));
     };
 
-    // The whole database was wiped, so no remote, stats or recommendation
-    // answer is true any more. A mounted one must not keep showing the old
-    // rows: its query is reset and read again, not removed from under it.
-    it("drops the remote, stats and recommendation answers and re-reads the observed ones", async () => {
+    // The whole database was wiped, so no remote or stats answer is true any
+    // more. A mounted one must not keep showing the old rows: its query is
+    // reset and read again, not removed from under it.
+    it("drops the remote and stats answers and re-reads the observed ones", async () => {
       const realClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
       const reads: number[] = [];
       const observer = new QueryObserver(realClient, {
@@ -45,7 +40,6 @@ describe("library.queries", () => {
       expect(observer.getCurrentResult().data).toBe(1);
       realClient.setQueryData(queryKeys.youtube.videoSearch("q"), []);
       realClient.setQueryData(queryKeys.stats.streaks(), { current: 3 });
-      realClient.setQueryData(queryKeys.recommendations.forTrack(TrackId("t-1"), 8), []);
 
       await clearLibraryData(realClient);
       await flush();
@@ -53,7 +47,6 @@ describe("library.queries", () => {
       expect(observer.getCurrentResult().data).toBe(2);
       expect(realClient.getQueryData(queryKeys.youtube.videoSearch("q"))).toBeUndefined();
       expect(realClient.getQueryData(queryKeys.stats.streaks())).toBeUndefined();
-      expect(realClient.getQueryData(queryKeys.recommendations.forTrack(TrackId("t-1"), 8))).toBeUndefined();
       expect(coverCache.invalidateAll).toHaveBeenCalled();
       expect(rebuildCounters).toHaveBeenCalledOnce();
       unsubscribe();
@@ -61,11 +54,10 @@ describe("library.queries", () => {
   });
 
   describe("invalidateLibraryData", () => {
-    it("resets the cover cache and the recommender context", () => {
+    it("resets the cover cache", () => {
       invalidateLibraryData();
 
       expect(coverCache.invalidateAll).toHaveBeenCalledOnce();
-      expect(markRecommenderContextDirty).toHaveBeenCalledOnce();
     });
   });
 });

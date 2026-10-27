@@ -25,9 +25,6 @@ vi.mock("@/db/repositories", () => ({
     findByIds: vi.fn(),
   },
 }));
-vi.mock("@/modules/recommendations/service/recommender.service", () => ({
-  getRecommendations: vi.fn(),
-}));
 
 function ephemeral(path: string): EphemeralTrack {
   return {

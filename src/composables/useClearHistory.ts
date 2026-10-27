@@ -2,7 +2,6 @@ import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 import { summonDialog } from "@/components/dialogs/summonDialog";
 import { getLogger } from "@/lib/logger";
-import { clearModel } from "@/modules/recommendations/service/recommender-model.service";
 import { statsService } from "@/services/stats.service";
 import { formatError } from "@/lib/errors";
 
@@ -18,8 +17,6 @@ export const useClearHistory = () => {
       run: async () => {
         try {
           await statsService.clearHistory();
-          // Weights fitted on the history just erased must not keep steering autoplay.
-          await clearModel();
         }
         catch (error) {
           getLogger().error(`[Stats] Clearing listening history failed: ${formatError(error)}`);

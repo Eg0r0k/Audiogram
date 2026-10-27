@@ -3,11 +3,9 @@ import { shownToasts } from "@/test/toasts";
 
 const dialog = vi.hoisted(() => ({ summonDialog: vi.fn() }));
 const stats = vi.hoisted(() => ({ clearHistory: vi.fn(async () => {}) }));
-const model = vi.hoisted(() => ({ clearModel: vi.fn(async () => {}) }));
 
 vi.mock("@/components/dialogs/summonDialog", () => dialog);
 vi.mock("@/services/stats.service", () => ({ statsService: stats }));
-vi.mock("@/modules/recommendations/service/recommender-model.service", () => model);
 vi.mock("@/app/toaster", () => ({ toaster: { add: vi.fn() } }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock("@/lib/logger", () => ({ getLogger: () => ({ error: vi.fn(), warn: vi.fn() }) }));
@@ -33,7 +31,7 @@ describe("useClearHistory", () => {
     }), { key: "clear-history" });
   });
 
-  it("clears the history and the model fitted on it, and lets a failure reach the dialog", async () => {
+  it("clears the history and lets a failure reach the dialog", async () => {
     dialog.summonDialog.mockResolvedValue(undefined);
     await useClearHistory().clearHistory();
     stats.clearHistory.mockRejectedValueOnce(new Error("quota"));
@@ -42,7 +40,7 @@ describe("useClearHistory", () => {
     expect(shownToasts("destructive")).toHaveLength(0);
 
     await summonedProps().run();
-    expect(model.clearModel).toHaveBeenCalledTimes(1);
+    expect(stats.clearHistory).toHaveBeenCalledTimes(2);
   });
 
   it("confirms a finished wipe with a toast", async () => {

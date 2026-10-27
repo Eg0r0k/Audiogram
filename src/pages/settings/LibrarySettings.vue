@@ -5,26 +5,6 @@
     <ActiveDownloads v-if="platformCaps.hasFs" />
 
     <SettingsGroup :class="{ 'mt-3': platformCaps.hasFs }">
-      <div class="px-4 py-3">
-        <div class="text-primary font-medium">
-          {{ $t('settings.library.analysis') }}
-        </div>
-      </div>
-      <Item @click="setAnalyzeTracks(!analyzeTracks)">
-        <ItemContent>
-          <ItemTitle>{{ $t('settings.general.analyzeTracks') }}</ItemTitle>
-        </ItemContent>
-        <ItemActions>
-          <Switch
-            :model-value="analyzeTracks"
-            @click.stop
-            @update:model-value="setAnalyzeTracks"
-          />
-        </ItemActions>
-      </Item>
-    </SettingsGroup>
-
-    <SettingsGroup class="mt-3">
       <Item
         v-ripple
         as-child
@@ -53,17 +33,14 @@
 </template>
 
 <script setup lang="ts">
-import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
-import { Switch } from "@/components/ui/switch";
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import IconTrash from "~icons/tabler/trash";
 import SettingsGroup from "@/modules/settings/components/SettingsGroup.vue";
 import SettingsScreen from "@/modules/settings/components/SettingsScreen.vue";
-import { useGeneralSettings } from "@/modules/settings/store/general";
 import { useStorageSettings } from "@/modules/settings/store/storage";
 import ActiveDownloads from "@/modules/downloads/components/ActiveDownloads.vue";
 import WatchedFoldersSection from "@/modules/watched-folders/components/WatchedFoldersSection.vue";
 import { platformCaps } from "@/lib/environment/platformCaps";
 
-const { analyzeTracks, setAnalyzeTracks } = useGeneralSettings();
 const { isClearing, clearFoldersData } = useStorageSettings();
 </script>

@@ -216,8 +216,6 @@ import ClockIcon from "~icons/tabler/clock";
 import { formatBytes } from "@/lib/format/memory";
 import { formatError } from "@/lib/errors";
 import { getLogger } from "@/lib/logger";
-import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
-import { invalidateWeightsCache } from "@/modules/recommendations/service/recommender-model.service";
 
 const {
   info,
@@ -277,10 +275,6 @@ const confirmWipe = async (what: string, { doneText, ...texts }: WipeTexts, run:
   if (done) toaster.add({ title: doneText, color: "success" });
 };
 
-// The wipe took the listen events, the audio features and the model row with
-// it; both in-memory recommender caches would otherwise keep serving them.
-// Wired here, not in the settings store: a core module must not import a
-// feature module (ARCHITECTURE.md §3, M2).
 const handleClearTimings = () => confirmWipe("clear-timings", {
   title: t("settings.storage.timingsDialogTitle"),
   description: t("settings.storage.timingsDialogDesc"),
@@ -289,8 +283,6 @@ const handleClearTimings = () => confirmWipe("clear-timings", {
   doneText: t("settings.storage.timingsCleared"),
 }, async () => {
   await clearTimingsData();
-  markRecommenderContextDirty();
-  invalidateWeightsCache();
 });
 
 const handleClearLyrics = () => confirmWipe("clear-lyrics", {

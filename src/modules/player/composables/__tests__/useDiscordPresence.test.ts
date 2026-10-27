@@ -15,10 +15,6 @@ vi.mock("@/db/repositories", () => ({
   trackRepository: { findByIds: vi.fn() },
 }));
 
-vi.mock("@/modules/recommendations/service/recommender.service", () => ({
-  getRecommendations: vi.fn(() => Promise.resolve([])),
-}));
-
 vi.mock("@/lib/environment/platformCaps", () => ({
   platformCaps: { hasDiscord: true },
 }));

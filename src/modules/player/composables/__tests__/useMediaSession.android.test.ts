@@ -12,10 +12,6 @@ vi.mock("@/db/repositories", () => ({
   trackRepository: { findByIds: vi.fn() },
 }));
 
-vi.mock("@/modules/recommendations/service/recommender.service", () => ({
-  getRecommendations: vi.fn(() => Promise.resolve([])),
-}));
-
 const toggleLikeMock = vi.hoisted(() => vi.fn());
 vi.mock("@/queries/track.queries", () => ({
   toggleTrackLikeAndSync: toggleLikeMock,

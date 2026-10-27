@@ -27,7 +27,6 @@
   },
   "general": {
     "checkUpdates": "Check for updates on launch",
-    "analyzeTracks": "Analyze tracks for recommendations",
     "launchAtStartup": "Launch at system startup",
     "launchMinimized": "Launch minimized",
     "closeToTray": "Close to system tray"
@@ -68,12 +67,6 @@
     "clearFailed": "Couldn't clear the listening history",
     "cleared": "Listening history cleared",
     "noGenre": "No genre",
-    "recommender": {
-      "evalTitle": "Evaluate recommendations",
-      "evalSubtitle": "Train weights on the autoplay history and compute AUC on a held-out sample. The full report goes to the log.",
-      "evalResult": "AUC {auc}, autoplay skip rate {rate}% over 14d, {n} examples",
-      "evalFailed": "Evaluation failed"
-    },
     "listenedWeek": "Listened this week",
     "listenedMonth": "Listened in {month}",
     "listenedYear": "Listened in {year}",
@@ -293,9 +286,6 @@
     "section6Title": "Changes to This Policy",
     "section6Body": "We may update this Privacy Policy from time to time. Any changes will be reflected in updated application releases. We encourage you to review this policy periodically.",
     "contact": "Questions about your privacy? Contact us on"
-  },
-  "library": {
-    "analysis": "Analysis"
   },
   "sourcesPage": {
     "sources": "Sources"
