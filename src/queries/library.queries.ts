@@ -1,7 +1,6 @@
 import {
   albumRepository,
   artistRepository,
-  counterRepository,
   folderRepository,
   playlistRepository,
   trackRepository,
@@ -14,23 +13,17 @@ import type { AlbumId, ArtistId } from "@/types/ids";
 import { rebuildCounters } from "./track.queries";
 import type { LibrarySummaryData } from "./types";
 
-// Shadow rows (pinned = 0) from ND/YT browsing stay out through the pinned index.
+// Shadow rows (pinned = 0) from ND/YT browsing stay out through the pinned index. The liked count is
+// read apart (readCounters): inside this querier every like would re-read the four tables.
 export const readLibrarySummary = async (): Promise<LibrarySummaryData> => {
-  const [artists, albums, playlists, folders, liked] = await Promise.all([
+  const [artists, albums, playlists, folders] = await Promise.all([
     artistRepository.findPinned(),
     albumRepository.findPinned(),
     playlistRepository.findAll(),
     folderRepository.findAll(),
-    counterRepository.get("liked"),
   ]);
 
-  return {
-    artists,
-    albums,
-    playlists,
-    folders,
-    likedCount: liked.count,
-  };
+  return { artists, albums, playlists, folders };
 };
 
 // Per-item, for the delete dialog: the summary used to count every album

@@ -44,11 +44,11 @@ describe("readLibrarySummary", () => {
 
   // The sidebar shows a count; loading every liked row for it is what made
   // the summary the heaviest read in the app.
-  it("carries the liked count, not the liked rows", async () => {
+  it("carries no liked rows and no liked count: the count is a counter row", async () => {
     const summary = await readLibrarySummary();
 
-    expect(summary.likedCount).toBe(2);
     expect(summary).not.toHaveProperty("likedTracks");
+    expect(summary).not.toHaveProperty("likedCount");
   });
 
   // One count per album and artist was 4000 IndexedDB reads at 30k tracks,

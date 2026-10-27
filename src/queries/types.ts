@@ -11,7 +11,6 @@ export interface LibrarySummaryData {
   albums: AlbumEntity[];
   playlists: PlaylistEntity[];
   folders: SidebarFolderEntity[];
-  likedCount: number;
 }
 
 export interface ArtistPageData {

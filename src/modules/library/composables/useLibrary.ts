@@ -22,6 +22,7 @@ import {
   invalidateLibraryData,
   readLibrarySummary,
 } from "@/queries/library.queries";
+import { readCounters } from "@/queries/track.queries";
 import {
   createPlaylistAndSync,
   deletePlaylistAndSync,
@@ -37,6 +38,7 @@ import { useLiveQuery } from "@/composables/useLiveQuery";
 
 // Every sidebar host, menu and page calling useLibrary reads through one subscription, not one each.
 const useLibrarySummary = createSharedComposable(() => useLiveQuery(readLibrarySummary, () => []));
+const useLikedCounter = createSharedComposable(() => useLiveQuery(readCounters, () => []));
 
 export const useLibrary = () => {
   const store = useLibraryStore();
@@ -64,13 +66,14 @@ export const useLibrary = () => {
   };
 
   const { data, isLoading: isReading, error } = useLibrarySummary();
+  const likedCounter = useLikedCounter();
   // A failed first read shows the system rows instead of loading for good.
   const isLoading = computed(() => isReading.value && error.value === undefined);
   const artists = computed(() => data.value?.artists ?? []);
   const albums = computed(() => data.value?.albums ?? []);
   const playlists = computed(() => data.value?.playlists ?? []);
   const folders = computed(() => data.value?.folders ?? []);
-  const likedCount = computed(() => data.value?.likedCount ?? 0);
+  const likedCount = computed(() => likedCounter.data.value?.liked.count ?? 0);
 
   const artistMap = computed(() => {
     const map = new Map<string, string>();

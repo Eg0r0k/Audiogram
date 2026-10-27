@@ -122,7 +122,7 @@ describe("useLibrary on live reads", () => {
     expect(api.allItems.value.map(item => item.type)).toEqual(["liked", "allMedia"]);
   });
 
-  it("every caller shares one summary read", async () => {
+  it("every caller shares one summary read, and a like does not re-read it", async () => {
     const findPinned = vi.spyOn(artistRepository, "findPinned");
     const first = mountLibrary();
     const second = mountLibrary();
@@ -135,6 +135,7 @@ describe("useLibrary on live reads", () => {
     await until(() => likedCount(first) === 2 && likedCount(second) === 2);
     await quiet();
 
-    expect(findPinned).toHaveBeenCalledTimes(2);
+    // The count comes from the counter row; the four-table summary is not re-read for a like.
+    expect(findPinned).toHaveBeenCalledTimes(1);
   });
 });
