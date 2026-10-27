@@ -1,5 +1,4 @@
 import { computed, type MaybeRefOrGetter } from "vue";
-import { useQueryClient } from "@tanstack/vue-query";
 import { reportError } from "@/app/error-feedback";
 import { useI18n } from "vue-i18n";
 import { useLiveQuery } from "@/composables/useLiveQuery";
@@ -13,7 +12,6 @@ interface UsePlaylistMenuOptions {
 }
 
 export function usePlaylistMenu(options: UsePlaylistMenuOptions = {}) {
-  const queryClient = useQueryClient();
   const { t } = useI18n();
 
   const { data: playlistsData, isLoading } = useLiveQuery(getPlaylists, () => [], {
@@ -26,7 +24,7 @@ export function usePlaylistMenu(options: UsePlaylistMenuOptions = {}) {
 
   async function handleCreatePlaylist() {
     try {
-      await createPlaylistAndSync(queryClient);
+      await createPlaylistAndSync();
     }
     catch (error) {
       reportError(error, { title: t("playlist.createFailed"), scope: "Tracks" });

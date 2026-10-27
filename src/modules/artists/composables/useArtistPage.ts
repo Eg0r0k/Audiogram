@@ -1,6 +1,6 @@
 import { computed, shallowRef, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
+import { useQuery, useMutation } from "@tanstack/vue-query";
 import { ArtistId } from "@/types/ids";
 import type { ArtistData } from "@/types/media-data";
 import type { Track } from "@/types/track";
@@ -55,7 +55,6 @@ export const useArtistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Re
   const normalizedSearchQuery = computed(() => searchQuery.value.trim());
   const isSearching = computed(() => normalizedSearchQuery.value !== "");
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   // Pages are keyed by fullPath, so the id is fixed per instance; a page sliding out must not read the next route's id.
   const artistId = shallowRef(ArtistId(route.params.id as string));
@@ -263,7 +262,7 @@ export const useArtistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Re
 
   const { mutateAsync: deleteArtist } = useMutation({
     mutationFn: (options: { deleteTracks?: boolean } = {}) =>
-      deleteArtistAndSync(queryClient, artist.value, options),
+      deleteArtistAndSync(artist.value, options),
     onSuccess: () => {
       router.push(routeLocation.home())
         .catch(error => getLogger().error(`[Artist] Navigation home after delete failed: ${formatError(error)}`));
@@ -277,7 +276,7 @@ export const useArtistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Re
         return;
       }
 
-      return updateArtistAndSync(queryClient, current, changes);
+      return updateArtistAndSync(current, changes);
     },
   });
 

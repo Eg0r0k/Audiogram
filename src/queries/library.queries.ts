@@ -11,7 +11,6 @@ import { coverCache } from "@/modules/covers/lib/cover-cache";
 import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import type { QueryClient } from "@tanstack/vue-query";
 import type { AlbumId, ArtistId } from "@/types/ids";
-import { settleLibraryReads } from "./cache";
 import { rebuildCounters } from "./track.queries";
 import type { LibrarySummaryData } from "./types";
 
@@ -41,35 +40,26 @@ export const getLibraryItemTrackCount = async (type: "album" | "artist", id: Alb
   return trackRepository.byArtist(id as ArtistId).members().count();
 };
 
-/**
- * After a bulk change to the local library (import, pin, rescan). Unlike the
- * per-mutation registry in cache.ts this waits for the mounted lists to
- * re-read, so a caller can chain on the refreshed rows.
- */
-export const invalidateLibraryData = async (queryClient: QueryClient): Promise<void> => {
+// After a bulk change to the local library (import, pin, rescan).
+export const invalidateLibraryData = (): void => {
   markRecommenderContextDirty();
-  // A first-load read has no data to cancel; invalidation would join it and
-  // take its pre-write answer for the refetch.
-  await settleLibraryReads(queryClient);
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.artists.all() }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.albums.all() }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all() }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.tracks.all() }),
-  ]);
   coverCache.invalidateAll();
 };
 
+const WIPED_ROOTS = [
+  queryKeys.source.all(),
+  queryKeys.youtube.all(),
+  queryKeys.stats.all(),
+  queryKeys.recommendations.all(),
+];
+
 /**
- * After a full database wipe. Every Dexie-backed answer is wrong now, so the
- * whole cache goes — reset, not removed: removeQueries leaves a mounted
- * observer holding the old rows, reset blanks it and re-reads the empty
- * database. Remote catalog answers go with it and are re-read from their
- * source on the next mount.
+ * After a full database wipe. Reset, not removed: removeQueries leaves a
+ * mounted observer holding the old rows, reset blanks it and re-reads. Remote
+ * catalog answers go too and are re-read from their source on the next mount.
  */
 export const clearLibraryData = async (queryClient: QueryClient): Promise<void> => {
-  await queryClient.resetQueries();
+  await Promise.all(WIPED_ROOTS.map(queryKey => queryClient.resetQueries({ queryKey })));
   coverCache.invalidateAll();
   await rebuildCounters();
 };

@@ -45,7 +45,7 @@
 import LoadMoreError from "@/components/common/LoadMoreError.vue";
 import { refDebounced } from "@vueuse/core";
 import { Empty, EmptyDescription } from "@/components/ui/empty";
-import { useMutation, useQueryClient } from "@tanstack/vue-query";
+import { useMutation } from "@tanstack/vue-query";
 import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { reportError } from "@/app/error-feedback";
@@ -76,7 +76,6 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-const queryClient = useQueryClient();
 const rightPanel = useRightPanelStore();
 const queueStore = useQueueStore();
 
@@ -155,31 +154,19 @@ const { mutateAsync: confirmSelection } = useMutation({
 
     switch (props.payload.entityType) {
       case "playlist":
-        await addTracksToPlaylistAndSync(
-          queryClient,
-          PlaylistId(normalizedEntityId.value),
-          tracksToAdd,
-        );
+        await addTracksToPlaylistAndSync(PlaylistId(normalizedEntityId.value), tracksToAdd);
         break;
 
       case "album":
-        await addTracksToAlbumAndSync(
-          queryClient,
-          AlbumId(normalizedEntityId.value),
-          tracksToAdd,
-        );
+        await addTracksToAlbumAndSync(AlbumId(normalizedEntityId.value), tracksToAdd);
         break;
 
       case "artist":
-        await addTracksToArtistAndSync(
-          queryClient,
-          ArtistId(normalizedEntityId.value),
-          tracksToAdd,
-        );
+        await addTracksToArtistAndSync(ArtistId(normalizedEntityId.value), tracksToAdd);
         break;
 
       case "favorite":
-        await favoriteTracksAndSync(queryClient, tracksToAdd);
+        await favoriteTracksAndSync(tracksToAdd);
         break;
     }
 

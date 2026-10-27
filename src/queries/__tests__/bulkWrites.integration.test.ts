@@ -1,6 +1,5 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { QueryClient } from "@tanstack/vue-query";
 import { TrackSource, TrackState, type AlbumEntity, type ArtistEntity, type PlaylistEntity, type TrackEntity } from "@/db/entities";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 import type { Track } from "@/types/track";
@@ -53,11 +52,8 @@ const track = (id: string, overrides: Partial<TrackEntity> = {}): TrackEntity =>
 const asPlayerTrack = (id: string): Track => ({ id, isLiked: false } as unknown as Track);
 
 describe("bulk writes (integration)", () => {
-  let queryClient: QueryClient;
-
   beforeEach(async () => {
     vi.restoreAllMocks();
-    queryClient = new QueryClient();
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
     await db.artists.bulkAdd([artist(AR1, "Artist One"), artist(AR2, "Artist Two")]);
@@ -68,7 +64,7 @@ describe("bulk writes (integration)", () => {
   it("album rename rewrites every track's albumTitle without per-track updates", async () => {
     const perRow = vi.spyOn(trackRepository, "update");
 
-    await updateAlbumAndSync(queryClient, album(AL1, "Old Title", AR1), { title: "New Title" });
+    await updateAlbumAndSync(album(AL1, "Old Title", AR1), { title: "New Title" });
 
     expect(perRow).not.toHaveBeenCalled();
     expect((await db.albums.get(AL1))?.title).toBe("New Title");
@@ -80,7 +76,7 @@ describe("bulk writes (integration)", () => {
     await db.tracks.put(track("t2", { artistIds: [AR1, AR2], artistName: "Artist One, Artist Two" }));
     const perRow = vi.spyOn(trackRepository, "update");
 
-    await updateArtistAndSync(queryClient, artist(AR1, "Artist One"), { name: "Renamed" });
+    await updateArtistAndSync(artist(AR1, "Artist One"), { name: "Renamed" });
 
     expect(perRow).not.toHaveBeenCalled();
     expect((await db.tracks.get("t1" as TrackId))?.artistName).toBe("Renamed");
@@ -91,7 +87,7 @@ describe("bulk writes (integration)", () => {
     await db.tracks.put(track("t2", { likedAt: 5 }));
     const perRow = vi.spyOn(trackRepository, "setLiked");
 
-    await favoriteTracksAndSync(queryClient, ["t1", "t2", "t3"].map(asPlayerTrack));
+    await favoriteTracksAndSync(["t1", "t2", "t3"].map(asPlayerTrack));
 
     expect(perRow).not.toHaveBeenCalled();
     const rows = await db.tracks.bulkGet(["t1", "t2", "t3"] as TrackId[]);
@@ -103,7 +99,7 @@ describe("bulk writes (integration)", () => {
     await db.playlists.add(playlist);
     const perRow = vi.spyOn(playlistRepository, "addTrack");
 
-    const next = await addTracksToPlaylistAndSync(queryClient, playlist.id, ["t2", "t1", "t3"].map(asPlayerTrack));
+    const next = await addTracksToPlaylistAndSync(playlist.id, ["t2", "t1", "t3"].map(asPlayerTrack));
 
     expect(perRow).not.toHaveBeenCalled();
     expect(next.trackIds).toEqual(["t1", "t2", "t3"]);
@@ -114,7 +110,7 @@ describe("bulk writes (integration)", () => {
     await db.albums.add(album("al2" as AlbumId, "Second", AR2));
     const perRow = vi.spyOn(trackRepository, "update");
 
-    await addTracksToAlbumAndSync(queryClient, "al2" as AlbumId, ["t1", "t3"].map(asPlayerTrack));
+    await addTracksToAlbumAndSync("al2" as AlbumId, ["t1", "t3"].map(asPlayerTrack));
 
     expect(perRow).not.toHaveBeenCalled();
     const t1 = await db.tracks.get("t1" as TrackId);
@@ -126,7 +122,7 @@ describe("bulk writes (integration)", () => {
   it("addTracksToArtistAndSync credits the batch with one bulk update", async () => {
     const perRow = vi.spyOn(trackRepository, "update");
 
-    await addTracksToArtistAndSync(queryClient, AR2, ["t1", "t2"].map(asPlayerTrack));
+    await addTracksToArtistAndSync(AR2, ["t1", "t2"].map(asPlayerTrack));
 
     expect(perRow).not.toHaveBeenCalled();
     expect(await db.tracks.get("t1" as TrackId)).toMatchObject({ artistIds: [AR1, AR2], artistName: "Artist One, Artist Two" });

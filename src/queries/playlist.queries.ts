@@ -14,18 +14,8 @@ import type { TrackSortKey } from "@/modules/tracks/types";
 import { mapTracks, type Track } from "@/types/track";
 import type { PlaylistId, TrackId } from "@/types/ids";
 import { PlaylistId as createPlaylistId } from "@/types/ids";
-import { queryOptions, skipToken, type QueryClient } from "@tanstack/vue-query";
-import {
-  invalidateForPlaylistMutation,
-  invalidateForTrackMutation,
-  removePlaylistCaches,
-  settleLibraryReads,
-  syncPlaylistCaches,
-  syncPlaylistTracksAddition,
-  syncPlaylistTracksRemoval,
-  updateCoverCache,
-  removeCoverCache,
-} from "./cache";
+import { queryOptions, skipToken } from "@tanstack/vue-query";
+import { removeCoverCache, updateCoverCache } from "@/modules/covers/lib/cover-cache";
 import { assertValidName } from "@/lib/limits";
 import { sortTracks } from "./shared";
 import { unique } from "@/lib/math";
@@ -210,7 +200,7 @@ export const playlistQueries = {
     }),
 } as const;
 
-export async function createPlaylistAndSync(queryClient: QueryClient, name = "New playlist") {
+export async function createPlaylistAndSync(name = "New playlist") {
   const now = Date.now();
   const playlist: PlaylistEntity = {
     id: createPlaylistId(crypto.randomUUID()),
@@ -221,15 +211,12 @@ export async function createPlaylistAndSync(queryClient: QueryClient, name = "Ne
   };
 
   await playlistRepository.create(playlist);
-  await settleLibraryReads(queryClient);
-  syncPlaylistCaches(queryClient, playlist);
   await syncSearchIndex({ playlists: [playlist.id] });
 
   return playlist;
 }
 
 export async function updatePlaylistAndSync(
-  queryClient: QueryClient,
   currentPlaylist: PlaylistEntity,
   changes: PlaylistChanges,
 ) {
@@ -266,8 +253,6 @@ export async function updatePlaylistAndSync(
     };
 
     await playlistRepository.update(currentPlaylist.id, updateData);
-    await settleLibraryReads(queryClient);
-    syncPlaylistCaches(queryClient, nextPlaylist);
     didUpdatePlaylist = true;
   }
 
@@ -284,7 +269,6 @@ export async function updatePlaylistAndSync(
  * outright — including from every other playlist that referenced them.
  */
 export async function deletePlaylistAndSync(
-  queryClient: QueryClient,
   currentPlaylist: PlaylistEntity | null,
   options: { deleteTracks?: boolean } = {},
 ) {
@@ -298,48 +282,30 @@ export async function deletePlaylistAndSync(
   const trackIds = tracks.map(track => track.id);
   const now = Date.now();
 
-  const removals = await unitOfWork.run(
+  await unitOfWork.run(
     TRACK_CASCADE_TABLES,
     async (uow) => {
-      const purged = await purgeTracksInTx(uow, tracks, now);
+      await purgeTracksInTx(uow, tracks, now);
       await uow.covers.deletePlaylistCover(currentPlaylist.id);
       await uow.playlists.delete(currentPlaylist.id);
-      return purged;
     },
   );
   await deleteOwnedFiles(tracks);
 
-  await settleLibraryReads(queryClient);
-  // This playlist is gone — re-syncing its caches would put it back.
-  await syncAfterTrackPurge(queryClient, trackIds, removals, [currentPlaylist.id]);
+  await syncAfterTrackPurge(trackIds);
   await syncSearchIndex({ playlists: [currentPlaylist.id] });
 
-  removePlaylistCaches(queryClient, currentPlaylist.id);
   removeCoverCache("playlist", currentPlaylist.id);
-
-  if (trackIds.length > 0) {
-    // A playlist's tracks span arbitrary albums and artists, and the purge may
-    // have GC'd any of them — nothing narrower than the full sweep is safe.
-    invalidateForTrackMutation(queryClient, { kind: "relations" });
-  }
 }
 
 export async function removeTrackFromPlaylistAndSync(
-  queryClient: QueryClient,
   playlistId: PlaylistId,
   trackId: string,
 ) {
   await playlistRepository.removeTrack(playlistId, trackId as never);
   // The row is read back after the write, not derived from a read before
   // it: another change to the same playlist may have landed in between.
-  const nextPlaylist = await getPlaylistByIdOrThrow(playlistId);
-  await settleLibraryReads(queryClient);
-
-  syncPlaylistCaches(queryClient, nextPlaylist);
-  syncPlaylistTracksRemoval(queryClient, playlistId, new Set([trackId]));
-  invalidateForPlaylistMutation(queryClient, { kind: "tracksChange", playlistId });
-
-  return nextPlaylist;
+  return getPlaylistByIdOrThrow(playlistId);
 }
 
 /**
@@ -348,48 +314,33 @@ export async function removeTrackFromPlaylistAndSync(
  * other way meanwhile is not added twice.
  */
 export const removeTrackFromPlaylistWithUndo = async (
-  queryClient: QueryClient,
   playlistId: PlaylistId,
   trackId: TrackId,
 ): Promise<{ restore: () => Promise<void> }> => {
   const index = (await getPlaylistByIdOrThrow(playlistId)).trackIds.indexOf(trackId);
-  await removeTrackFromPlaylistAndSync(queryClient, playlistId, trackId);
+  await removeTrackFromPlaylistAndSync(playlistId, trackId);
 
   const restore = async (): Promise<void> => {
     if (index === -1) return;
     await playlistRepository.insertTrack(playlistId, trackId, index);
-    const nextPlaylist = await getPlaylistByIdOrThrow(playlistId);
-    await settleLibraryReads(queryClient);
-    syncPlaylistCaches(queryClient, nextPlaylist);
-    invalidateForPlaylistMutation(queryClient, { kind: "tracksChange", playlistId });
+    // insertTrack is a no-op on a deleted playlist; the read reports it.
+    await getPlaylistByIdOrThrow(playlistId);
   };
 
   return { restore };
 };
 
 export async function addTrackToPlaylistAndSync(
-  queryClient: QueryClient,
   playlistId: PlaylistId,
   track: Track,
 ) {
-  return addTracksToPlaylistAndSync(queryClient, playlistId, [track]);
+  return addTracksToPlaylistAndSync(playlistId, [track]);
 }
 
 export async function addTracksToPlaylistAndSync(
-  queryClient: QueryClient,
   playlistId: PlaylistId,
   tracks: Track[],
 ) {
-  // One row write for the whole batch; the repository reports which ids
-  // were actually appended so the page patch only gets those.
-  const added = await playlistRepository.addTracks(playlistId, tracks.map(track => track.id));
-  const nextPlaylist = await getPlaylistByIdOrThrow(playlistId);
-  await settleLibraryReads(queryClient);
-  const addedSet = new Set(added);
-
-  syncPlaylistCaches(queryClient, nextPlaylist);
-  syncPlaylistTracksAddition(queryClient, playlistId, tracks.filter(track => addedSet.has(track.id)));
-  invalidateForPlaylistMutation(queryClient, { kind: "tracksChange", playlistId });
-
-  return nextPlaylist;
+  await playlistRepository.addTracks(playlistId, tracks.map(track => track.id));
+  return getPlaylistByIdOrThrow(playlistId);
 }

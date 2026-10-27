@@ -5,7 +5,7 @@ import { THUMB_SIZE_FULL } from "@/lib/media/cover-sizes";
 import { sources } from "@/modules/sources";
 import type { TrackId } from "@/types/ids";
 import { parseTrackRef } from "@/types/track-ref";
-import { updateCoverCache } from "@/queries/cache";
+import { updateCoverCache } from "@/modules/covers/lib/cover-cache";
 import { formatError } from "@/lib/errors";
 
 /**

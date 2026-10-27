@@ -1,6 +1,6 @@
 import { computed, type ComputedRef } from "vue";
 import { useI18n } from "vue-i18n";
-import { useMutation, useQueryClient } from "@tanstack/vue-query";
+import { useMutation } from "@tanstack/vue-query";
 import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { useLiveQuery } from "@/composables/useLiveQuery";
@@ -22,11 +22,10 @@ export function useTrackChapters(trackId: ComputedRef<TrackId>) {
 }
 
 export function useSaveTrackChapters() {
-  const queryClient = useQueryClient();
   const { t } = useI18n();
 
   const mutation = useMutation({
-    mutationFn: ({ trackId, chapters }: ChaptersSave) => saveTrackChapters(queryClient, trackId, chapters),
+    mutationFn: ({ trackId, chapters }: ChaptersSave) => saveTrackChapters(trackId, chapters),
     onSuccess: (_saved, { trackId }) => {
       toaster.remove(saveFailedToastId(trackId));
     },

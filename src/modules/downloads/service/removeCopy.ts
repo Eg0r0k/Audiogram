@@ -1,7 +1,6 @@
 import { storageService } from "@/db/storage";
 import { getLogger } from "@/lib/logger";
-import { queryClient } from "@/queries/client";
-import { getLocalCopy, syncLocalCopyCache } from "@/queries/localCopy.queries";
+import { getLocalCopy } from "@/queries/localCopy.queries";
 import { deleteTracksAndSync } from "@/queries/track.queries";
 import type { TrackId } from "@/types/ids";
 
@@ -14,8 +13,7 @@ export const removeLocalCopy = async (remoteId: TrackId): Promise<void> => {
   const copy = await getLocalCopy(remoteId);
   if (!copy) return;
 
-  await deleteTracksAndSync(queryClient, [copy.id]);
-  await syncLocalCopyCache(queryClient, remoteId, null);
+  await deleteTracksAndSync([copy.id]);
 
   // File deletion strictly after the DB transaction.
   if (copy.storagePath) {

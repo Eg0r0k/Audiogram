@@ -1,6 +1,5 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { QueryClient } from "@tanstack/vue-query";
 import type { PlaylistEntity } from "@/db/entities";
 import type { PlaylistId, TrackId } from "@/types/ids";
 
@@ -17,17 +16,14 @@ const playlist = (trackIds: TrackId[]): PlaylistEntity => ({ id: P1, name: "P", 
 const storedTrackIds = async () => (await db.playlists.get(P1))?.trackIds;
 
 describe("removing a track from a playlist with undo (integration)", () => {
-  let queryClient: QueryClient;
-
   beforeEach(async () => {
-    queryClient = new QueryClient();
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
     await db.playlists.add(playlist(ids("a", "b", "c")));
   });
 
   it("puts the track back where it was", async () => {
-    const { restore } = await removeTrackFromPlaylistWithUndo(queryClient, P1, "b");
+    const { restore } = await removeTrackFromPlaylistWithUndo(P1, "b");
     expect(await storedTrackIds()).toEqual(ids("a", "c"));
 
     await restore();
@@ -36,7 +32,7 @@ describe("removing a track from a playlist with undo (integration)", () => {
   });
 
   it("keeps what changed in the playlist meanwhile", async () => {
-    const { restore } = await removeTrackFromPlaylistWithUndo(queryClient, P1, "b");
+    const { restore } = await removeTrackFromPlaylistWithUndo(P1, "b");
     await db.playlists.update(P1, { trackIds: ids("a", "c", "d") });
 
     await restore();
@@ -45,7 +41,7 @@ describe("removing a track from a playlist with undo (integration)", () => {
   });
 
   it("does not add the track twice when it came back another way", async () => {
-    const { restore } = await removeTrackFromPlaylistWithUndo(queryClient, P1, "b");
+    const { restore } = await removeTrackFromPlaylistWithUndo(P1, "b");
     await db.playlists.update(P1, { trackIds: ids("a", "c", "b") });
 
     await restore();

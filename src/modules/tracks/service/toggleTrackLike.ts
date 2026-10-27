@@ -24,7 +24,7 @@ export const toggleTrackLike = async (
   // the catalog.
   if (track.sourceDto) {
     await ensurePinned({ kind: "remote", dto: track.sourceDto }, { pinned: 0 });
-    if (liked) await invalidateLibraryData(queryClient);
+    if (liked) invalidateLibraryData();
   }
 
   // The source's own like list first: a refusal leaves the row as it was.

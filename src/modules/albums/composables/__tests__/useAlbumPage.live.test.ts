@@ -120,7 +120,7 @@ describe("useAlbumPage on live reads", () => {
     expect(api.isError.value).toBe(false);
 
     const [track] = await getTracksByIds([TrackId("x000")]);
-    await addTracksToAlbumAndSync(queryClient, ALBUM, [track]);
+    await addTracksToAlbumAndSync(ALBUM, [track]);
     await until(() => ids(api)[0] === TrackId("x000"));
     await until(() => api.trackCount.value === 121);
 
@@ -136,7 +136,7 @@ describe("useAlbumPage on live reads", () => {
     expect(api.album.value?.title).toBe("Album");
     expect(api.albumData.value?.artistName).toBe("Artist");
 
-    await updateAlbumAndSync(queryClient, ALBUM_ROW, { title: "Renamed" });
+    await updateAlbumAndSync(ALBUM_ROW, { title: "Renamed" });
     await until(() => api.album.value?.title === "Renamed");
     await until(() => api.tracks.value[0]?.albumName === "Renamed");
 
@@ -194,7 +194,6 @@ describe("useAlbumPage on live reads", () => {
   });
 
   it("album: a search string reads live rows and follows the index", async () => {
-    const writer = new QueryClient();
     await db.tracks.update(TrackId("t005"), { title: "Glory Box" });
     await db.tracks.update(TrackId("t006"), { title: "Glory Days" });
     await db.tracks.update(TrackId("x000"), { title: "Glory Elsewhere" });
@@ -206,7 +205,7 @@ describe("useAlbumPage on live reads", () => {
     expect(api.albumData.value?.duration).toBe("common.minutesShort:3");
 
     const [track] = await getTracksByIds([TrackId("x000")]);
-    await addTracksToAlbumAndSync(writer, ALBUM, [track]);
+    await addTracksToAlbumAndSync(ALBUM, [track]);
     await until(() => ids(api).includes(TrackId("x000")));
 
     expect(api.trackCount.value).toBe(3);

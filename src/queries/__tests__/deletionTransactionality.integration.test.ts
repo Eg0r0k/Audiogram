@@ -1,14 +1,13 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { okAsync } from "neverthrow";
-import { QueryClient } from "@tanstack/vue-query";
 import type { AlbumEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 import { ytAlbumId, ytArtistId, ytTrackId } from "@/types/track-ref";
 
-// Destructive multi-table cascades are one Dexie transaction; cache and
-// search sync run strictly after the commit.
+// Destructive multi-table cascades are one Dexie transaction; the search
+// sync runs strictly after the commit.
 
 const storageMock = vi.hoisted(() => ({
   deleteFile: vi.fn(),
@@ -94,13 +93,10 @@ async function snapshotCounts() {
 }
 
 describe("deletion transactionality (integration)", () => {
-  let queryClient: QueryClient;
-
   beforeEach(async () => {
     vi.clearAllMocks();
     storageMock.deleteFile.mockReturnValue(okAsync(undefined));
     gcMock.cleanup.mockImplementation(gcMock.actual!);
-    queryClient = new QueryClient();
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
   });
@@ -113,7 +109,7 @@ describe("deletion transactionality (integration)", () => {
     });
 
     await expect(
-      deleteTrackAndSync(queryClient, { id: ytTrackId("v1") } as unknown as Track),
+      deleteTrackAndSync({ id: ytTrackId("v1") } as unknown as Track),
     ).rejects.toThrow("boom mid-transaction");
 
     expect(await snapshotCounts()).toEqual(before);
@@ -132,7 +128,7 @@ describe("deletion transactionality (integration)", () => {
 
     let failure: unknown;
     try {
-      failure = await deleteTrackAndSync(queryClient, { id: ytTrackId("v1") } as unknown as Track)
+      failure = await deleteTrackAndSync({ id: ytTrackId("v1") } as unknown as Track)
         .catch((error: unknown) => error);
     }
     finally {
@@ -155,7 +151,7 @@ describe("deletion transactionality (integration)", () => {
       throw new Error("boom mid-transaction");
     });
 
-    await expect(deleteAlbumAndSync(queryClient, album, { deleteTracks: true })).rejects.toThrow("boom mid-transaction");
+    await expect(deleteAlbumAndSync(album, { deleteTracks: true })).rejects.toThrow("boom mid-transaction");
 
     expect(await snapshotCounts()).toEqual(before);
     const playlist = await db.playlists.get(playlistId);
@@ -191,7 +187,7 @@ describe("deletion transactionality (integration)", () => {
       .mockRejectedValueOnce(new Error("boom mid-transaction"));
     try {
       await expect(
-        deleteArtistAndSync(queryClient, (await db.artists.get(artistId))!),
+        deleteArtistAndSync((await db.artists.get(artistId))!),
       ).rejects.toThrow("boom mid-transaction");
     }
     finally {
@@ -218,7 +214,7 @@ describe("deletion transactionality (integration)", () => {
         return (await db.tracks.bulkGet([...ids])).filter(track => track !== undefined);
       });
     try {
-      await deleteTrackAndSync(queryClient, { id: ytTrackId("v1") } as unknown as Track);
+      await deleteTrackAndSync({ id: ytTrackId("v1") } as unknown as Track);
     }
     finally {
       spy.mockRestore();
@@ -239,7 +235,7 @@ describe("deletion transactionality (integration)", () => {
         return readRows.call(this, options);
       });
     try {
-      await deleteAlbumAndSync(queryClient, album, { deleteTracks: true });
+      await deleteAlbumAndSync(album, { deleteTracks: true });
     }
     finally {
       spy.mockRestore();
@@ -272,7 +268,7 @@ describe("deletion transactionality (integration)", () => {
       addedAt: 1,
     } as unknown as TrackEntity);
 
-    await deleteArtistAndSync(queryClient, (await db.artists.get(artistId))!);
+    await deleteArtistAndSync((await db.artists.get(artistId))!);
 
     expect(await db.artists.get(artistId)).toBeUndefined();
     expect(await db.albums.count()).toBe(0);

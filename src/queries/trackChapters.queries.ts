@@ -1,4 +1,4 @@
-import { queryOptions, type QueryClient } from "@tanstack/vue-query";
+import { queryOptions } from "@tanstack/vue-query";
 import { trackChaptersRepository } from "@/db/repositories/trackChapters.repository";
 import type { TrackChapterMark } from "@/db/entities";
 import { queryKeys } from "@/queries/query-keys";
@@ -21,7 +21,6 @@ export const trackChaptersQueries = {
 } as const;
 
 export async function saveTrackChapters(
-  queryClient: QueryClient,
   trackId: TrackId,
   chapters: TrackChapterMark[],
 ): Promise<void> {
@@ -30,5 +29,4 @@ export async function saveTrackChapters(
     ...(c.title !== undefined ? { title: c.title } : {}),
   }));
   await trackChaptersRepository.setForTrack(trackId, clean);
-  queryClient.setQueryData(queryKeys.trackChapters.detail(trackId), clean);
 }

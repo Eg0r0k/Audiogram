@@ -1,18 +1,9 @@
 import type { SidebarFolderEntity, SidebarFolderEntryEntity } from "@/db/entities";
 import { folderRepository } from "@/db/repositories";
 import { assertValidFolderName } from "@/modules/library/lib/folderName";
-import { queryKeys } from "@/queries/query-keys";
 import { SidebarFolderId } from "@/types/ids";
-import type { QueryClient } from "@tanstack/vue-query";
-import { settleLibraryReads } from "./cache";
 
-// Folders are only read as part of the library summary.
-const invalidateFolders = async (queryClient: QueryClient) => {
-  await settleLibraryReads(queryClient);
-  queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() }).catch(() => {});
-};
-
-export async function createFolderAndSync(queryClient: QueryClient, name: string) {
+export async function createFolderAndSync(name: string) {
   const now = Date.now();
   const folder: SidebarFolderEntity = {
     id: SidebarFolderId(crypto.randomUUID()),
@@ -23,38 +14,31 @@ export async function createFolderAndSync(queryClient: QueryClient, name: string
   };
 
   await folderRepository.create(folder);
-  await invalidateFolders(queryClient);
 
   return folder;
 }
 
-export async function renameFolderAndSync(queryClient: QueryClient, folderId: SidebarFolderId, name: string) {
+export async function renameFolderAndSync(folderId: SidebarFolderId, name: string) {
   await folderRepository.update(folderId, {
     name: assertValidFolderName(name),
     updatedAt: Date.now(),
   });
-  await invalidateFolders(queryClient);
 }
 
-export async function deleteFolderAndSync(queryClient: QueryClient, folderId: SidebarFolderId) {
+export async function deleteFolderAndSync(folderId: SidebarFolderId) {
   await folderRepository.delete(folderId);
-  await invalidateFolders(queryClient);
 }
 
 export async function setFolderItemsAndSync(
-  queryClient: QueryClient,
   folderId: SidebarFolderId,
   items: SidebarFolderEntryEntity[],
 ) {
   await folderRepository.setItems(folderId, items);
-  await invalidateFolders(queryClient);
 }
 
 export async function removeFolderItemAndSync(
-  queryClient: QueryClient,
   type: SidebarFolderEntryEntity["type"],
   id: string,
 ) {
   await folderRepository.removeItem(type, id);
-  await invalidateFolders(queryClient);
 }

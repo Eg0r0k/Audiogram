@@ -1,7 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { okAsync } from "neverthrow";
-import { QueryClient } from "@tanstack/vue-query";
 import type { AlbumEntity, ArtistEntity, PlaylistEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
@@ -64,12 +63,9 @@ const seedLibrary = async () => {
 };
 
 describe("deleteTracks option (integration)", () => {
-  let queryClient: QueryClient;
-
   beforeEach(async () => {
     vi.clearAllMocks();
     storageMock.deleteFile.mockReturnValue(okAsync(undefined));
-    queryClient = new QueryClient();
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
   });
@@ -84,7 +80,7 @@ describe("deleteTracks option (integration)", () => {
       updatedAt: 1,
     } satisfies PlaylistEntity);
 
-    await deleteAlbumAndSync(queryClient, album, { deleteTracks: true });
+    await deleteAlbumAndSync(album, { deleteTracks: true });
 
     expect(await db.tracks.count()).toBe(0);
     expect(await db.albums.count()).toBe(0);
@@ -96,7 +92,7 @@ describe("deleteTracks option (integration)", () => {
   it("a local album without the opt-in still only ungroups its tracks", async () => {
     await seedLibrary();
 
-    await deleteAlbumAndSync(queryClient, album, { deleteTracks: false });
+    await deleteAlbumAndSync(album, { deleteTracks: false });
 
     expect(await db.tracks.count()).toBe(2);
     expect(await db.artists.count()).toBe(1);
@@ -106,7 +102,7 @@ describe("deleteTracks option (integration)", () => {
   it("an artist takes their albums and tracks", async () => {
     await seedLibrary();
 
-    await deleteArtistAndSync(queryClient, artist, { deleteTracks: true });
+    await deleteArtistAndSync(artist, { deleteTracks: true });
 
     expect(await db.tracks.count()).toBe(0);
     expect(await db.albums.count()).toBe(0);
@@ -117,7 +113,7 @@ describe("deleteTracks option (integration)", () => {
   it("an artist without the opt-in keeps the tracks and detaches them", async () => {
     await seedLibrary();
 
-    await deleteArtistAndSync(queryClient, artist, { deleteTracks: false });
+    await deleteArtistAndSync(artist, { deleteTracks: false });
 
     const tracks = await db.tracks.toArray();
     expect(tracks).toHaveLength(2);
@@ -135,11 +131,7 @@ describe("deleteTracks option (integration)", () => {
       { id: otherId, name: "Other", trackIds: [TrackId("t-1"), TrackId("t-2")], addedAt: 1, updatedAt: 1 },
     ] satisfies PlaylistEntity[]);
 
-    await deletePlaylistAndSync(
-      queryClient,
-      (await db.playlists.get(playlistId))!,
-      { deleteTracks: true },
-    );
+    await deletePlaylistAndSync((await db.playlists.get(playlistId))!, { deleteTracks: true });
 
     expect(await db.playlists.get(playlistId)).toBeUndefined();
     // Only the deleted playlist's own track goes — t-2 was never in it.
@@ -159,7 +151,7 @@ describe("deleteTracks option (integration)", () => {
       updatedAt: 1,
     } satisfies PlaylistEntity);
 
-    await deletePlaylistAndSync(queryClient, (await db.playlists.get(playlistId))!);
+    await deletePlaylistAndSync((await db.playlists.get(playlistId))!);
 
     expect(await db.playlists.count()).toBe(0);
     expect(await db.tracks.count()).toBe(2);

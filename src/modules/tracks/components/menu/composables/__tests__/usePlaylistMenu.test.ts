@@ -48,7 +48,7 @@ describe("usePlaylistMenu", () => {
     expect(api.playlists.value).toEqual([{ id: "p1", name: "Road trip" }]);
     expect(api.isLoading.value).toBe(false);
 
-    await updatePlaylistAndSync(new QueryClient(), ROW, { name: "Night drive" });
+    await updatePlaylistAndSync(ROW, { name: "Night drive" });
 
     await until(() => api.playlists.value[0]?.name === "Night drive");
     expect(api.playlists.value).toEqual([{ id: "p1", name: "Night drive" }]);

@@ -184,7 +184,6 @@ function openAddTracksPanel() {
   rightPanelStore.openAddTracks({
     entityType: "playlist",
     entityId: playlist.value.id,
-    onConfirmed: () => refetch(),
   }, {
     scope: { type: "route", routeKey: route.fullPath },
     depth: 1,

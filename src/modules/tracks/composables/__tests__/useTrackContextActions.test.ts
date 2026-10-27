@@ -85,7 +85,7 @@ describe("useTrackContextActions", () => {
     undoOf("playlist.trackRemoved")();
     await flush();
 
-    expect(playlistQueries.removeTrackFromPlaylistWithUndo).toHaveBeenCalledWith({ tag: "qc" }, PLAYLIST, "t1");
+    expect(playlistQueries.removeTrackFromPlaylistWithUndo).toHaveBeenCalledWith(PLAYLIST, "t1");
     expect(restore).toHaveBeenCalledTimes(1);
   });
 

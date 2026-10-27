@@ -26,16 +26,8 @@ import { mapTracks, type Track } from "@/types/track";
 import { AlbumId as createAlbumId, ArtistId as createArtistId } from "@/types/ids";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 import { queryOptions, skipToken, type QueryClient } from "@tanstack/vue-query";
-import {
-  invalidateForTrackMutation,
-  settleLibraryReads,
-  syncAlbumCaches,
-  syncArtistCaches,
-  syncTrackLikeCaches,
-  syncTrackMetadataCaches,
-  updateCoverCache,
-  removeCoverCache,
-} from "./cache";
+import { removeCoverCache, updateCoverCache } from "@/modules/covers/lib/cover-cache";
+import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import { unique } from "@/lib/math";
 import {
   purgeTracksInTx,
@@ -45,6 +37,7 @@ import {
 import type { LikedTracksPageData, PaginatedTracksResult } from "./types";
 import { getAlbumByIdOrThrow } from "./album.queries";
 import { getArtistByIdOrThrow } from "./artist.queries";
+import { invalidateStatsQueries } from "./stats.queries";
 import { dedupeArtistNames, identityKey } from "@/lib/artist-names";
 import { assertValidName } from "@/lib/limits";
 import type { Nullish } from "@/types/utils";
@@ -97,7 +90,7 @@ async function loadArtistNames(artistIds: readonly ArtistId[]): Promise<Map<Arti
   return new Map(artists.map(artist => [artist.id, artist.name]));
 }
 
-async function findOrCreateArtists(queryClient: QueryClient, names: string[]) {
+async function findOrCreateArtists(names: string[]) {
   const artists: ArtistEntity[] = [];
   const createdIds: ArtistId[] = [];
   const now = Date.now();
@@ -119,7 +112,6 @@ async function findOrCreateArtists(queryClient: QueryClient, names: string[]) {
     };
 
     await artistRepository.create(artist);
-    syncArtistCaches(queryClient, artist);
     artists.push(artist);
     createdIds.push(artist.id);
   }
@@ -129,11 +121,9 @@ async function findOrCreateArtists(queryClient: QueryClient, names: string[]) {
   return artists;
 }
 
-// Every row of the batch may have moved between lists; nothing narrower than
-// the full sweep is safe, and per-row patches would be O(rows × pages).
-const invalidateTrackRelations = async (queryClient: QueryClient) => {
-  await settleLibraryReads(queryClient);
-  invalidateForTrackMutation(queryClient, { kind: "relations" });
+// History and top-track rows hold a copy of the track; a like or an edit re-reads them.
+const refreshStatsTrackRows = (queryClient: QueryClient) => {
+  invalidateStatsQueries(queryClient).catch(() => {});
 };
 
 // Live lists project the scope inside their own queriers; D1 keeps the repository import here.
@@ -399,10 +389,7 @@ export async function getTracksByIdsSorted(ids: TrackId[], sortKey: TrackSortKey
   return loadTrackRelations(entities);
 }
 
-/** One repository write for the whole batch, one invalidation for every list
- *  that may move. Per-track cache patches are O(N·M) here, so none are made. */
 export async function setTracksLikedAndSync(
-  queryClient: QueryClient,
   ids: TrackId[],
   liked: boolean,
 ): Promise<number> {
@@ -411,14 +398,11 @@ export async function setTracksLikedAndSync(
     ? await trackRepository.likeMany(ids, Date.now())
     : await trackRepository.unlikeMany(ids);
 
-  await invalidateTrackRelations(queryClient);
+  markRecommenderContextDirty();
   return changed;
 }
 
-export async function deleteTracksAndSync(
-  queryClient: QueryClient,
-  ids: TrackId[],
-): Promise<number> {
+export async function deleteTracksAndSync(ids: TrackId[]): Promise<number> {
   if (ids.length === 0) return 0;
   const tracks = await trackRepository.findByIds(ids);
   if (tracks.length === 0) return 0;
@@ -426,32 +410,19 @@ export async function deleteTracksAndSync(
   const trackIds = tracks.map(track => track.id);
   const now = Date.now();
 
-  const removals = await unitOfWork.run(
+  await unitOfWork.run(
     TRACK_CASCADE_TABLES,
     uow => purgeTracksInTx(uow, tracks, now),
   );
 
-  await settleLibraryReads(queryClient);
-  await syncAfterTrackPurge(queryClient, trackIds, removals);
-  const idSet = new Set<string>(trackIds);
-  queryClient.removeQueries({
-    predicate: query => query.queryKey[0] === "tracks" && idSet.has(query.queryKey[1] as string),
-  });
+  await syncAfterTrackPurge(trackIds);
   for (const id of trackIds) {
     removeCoverCache("track", id);
   }
-
-  invalidateForTrackMutation(queryClient, {
-    kind: "removal",
-    albumIds: unique(tracks.map(track => track.albumId).filter(Boolean)),
-    artistIds: unique(tracks.flatMap(track => track.artistIds)),
-    playlistIds: removals.map(removal => removal.next.id),
-  });
   return trackIds.length;
 }
 
 export async function addTracksToAlbumAndSync(
-  queryClient: QueryClient,
   albumId: AlbumId,
   tracks: Track[],
 ) {
@@ -491,12 +462,11 @@ export async function addTracksToAlbumAndSync(
     await trackRepository.updateMany(updates);
   }
 
-  await invalidateTrackRelations(queryClient);
+  markRecommenderContextDirty();
   await syncSearchIndex({ tracks: trackIds });
 }
 
 export async function addTracksToArtistAndSync(
-  queryClient: QueryClient,
   artistId: ArtistId,
   tracks: Track[],
 ) {
@@ -528,20 +498,17 @@ export async function addTracksToArtistAndSync(
     await trackRepository.updateMany(updates);
   }
 
-  await invalidateTrackRelations(queryClient);
+  markRecommenderContextDirty();
   await syncSearchIndex({ tracks: trackIds });
 }
 
-export async function favoriteTracksAndSync(
-  queryClient: QueryClient,
-  tracks: Track[],
-) {
+export async function favoriteTracksAndSync(tracks: Track[]) {
   const trackIds = unique(tracks.map(track => track.id));
 
   // Rows already liked keep their original likedAt.
   await trackRepository.likeMany(trackIds, Date.now());
 
-  await invalidateTrackRelations(queryClient);
+  markRecommenderContextDirty();
 }
 
 export async function toggleTrackLikeAndSync(
@@ -555,19 +522,13 @@ export async function toggleTrackLikeAndSync(
   }
 
   const nextValue = !track.isLiked;
-  const likedAt = nextValue ? Date.now() : undefined;
 
   await trackRepository.setLiked(track.id, nextValue);
-  await settleLibraryReads(queryClient);
 
-  const nextTrackEntity: TrackEntity = {
-    ...currentTrack,
-    likedAt,
-  };
   const nextTrack: Track = { ...track, isLiked: nextValue };
 
-  syncTrackLikeCaches(queryClient, nextTrackEntity, nextTrack);
-  invalidateForTrackMutation(queryClient, { kind: "like" });
+  markRecommenderContextDirty();
+  refreshStatsTrackRows(queryClient);
 
   return nextTrack;
 }
@@ -578,15 +539,14 @@ const findTrackOrThrow = async (trackId: TrackId): Promise<TrackEntity> => {
   return track;
 };
 
-const syncTrackLyricsCaches = (
+const afterLyricsWrite = (
   queryClient: QueryClient,
-  currentTrack: TrackEntity,
   track: Track,
   fields: Pick<TrackEntity, "lyricsPath" | "lyricsFileName" | "lyricsOffsetMs">,
 ): Track => {
-  const nextTrack: Track = { ...track, ...fields };
-  syncTrackMetadataCaches(queryClient, { ...currentTrack, ...fields }, nextTrack);
-  return nextTrack;
+  markRecommenderContextDirty();
+  refreshStatsTrackRows(queryClient);
+  return { ...track, ...fields };
 };
 
 const writeTrackLyrics = async (
@@ -597,9 +557,8 @@ const writeTrackLyrics = async (
   const currentTrack = await findTrackOrThrow(track.id);
 
   await trackRepository.setLyrics(track.id, changes);
-  await settleLibraryReads(queryClient);
 
-  return syncTrackLyricsCaches(queryClient, currentTrack, track, {
+  return afterLyricsWrite(queryClient, track, {
     lyricsPath: changes.lyricsPath ?? undefined,
     lyricsFileName: changes.lyricsFileName ?? undefined,
     lyricsOffsetMs: changes.lyricsOffsetMs ?? currentTrack.lyricsOffsetMs,
@@ -620,16 +579,14 @@ export const setTrackLyricsOffsetAndSync = async (
   track: Track,
   offsetMs: number,
 ): Promise<Track> => {
-  const currentTrack = await findTrackOrThrow(track.id);
+  await findTrackOrThrow(track.id);
 
   await trackRepository.setLyricsOffset(track.id, offsetMs);
-  await settleLibraryReads(queryClient);
 
-  return syncTrackLyricsCaches(queryClient, currentTrack, track, { lyricsOffsetMs: offsetMs });
+  return afterLyricsWrite(queryClient, track, { lyricsOffsetMs: offsetMs });
 };
 
 const resolveAlbumForChanges = async (
-  queryClient: QueryClient,
   changes: TrackMetadataChanges,
   firstArtistId: ArtistId | null,
 ): Promise<AlbumEntity | null> => {
@@ -654,9 +611,6 @@ const resolveAlbumForChanges = async (
     updatedAt: now,
   };
   await albumRepository.create(created);
-  // Mirror findOrCreateArtists: a brand-new row needs a point-sync into the
-  // list cache and a search document, or it stays invisible until reload.
-  syncAlbumCaches(queryClient, created);
   await syncSearchIndex({ albums: [created.id] });
   return created;
 };
@@ -685,8 +639,8 @@ export async function updateTrackMetadataAndSync(
     throw new Error("An album needs an artist");
   }
 
-  const artists = await findOrCreateArtists(queryClient, artistNames);
-  const album = await resolveAlbumForChanges(queryClient, changes, artists[0]?.id ?? null);
+  const artists = await findOrCreateArtists(artistNames);
+  const album = await resolveAlbumForChanges(changes, artists[0]?.id ?? null);
   const nextArtistIds = artists.map(artist => artist.id);
   const nextArtistName = artists.map(artist => artist.name).join(", ");
   const nextTrackNo = resolveNullableNumber(changes.trackNo, currentTrack.trackNo);
@@ -694,17 +648,6 @@ export async function updateTrackMetadataAndSync(
   const nextAlbumId = album?.id ?? createAlbumId("");
   // "" not undefined: albumTitle is indexed (see entities.ts).
   const nextAlbumTitle = album?.title ?? "";
-
-  const nextTrackEntity: TrackEntity = {
-    ...currentTrack,
-    title,
-    artistIds: nextArtistIds,
-    artistName: nextArtistName,
-    albumId: nextAlbumId,
-    albumTitle: nextAlbumTitle,
-    trackNo: nextTrackNo,
-    diskNo: nextDiskNo,
-  };
 
   await trackRepository.update(currentTrack.id, {
     title,
@@ -715,7 +658,6 @@ export async function updateTrackMetadataAndSync(
     trackNo: nextTrackNo,
     diskNo: nextDiskNo,
   });
-  await settleLibraryReads(queryClient);
 
   // An album-less track resolves its cover from its own id; once it joins an
   // album that owner stops being consulted, so the embedded art must follow —
@@ -754,27 +696,18 @@ export async function updateTrackMetadataAndSync(
     artistIds: nextArtistIds,
     albumId: nextAlbumId,
     albumName: nextAlbumTitle,
-    trackNo: nextTrackEntity.trackNo,
-    diskNo: nextTrackEntity.diskNo,
+    trackNo: nextTrackNo,
+    diskNo: nextDiskNo,
   };
 
-  syncTrackMetadataCaches(queryClient, nextTrackEntity, nextTrack);
-
+  markRecommenderContextDirty();
   await syncSearchIndex({ tracks: [currentTrack.id] });
-
-  invalidateForTrackMutation(queryClient, {
-    kind: "metadata",
-    artistIds: unique([...currentTrack.artistIds, ...nextArtistIds]),
-    albumIds: unique([currentTrack.albumId, nextAlbumId].filter(Boolean)),
-  });
+  refreshStatsTrackRows(queryClient);
 
   return nextTrack;
 }
 
-export async function deleteTrackAndSync(
-  queryClient: QueryClient,
-  track: Track,
-) {
-  const deleted = await deleteTracksAndSync(queryClient, [track.id]);
+export async function deleteTrackAndSync(track: Track) {
+  const deleted = await deleteTracksAndSync([track.id]);
   if (deleted === 0) throw new DbError("NOT_FOUND", "Track not found");
 }

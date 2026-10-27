@@ -1,7 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { okAsync } from "neverthrow";
-import { QueryClient } from "@tanstack/vue-query";
 import type { AlbumEntity, ArtistEntity, CoverEntity, PlaylistEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
@@ -61,12 +60,9 @@ const cover = (id: string, ownerType: CoverEntity["ownerType"], ownerId: string)
 const ids = (rows: { id: string }[]) => rows.map(row => row.id).sort();
 
 describe("deleteTracksWithUndo (integration)", () => {
-  let queryClient: QueryClient;
-
   beforeEach(async () => {
     vi.clearAllMocks();
     storageMock.deleteFile.mockReturnValue(okAsync(undefined));
-    queryClient = new QueryClient();
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
     await db.artists.put(artist);
@@ -87,7 +83,7 @@ describe("deleteTracksWithUndo (integration)", () => {
   });
 
   it("deletes like the plain cascade and keeps the files until finalize", async () => {
-    const undo = await deleteTracksWithUndo(queryClient, [TrackId("t-1"), TrackId("t-2")]);
+    const undo = await deleteTracksWithUndo([TrackId("t-1"), TrackId("t-2")]);
 
     expect(undo.deleted).toBe(2);
     expect(ids(await db.tracks.toArray())).toEqual(["t-3"]);
@@ -100,7 +96,7 @@ describe("deleteTracksWithUndo (integration)", () => {
   });
 
   it("restore brings back rows, covers and the playlist order, never touching files", async () => {
-    const undo = await deleteTracksWithUndo(queryClient, [TrackId("t-1"), TrackId("t-2")]);
+    const undo = await deleteTracksWithUndo([TrackId("t-1"), TrackId("t-2")]);
     searchMock.syncSearchIndex.mockClear();
 
     await undo.restore();
@@ -115,7 +111,7 @@ describe("deleteTracksWithUndo (integration)", () => {
   });
 
   it("restores the album and artist the cascade took along with their covers", async () => {
-    const undo = await deleteTracksWithUndo(queryClient, [TrackId("t-1"), TrackId("t-2"), TrackId("t-3")]);
+    const undo = await deleteTracksWithUndo([TrackId("t-1"), TrackId("t-2"), TrackId("t-3")]);
     expect(await db.albums.count()).toBe(0);
     expect(await db.artists.count()).toBe(0);
     // The cascade drops track and album covers; artist covers it leaves behind.
@@ -132,7 +128,7 @@ describe("deleteTracksWithUndo (integration)", () => {
   it("restore re-reads only the restored covers instead of the whole cache", async () => {
     const invalidateAll = vi.spyOn(coverCache, "invalidateAll");
     const invalidate = vi.spyOn(coverCache, "invalidate");
-    const undo = await deleteTracksWithUndo(queryClient, [TrackId("t-1"), TrackId("t-2"), TrackId("t-3")]);
+    const undo = await deleteTracksWithUndo([TrackId("t-1"), TrackId("t-2"), TrackId("t-3")]);
     invalidate.mockClear();
 
     await undo.restore();
@@ -143,7 +139,7 @@ describe("deleteTracksWithUndo (integration)", () => {
   });
 
   it("leaves an album that still has tracks alone on restore", async () => {
-    const undo = await deleteTracksWithUndo(queryClient, [TrackId("t-1")]);
+    const undo = await deleteTracksWithUndo([TrackId("t-1")]);
     await db.albums.update(albumId, { title: "Renamed meanwhile" });
 
     await undo.restore();
@@ -152,12 +148,12 @@ describe("deleteTracksWithUndo (integration)", () => {
   });
 
   it("restore after finalize and finalize after restore are no-ops", async () => {
-    const first = await deleteTracksWithUndo(queryClient, [TrackId("t-1")]);
+    const first = await deleteTracksWithUndo([TrackId("t-1")]);
     await first.finalize();
     await first.restore();
     expect(ids(await db.tracks.toArray())).toEqual(["t-2", "t-3"]);
 
-    const second = await deleteTracksWithUndo(queryClient, [TrackId("t-2")]);
+    const second = await deleteTracksWithUndo([TrackId("t-2")]);
     await second.restore();
     storageMock.deleteFile.mockClear();
     await second.finalize();
@@ -165,7 +161,7 @@ describe("deleteTracksWithUndo (integration)", () => {
   });
 
   it("reports 0 and inert callbacks for unknown ids", async () => {
-    const undo = await deleteTracksWithUndo(queryClient, [TrackId("nope")]);
+    const undo = await deleteTracksWithUndo([TrackId("nope")]);
     expect(undo.deleted).toBe(0);
     await undo.restore();
     await undo.finalize();

@@ -1,6 +1,5 @@
 import { computed, ref } from "vue";
 import type { ComputedRef, Ref } from "vue";
-import { useQueryClient } from "@tanstack/vue-query";
 import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
@@ -35,7 +34,6 @@ export interface UseBulkTrackActionsOptions {
 }
 
 export const useBulkTrackActions = (options: UseBulkTrackActionsOptions) => {
-  const queryClient = useQueryClient();
   const queueStore = useQueueStore();
   const { t } = useI18n();
   const { deleteWithUndo } = useTrackDeletion();
@@ -93,7 +91,7 @@ export const useBulkTrackActions = (options: UseBulkTrackActionsOptions) => {
   const toggleLike = () => run("toggleLike", async () => {
     const liked = !allLiked.value;
     const idList = ids();
-    const changed = await setTracksLikedAndSync(queryClient, idList, liked);
+    const changed = await setTracksLikedAndSync(idList, liked);
 
     const idSet = new Set<string>(idList);
     queueStore.syncTracksMetadata(
@@ -106,14 +104,14 @@ export const useBulkTrackActions = (options: UseBulkTrackActionsOptions) => {
 
   const addToPlaylist = (playlistId: PlaylistId) => run("addToPlaylist", async () => {
     const tracks = await fetchSelected();
-    await addTracksToPlaylistAndSync(queryClient, playlistId, tracks);
+    await addTracksToPlaylistAndSync(playlistId, tracks);
     toaster.add({ title: t("library.selection.addedToPlaylist", tracks.length), color: "success" });
   });
 
   const createPlaylist = () => run("addToPlaylist", async () => {
     const tracks = await fetchSelected();
-    const playlist = await createPlaylistAndSync(queryClient);
-    await addTracksToPlaylistAndSync(queryClient, playlist.id, tracks);
+    const playlist = await createPlaylistAndSync();
+    await addTracksToPlaylistAndSync(playlist.id, tracks);
     toaster.add({ title: t("library.selection.addedToPlaylist", tracks.length), color: "success" });
   });
 

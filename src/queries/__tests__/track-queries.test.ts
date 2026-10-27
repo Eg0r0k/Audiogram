@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AlbumEntity, ArtistEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import { QueryClient } from "@tanstack/vue-query";
@@ -23,6 +23,8 @@ const repositories = vi.hoisted(() => ({
     findById: vi.fn(),
     update: vi.fn(),
     setLiked: vi.fn(),
+    setLyrics: vi.fn(),
+    likeMany: vi.fn(),
   },
   coverRepository: {
     findByOwner: vi.fn(),
@@ -39,13 +41,14 @@ vi.mock("@/services/search/searchIndex", () => ({
 
 import { searchTracks, syncSearchIndex } from "@/services/search/searchIndex";
 import { queryKeys } from "@/queries/query-keys";
-import * as cache from "../cache";
-import type { LibrarySummaryData } from "../types";
 import {
+  attachTrackLyricsAndSync,
+  favoriteTracksAndSync,
   getAllTracksPaginated,
   getLikedTracksPageData,
   getLikedTracksPaginated,
   searchTracksPaginated,
+  setTracksLikedAndSync,
   toggleTrackLikeAndSync,
   updateTrackMetadataAndSync,
 } from "../track.queries";
@@ -408,17 +411,6 @@ describe("track.queries", () => {
       isLiked: false,
     };
 
-    const summaryWith = (albums: AlbumEntity[]): LibrarySummaryData => ({
-      artists: [artist],
-      albums,
-      playlists: [],
-      folders: [],
-      likedCount: 0,
-    });
-
-    const summaryAlbums = (client: QueryClient) =>
-      client.getQueryData<LibrarySummaryData>(queryKeys.library.summary())!.albums;
-
     let queryClient: QueryClient;
 
     beforeEach(() => {
@@ -444,9 +436,6 @@ describe("track.queries", () => {
     it("creates a new album row when no identity match exists", async () => {
       repositories.albumRepository.findByArtistId.mockResolvedValue([existingAlbum]);
       repositories.albumRepository.create.mockResolvedValue("new-album" as AlbumId);
-      // Seed the sidebar's summary like a mounted library would, so the
-      // point-sync has something to patch.
-      queryClient.setQueryData(queryKeys.library.summary(), summaryWith([existingAlbum]));
 
       const next = await updateTrackMetadataAndSync(queryClient, track, {
         title: track.title,
@@ -464,17 +453,12 @@ describe("track.queries", () => {
       const created = repositories.albumRepository.create.mock.calls[0][0] as AlbumEntity;
       expect(next.albumId).toBe(created.id);
 
-      // The new album must be immediately visible in the sidebar, not only
-      // reachable after a reload.
-      expect(summaryAlbums(queryClient)).toEqual([existingAlbum, created]);
-
-      // And it must be searchable without waiting for a full reindex.
+      // It must be searchable without waiting for a full reindex.
       expect(syncSearchIndex).toHaveBeenCalledWith({ albums: [created.id] });
     });
 
-    it("does not sync an album into the search index or list cache when reusing an existing album", async () => {
+    it("does not sync an album into the search index when reusing an existing album", async () => {
       repositories.albumRepository.findByArtistId.mockResolvedValue([existingAlbum]);
-      queryClient.setQueryData(queryKeys.library.summary(), summaryWith([existingAlbum]));
 
       await updateTrackMetadataAndSync(queryClient, track, {
         title: track.title,
@@ -484,7 +468,6 @@ describe("track.queries", () => {
 
       expect(repositories.albumRepository.create).not.toHaveBeenCalled();
       expect(syncSearchIndex).not.toHaveBeenCalledWith(expect.objectContaining({ albums: expect.anything() }));
-      expect(summaryAlbums(queryClient)).toEqual([existingAlbum]);
     });
 
     it("hands a track-owned cover over to the newly assigned album", async () => {
@@ -693,44 +676,83 @@ describe("track.queries", () => {
     });
   });
 
-  describe("toggleTrackLikeAndSync", () => {
-    it("asks the sorted liked pages to re-read after the point-sync", async () => {
-      const queryClient = new QueryClient();
-      const invalidate = vi.spyOn(cache, "invalidateForTrackMutation").mockResolvedValue(undefined);
-      const entity = {
-        id: "t-1" as TrackId,
-        title: "One",
-        artistIds: ["a-1" as ArtistId],
-        albumId: "al-1" as AlbumId,
-        tagIds: [],
-        source: TrackSource.LOCAL_INTERNAL,
-        state: TrackState.READY,
-        storagePath: "p",
-        duration: 10,
-        format: {},
-        playCount: 0,
-        addedAt: 1,
-      } as TrackEntity;
+  describe("the query cache", () => {
+    const entity = {
+      id: "t-1" as TrackId,
+      title: "One",
+      artistIds: ["a-1" as ArtistId],
+      albumId: "al-1" as AlbumId,
+      tagIds: [],
+      source: TrackSource.LOCAL_INTERNAL,
+      state: TrackState.READY,
+      storagePath: "p",
+      duration: 10,
+      format: {},
+      playCount: 0,
+      addedAt: 1,
+    } as TrackEntity;
+    const track = {
+      id: entity.id,
+      kind: "library",
+      title: "One",
+      artist: "A",
+      artistIds: entity.artistIds,
+      albumId: entity.albumId,
+      albumName: "Al",
+      storagePath: "p",
+      source: entity.source,
+      state: entity.state,
+      duration: 10,
+      isLiked: false,
+    } as Track;
+
+    beforeEach(() => {
       repositories.trackRepository.findById.mockResolvedValue(entity);
-      repositories.trackRepository.setLiked.mockResolvedValue(undefined);
-      const track = {
-        id: entity.id,
-        kind: "library",
-        title: "One",
-        artist: "A",
-        artistIds: entity.artistIds,
-        albumId: entity.albumId,
-        albumName: "Al",
-        storagePath: "p",
-        source: entity.source,
-        state: entity.state,
-        duration: 10,
-        isLiked: false,
-      } as Track;
+      repositories.trackRepository.likeMany.mockResolvedValue(1);
+      repositories.artistRepository.findByName.mockResolvedValue(undefined);
+      repositories.albumRepository.findByArtistId.mockResolvedValue([]);
+      repositories.coverRepository.findByOwner.mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("a mutation does not touch the query cache", async () => {
+      const queryClient = new QueryClient();
+      const setQueryData = vi.spyOn(QueryClient.prototype, "setQueryData");
+      const invalidateQueries = vi.spyOn(QueryClient.prototype, "invalidateQueries");
+      const expectOnlyStatsInvalidated = () => {
+        expect(setQueryData).not.toHaveBeenCalled();
+        for (const [filters] of invalidateQueries.mock.calls) {
+          expect((filters as { queryKey?: readonly unknown[] } | undefined)?.queryKey?.[0]).toBe("stats");
+        }
+      };
 
       await toggleTrackLikeAndSync(queryClient, track);
+      expectOnlyStatsInvalidated();
 
-      expect(invalidate).toHaveBeenCalledWith(queryClient, { kind: "like" });
+      await updateTrackMetadataAndSync(queryClient, track, { title: "Two", artistNames: ["New"], albumTitle: "Fresh" });
+      expectOnlyStatsInvalidated();
+
+      await attachTrackLyricsAndSync(queryClient, track, { lyricsPath: "lyrics/t-1.lrc", lyricsFileName: null });
+      await setTracksLikedAndSync([entity.id], true);
+      await favoriteTracksAndSync([track]);
+      expectOnlyStatsInvalidated();
+    });
+
+    it("a like and a metadata edit mark the stats rows that show the track stale", async () => {
+      const queryClient = new QueryClient();
+      const historyKey = queryKeys.stats.recentHistory(100);
+      const isStale = () => queryClient.getQueryState(historyKey)?.isInvalidated;
+
+      queryClient.setQueryData(historyKey, []);
+      await toggleTrackLikeAndSync(queryClient, track);
+      expect(isStale()).toBe(true);
+
+      queryClient.setQueryData(historyKey, []);
+      await updateTrackMetadataAndSync(queryClient, track, { title: "Two", artistNames: [] });
+      expect(isStale()).toBe(true);
     });
   });
 });

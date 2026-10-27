@@ -1,7 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { okAsync } from "neverthrow";
-import { QueryClient } from "@tanstack/vue-query";
 import type { AlbumEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import { AlbumId, ArtistId, TrackId } from "@/types/ids";
@@ -54,12 +53,9 @@ function ytTrack(videoId: string, title: string): TrackEntity {
 }
 
 describe("deleteAlbumAndSync cascade (integration)", () => {
-  let queryClient: QueryClient;
-
   beforeEach(async () => {
     vi.clearAllMocks();
     storageMock.deleteFile.mockReturnValue(okAsync(undefined));
-    queryClient = new QueryClient();
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
   });
@@ -70,7 +66,7 @@ describe("deleteAlbumAndSync cascade (integration)", () => {
     await db.albums.put(album);
     await db.tracks.bulkPut([ytTrack("v1", "One"), ytTrack("v2", "Two")]);
 
-    await deleteAlbumAndSync(queryClient, album, { deleteTracks: true });
+    await deleteAlbumAndSync(album, { deleteTracks: true });
 
     expect(await db.tracks.count()).toBe(0);
     expect(await db.albums.count()).toBe(0);
@@ -84,7 +80,7 @@ describe("deleteAlbumAndSync cascade (integration)", () => {
     await db.albums.put(album);
     await db.tracks.put(ytTrack("v1", "One"));
 
-    await deleteAlbumAndSync(queryClient, album);
+    await deleteAlbumAndSync(album);
 
     const track = await db.tracks.get(ytTrackId("v1"));
     expect(track?.albumId).toBe("");
@@ -117,7 +113,7 @@ describe("deleteAlbumAndSync cascade (integration)", () => {
       albumTitle: "Local Album",
     } as unknown as TrackEntity);
 
-    await deleteAlbumAndSync(queryClient, album);
+    await deleteAlbumAndSync(album);
 
     const track = await db.tracks.get(TrackId("t-1"));
     expect(track).toBeDefined();
@@ -132,7 +128,7 @@ describe("deleteAlbumAndSync cascade (integration)", () => {
     await db.albums.put({ id: ytAlbum, title: "Shadow Album", artistId: ytArtist, pinned: 1, addedAt: 1, updatedAt: 1 });
     await db.tracks.put(ytTrack("v1", "One"));
 
-    await deleteTrackAndSync(queryClient, { id: ytTrackId("v1") } as unknown as Track);
+    await deleteTrackAndSync({ id: ytTrackId("v1") } as unknown as Track);
 
     expect(await db.tracks.count()).toBe(0);
     expect(storageMock.deleteFile).not.toHaveBeenCalled();

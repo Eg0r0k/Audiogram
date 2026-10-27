@@ -152,7 +152,7 @@ describe("TrackInfoPanel", () => {
     renderPanel({ ...payloadTrack(), id: remoteId, source: TrackSource.REMOTE_SUBSONIC, storagePath: "" });
     expect(await screen.findByText("tracks/t-copy.flac")).toBeInTheDocument();
 
-    await deleteTracksAndSync(new QueryClient(), [TrackId("t-copy")]);
+    await deleteTracksAndSync([TrackId("t-copy")]);
 
     await waitFor(() => expect(screen.queryByText("tracks/t-copy.flac")).not.toBeInTheDocument());
   });

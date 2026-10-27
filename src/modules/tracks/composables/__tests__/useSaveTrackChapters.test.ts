@@ -51,8 +51,8 @@ describe("useSaveTrackChapters", () => {
     await flush();
 
     expect(saveTrackChapters).toHaveBeenCalledTimes(2);
-    expect(saveTrackChapters.mock.calls[1]?.[1]).toBe(save.trackId);
-    expect(saveTrackChapters.mock.calls[1]?.[2]).toEqual(save.chapters);
+    expect(saveTrackChapters.mock.calls[1]?.[0]).toBe(save.trackId);
+    expect(saveTrackChapters.mock.calls[1]?.[1]).toEqual(save.chapters);
   });
 
   it("keeps repeated failures of one track in one toast", async () => {

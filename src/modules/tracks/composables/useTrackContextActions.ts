@@ -4,7 +4,6 @@ import { ensurePinned } from "@/modules/tracks/service/ensurePinned";
 import { useQueueStore } from "@/modules/queue/store/queue.store";
 import type { AlbumId, ArtistId, PlaylistId, QueueItemId, TrackId } from "@/types/ids";
 
-import { useQueryClient } from "@tanstack/vue-query";
 import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
 import { formatError } from "@/lib/errors";
@@ -58,7 +57,6 @@ export const useTrackContextActions = (
   const route = useRoute();
   const queueStore = useQueueStore();
   const rightPanelStore = useRightPanelStore();
-  const queryClient = useQueryClient();
   const { t } = useI18n();
   const { attachTrackLyrics } = useAttachTrackLyrics();
   const { toggleTrackLike } = useToggleTrackLike();
@@ -105,7 +103,7 @@ export const useTrackContextActions = (
     try {
       // Playlists and lyrics need a row, not a library member (§1).
       const pinned = await ensurePinned(subject, { pinned: 0 });
-      await invalidateLibraryData(queryClient);
+      invalidateLibraryData();
       return pinned;
     }
     catch (error) {
@@ -145,7 +143,7 @@ export const useTrackContextActions = (
     const current = await resolveDbTrack(t("playlist.addTrackFailed"));
     if (!current) return;
     try {
-      await addTrackToPlaylistAndSync(queryClient, playlistId, current);
+      await addTrackToPlaylistAndSync(playlistId, current);
     }
     catch (error) {
       reportError(error, { title: t("playlist.addTrackFailed"), scope: "Tracks" });
@@ -182,7 +180,7 @@ export const useTrackContextActions = (
     const playlistId = toValue(options.playlistId);
     if (!isLibraryTrack(current) || !playlistId) return;
     try {
-      const { restore } = await removeTrackFromPlaylistWithUndo(queryClient, playlistId, current.id);
+      const { restore } = await removeTrackFromPlaylistWithUndo(playlistId, current.id);
       offerUndo("playlist-track-removed", t("playlist.trackRemoved"), restore, t("playlist.restoreTrackFailed"));
     }
     catch (error) {
@@ -347,7 +345,7 @@ export const useTrackContextActions = (
         if (!isLibraryTrack(current) || !isRemoteTrack(current)) return;
         await promoteTrackToLibrary(current.id);
       }
-      await invalidateLibraryData(queryClient);
+      invalidateLibraryData();
       toaster.add({ title: t("track.addedToLibrary"), color: "success" });
     }
     catch (error) {
@@ -360,7 +358,7 @@ export const useTrackContextActions = (
     if (!isLibraryTrack(current) || !isRemoteTrack(current)) return;
     try {
       await removeTrackFromLibrary(current.id);
-      await invalidateLibraryData(queryClient);
+      invalidateLibraryData();
       toaster.add({ title: t("track.removedFromLibrary"), color: "success" });
     }
     catch (error) {

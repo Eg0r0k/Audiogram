@@ -1,5 +1,4 @@
 import { ref, computed } from "vue";
-import { useQueryClient } from "@tanstack/vue-query";
 import { musicLibraryEngine } from "@/services/importer.service";
 import { invalidateLibraryData } from "@/queries/library.queries";
 import { syncSearchIndex } from "@/services/search/searchIndex";
@@ -96,8 +95,6 @@ const notifyBatchFinished = (result: ImportBatchResult) => {
 };
 
 export function useImport() {
-  const queryClient = useQueryClient();
-
   const isOpen = computed(() => state.value.isOpen);
   const isRunning = computed(() => state.value.isRunning);
   const progress = computed(() => state.value.progress);
@@ -306,7 +303,7 @@ export function useImport() {
     state.value.isCancelling = false;
 
     if (result.successful.length > 0) {
-      await invalidateLibraryData(queryClient);
+      invalidateLibraryData();
       // The session's search index is built once — feed it the new tracks so
       // they're findable without an app restart. Best-effort: a failed index
       // update must not mark the import itself as failed.

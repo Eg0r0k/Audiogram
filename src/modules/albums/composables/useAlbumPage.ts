@@ -1,6 +1,6 @@
 import { computed, shallowRef, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useMutation, useQueryClient } from "@tanstack/vue-query";
+import { useMutation } from "@tanstack/vue-query";
 import { AlbumId } from "@/types/ids";
 import type { AlbumData } from "@/types/media-data";
 import type { Track } from "@/types/track";
@@ -40,7 +40,6 @@ export const useAlbumPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
   const normalizedSearchQuery = computed(() => searchQuery.value.trim());
   const isSearching = computed(() => normalizedSearchQuery.value !== "");
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { t } = useI18n();
 
   // Pages are keyed by fullPath, so the id is fixed per instance; a page sliding out must not read the next route's id.
@@ -213,7 +212,7 @@ export const useAlbumPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
 
   const { mutateAsync: deleteAlbum } = useMutation({
     mutationFn: (options: { deleteTracks?: boolean } = {}) =>
-      deleteAlbumAndSync(queryClient, album.value, options),
+      deleteAlbumAndSync(album.value, options),
     onSuccess: () => {
       router.push(routeLocation.home())
         .catch(error => getLogger().error(`[Album] Navigation home after delete failed: ${formatError(error)}`));
@@ -227,7 +226,7 @@ export const useAlbumPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: Ref
         return;
       }
 
-      return updateAlbumAndSync(queryClient, current, changes);
+      return updateAlbumAndSync(current, changes);
     },
   });
 

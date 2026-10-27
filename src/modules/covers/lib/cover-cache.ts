@@ -263,3 +263,11 @@ export const createCoverCache = (options: { maxIdle?: number } = {}) => {
 };
 
 export const coverCache = createCoverCache();
+
+export const updateCoverCache = (ownerType: CoverOwnerType, ownerId: string, row: CoverRow | null) => {
+  coverCache.set({ ownerType, ownerId }, row);
+};
+
+export const removeCoverCache = (ownerType: CoverOwnerType, ownerId: string) => {
+  coverCache.invalidate({ ownerType, ownerId });
+};

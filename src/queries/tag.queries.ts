@@ -2,8 +2,7 @@ import type { TagEntity, TrackEntity } from "@/db/entities";
 import { tagRepository, trackRepository } from "@/db/repositories";
 import { queryKeys } from "@/queries/query-keys";
 import type { TrackId, TagId } from "@/types/ids";
-import { queryOptions, type QueryClient } from "@tanstack/vue-query";
-import { settleLibraryReads } from "./cache";
+import { queryOptions } from "@tanstack/vue-query";
 
 export async function getAllTags(): Promise<TagEntity[]> {
   return tagRepository.findAll();
@@ -26,67 +25,22 @@ export const tagQueries = {
     }),
 } as const;
 
-function syncTagByTrackCache(
-  queryClient: QueryClient,
-  trackId: TrackId,
-  tags: TagEntity[],
-) {
-  queryClient.setQueryData(queryKeys.tags.byTrack(trackId), tags);
-}
-
-function syncTrackDetailCache(
-  queryClient: QueryClient,
-  track: TrackEntity,
-) {
-  queryClient.setQueryData(queryKeys.tracks.detail(track.id), track);
-}
-
 export async function addTagToTrackAndSync(
-  queryClient: QueryClient,
   track: TrackEntity,
   tagName: string,
 ): Promise<TagEntity> {
   const tag = await tagRepository.findOrCreate(tagName);
 
-  const currentTagIds = track.tagIds;
-  if (!currentTagIds.includes(tag.id)) {
+  if (!track.tagIds.includes(tag.id)) {
     await trackRepository.addTagToTrack(track.id, tag.id);
-    await settleLibraryReads(queryClient);
-
-    const nextTrack: TrackEntity = {
-      ...track,
-      tagIds: [...currentTagIds, tag.id],
-    };
-
-    syncTrackDetailCache(queryClient, nextTrack);
-
-    const currentTags = queryClient.getQueryData<TagEntity[]>(queryKeys.tags.byTrack(track.id)) ?? [];
-    const nextTags = [...currentTags, tag];
-    syncTagByTrackCache(queryClient, track.id, nextTags);
   }
 
   return tag;
 }
 
 export async function removeTagFromTrackAndSync(
-  queryClient: QueryClient,
   track: TrackEntity,
   tagId: TagId,
 ): Promise<void> {
   await trackRepository.removeTagFromTrack(track.id, tagId);
-  await settleLibraryReads(queryClient);
-
-  const currentTagIds = track.tagIds;
-  const nextTagIds = currentTagIds.filter(id => id !== tagId);
-
-  const nextTrack: TrackEntity = {
-    ...track,
-    tagIds: nextTagIds,
-  };
-
-  syncTrackDetailCache(queryClient, nextTrack);
-
-  const tags = queryClient.getQueryData<TagEntity[]>(queryKeys.tags.byTrack(track.id)) ?? [];
-  const nextTags = tags.filter(t => t.id !== tagId);
-  syncTagByTrackCache(queryClient, track.id, nextTags);
 }

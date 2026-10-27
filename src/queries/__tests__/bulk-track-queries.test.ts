@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { QueryClient } from "@tanstack/vue-query";
 import { TrackId } from "@/types/ids";
 import { fakeTrackRepository, type FakeTrackScopes } from "@/test/fakeTrackScope";
 
@@ -27,7 +26,6 @@ vi.mock("@/services/search/searchIndex", () => ({
   syncSearchIndex: vi.fn(async () => {}),
 }));
 
-import * as cache from "../cache";
 import {
   getAllTrackIds,
   getAllTracksForQueue,
@@ -60,11 +58,8 @@ const useTrackScopes = (scopes: FakeTrackScopes) =>
 const titled = (ids: readonly TrackId[]) => ids.map(id => entity(id, id.toUpperCase()));
 
 describe("bulk track queries", () => {
-  let queryClient: QueryClient;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    queryClient = new QueryClient();
     useTrackScopes({});
   });
 
@@ -163,24 +158,21 @@ describe("bulk track queries", () => {
     });
   });
 
-  it("setTracksLikedAndSync(true) likes in one repository call and invalidates once", async () => {
+  it("setTracksLikedAndSync(true) likes in one repository call", async () => {
     repositories.trackRepository.likeMany.mockResolvedValue(2);
-    const invalidate = vi.spyOn(cache, "invalidateForTrackMutation");
 
-    const changed = await setTracksLikedAndSync(queryClient, [TrackId("a"), TrackId("b")], true);
+    const changed = await setTracksLikedAndSync([TrackId("a"), TrackId("b")], true);
 
     expect(changed).toBe(2);
     expect(repositories.trackRepository.likeMany).toHaveBeenCalledTimes(1);
     expect(repositories.trackRepository.likeMany.mock.calls[0][0]).toEqual(["a", "b"]);
     expect(repositories.trackRepository.unlikeMany).not.toHaveBeenCalled();
-    expect(invalidate).toHaveBeenCalledTimes(1);
-    expect(invalidate).toHaveBeenCalledWith(queryClient, { kind: "relations" });
   });
 
   it("setTracksLikedAndSync(false) unlikes", async () => {
     repositories.trackRepository.unlikeMany.mockResolvedValue(1);
 
-    const changed = await setTracksLikedAndSync(queryClient, [TrackId("a")], false);
+    const changed = await setTracksLikedAndSync([TrackId("a")], false);
 
     expect(changed).toBe(1);
     expect(repositories.trackRepository.unlikeMany).toHaveBeenCalledWith(["a"]);
@@ -188,11 +180,8 @@ describe("bulk track queries", () => {
   });
 
   it("setTracksLikedAndSync with no ids does nothing", async () => {
-    const invalidate = vi.spyOn(cache, "invalidateForTrackMutation");
-
-    expect(await setTracksLikedAndSync(queryClient, [], true)).toBe(0);
+    expect(await setTracksLikedAndSync([], true)).toBe(0);
 
     expect(repositories.trackRepository.likeMany).not.toHaveBeenCalled();
-    expect(invalidate).not.toHaveBeenCalled();
   });
 });

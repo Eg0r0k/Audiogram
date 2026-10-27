@@ -1,7 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { okAsync } from "neverthrow";
-import { QueryClient } from "@tanstack/vue-query";
 import type { AlbumEntity, ArtistEntity, PlaylistEntity, TrackEntity } from "@/db/entities";
 import { TrackSource, TrackState } from "@/db/entities";
 import { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
@@ -20,7 +19,6 @@ vi.mock("@/services/search/searchIndex", () => ({
 }));
 
 import { db } from "@/db";
-import * as cache from "../cache";
 import { deleteTracksAndSync } from "../track.queries";
 
 const artistId = ArtistId("a-1");
@@ -48,12 +46,9 @@ const localTrack = (id: string, title: string): TrackEntity => ({
 } as unknown as TrackEntity);
 
 describe("deleteTracksAndSync (integration)", () => {
-  let queryClient: QueryClient;
-
   beforeEach(async () => {
     vi.clearAllMocks();
     storageMock.deleteFile.mockReturnValue(okAsync(undefined));
-    queryClient = new QueryClient();
     await db.open();
     await Promise.all(db.tables.map(table => table.clear()));
     await db.artists.put(artist);
@@ -69,7 +64,7 @@ describe("deleteTracksAndSync (integration)", () => {
   });
 
   it("removes rows and playlist refs for all ids, keeps the rest", async () => {
-    const deleted = await deleteTracksAndSync(queryClient, [TrackId("t-1"), TrackId("t-2")]);
+    const deleted = await deleteTracksAndSync([TrackId("t-1"), TrackId("t-2")]);
 
     expect(deleted).toBe(2);
     expect((await db.tracks.toArray()).map(t => t.id)).toEqual([TrackId("t-3")]);
@@ -79,24 +74,15 @@ describe("deleteTracksAndSync (integration)", () => {
     expect(await db.artists.count()).toBe(1);
   });
 
-  it("syncs the search index and invalidates once with every affected album and artist", async () => {
-    const invalidate = vi.spyOn(cache, "invalidateForTrackMutation");
-
-    await deleteTracksAndSync(queryClient, [TrackId("t-1"), TrackId("t-2")]);
+  it("syncs the search index once with every deleted id", async () => {
+    await deleteTracksAndSync([TrackId("t-1"), TrackId("t-2")]);
 
     expect(searchMock.syncSearchIndex).toHaveBeenCalledTimes(1);
     expect(searchMock.syncSearchIndex).toHaveBeenCalledWith({ tracks: [TrackId("t-1"), TrackId("t-2")] });
-    expect(invalidate).toHaveBeenCalledTimes(1);
-    expect(invalidate.mock.calls[0][1]).toEqual({
-      kind: "removal",
-      albumIds: [albumId],
-      artistIds: [artistId],
-      playlistIds: [playlistId],
-    });
   });
 
   it("GC takes the album and artist when their last tracks go", async () => {
-    await deleteTracksAndSync(queryClient, [TrackId("t-1"), TrackId("t-2"), TrackId("t-3")]);
+    await deleteTracksAndSync([TrackId("t-1"), TrackId("t-2"), TrackId("t-3")]);
 
     expect(await db.tracks.count()).toBe(0);
     expect(await db.albums.count()).toBe(0);
@@ -104,8 +90,8 @@ describe("deleteTracksAndSync (integration)", () => {
   });
 
   it("ignores unknown ids and returns 0 for an empty list", async () => {
-    expect(await deleteTracksAndSync(queryClient, [])).toBe(0);
-    expect(await deleteTracksAndSync(queryClient, [TrackId("nope")])).toBe(0);
+    expect(await deleteTracksAndSync([])).toBe(0);
+    expect(await deleteTracksAndSync([TrackId("nope")])).toBe(0);
     expect(await db.tracks.count()).toBe(3);
   });
 });

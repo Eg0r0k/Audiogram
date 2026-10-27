@@ -50,8 +50,6 @@ const until = async (holds: () => boolean) => {
 
 describe("useLibrary on live reads", () => {
   let queryClient: QueryClient;
-  // The mutations patch a client the sidebar does not read, so only a live read can show their writes.
-  let writer: QueryClient;
   let wrappers: VueWrapper[] = [];
 
   const mountLibrary = () => {
@@ -80,7 +78,6 @@ describe("useLibrary on live reads", () => {
     await db.tracks.bulkAdd([entity("t1"), entity("t2", { likedAt: 5 })]);
     await rebuildCounters();
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    writer = new QueryClient();
   });
 
   afterEach(() => {
@@ -95,7 +92,7 @@ describe("useLibrary on live reads", () => {
     await quiet();
     expect(albumTitles(api)).toEqual([]);
 
-    await createAlbumAndSync(writer, ARTIST, "Fresh");
+    await createAlbumAndSync(ARTIST, "Fresh");
     await until(() => albumTitles(api).includes("Fresh"));
 
     expect(api.allItems.value.find(item => item.type === "album")?.subtitle).toBe("Artist");

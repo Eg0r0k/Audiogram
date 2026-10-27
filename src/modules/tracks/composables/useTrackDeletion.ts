@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/vue-query";
 import { useI18n } from "vue-i18n";
 import { reportError } from "@/app/error-feedback";
 import { toaster } from "@/app/toaster";
@@ -9,7 +8,6 @@ import { deleteTracksWithUndo } from "@/queries/track-undo";
 import type { TrackId } from "@/types/ids";
 
 export const useTrackDeletion = () => {
-  const queryClient = useQueryClient();
   const queueStore = useQueueStore();
   const { t } = useI18n();
   const deleteWithUndo = async (ids: TrackId[], message: (deleted: number) => string): Promise<number> => {
@@ -18,7 +16,7 @@ export const useTrackDeletion = () => {
       .filter(item => idSet.has(item.track.id))
       .map(item => item.id);
 
-    const undo = await deleteTracksWithUndo(queryClient, ids);
+    const undo = await deleteTracksWithUndo(ids);
     if (undo.deleted === 0) return 0;
     if (queueItemIds.length > 0) await queueStore.removeMultiple(queueItemIds);
 

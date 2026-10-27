@@ -15,15 +15,7 @@ import type { TrackSortKey } from "@/modules/tracks/types";
 import { ArtistId as createArtistId } from "@/types/ids";
 import type { ArtistId, TrackId } from "@/types/ids";
 import { queryOptions, skipToken, type QueryClient } from "@tanstack/vue-query";
-import {
-  invalidateForArtistMutation,
-  removeAlbumCaches,
-  removeArtistCaches,
-  settleLibraryReads,
-  syncArtistCaches,
-  updateCoverCache,
-  removeCoverCache,
-} from "./cache";
+import { removeCoverCache, updateCoverCache } from "@/modules/covers/lib/cover-cache";
 import { assertValidName } from "@/lib/limits";
 import { sortTracks } from "./shared";
 import { indexById, unique } from "@/lib/math";
@@ -220,10 +212,7 @@ export const artistQueries = {
     }),
 } as const;
 
-export async function createArtistAndSync(
-  queryClient: QueryClient,
-  name = "New artist",
-) {
+export async function createArtistAndSync(name = "New artist") {
   const now = Date.now();
   const artist: ArtistEntity = {
     id: createArtistId(crypto.randomUUID()),
@@ -234,8 +223,6 @@ export async function createArtistAndSync(
   };
 
   await artistRepository.create(artist);
-  await settleLibraryReads(queryClient);
-  syncArtistCaches(queryClient, artist);
   await syncSearchIndex({ artists: [artist.id] });
 
   return artist;
@@ -266,7 +253,6 @@ async function syncTrackArtistNames(uow: Scope<"tracks" | "counters" | "artists"
 }
 
 export async function updateArtistAndSync(
-  queryClient: QueryClient,
   currentArtist: ArtistEntity,
   changes: ArtistChanges,
 ) {
@@ -304,9 +290,6 @@ export async function updateArtistAndSync(
       }
     });
 
-    await settleLibraryReads(queryClient);
-    syncArtistCaches(queryClient, nextArtist);
-
     const [albums, trackIds] = await Promise.all([
       albumRepository.findByArtistId(currentArtist.id),
       trackRepository.byArtist(currentArtist.id).ids(),
@@ -319,11 +302,6 @@ export async function updateArtistAndSync(
     });
   }
 
-  invalidateForArtistMutation(queryClient, {
-    kind: "change",
-    artistId: currentArtist.id,
-  });
-
   return nextArtist;
 }
 
@@ -333,7 +311,6 @@ export async function updateArtistAndSync(
  * that includes tracks credited to a second artist too.
  */
 export async function deleteArtistAndSync(
-  queryClient: QueryClient,
   artistEntity: ArtistEntity | null,
   options: { deleteTracks?: boolean } = {},
 ) {
@@ -376,14 +353,12 @@ export async function deleteArtistAndSync(
     };
   });
 
-  const removals = await unitOfWork.run(
+  await unitOfWork.run(
     TRACK_CASCADE_TABLES,
     async (uow) => {
       // The purge GCs albums that lost their last track; the artist's own
       // albums are dropped explicitly right after, empty or not.
-      const purged = cascadeTracks
-        ? await purgeTracksInTx(uow, affectedTracks, now)
-        : [];
+      if (cascadeTracks) await purgeTracksInTx(uow, affectedTracks, now);
 
       if (!cascadeTracks && trackUpdates.length > 0) {
         await uow.tracks.updateMany(trackUpdates);
@@ -396,21 +371,13 @@ export async function deleteArtistAndSync(
       }
       await uow.covers.deleteArtistCover(artistEntity.id);
       await uow.artists.delete(artistEntity.id);
-
-      return purged;
     },
   );
   if (cascadeTracks) await deleteOwnedFiles(affectedTracks);
 
-  await settleLibraryReads(queryClient);
-  await syncAfterTrackPurge(
-    queryClient,
-    cascadeTracks ? affectedTrackIds : [],
-    removals,
-  );
+  await syncAfterTrackPurge(cascadeTracks ? affectedTrackIds : []);
 
   for (const album of albums) {
-    removeAlbumCaches(queryClient, album.id, artistEntity.id);
     removeCoverCache("album", album.id);
   }
   await syncSearchIndex({
@@ -419,11 +386,5 @@ export async function deleteArtistAndSync(
     tracks: cascadeTracks ? [] : affectedTrackIds,
   });
 
-  removeArtistCaches(queryClient, artistEntity.id);
   removeCoverCache("artist", artistEntity.id);
-
-  invalidateForArtistMutation(queryClient, {
-    kind: "removal",
-    playlistIds: removals.map(({ next }) => next.id),
-  });
 }

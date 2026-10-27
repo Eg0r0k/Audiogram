@@ -42,7 +42,7 @@ describe("useTrackChapters", () => {
     await until(() => data.value !== undefined);
     expect(data.value).toEqual([]);
 
-    await saveTrackChapters(new QueryClient(), TrackId("t1"), [{ time: 5, title: "Intro" }]);
+    await saveTrackChapters(TrackId("t1"), [{ time: 5, title: "Intro" }]);
 
     await until(() => data.value?.length === 1);
     expect(data.value).toEqual([{ time: 5, title: "Intro" }]);

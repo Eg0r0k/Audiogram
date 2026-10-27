@@ -2,7 +2,6 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, nextTick, reactive, shallowRef, type Ref } from "vue";
 import { mount } from "@vue/test-utils";
-import { QueryClient } from "@tanstack/vue-query";
 import { db } from "@/db";
 import { removeTrackFromPlaylistAndSync } from "@/queries/playlist.queries";
 import type { Track } from "@/types/track";
@@ -143,7 +142,7 @@ describe("useTrackMenuAutoClose", () => {
       await quiet();
       expect(menu.isContextMenuOpen.value).toBe(true);
 
-      await removeTrackFromPlaylistAndSync(new QueryClient(), PLAYLIST_ID, track.id);
+      await removeTrackFromPlaylistAndSync(PLAYLIST_ID, track.id);
 
       await until(() => !menu.isContextMenuOpen.value);
       wrapper.unmount();

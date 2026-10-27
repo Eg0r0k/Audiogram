@@ -111,7 +111,7 @@ describe("useBulkTrackActions", () => {
 
     await actions.toggleLike();
 
-    expect(queries.setTracksLikedAndSync).toHaveBeenCalledWith({ tag: "qc" }, ["t1", "t2"], true);
+    expect(queries.setTracksLikedAndSync).toHaveBeenCalledWith(["t1", "t2"], true);
     expect(queue.syncTracksMetadata).toHaveBeenCalledTimes(1);
     expect(queue.syncTracksMetadata).toHaveBeenCalledWith([expect.objectContaining({ id: "t1", isLiked: true })]);
     expect(shownToasts("success")).toContainEqual(expect.objectContaining({ title: "library.selection.liked" }));
@@ -123,7 +123,7 @@ describe("useBulkTrackActions", () => {
 
     await actions.toggleLike();
 
-    expect(queries.setTracksLikedAndSync).toHaveBeenCalledWith({ tag: "qc" }, ["t2"], false);
+    expect(queries.setTracksLikedAndSync).toHaveBeenCalledWith(["t2"], false);
   });
 
   it("addToPlaylist resolves tracks then calls the batched playlist add", async () => {
@@ -131,7 +131,7 @@ describe("useBulkTrackActions", () => {
 
     await actions.addToPlaylist("pl-1" as never);
 
-    expect(playlistQueries.addTracksToPlaylistAndSync).toHaveBeenCalledWith({ tag: "qc" }, "pl-1", expect.any(Array));
+    expect(playlistQueries.addTracksToPlaylistAndSync).toHaveBeenCalledWith("pl-1", expect.any(Array));
     expect(shownToasts("success")).toContainEqual(expect.objectContaining({ title: "library.selection.addedToPlaylist" }));
   });
 
@@ -141,8 +141,8 @@ describe("useBulkTrackActions", () => {
 
     await actions.createPlaylist();
 
-    expect(playlistQueries.createPlaylistAndSync).toHaveBeenCalledWith({ tag: "qc" });
-    expect(playlistQueries.addTracksToPlaylistAndSync).toHaveBeenCalledWith({ tag: "qc" }, "pl-new", expect.any(Array));
+    expect(playlistQueries.createPlaylistAndSync).toHaveBeenCalledWith();
+    expect(playlistQueries.addTracksToPlaylistAndSync).toHaveBeenCalledWith("pl-new", expect.any(Array));
     expect(shownToasts("success")).toContainEqual(expect.objectContaining({ title: "library.selection.addedToPlaylist" }));
   });
 
@@ -153,7 +153,7 @@ describe("useBulkTrackActions", () => {
 
     await actions.deleteSelected();
 
-    expect(undoApi.deleteTracksWithUndo).toHaveBeenCalledWith({ tag: "qc" }, ["t1", "t2"]);
+    expect(undoApi.deleteTracksWithUndo).toHaveBeenCalledWith(["t1", "t2"]);
     expect(queue.removeMultiple).toHaveBeenCalledWith(["q1"]);
     expect(shownToasts("success")).toContainEqual(expect.objectContaining({
       title: "library.selection.deleted",

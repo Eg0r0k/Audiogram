@@ -1,7 +1,6 @@
 import type {
   AlbumEntity,
   ArtistEntity,
-  CoverOwnerType,
   PlaylistEntity,
   TrackEntity,
 } from "@/db/entities";
@@ -15,8 +14,6 @@ import type {
   PaginatedAlbumsResult,
   PaginatedTracksResult,
 } from "./types";
-import { coverCache } from "@/modules/covers/lib/cover-cache";
-import type { CoverRow } from "./cover.queries";
 import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import type { Nullish } from "@/types/utils";
 
@@ -360,20 +357,6 @@ export const removePlaylistCaches = (queryClient: QueryClient, playlistId: Playl
     }),
   );
   queryClient.removeQueries({ queryKey: queryKeys.playlists.detail(playlistId) });
-};
-
-/** The owner's cover row was written (`null`: deleted); publishes it without a re-read. */
-export const updateCoverCache = (
-  ownerType: CoverOwnerType,
-  ownerId: string,
-  row: CoverRow | null,
-) => {
-  coverCache.set({ ownerType, ownerId }, row);
-};
-
-/** A cover row is gone (its owner was deleted or re-parented). */
-export const removeCoverCache = (ownerType: CoverOwnerType, ownerId: string) => {
-  coverCache.invalidate({ ownerType, ownerId });
 };
 
 // ── Paged track lists ─────────────────────────────────────────────────────

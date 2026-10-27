@@ -43,7 +43,7 @@ describe("useTrackDeletion", () => {
     const deleted = await useTrackDeletion().deleteWithUndo([TrackId("t1"), TrackId("t2")], count => `deleted:${count}`);
 
     expect(deleted).toBe(2);
-    expect(undoApi.deleteTracksWithUndo).toHaveBeenCalledWith({ tag: "qc" }, ["t1", "t2"]);
+    expect(undoApi.deleteTracksWithUndo).toHaveBeenCalledWith(["t1", "t2"]);
     expect(queue.removeMultiple).toHaveBeenCalledWith(["q1"]);
     expect(shownToasts("success")).toContainEqual(expect.objectContaining({
       title: "deleted:2",

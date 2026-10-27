@@ -1,4 +1,3 @@
-import type { QueryClient } from "@tanstack/vue-query";
 import type { CoverEntity } from "@/db/entities";
 import {
   albumRepository,
@@ -11,7 +10,8 @@ import { unitOfWork } from "@/db/unit-of-work";
 import { syncSearchIndex } from "@/services/search/searchIndex";
 import { deleteOwnedFiles } from "@/services/track-files";
 import type { TrackId } from "@/types/ids";
-import { invalidateForTrackMutation, removeCoverCache, settleLibraryReads } from "./cache";
+import { removeCoverCache } from "@/modules/covers/lib/cover-cache";
+import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import { unique } from "@/lib/math";
 import { TRACK_CASCADE_TABLES } from "./track-cascade";
 import { deleteTracksAndSync } from "./track.queries";
@@ -40,10 +40,7 @@ const gone = <T extends { id: string }>(before: readonly T[], after: readonly T[
 // app closes while the undo toast is still open, finalize never runs and those
 // files stay in storage as orphans. A persisted list of pending deletions or an
 // orphan sweep on startup would close it; worth revisiting if the leak matters.
-export const deleteTracksWithUndo = async (
-  queryClient: QueryClient,
-  ids: TrackId[],
-): Promise<TrackDeletionUndo> => {
+export const deleteTracksWithUndo = async (ids: TrackId[]): Promise<TrackDeletionUndo> => {
   const tracks = await trackRepository.findByIds(ids);
   if (tracks.length === 0) return { deleted: 0, restore: noop, finalize: noop };
 
@@ -67,7 +64,7 @@ export const deleteTracksWithUndo = async (
     .filter(playlist => playlist.trackIds.some(id => trackIdSet.has(id)))
     .map(playlist => ({ id: playlist.id, trackIds: [...playlist.trackIds] }));
 
-  const deleted = await deleteTracksAndSync(queryClient, trackIds);
+  const deleted = await deleteTracksAndSync(trackIds);
 
   const [albumsAfter, artistsAfter] = await Promise.all([
     albumRepository.findByIds(albumIds),
@@ -110,13 +107,12 @@ export const deleteTracksWithUndo = async (
       if (updates.length > 0) await uow.playlists.updateMany(updates);
     });
 
-    await settleLibraryReads(queryClient);
     await syncSearchIndex({ tracks: trackIds });
     // Only the restored owners re-read their covers; a library-wide cover
     // invalidation would make every visible cover blink.
     for (const cover of covers) removeCoverCache(cover.ownerType, cover.ownerId);
     for (const id of trackIds) removeCoverCache("track", id);
-    invalidateForTrackMutation(queryClient, { kind: "relations" });
+    markRecommenderContextDirty();
   };
 
   return { deleted, restore, finalize };

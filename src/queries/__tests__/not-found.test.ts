@@ -59,7 +59,7 @@ describe("not-found lookups (integration)", () => {
       ["Track not found", () => toggleTrackLikeAndSync(queryClient, missingTrack)],
       ["Track not found", () => attachTrackLyricsAndSync(queryClient, missingTrack, { lyricsPath: "lyrics/t.lrc", lyricsFileName: null })],
       ["Track not found", () => updateTrackMetadataAndSync(queryClient, missingTrack, { title: "T", artistNames: [] })],
-      ["Track not found", () => deleteTrackAndSync(queryClient, missingTrack)],
+      ["Track not found", () => deleteTrackAndSync(missingTrack)],
       ["Playlist not found", () => playlistRepository.findTrackIdsPaginated(PlaylistId("pl-missing"), 0, 10)],
     ];
 
@@ -79,8 +79,8 @@ describe("not-found lookups (integration)", () => {
     await db.artists.put({ id: artistId, name: "Present", pinned: 1, addedAt: 1, updatedAt: 1 });
 
     const additions = [
-      () => addTracksToAlbumAndSync(queryClient, orphanAlbumId, [missingTrack]),
-      () => addTracksToArtistAndSync(queryClient, artistId, [missingTrack]),
+      () => addTracksToAlbumAndSync(orphanAlbumId, [missingTrack]),
+      () => addTracksToArtistAndSync(artistId, [missingTrack]),
     ];
 
     for (const add of additions) {
@@ -94,7 +94,7 @@ describe("not-found lookups (integration)", () => {
 
   it("the thrown error normalises to isNotFound", async () => {
     const album = await rejectionOf(getAlbumByIdOrThrow(AlbumId("al-missing")));
-    const track = await rejectionOf(deleteTrackAndSync(queryClient, missingTrack));
+    const track = await rejectionOf(deleteTrackAndSync(missingTrack));
     const playlistPage = await rejectionOf(playlistRepository.findTrackIdsPaginated(PlaylistId("pl-missing"), 0, 10));
 
     expect(isNotFound(toAppError(album))).toBe(true);

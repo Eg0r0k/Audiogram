@@ -80,8 +80,6 @@ const until = async (holds: () => boolean) => {
 
 describe("useArtistPage on live reads", () => {
   let queryClient: QueryClient;
-  // The mutations patch a client the page does not read, so only a live read can show their writes.
-  let writer: QueryClient;
   let wrapper: VueWrapper | undefined;
 
   const mountPage = (sortKey: Ref<TrackSortKey | null> = ref(null), searchQuery = ref("")) => {
@@ -120,7 +118,6 @@ describe("useArtistPage on live reads", () => {
     await db.tracks.bulkAdd(SEED);
     resetSearchIndex();
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    writer = new QueryClient();
     routing.route.params.id = "ar1";
   });
 
@@ -137,7 +134,7 @@ describe("useArtistPage on live reads", () => {
     expect(api.albumCount.value).toBe(2);
     expect(api.hasNextAlbumPage.value).toBe(false);
 
-    const created = await createAlbumAndSync(writer, ARTIST, "Fresh");
+    const created = await createAlbumAndSync(ARTIST, "Fresh");
     await until(() => api.albums.value.length === 3);
 
     expect(albumIds(api)).toContain(created.id);
@@ -154,7 +151,7 @@ describe("useArtistPage on live reads", () => {
     expect(api.trackCount.value).toBe(60);
     expect(api.hasNextTrackPage.value).toBe(true);
 
-    await deleteTracksAndSync(writer, [TrackId(name(0))]);
+    await deleteTracksAndSync([TrackId(name(0))]);
     await until(() => ids(api)[0] === TrackId(name(1)));
     await until(() => api.trackCount.value === 59);
     expect(ids(api)).toEqual(ascending(1, 51));
@@ -172,7 +169,7 @@ describe("useArtistPage on live reads", () => {
     expect(api.artist.value?.name).toBe("Artist");
     expect(api.artistData.value?.title).toBe("Artist");
 
-    await updateArtistAndSync(writer, ARTIST_ROW, { name: "Renamed" });
+    await updateArtistAndSync(ARTIST_ROW, { name: "Renamed" });
     await until(() => api.artist.value?.name === "Renamed");
     await until(() => api.tracks.value[0]?.artist === "Renamed");
 
@@ -214,7 +211,7 @@ describe("useArtistPage on live reads", () => {
     expect([...ids(api)].sort()).toEqual(Array.from({ length: 20 }, (_, i) => TrackId(name(i * 3))));
     expect(api.trackCount.value).toBe(20);
 
-    await deleteTracksAndSync(writer, [TrackId(name(3))]);
+    await deleteTracksAndSync([TrackId(name(3))]);
     await until(() => !ids(api).includes(TrackId(name(3))));
 
     expect(api.trackCount.value).toBe(19);

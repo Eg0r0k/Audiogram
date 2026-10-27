@@ -15,14 +15,7 @@ import type { TrackSortKey } from "@/modules/tracks/types";
 import { AlbumId as createAlbumId } from "@/types/ids";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
 import { queryOptions, skipToken, type QueryClient } from "@tanstack/vue-query";
-import {
-  invalidateForAlbumMutation,
-  removeAlbumCaches,
-  settleLibraryReads,
-  syncAlbumCaches,
-  updateCoverCache,
-  removeCoverCache,
-} from "./cache";
+import { removeCoverCache, updateCoverCache } from "@/modules/covers/lib/cover-cache";
 import { assertValidName } from "@/lib/limits";
 import { sortTracks } from "./shared";
 import { unique } from "@/lib/math";
@@ -214,7 +207,6 @@ export const albumQueries = {
 } as const;
 
 export async function createAlbumAndSync(
-  queryClient: QueryClient,
   artistId: ArtistId,
   title = "New album",
 ) {
@@ -229,16 +221,12 @@ export async function createAlbumAndSync(
   };
 
   await albumRepository.create(album);
-  await settleLibraryReads(queryClient);
-  syncAlbumCaches(queryClient, album);
-  invalidateForAlbumMutation(queryClient, { kind: "creation", artistId });
   await syncSearchIndex({ albums: [album.id] });
 
   return album;
 }
 
 export async function updateAlbumAndSync(
-  queryClient: QueryClient,
   currentAlbum: AlbumEntity,
   changes: AlbumChanges,
 ) {
@@ -271,19 +259,11 @@ export async function updateAlbumAndSync(
 
     updatedTrackIds = await trackRepository.inAlbum(currentAlbum.id).ids();
 
-    await settleLibraryReads(queryClient);
-    syncAlbumCaches(queryClient, nextAlbum);
     didUpdateAlbum = true;
   }
 
   if (didUpdateAlbum) {
     await syncSearchIndex({ albums: [currentAlbum.id], tracks: updatedTrackIds });
-
-    invalidateForAlbumMutation(queryClient, {
-      kind: "titleChange",
-      albumId: currentAlbum.id,
-      artistId: currentAlbum.artistId,
-    });
   }
 
   return nextAlbum;
@@ -291,12 +271,11 @@ export async function updateAlbumAndSync(
 
 /**
  * `deleteTracks` cascades the album's tracks and their playlist references in
- * one transaction; cache, search and their files are dealt with strictly after it. Without it the
+ * one transaction; search and their files are dealt with strictly after it. Without it the
  * album only ungroups — its tracks stay in the library, remote ones included,
  * keeping whatever is downloaded.
  */
 export async function deleteAlbumAndSync(
-  queryClient: QueryClient,
   albumEntity: AlbumEntity | null,
   options: { deleteTracks?: boolean } = {},
 ) {
@@ -309,13 +288,11 @@ export async function deleteAlbumAndSync(
   const trackIds = rawTracks.map(track => track.id);
   const now = Date.now();
 
-  const removals = await unitOfWork.run(
+  await unitOfWork.run(
     TRACK_CASCADE_TABLES,
     async (uow) => {
       // An empty shadow album (0 tracks) is deleted explicitly below.
-      const purged = cascadeTracks
-        ? await purgeTracksInTx(uow, rawTracks, now)
-        : [];
+      if (cascadeTracks) await purgeTracksInTx(uow, rawTracks, now);
 
       if (!cascadeTracks && rawTracks.length > 0) {
         // Detach fully — a dangling albumId would keep pointing at a dead row.
@@ -327,27 +304,12 @@ export async function deleteAlbumAndSync(
 
       await uow.covers.deleteAlbumCover(albumEntity.id);
       await uow.albums.delete(albumEntity.id);
-
-      return purged;
     },
   );
   if (cascadeTracks) await deleteOwnedFiles(rawTracks);
 
-  await settleLibraryReads(queryClient);
-  await syncAfterTrackPurge(
-    queryClient,
-    cascadeTracks ? trackIds : [],
-    removals,
-  );
+  await syncAfterTrackPurge(cascadeTracks ? trackIds : []);
   await syncSearchIndex({ albums: [albumEntity.id], tracks: cascadeTracks ? [] : trackIds });
 
-  removeAlbumCaches(queryClient, albumEntity.id, albumEntity.artistId);
-
   removeCoverCache("album", albumEntity.id);
-
-  invalidateForAlbumMutation(queryClient, {
-    kind: "removal",
-    artistId: albumEntity.artistId,
-    playlistIds: removals.map(({ next }) => next.id),
-  });
 }

@@ -2,15 +2,14 @@ import type { PlaylistEntity, TrackEntity } from "@/db/entities";
 import type { Scope } from "@/db/unit-of-work";
 import { syncSearchIndex } from "@/services/search/searchIndex";
 import { cleanupAfterTrackRemoval } from "@/services/library-gc";
-import type { PlaylistId, TrackId } from "@/types/ids";
-import type { QueryClient } from "@tanstack/vue-query";
-import { removeTracksFromCaches, syncPlaylistCaches } from "./cache";
+import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
+import type { TrackId } from "@/types/ids";
 
 //
 // Deleting a container (album, artist, playlist) can take its tracks with it.
 // The cascade is the same wherever it is triggered from, so it lives here:
 // rows die inside the caller's transaction, everything outside the database
-// (query caches, the search index) is synced strictly after the commit.
+// (the search index, the recommender context) is synced strictly after the commit.
 //
 
 /** Transaction scope a track purge needs; pass to `unitOfWork.run`. */
@@ -26,8 +25,8 @@ export interface PlaylistTrackRemoval {
 
 /**
  * Deletes the track rows and everything that points at them. Runs INSIDE an
- * open transaction scoped to `TRACK_CASCADE_TABLES`; the returned playlist
- * removals are the caller's input to `syncAfterTrackPurge`.
+ * open transaction scoped to `TRACK_CASCADE_TABLES`; `syncAfterTrackPurge`
+ * follows the commit.
  */
 export const purgeTracksInTx = async (
   uow: TrackCascadeScope,
@@ -66,25 +65,9 @@ export const purgeTracksInTx = async (
   return removals;
 };
 
-/**
- * Post-commit fan-out for a purge: query caches and the search index.
- * `skipPlaylistIds` drops playlists that were deleted alongside the tracks —
- * re-syncing their caches would resurrect them. The purged rows leave every
- * paged list, the playlists' included, in one pass.
- */
-export const syncAfterTrackPurge = async (
-  queryClient: QueryClient,
-  trackIds: readonly TrackId[],
-  playlistRemovals: readonly PlaylistTrackRemoval[],
-  skipPlaylistIds: readonly PlaylistId[] = [],
-) => {
-  const skipped = new Set(skipPlaylistIds);
-  for (const { next } of playlistRemovals) {
-    if (!skipped.has(next.id)) syncPlaylistCaches(queryClient, next);
-  }
-
+export const syncAfterTrackPurge = async (trackIds: readonly TrackId[]) => {
   if (trackIds.length === 0) return;
 
-  removeTracksFromCaches(queryClient, trackIds);
+  markRecommenderContextDirty();
   await syncSearchIndex({ tracks: trackIds });
 };

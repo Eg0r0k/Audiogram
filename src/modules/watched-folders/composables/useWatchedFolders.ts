@@ -1,7 +1,6 @@
 import { storeToRefs } from "pinia";
 import { open } from "@tauri-apps/plugin-dialog";
 import { exists, stat } from "@tauri-apps/plugin-fs";
-import { useQueryClient } from "@tanstack/vue-query";
 import { toaster } from "@/app/toaster";
 import { useI18n } from "vue-i18n";
 
@@ -38,7 +37,6 @@ const ANDROID_MUSIC_DIR = "/storage/emulated/0/Music";
  */
 export function useWatchedFolders() {
   const store = useWatchedFoldersStore();
-  const queryClient = useQueryClient();
   const { t } = useI18n();
 
   const { folders, autoScanOnStartup } = storeToRefs(store);
@@ -288,8 +286,7 @@ export function useWatchedFolders() {
   }
 
   function invalidateLibrary() {
-    invalidateLibraryData(queryClient)
-      .catch(error => getLogger().error(`[WatchedFolders] Library refresh failed: ${formatError(error)}`));
+    invalidateLibraryData();
   }
 
   async function relinkFolder(folderId: string) {

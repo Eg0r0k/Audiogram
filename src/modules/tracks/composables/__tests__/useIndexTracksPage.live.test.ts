@@ -123,7 +123,7 @@ describe("useIndexTracksPage on live pages", () => {
     const resolver = new EntityResolver();
     await resolver.resolve([item.meta]);
     await persistTracks([item], resolver);
-    await invalidateLibraryData(queryClient);
+    invalidateLibraryData();
   };
 
   beforeEach(async () => {
@@ -170,7 +170,7 @@ describe("useIndexTracksPage on live pages", () => {
     const api = mountPage(ref(null));
     await loadPages(api, 3);
 
-    await deleteTracksAndSync(queryClient, [TrackId("t060")]);
+    await deleteTracksAndSync([TrackId("t060")]);
     await until(() => !ids(api).includes(TrackId("t060")));
     await until(() => api.total.value === 119);
     await quiet();

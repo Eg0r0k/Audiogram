@@ -253,7 +253,7 @@ describe("useTrackMenuCaps", () => {
     await until(() => caps.value.hasLocalCopy);
     expect(caps.value.canDownload).toBe(false);
 
-    await deleteTracksAndSync(new QueryClient(), [TrackId("local-copy")]);
+    await deleteTracksAndSync([TrackId("local-copy")]);
 
     await until(() => !caps.value.hasLocalCopy);
     expect(caps.value.canDownload).toBe(true);

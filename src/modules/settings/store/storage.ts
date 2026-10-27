@@ -89,7 +89,6 @@ export function useStorageSettings() {
     isClearing.value = true;
     try {
       await clearLyricsData();
-      await queryClient.invalidateQueries({ queryKey: queryKeys.tracks.all() });
       await refresh();
     }
     finally {
@@ -101,7 +100,6 @@ export function useStorageSettings() {
     isClearing.value = true;
     try {
       await clearFoldersData();
-      await queryClient.invalidateQueries({ queryKey: queryKeys.library.summary() });
       await refresh();
     }
     finally {

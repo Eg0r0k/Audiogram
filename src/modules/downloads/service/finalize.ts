@@ -2,9 +2,7 @@ import type { DownloadJobEntity, TrackEntity } from "@/db/entities";
 import { albumRepository, coverRepository, trackRepository } from "@/db/repositories";
 import { getLogger } from "@/lib/logger";
 import { trackCoverOwner } from "@/modules/covers/composables/useTrackCover";
-import { queryClient } from "@/queries/client";
 import { invalidateLibraryData } from "@/queries/library.queries";
-import { syncLocalCopyCache } from "@/queries/localCopy.queries";
 import { extensionOf } from "@/services/import/item-io";
 import { fileNameFromPath } from "@/lib/files/path";
 import { musicLibraryEngine } from "@/services/importer.service";
@@ -84,11 +82,7 @@ export const finalizeDownloadImport = async (
   file: { path: string; format?: { codec?: string } },
 ): Promise<void> => {
   const localId = await importDownloadedFile(job.trackId, file.path);
-  if (localId) {
-    const copy = await trackRepository.findById(localId);
-    await syncLocalCopyCache(queryClient, job.trackId, copy ?? null);
-    await invalidateLibraryData(queryClient);
-  }
+  if (localId) invalidateLibraryData();
 
   try {
     const { remove } = await import("@tauri-apps/plugin-fs");

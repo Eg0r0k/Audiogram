@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { fireEvent, render, screen } from "@testing-library/vue";
-import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
+import { VueQueryPlugin } from "@tanstack/vue-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
 import { db } from "@/db";
@@ -124,7 +124,7 @@ describe("AlbumSelectPanel", () => {
     renderPanel();
     await screen.findByText("Other");
 
-    await updateAlbumAndSync(new QueryClient(), albums[1], { title: "Renamed" });
+    await updateAlbumAndSync(albums[1], { title: "Renamed" });
 
     expect(await screen.findByText("Renamed")).toBeInTheDocument();
     expect(screen.queryByText("Other")).not.toBeInTheDocument();

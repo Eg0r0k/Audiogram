@@ -288,35 +288,35 @@ export const useLibrary = () => {
   });
 
   const createPlaylist = async () => {
-    const playlist = await createPlaylistAndSync(queryClient, t("playlist.newPlaylist"));
+    const playlist = await createPlaylistAndSync(t("playlist.newPlaylist"));
     await router.push(routeLocation.playlist(playlist.id));
   };
 
   const createArtist = async () => {
-    const artist = await createArtistAndSync(queryClient, t("artist.newArtist"));
+    const artist = await createArtistAndSync(t("artist.newArtist"));
     await router.push(routeLocation.artist(artist.id));
   };
 
   const createAlbum = async () => {
-    const artist = await createArtistAndSync(queryClient, t("artist.newArtist"));
-    const album = await createAlbumAndSync(queryClient, artist.id, t("album.newAlbum"));
+    const artist = await createArtistAndSync(t("artist.newArtist"));
+    const album = await createAlbumAndSync(artist.id, t("album.newAlbum"));
     await router.push(routeLocation.album(album.id));
   };
 
   const createFolder = async (name = t("library.folder.newFolder")) => {
-    return createFolderAndSync(queryClient, name);
+    return createFolderAndSync(name);
   };
 
   const renameFolder = async (folderId: string, name: string) => {
-    await renameFolderAndSync(queryClient, createSidebarFolderId(folderId), name);
+    await renameFolderAndSync(createSidebarFolderId(folderId), name);
   };
 
   const deleteFolder = async (folderId: string) => {
-    await deleteFolderAndSync(queryClient, createSidebarFolderId(folderId));
+    await deleteFolderAndSync(createSidebarFolderId(folderId));
   };
 
   const setFolderItems = async (folderId: string, items: LibraryFolderEntry[]) => {
-    await setFolderItemsAndSync(queryClient, createSidebarFolderId(folderId), items);
+    await setFolderItemsAndSync(createSidebarFolderId(folderId), items);
   };
 
   const getFolderItems = (folderId: string) => {
@@ -333,8 +333,8 @@ export const useLibrary = () => {
     return item.type === "artist" || item.type === "album" || item.type === "playlist";
   }));
 
-  const invalidateLibrary = async () => {
-    await invalidateLibraryData(queryClient);
+  const invalidateLibrary = () => {
+    invalidateLibraryData();
   };
 
   // Summoned like the delete confirm so the action works from every
@@ -377,21 +377,21 @@ export const useLibrary = () => {
 
     switch (item.type) {
       case "artist":
-        await deleteArtistAndSync(queryClient, artists.value.find(artist => artist.id === item.id) ?? null, options);
+        await deleteArtistAndSync(artists.value.find(artist => artist.id === item.id) ?? null, options);
         store.unpin("artist", item.id);
-        await removeFolderItemAndSync(queryClient, "artist", item.id);
+        await removeFolderItemAndSync("artist", item.id);
         await navigateHomeIfViewingItem(item);
         break;
       case "album":
-        await deleteAlbumAndSync(queryClient, albums.value.find(album => album.id === item.id) ?? null, options);
+        await deleteAlbumAndSync(albums.value.find(album => album.id === item.id) ?? null, options);
         store.unpin("album", item.id);
-        await removeFolderItemAndSync(queryClient, "album", item.id);
+        await removeFolderItemAndSync("album", item.id);
         await navigateHomeIfViewingItem(item);
         break;
       case "playlist":
-        await deletePlaylistAndSync(queryClient, playlists.value.find(playlist => playlist.id === item.id) ?? null, options);
+        await deletePlaylistAndSync(playlists.value.find(playlist => playlist.id === item.id) ?? null, options);
         store.unpin("playlist", item.id);
-        await removeFolderItemAndSync(queryClient, "playlist", item.id);
+        await removeFolderItemAndSync("playlist", item.id);
         await navigateHomeIfViewingItem(item);
         break;
     }

@@ -155,7 +155,6 @@ function openAddTracksPanel() {
   rightPanelStore.openAddTracks({
     entityType: "favorite",
     entityId: "favorites",
-    onConfirmed: () => refetch(),
   }, {
     scope: { type: "route", routeKey: route.fullPath },
     depth: 1,

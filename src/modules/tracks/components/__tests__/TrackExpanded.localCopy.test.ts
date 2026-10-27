@@ -117,7 +117,7 @@ describe("TrackExpanded downloaded mark", () => {
     const { container } = renderRow(catalogTrack);
     await waitFor(() => expect(markOf(container)).not.toBeNull());
 
-    await deleteTracksAndSync(new QueryClient(), [COPY.id]);
+    await deleteTracksAndSync([COPY.id]);
 
     await waitFor(() => expect(markOf(container)).toBeNull());
   });

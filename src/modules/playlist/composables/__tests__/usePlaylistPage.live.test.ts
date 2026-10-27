@@ -124,7 +124,7 @@ describe("usePlaylistPage on live reads", () => {
     const rows = vi.spyOn(TrackScope.prototype, "rows");
 
     const [track] = await getTracksByIds([TrackId("x000")]);
-    await addTracksToPlaylistAndSync(queryClient, PLAYLIST, [track]);
+    await addTracksToPlaylistAndSync(PLAYLIST, [track]);
     await until(() => api.trackCount.value === 61);
     await until(() => api.totalDuration.value === "common.hoursShort:1 common.minutesShort:50");
     await until(() => rows.mock.calls.length > 0);
@@ -137,7 +137,7 @@ describe("usePlaylistPage on live reads", () => {
     expect(ids(api)).toEqual([...ORDER, TrackId("x000")]);
     expect(api.hasNextPage.value).toBe(false);
 
-    const { restore } = await removeTrackFromPlaylistWithUndo(queryClient, PLAYLIST, ORDER[3]);
+    const { restore } = await removeTrackFromPlaylistWithUndo(PLAYLIST, ORDER[3]);
     await until(() => !ids(api).includes(ORDER[3]));
     await restore();
     await until(() => ids(api)[3] === ORDER[3]);
@@ -166,7 +166,7 @@ describe("usePlaylistPage on live reads", () => {
     await loaded(api);
     expect(ids(api)).toContain(ORDER[2]);
 
-    await deleteTracksAndSync(queryClient, [ORDER[2]]);
+    await deleteTracksAndSync([ORDER[2]]);
     await until(() => !ids(api).includes(ORDER[2]));
     await until(() => api.trackCount.value === 59);
 
@@ -225,7 +225,6 @@ describe("usePlaylistPage on live reads", () => {
   });
 
   it("playlist: a search string reads live rows and follows the index", async () => {
-    const writer = new QueryClient();
     await db.tracks.update(TrackId("t005"), { title: "Glory Box" });
     await db.tracks.update(TrackId("t006"), { title: "Glory Days" });
     await db.tracks.update(TrackId("x000"), { title: "Glory Extra" });
@@ -237,13 +236,13 @@ describe("usePlaylistPage on live reads", () => {
     expect(api.totalDuration.value).toBe("common.minutesShort:3");
 
     const [track] = await getTracksByIds([TrackId("x000")]);
-    await addTracksToPlaylistAndSync(writer, PLAYLIST, [track]);
+    await addTracksToPlaylistAndSync(PLAYLIST, [track]);
     await until(() => ids(api).includes(TrackId("x000")));
 
     expect(api.trackCount.value).toBe(3);
     expect(api.totalDuration.value).toBe("common.minutesShort:13");
 
-    await removeTrackFromPlaylistWithUndo(writer, PLAYLIST, TrackId("t005"));
+    await removeTrackFromPlaylistWithUndo(PLAYLIST, TrackId("t005"));
     await until(() => !ids(api).includes(TrackId("t005")));
 
     await db.tracks.update(TrackId("t006"), { title: "Sunny" });

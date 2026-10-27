@@ -285,7 +285,7 @@ export const usePlaylistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: 
 
   const { mutateAsync: deletePlaylist } = useMutation({
     mutationFn: (options: { deleteTracks?: boolean } = {}) =>
-      deletePlaylistAndSync(queryClient, playlist.value, options),
+      deletePlaylistAndSync(playlist.value, options),
     onSuccess: () => {
       router.push(routeLocation.home())
         .catch(error => getLogger().error(`[Playlist] Navigation home after delete failed: ${formatError(error)}`));
@@ -321,17 +321,13 @@ export const usePlaylistPage = (sortKey: Ref<TrackSortKey | null>, searchQuery: 
         return;
       }
 
-      return updatePlaylistAndSync(queryClient, current, changes);
+      return updatePlaylistAndSync(current, changes);
     },
   });
 
   const { mutateAsync: removeTrack } = useMutation({
     mutationFn: (trackId: string) =>
-      removeTrackFromPlaylistAndSync(
-        queryClient,
-        playlistId.value,
-        trackId,
-      ),
+      removeTrackFromPlaylistAndSync(playlistId.value, trackId),
   });
 
   return {

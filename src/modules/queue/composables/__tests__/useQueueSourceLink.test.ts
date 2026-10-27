@@ -1,7 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { computed, effectScope, reactive, toValue, type EffectScope } from "vue";
-import { QueryClient } from "@tanstack/vue-query";
 import { db } from "@/db";
 import type { AlbumEntity, ArtistEntity, PlaylistEntity } from "@/db/entities";
 import type { QueueItem, QueueSource } from "@/modules/queue/types";
@@ -217,7 +216,7 @@ describe("useQueueSourceLink", () => {
     const { link } = start();
     await until(() => link.value?.label === "Road trip");
 
-    await updatePlaylistAndSync(new QueryClient(), row, { name: "Night drive" });
+    await updatePlaylistAndSync(row, { name: "Night drive" });
 
     await until(() => link.value?.label === "Night drive");
     expect(link.value?.to).toEqual({ name: "playlist", params: { id: "p1" } });

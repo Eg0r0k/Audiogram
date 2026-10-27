@@ -181,7 +181,7 @@ function getTrackKey(index: number) {
 function openAddTracksPanel() {
   if (!album.value) return;
   rightPanelStore.openAddTracks(
-    { entityType: "album", entityId: album.value.id, onConfirmed: () => refetch() },
+    { entityType: "album", entityId: album.value.id },
     { scope: { type: "route", routeKey: route.fullPath }, depth: 1 },
   );
 }

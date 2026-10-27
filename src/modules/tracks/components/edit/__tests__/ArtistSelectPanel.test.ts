@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { render, screen } from "@testing-library/vue";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
+import { VueQueryPlugin } from "@tanstack/vue-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/app/i18n";
 import { db } from "@/db";
@@ -81,7 +81,7 @@ describe("ArtistSelectPanel", () => {
     renderPanel(["Alpha"]);
     await screen.findByText("Beta");
 
-    await updateArtistAndSync(new QueryClient(), rows[1], { name: "Gamma" });
+    await updateArtistAndSync(rows[1], { name: "Gamma" });
 
     expect(await screen.findByText("Gamma")).toBeInTheDocument();
     expect(screen.queryByText("Beta")).toBeNull();
