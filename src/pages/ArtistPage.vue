@@ -342,7 +342,6 @@ const openAddTracksPanel = () => {
   rightPanelStore.openAddTracks({
     entityType: "artist",
     entityId: artist.value.id,
-    onConfirmed: () => refetch(),
   }, {
     scope: { type: "route", routeKey: route.fullPath },
     depth: 1,

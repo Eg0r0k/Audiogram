@@ -7,18 +7,16 @@ vi.mock("@/db/repositories/trackChapters.repository", () => ({
   trackChaptersRepository: { findById: findByIdMock },
 }));
 
-import { trackChaptersQueries } from "../trackChapters.queries";
+import { readTrackChapters } from "../trackChapters.queries";
 import { trackChaptersRepository } from "@/db/repositories/trackChapters.repository";
 
-describe("trackChaptersQueries.detail", () => {
+describe("readTrackChapters", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("short-circuits the empty ephemeral-track id without touching the db", async () => {
-    const options = trackChaptersQueries.detail(TrackId(""));
-
-    const result = await (options.queryFn as () => Promise<unknown>)();
+    const result = await readTrackChapters(TrackId(""));
 
     // The empty id is shared by every ephemeral (YT/radio) track — a stray
     // row under it would render phantom chapter marks on all of them.
@@ -33,8 +31,7 @@ describe("trackChaptersQueries.detail", () => {
       updatedAt: 1,
     });
 
-    const options = trackChaptersQueries.detail(TrackId("t1"));
-    const result = await (options.queryFn as () => Promise<unknown>)();
+    const result = await readTrackChapters(TrackId("t1"));
 
     expect(result).toEqual([{ time: 1770, title: "Drop" }]);
     expect(trackChaptersRepository.findById).toHaveBeenCalledWith("t1");
@@ -43,8 +40,7 @@ describe("trackChaptersQueries.detail", () => {
   it("maps a missing row to an empty chapter list", async () => {
     findByIdMock.mockResolvedValue(undefined);
 
-    const options = trackChaptersQueries.detail(TrackId("t2"));
-    const result = await (options.queryFn as () => Promise<unknown>)();
+    const result = await readTrackChapters(TrackId("t2"));
 
     expect(result).toEqual([]);
   });

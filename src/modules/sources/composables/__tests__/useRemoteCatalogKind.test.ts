@@ -1,22 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { defineComponent, h, nextTick, ref } from "vue";
+import "fake-indexeddb/auto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { defineComponent, h, ref } from "vue";
 import { mount } from "@vue/test-utils";
-import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
+import { db } from "@/db";
+import { artistRepository } from "@/db/repositories";
+import { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 
-const rows = vi.hoisted(() => ({
-  artists: new Map<string, { pinned: number }>(),
-  albums: new Map<string, { pinned: number }>(),
-  playlists: new Map<string, object>(),
-  query: {} as Record<string, unknown>,
-}));
+const route = vi.hoisted(() => ({ query: {} as Record<string, unknown> }));
 
-vi.mock("vue-router", () => ({ useRoute: () => ({ query: rows.query }) }));
+vi.mock("vue-router", () => ({ useRoute: () => ({ query: route.query }) }));
 
-vi.mock("@/db/repositories", () => ({
-  artistRepository: { findById: (id: string) => Promise.resolve(rows.artists.get(id)) },
-  albumRepository: { findById: (id: string) => Promise.resolve(rows.albums.get(id)) },
-  playlistRepository: { findById: (id: string) => Promise.resolve(rows.playlists.get(id)) },
-}));
 vi.mock("../../registry", () => ({
   sources: {
     get: () => ({
@@ -31,34 +24,54 @@ vi.mock("../../registry", () => ({
 
 import { useRemoteCatalogKind } from "../useRemoteCatalogKind";
 
-const resolve = async (entity: "artists" | "albums" | "playlists", id: string) => {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const artist = (id: string, pinned: 0 | 1) =>
+  db.artists.add({ id: ArtistId(id), name: "Artist", pinned, addedAt: 1, updatedAt: 1 });
+const album = (id: string, pinned: 0 | 1) =>
+  db.albums.add({ id: AlbumId(id), title: "Album", artistId: ArtistId("ar1"), pinned, addedAt: 1, updatedAt: 1 });
+const playlist = (id: string) =>
+  db.playlists.add({ id: PlaylistId(id), name: "Playlist", trackIds: [], addedAt: 1, updatedAt: 1 });
+
+const until = async (holds: () => boolean) => {
+  for (let i = 0; i < 400 && !holds(); i++) await new Promise(resolve => setTimeout(resolve, 5));
+  expect(holds()).toBe(true);
+};
+
+const start = (entity: "artists" | "albums" | "playlists", id: string) => {
   let result!: ReturnType<typeof useRemoteCatalogKind>;
   mount(defineComponent({
     setup() {
       result = useRemoteCatalogKind(entity, ref(id));
       return () => h("div");
     },
-  }), { global: { plugins: [[VueQueryPlugin, { queryClient }]] } });
+  }));
+  return result;
+};
 
-  await new Promise(r => setTimeout(r, 0));
-  await nextTick();
+const resolve = async (entity: "artists" | "albums" | "playlists", id: string) => {
+  const result = start(entity, id);
+  await until(() => result.isResolved.value);
   return result;
 };
 
 describe("useRemoteCatalogKind", () => {
-  beforeEach(() => {
-    rows.artists.clear();
-    rows.albums.clear();
-    rows.playlists.clear();
-    rows.query = {};
+  beforeEach(async () => {
+    await db.open();
+    await Promise.all(db.tables.map(table => table.clear()));
+    route.query = {};
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("takes the local path for an unprefixed id without touching Dexie", async () => {
+    const findById = vi.spyOn(artistRepository, "findById");
+
     const { remoteKind, isResolved } = await resolve("artists", "local-uuid");
 
     expect(remoteKind.value).toBeNull();
     expect(isResolved.value).toBe(true);
+    expect(findById).not.toHaveBeenCalled();
   });
 
   it("opens the catalog for a remote id with no library row", async () => {
@@ -71,7 +84,7 @@ describe("useRemoteCatalogKind", () => {
   // same "yt:" id, the local search index lists it, and opening that result
   // must show the library artist rather than the live YouTube page.
   it("takes the local path when a pinned library row exists under the remote id", async () => {
-    rows.artists.set("yt:UC1", { pinned: 1 });
+    await artist("yt:UC1", 1);
 
     const { remoteKind, isLibraryEntity } = await resolve("artists", "yt:UC1");
 
@@ -82,7 +95,7 @@ describe("useRemoteCatalogKind", () => {
   // A shadow row hangs off a download and carries no library meaning, so
   // browsing the catalog entity it came from must still work.
   it("keeps the catalog path when the only row is an unpinned shadow", async () => {
-    rows.albums.set("nd:al1", { pinned: 0 });
+    await album("nd:al1", 0);
 
     const { remoteKind } = await resolve("albums", "nd:al1");
 
@@ -92,8 +105,8 @@ describe("useRemoteCatalogKind", () => {
   // The other half of the same coin: a link that came from searching the
   // source asked for the source's view, downloaded or not.
   it("keeps the catalog path when the link asked for it, pinned row or not", async () => {
-    rows.artists.set("yt:UC1", { pinned: 1 });
-    rows.query = { catalog: "1" };
+    await artist("yt:UC1", 1);
+    route.query = { catalog: "1" };
 
     const { remoteKind, isLibraryEntity, isResolved } = await resolve("artists", "yt:UC1");
 
@@ -103,7 +116,7 @@ describe("useRemoteCatalogKind", () => {
   });
 
   it("treats any existing playlist row as a library playlist", async () => {
-    rows.playlists.set("nd:pl1", { id: "nd:pl1" });
+    await playlist("nd:pl1");
 
     const { remoteKind } = await resolve("playlists", "nd:pl1");
 
@@ -111,16 +124,33 @@ describe("useRemoteCatalogKind", () => {
   });
 
   it("reports unresolved until the lookup settles, so no page renders twice", () => {
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    let result!: ReturnType<typeof useRemoteCatalogKind>;
-    mount(defineComponent({
-      setup() {
-        result = useRemoteCatalogKind("artists", ref("yt:UC1"));
-        return () => h("div");
-      },
-    }), { global: { plugins: [[VueQueryPlugin, { queryClient }]] } });
+    const result = start("artists", "yt:UC1");
 
     expect(result.isResolved.value).toBe(false);
     expect(result.remoteKind.value).toBeNull();
+  });
+
+  it("a lookup that fails resolves to the catalog instead of holding the page", async () => {
+    vi.spyOn(artistRepository, "findById").mockRejectedValue(new Error("idb gone"));
+
+    const { remoteKind, isLibraryEntity } = await resolve("artists", "yt:UC1");
+
+    expect(isLibraryEntity.value).toBe(false);
+    expect(remoteKind.value).toBe("yt");
+  });
+
+  it("useRemoteCatalogKind: follows the library row after a pin and after a delete", async () => {
+    await artist("yt:UC1", 0);
+    const { remoteKind, isLibraryEntity, isResolved } = await resolve("artists", "yt:UC1");
+    expect(remoteKind.value).toBe("yt");
+
+    await artistRepository.update(ArtistId("yt:UC1"), { pinned: 1 });
+    await until(() => isLibraryEntity.value);
+    expect(remoteKind.value).toBeNull();
+    expect(isResolved.value).toBe(true);
+
+    await artistRepository.delete(ArtistId("yt:UC1"));
+    await until(() => remoteKind.value === "yt");
+    expect(isLibraryEntity.value).toBe(false);
   });
 });

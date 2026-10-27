@@ -1,11 +1,10 @@
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { useRoute } from "vue-router";
-import { skipToken, useQuery } from "@tanstack/vue-query";
 import { wantsCatalogView } from "@/app/router/route-locations";
+import { useLiveQuery } from "@/composables/useLiveQuery";
 import { getAlbumLibraryRow } from "@/queries/album.queries";
 import { getArtistLibraryRow } from "@/queries/artist.queries";
 import { getPlaylistLibraryRow } from "@/queries/playlist.queries";
-import { queryKeys } from "@/queries/query-keys";
 import { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
 import type { SourceKind } from "@/types/track-ref";
 import { remoteCatalogKindOf } from "../lib/catalog-kind";
@@ -34,30 +33,26 @@ type LibraryRow = { id: string; pinned?: number } | null;
 /**
  * Row reads go through the queries layer rather than the repositories, so
  * this composable stays about choosing a path and the Dexie read stays where
- * every other Dexie read in the app lives. Their keys sit under the entity's
- * own namespace, so pinning or deleting one already invalidates this.
+ * every other Dexie read in the app lives. The read is live, so a pin or a
+ * delete under the id moves the path without an invalidation.
  *
  * Playlists have no `pinned` flag because they have no shadow rows: the pin
  * cascade builds tracks with their albums and artists, never a playlist. So
  * any playlist row that exists is already a library playlist.
  */
 const LOOKUP: Record<SourceEntity, {
-  key: (id: string | null) => readonly unknown[];
   read: (id: string) => Promise<LibraryRow>;
   isMember: (row: LibraryRow) => boolean;
 }> = {
   artists: {
-    key: id => queryKeys.artists.libraryRow(id === null ? null : ArtistId(id)),
     read: id => getArtistLibraryRow(ArtistId(id)),
     isMember: row => (row?.pinned ?? 0) !== 0,
   },
   albums: {
-    key: id => queryKeys.albums.libraryRow(id === null ? null : AlbumId(id)),
     read: id => getAlbumLibraryRow(AlbumId(id)),
     isMember: row => (row?.pinned ?? 0) !== 0,
   },
   playlists: {
-    key: id => queryKeys.playlists.libraryRow(id === null ? null : PlaylistId(id)),
     read: id => getPlaylistLibraryRow(PlaylistId(id)),
     isMember: row => row !== null,
   },
@@ -86,21 +81,24 @@ export const useRemoteCatalogKind = (entity: SourceEntity, id: MaybeRefOrGetter<
 
   const lookup = LOOKUP[entity];
 
-  const libraryRow = useQuery(computed(() => {
-    const id = lookupId.value;
-    return {
-      queryKey: lookup.key(id),
-      queryFn: id === null ? skipToken : () => lookup.read(id),
-    };
-  }));
-
-  const isLibraryEntity = computed(() =>
-    lookupId.value !== null && lookup.isMember(libraryRow.data.value ?? null),
+  const libraryRow = useLiveQuery(
+    async () => {
+      const current = lookupId.value;
+      return current === null ? null : lookup.read(current);
+    },
+    () => [lookupId.value],
+    { enabled: () => lookupId.value !== null },
   );
 
-  /** False only while a remote-branded id is still being looked up. */
+  // The previous id's row stays until the next read lands; a failed read falls back to the catalog.
   const isResolved = computed(() =>
-    lookupId.value === null || !libraryRow.isLoading.value,
+    lookupId.value === null
+    || libraryRow.error.value !== undefined
+    || (!libraryRow.isLoading.value && !libraryRow.isStale.value),
+  );
+
+  const isLibraryEntity = computed(() =>
+    lookupId.value !== null && isResolved.value && lookup.isMember(libraryRow.data.value ?? null),
   );
 
   const remoteKind = computed<SourceKind | null>(() =>

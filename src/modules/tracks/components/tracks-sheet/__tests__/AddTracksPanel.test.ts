@@ -17,7 +17,6 @@ import type { RightPanelAddTracksPayload } from "@/modules/right-panel/types";
 import AddTracksPanel from "../AddTracksPanel.vue";
 
 const queries = vi.hoisted(() => ({
-  searchTracksPaginated: vi.fn(),
   getTracksByIds: vi.fn(),
   addTracksToAlbumAndSync: vi.fn(),
   addTracksToArtistAndSync: vi.fn(),
@@ -156,7 +155,6 @@ describe("AddTracksPanel", () => {
     await screen.findByTestId("row-t1");
 
     expect(pageSpy).toHaveBeenCalledWith({ sort: "date_added_desc", after: null, limit: 50 });
-    expect(queries.searchTracksPaginated).not.toHaveBeenCalled();
   });
 
   it("the add-tracks panel lists a track imported while it is open", async () => {

@@ -8,13 +8,11 @@ import {
 import { DbError } from "@/db/errors/db.errors";
 import type { TrackScope } from "@/db/repositories/track.scope";
 import { unitOfWork, type Scope } from "@/db/unit-of-work";
-import { queryKeys } from "@/queries/query-keys";
 import { syncSearchIndex } from "@/services/search/searchIndex";
 import { mapTracks } from "@/types/track";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { ArtistId as createArtistId } from "@/types/ids";
-import type { ArtistId, TrackId } from "@/types/ids";
-import { queryOptions, skipToken, type QueryClient } from "@tanstack/vue-query";
+import type { ArtistId } from "@/types/ids";
 import { removeCoverCache, updateCoverCache } from "@/modules/covers/lib/cover-cache";
 import { assertValidName } from "@/lib/limits";
 import { sortTracks } from "./shared";
@@ -24,7 +22,7 @@ import {
   syncAfterTrackPurge,
   TRACK_CASCADE_TABLES,
 } from "./track-cascade";
-import type { ArtistPageData, PaginatedTracksResult, PaginatedAlbumsResult } from "./types";
+import type { ArtistPageData } from "./types";
 import { deleteOwnedFiles } from "@/services/track-files";
 
 /** The artist row under an id, or null — a miss is an answer, not an error. */
@@ -38,8 +36,6 @@ export interface ArtistChanges {
   coverBlob?: Blob;
   removeCover?: boolean;
 }
-
-const PAGE_SIZE = 50;
 
 async function getArtistTrackEntities(artistId: ArtistId, sortKey: TrackSortKey | null) {
   // A local artist can absorb remote tracks via substitution — skip shadows.
@@ -101,89 +97,6 @@ export async function getArtistPageData(artistId: ArtistId, sortKey: TrackSortKe
   };
 }
 
-/**
- * The artist's member ids in list order. `artistIds` is multi-entry, and
- * IndexedDB forbids multiEntry inside a compound key, so membership cannot
- * ride along with it: the list filters every row of the artist by `pinned`,
- * once per (artist, sort) rather than once per page.
- *
- * `staleTime: Infinity` because the invalidation registry is what expires it,
- * never the clock — `affectedKeys.artists.tracksPages` pairs it with the
- * pages, which would otherwise be cut from a list that still counts removed
- * rows. Ids only: the page reads its own rows, so a row edited under it is
- * never served from here.
- */
-const artistTrackOrder = (artistId: ArtistId, sortKey: TrackSortKey | null) =>
-  queryOptions({
-    queryKey: queryKeys.artists.trackOrder(artistId, sortKey),
-    queryFn: async (): Promise<TrackId[]> =>
-      sortKey
-        ? (await getArtistTrackEntities(artistId, sortKey)).map(track => track.id)
-        : trackRepository.byArtist(artistId).members().ids(),
-    staleTime: Infinity,
-  });
-
-export async function getArtistTracksPaginated(
-  artistId: ArtistId,
-  offset: number,
-  limit = PAGE_SIZE,
-  sortKey: TrackSortKey | null = null,
-  client: QueryClient,
-): Promise<PaginatedTracksResult> {
-  const order = await client.fetchQuery(artistTrackOrder(artistId, sortKey));
-
-  // Read off the order, unlike an album's total, which is counted live: no
-  // index can count an artist's members — that is what the order itself is
-  // for — so between a delete and the invalidation that expires the order,
-  // this still counts the row. The registry heals it; nothing cheaper can.
-  const total = order.length;
-  const pageIds = order.slice(offset, offset + limit);
-
-  if (pageIds.length === 0) {
-    return { tracks: [], nextOffset: null, total };
-  }
-
-  // bulkGet answers in the order asked, so the page keeps the list's order.
-  const rawTracks = await trackRepository.findByIds(pageIds);
-
-  await getArtistByIdOrThrow(artistId);
-  const albumIds = unique(rawTracks.map(track => track.albumId));
-  const albums = await albumRepository.findByIds(albumIds);
-
-  const allArtistIds = unique(rawTracks.flatMap(t => t.artistIds));
-  const allArtists = await artistRepository.findByIds(allArtistIds);
-
-  const mappedTracks = mapTracks(rawTracks, allArtists, albums);
-
-  const nextOffset = offset + limit < total ? offset + limit : null;
-
-  return {
-    tracks: mappedTracks,
-    nextOffset,
-    total,
-  };
-}
-
-export async function getArtistAlbumsPaginated(
-  artistId: ArtistId,
-  offset: number,
-  limit = PAGE_SIZE,
-): Promise<PaginatedAlbumsResult> {
-  const [albums, countResult] = await Promise.all([
-    albumRepository.findByArtistIdPaginated(artistId, offset, limit),
-    albumRepository.countByArtistId(artistId),
-  ]);
-
-  const total = countResult;
-  const nextOffset = offset + limit < total ? offset + limit : null;
-
-  return {
-    albums,
-    nextOffset,
-    total,
-  };
-}
-
 export const artistTrackScope = (artistId: ArtistId): TrackScope => trackRepository.byArtist(artistId);
 
 // The queue reads through getArtistPageData; the scope's own sort would order descending ties differently.
@@ -192,25 +105,6 @@ export const readArtistTracks = async (artistId: ArtistId, sortKey: TrackSortKey
 
 export const readArtistAlbums = (artistId: ArtistId): Promise<AlbumEntity[]> =>
   albumRepository.findByArtistIdPaginated(artistId, 0, Infinity);
-
-export const artistQueries = {
-  detail: (artistId: ArtistId, enabled = true) =>
-    queryOptions({
-      queryKey: queryKeys.artists.detail(artistId),
-      queryFn: () => getArtistByIdOrThrow(artistId),
-      enabled,
-    }),
-  /**
-   * The Dexie row under this id, or null when there is none. A branded
-   * remote id may or may not have one — that is the question this answers —
-   * so a miss is an answer, not the error `detail` raises.
-   */
-  libraryRow: (artistId: ArtistId | null) =>
-    queryOptions({
-      queryKey: queryKeys.artists.libraryRow(artistId),
-      queryFn: artistId ? () => getArtistLibraryRow(artistId) : skipToken,
-    }),
-} as const;
 
 export async function createArtistAndSync(name = "New artist") {
   const now = Date.now();

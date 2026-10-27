@@ -8,13 +8,11 @@ import {
 import { DbError } from "@/db/errors/db.errors";
 import type { TrackScope } from "@/db/repositories/track.scope";
 import { unitOfWork } from "@/db/unit-of-work";
-import { queryKeys } from "@/queries/query-keys";
 import { syncSearchIndex } from "@/services/search/searchIndex";
 import { mapTracks } from "@/types/track";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { AlbumId as createAlbumId } from "@/types/ids";
 import type { AlbumId, ArtistId, TrackId } from "@/types/ids";
-import { queryOptions, skipToken, type QueryClient } from "@tanstack/vue-query";
 import { removeCoverCache, updateCoverCache } from "@/modules/covers/lib/cover-cache";
 import { assertValidName } from "@/lib/limits";
 import { sortTracks } from "./shared";
@@ -24,10 +22,8 @@ import {
   syncAfterTrackPurge,
   TRACK_CASCADE_TABLES,
 } from "./track-cascade";
-import type { AlbumPageData, PaginatedTracksResult } from "./types";
+import type { AlbumPageData } from "./types";
 import { deleteOwnedFiles } from "@/services/track-files";
-
-const PAGE_SIZE = 50;
 
 /** The album row under an id, or null — a miss is an answer, not an error. */
 export async function getAlbumLibraryRow(albumId: AlbumId): Promise<AlbumEntity | null> {
@@ -93,73 +89,6 @@ export async function getAlbumPageData(albumId: AlbumId, sortKey: TrackSortKey |
   };
 }
 
-/**
- * The album's member ids in list order. An album is ordered by (diskNo,
- * trackNo) or by a chosen sort, neither of which an index expresses, so the
- * list is built in memory from every row of the album — once per (album,
- * sort) rather than once per page. Ids only: the page reads its own rows, so
- * a row edited under it is never served from here.
- *
- * `staleTime: Infinity` because the invalidation registry is what expires it,
- * never the clock. Per-album mutations reach it through the `albums/<id>`
- * prefix; artist-wide ones carry no album id and reach it through
- * `keyMatchers.trackOrdersOf`, which `affectedKeys.albums.tracksPages` pairs
- * with the pages. A path that invalidates the pages without the order would
- * leave them cut from a list that still counts removed rows.
- */
-const albumTrackOrder = (albumId: AlbumId, sortKey: TrackSortKey | null) =>
-  queryOptions({
-    queryKey: queryKeys.albums.trackOrder(albumId, sortKey),
-    queryFn: async () => (await getAlbumTrackEntities(albumId, sortKey)).map(track => track.id),
-    staleTime: Infinity,
-  });
-
-export async function getAlbumTracksPaginated(
-  albumId: AlbumId,
-  offset: number,
-  limit = PAGE_SIZE,
-  sortKey: TrackSortKey | null = null,
-  client: QueryClient,
-): Promise<PaginatedTracksResult> {
-  const [order, album, total] = await Promise.all([
-    client.fetchQuery(albumTrackOrder(albumId, sortKey)),
-    getAlbumByIdOrThrow(albumId),
-    // Counted live off [albumId+pinned] rather than read off the order: the
-    // order is cached until the registry expires it, so between a delete and
-    // that invalidation it still names rows that are gone, and the list would
-    // advertise a number it cannot fill. The count reads no row.
-    trackRepository.inAlbum(albumId).members().count(),
-  ]);
-
-  const pageIds = order.slice(offset, offset + limit);
-
-  if (pageIds.length === 0) {
-    return { tracks: [], nextOffset: null, total };
-  }
-
-  // bulkGet answers in the order asked, so the page keeps the list's order.
-  const rawTracks = await trackRepository.findByIds(pageIds);
-
-  const allArtistIds = unique(rawTracks.flatMap(t => t.artistIds));
-  const allArtists = allArtistIds.length > 0
-    ? await artistRepository.findByIds(allArtistIds)
-    : [];
-
-  const mappedTracks = mapTracks(rawTracks, allArtists, [album]);
-
-  const nextOffset = offset + limit < total ? offset + limit : null;
-
-  return {
-    tracks: mappedTracks,
-    nextOffset,
-    total,
-  };
-}
-
-export async function getAlbumTotalDuration(albumId: AlbumId): Promise<number> {
-  return trackRepository.inAlbum(albumId).members().sumDuration();
-}
-
 const byDiscAndTrack = (a: TrackEntity, b: TrackEntity): number =>
   (a.diskNo ?? 1) - (b.diskNo ?? 1) || (a.trackNo ?? 0) - (b.trackNo ?? 0);
 
@@ -180,31 +109,6 @@ export const albumTrackScope = (albumId: AlbumId): TrackScope => trackRepository
 // The album order is not an index order, so a limited read still sorts every row of the album first.
 export const readAlbumTracks = async (albumId: AlbumId, sortKey: TrackSortKey | null, limit: number): Promise<TrackEntity[]> =>
   (await getAlbumTrackEntities(albumId, sortKey)).slice(0, limit);
-
-export const albumQueries = {
-  detail: (albumId: AlbumId, enabled = true) =>
-    queryOptions({
-      queryKey: queryKeys.albums.detail(albumId),
-      queryFn: () => getAlbumByIdOrThrow(albumId),
-      enabled,
-    }),
-  /**
-   * The Dexie row under this id, or null when there is none. A branded
-   * remote id may or may not have one — that is the question this answers —
-   * so a miss is an answer, not the error `detail` raises.
-   */
-  libraryRow: (albumId: AlbumId | null) =>
-    queryOptions({
-      queryKey: queryKeys.albums.libraryRow(albumId),
-      queryFn: albumId ? () => getAlbumLibraryRow(albumId) : skipToken,
-    }),
-  totalDuration: (albumId: AlbumId, enabled = true) =>
-    queryOptions({
-      queryKey: queryKeys.albums.totalDuration(albumId),
-      queryFn: () => getAlbumTotalDuration(albumId),
-      enabled,
-    }),
-} as const;
 
 export async function createAlbumAndSync(
   artistId: ArtistId,

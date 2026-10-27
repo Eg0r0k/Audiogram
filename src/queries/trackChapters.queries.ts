@@ -1,7 +1,5 @@
-import { queryOptions } from "@tanstack/vue-query";
 import { trackChaptersRepository } from "@/db/repositories/trackChapters.repository";
 import type { TrackChapterMark } from "@/db/entities";
-import { queryKeys } from "@/queries/query-keys";
 import type { TrackId } from "@/types/ids";
 
 export const readTrackChapters = async (trackId: TrackId): Promise<TrackChapterMark[]> => {
@@ -10,15 +8,6 @@ export const readTrackChapters = async (trackId: TrackId): Promise<TrackChapterM
   const entity = await trackChaptersRepository.findById(trackId);
   return entity?.chapters ?? [];
 };
-
-export const trackChaptersQueries = {
-  detail: (trackId: TrackId) =>
-    queryOptions({
-      queryKey: queryKeys.trackChapters.detail(trackId),
-      queryFn: () => readTrackChapters(trackId),
-      staleTime: Infinity,
-    }),
-} as const;
 
 export async function saveTrackChapters(
   trackId: TrackId,

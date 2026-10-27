@@ -9,7 +9,7 @@ import {
   trackRepository,
 } from "@/db/repositories";
 import type { TrackLyricsChanges } from "@/db/repositories/track.repository";
-import type { TrackIndexKey, TrackScope } from "@/db/repositories/track.scope";
+import type { TrackScope } from "@/db/repositories/track.scope";
 import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
 import {
@@ -21,11 +21,10 @@ import type { TrackSortKey } from "@/modules/tracks/types";
 import { DEFAULT_TRACK_SORT_KEY } from "@/types/track-sort";
 import type { SearchMatch } from "@/services/search/types";
 import { matchesByEntity } from "@/services/search/searchMatches";
-import { queryKeys } from "@/queries/query-keys";
 import { mapTracks, type Track } from "@/types/track";
 import { AlbumId as createAlbumId, ArtistId as createArtistId } from "@/types/ids";
 import type { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
-import { queryOptions, skipToken, type QueryClient } from "@tanstack/vue-query";
+import type { QueryClient } from "@tanstack/vue-query";
 import { removeCoverCache, updateCoverCache } from "@/modules/covers/lib/cover-cache";
 import { markRecommenderContextDirty } from "@/modules/recommendations/service/recommender-context.service";
 import { unique } from "@/lib/math";
@@ -153,60 +152,6 @@ export async function getLikedTracksPageData(sortKey: TrackSortKey | null = null
   };
 }
 
-// Only the first page counts the list: the view reads its size from pages[0],
-// and a count walks the whole index (150 ms at 30k tracks) on every page. A
-// later page cannot know how many rows precede it, so it reports its own.
-const indexPage = async (
-  scope: TrackScope,
-  sort: TrackSortKey | undefined,
-  after: TrackIndexKey | null,
-  limit: number,
-): Promise<PaginatedTracksResult> => {
-  const [page, counted] = await Promise.all([
-    scope.page({ sort, after, limit }),
-    after === null ? scope.count() : null,
-  ]);
-  return {
-    tracks: await loadTrackRelations(page.rows),
-    nextOffset: null,
-    last: page.last,
-    total: counted ?? page.rows.length,
-  };
-};
-
-export async function getLikedTracksPaginated(
-  after: TrackIndexKey | null,
-  limit = PAGE_SIZE,
-  sortKey: TrackSortKey | null = null,
-): Promise<PaginatedTracksResult> {
-  return indexPage(trackRepository.liked(), sortKey ?? undefined, after, limit);
-}
-
-// queryOptions factories — only for non-infinite queries.
-// Infinite queries are configured directly in composables via useInfiniteQuery.
-export const trackQueries = {
-  /** The stored row; `syncTrack*Caches` write to this key, mutations invalidate it. */
-  detail: (trackId: TrackId) =>
-    queryOptions({
-      queryKey: queryKeys.tracks.detail(trackId),
-      queryFn: () => getTrackEntityById(trackId),
-    }),
-  /** The rows behind a list of ids, in Dexie order; parked on skipToken for an empty list. */
-  byIds: (ids: readonly TrackId[]) =>
-    queryOptions({
-      queryKey: queryKeys.tracks.byIds(ids),
-      queryFn: ids.length > 0 ? () => getTracksByIds(ids) : skipToken,
-    }),
-} as const;
-
-export async function getAllTracksPaginated(
-  after: TrackIndexKey | null,
-  limit = PAGE_SIZE,
-  sortKey?: TrackSortKey | null,
-): Promise<PaginatedTracksResult> {
-  return indexPage(trackRepository.members(), sortKey ?? DEFAULT_TRACK_SORT_KEY, after, limit);
-}
-
 // Search hits come back in score order; a chosen sort reorders the whole hit
 // set, so a page of it needs every id first. No sort = relevance, which is
 // why `null` is meaningful here and must not be defaulted away.
@@ -219,36 +164,6 @@ async function searchedTracksSorted(
   return {
     tracks: await trackRepository.withIds(ids).rows({ sort: sortKey }),
     matches: matchesByEntity(response.results),
-  };
-}
-
-export async function searchTracksPaginated(
-  query: string,
-  offset: number,
-  limit = PAGE_SIZE,
-  sortKey: TrackSortKey | null = null,
-): Promise<PaginatedTracksResult> {
-  if (sortKey) {
-    const { tracks: sorted, matches } = await searchedTracksSorted(query, sortKey);
-    const total = sorted.length;
-    const page = sorted.slice(offset, offset + limit);
-    return {
-      tracks: await loadTrackRelations(page),
-      nextOffset: offset + limit < total ? offset + limit : null,
-      total,
-      // Only this page's share: the full hit set would be copied into every page.
-      matches: Object.fromEntries(page.filter(track => track.id in matches).map(track => [track.id, matches[track.id]])),
-    };
-  }
-
-  const { tracks, total, matches } = await searchIndexedTracks(query, offset, limit);
-  const nextOffset = offset + limit < total ? offset + limit : null;
-
-  return {
-    tracks,
-    nextOffset,
-    total,
-    matches,
   };
 }
 
@@ -274,7 +189,7 @@ export const searchTrackIds = async (
 
 /**
  * A search scoped to one collection's rows: hits are filtered inside the
- * index by `ids`, then paged like `searchTracksPaginated` — relevance order
+ * index by `ids`, then paged by offset in relevance order
  * unless a sort is chosen, in which case every hit is re-sorted first.
  * `Infinity` as the limit takes every hit (the queue loader).
  */

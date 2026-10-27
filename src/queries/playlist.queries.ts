@@ -8,26 +8,21 @@ import {
 } from "@/db/repositories";
 import { DbError } from "@/db/errors/db.errors";
 import { unitOfWork } from "@/db/unit-of-work";
-import { queryKeys } from "@/queries/query-keys";
 import { syncSearchIndex } from "@/services/search/searchIndex";
 import type { TrackSortKey } from "@/modules/tracks/types";
 import { mapTracks, type Track } from "@/types/track";
 import type { PlaylistId, TrackId } from "@/types/ids";
 import { PlaylistId as createPlaylistId } from "@/types/ids";
-import { queryOptions, skipToken } from "@tanstack/vue-query";
 import { removeCoverCache, updateCoverCache } from "@/modules/covers/lib/cover-cache";
 import { assertValidName } from "@/lib/limits";
-import { sortTracks } from "./shared";
 import { unique } from "@/lib/math";
 import {
   purgeTracksInTx,
   syncAfterTrackPurge,
   TRACK_CASCADE_TABLES,
 } from "./track-cascade";
-import type { PlaylistPageData, PaginatedPlaylistTracksResult } from "./types";
+import type { PlaylistPageData } from "./types";
 import { deleteOwnedFiles } from "@/services/track-files";
-
-const PAGE_SIZE = 50;
 
 /** The playlist row under an id, or null — a miss is an answer, not an error. */
 export async function getPlaylistLibraryRow(playlistId: PlaylistId): Promise<PlaylistEntity | null> {
@@ -92,60 +87,6 @@ export async function getPlaylistPageData(
   };
 }
 
-export async function getPlaylistTracksPaginated(
-  playlistId: PlaylistId,
-  offset: number,
-  limit = PAGE_SIZE,
-  sortKey: TrackSortKey | null = null,
-): Promise<PaginatedPlaylistTracksResult> {
-  const playlist = await getPlaylistByIdOrThrow(playlistId);
-  const total = playlist.trackIds.length;
-
-  if (total === 0) {
-    return { tracks: [], nextOffset: null, total };
-  }
-
-  let currentTracksPage: TrackEntity[];
-
-  if (sortKey) {
-    // A global sort genuinely needs all rows (playlists are the smallest collection).
-    const allTracks = await trackRepository.findByIds(playlist.trackIds);
-    const sorted = sortTracks(allTracks, sortKey);
-    currentTracksPage = sorted.slice(offset, offset + limit);
-  }
-  else {
-    const pageIds = playlist.trackIds.slice(offset, offset + limit);
-    const pageTracks = await trackRepository.findByIds(pageIds);
-    const trackMap = new Map(pageTracks.map(track => [track.id, track]));
-    currentTracksPage = pageIds.flatMap((id) => {
-      const track = trackMap.get(id);
-      return track ? [track] : [];
-    });
-  }
-
-  const artistIds = unique(currentTracksPage.flatMap(track => track.artistIds));
-  const albumIds = unique(currentTracksPage.map(track => track.albumId));
-
-  const [artists, albums] = await Promise.all([
-    artistRepository.findByIds(artistIds),
-    albumRepository.findByIds(albumIds),
-  ]);
-
-  const nextOffset = offset + limit < total ? offset + limit : null;
-
-  return {
-    tracks: mapTracks(currentTracksPage, artists, albums),
-    nextOffset,
-    total,
-  };
-}
-
-export async function getPlaylistTotalDuration(playlistId: PlaylistId): Promise<number> {
-  const playlist = await getPlaylistByIdOrThrow(playlistId);
-  if (playlist.trackIds.length === 0) return 0;
-  return trackRepository.withIds(playlist.trackIds).sumDuration();
-}
-
 // An id without a row is skipped and the ids after it fill its place, so a short read still means the end.
 export const readPlaylistTracks = async (
   playlistId: PlaylistId,
@@ -169,36 +110,6 @@ export const readPlaylistTotals = async (playlistId: PlaylistId): Promise<{ coun
   const seconds = trackIds.length === 0 ? 0 : await trackRepository.withIds(trackIds).sumDuration();
   return { count: trackIds.length, seconds };
 };
-
-export const playlistQueries = {
-  all: () =>
-    queryOptions({
-      queryKey: queryKeys.playlists.all(),
-      queryFn: getPlaylists,
-    }),
-  detail: (playlistId: PlaylistId, enabled = true) =>
-    queryOptions({
-      queryKey: queryKeys.playlists.detail(playlistId),
-      queryFn: () => getPlaylistByIdOrThrow(playlistId),
-      enabled,
-    }),
-  /**
-   * The Dexie row under this id, or null when there is none. A branded
-   * remote id may or may not have one — that is the question this answers —
-   * so a miss is an answer, not the error `detail` raises.
-   */
-  libraryRow: (playlistId: PlaylistId | null) =>
-    queryOptions({
-      queryKey: queryKeys.playlists.libraryRow(playlistId),
-      queryFn: playlistId ? () => getPlaylistLibraryRow(playlistId) : skipToken,
-    }),
-  totalDuration: (playlistId: PlaylistId, enabled = true) =>
-    queryOptions({
-      queryKey: queryKeys.playlists.totalDuration(playlistId),
-      queryFn: () => getPlaylistTotalDuration(playlistId),
-      enabled,
-    }),
-} as const;
 
 export async function createPlaylistAndSync(name = "New playlist") {
   const now = Date.now();
