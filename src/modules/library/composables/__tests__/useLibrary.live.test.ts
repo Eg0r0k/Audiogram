@@ -138,4 +138,45 @@ describe("useLibrary on live reads", () => {
     // The count comes from the counter row; the four-table summary is not re-read for a like.
     expect(findPinned).toHaveBeenCalledTimes(1);
   });
+
+  it("a like changes the liked row and leaves every other row's identity alone", async () => {
+    await createAlbumAndSync(ARTIST, "Fresh");
+    const api = mountLibrary();
+    await until(() => !api.isLoading.value);
+    await quiet();
+
+    const before = api.itemsByFilter.value.all;
+    const artist = before.find(item => item.type === "artist");
+    const album = before.find(item => item.type === "album");
+    const liked = before.find(item => item.type === "liked");
+    expect(artist).toBeDefined();
+    expect(album).toBeDefined();
+
+    await trackRepository.setLiked(TrackId("t1"), true);
+    await until(() => likedCount(api) === 2);
+    await quiet();
+
+    const all = api.itemsByFilter.value.all;
+    expect(all.find(item => item.type === "artist")).toBe(artist);
+    expect(all.find(item => item.type === "album")).toBe(album);
+    const nextLiked = all.find(item => item.type === "liked");
+    expect(nextLiked).not.toBe(liked);
+    expect(nextLiked?.count).toBe(2);
+    expect(all[0].type).toBe("liked");
+    expect(all[1].type).toBe("allMedia");
+  });
+
+  it("system rows lead the all and album lists and stay out of the artist and playlist lists", async () => {
+    await createAlbumAndSync(ARTIST, "Fresh");
+    const api = mountLibrary();
+    await until(() => !api.isLoading.value);
+    await quiet();
+
+    const { all, album, artist, playlist } = api.itemsByFilter.value;
+    const types = (items: typeof all) => items.map(item => item.type);
+    expect(types(album).slice(0, 3)).toEqual(["liked", "allMedia", "album"]);
+    expect(types(all).slice(0, 2)).toEqual(["liked", "allMedia"]);
+    expect(types(artist)).toEqual(["artist"]);
+    expect(types(playlist)).toEqual([]);
+  });
 });

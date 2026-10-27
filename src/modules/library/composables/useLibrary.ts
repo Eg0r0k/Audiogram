@@ -111,8 +111,10 @@ export const useLibrary = () => {
     rounded: false,
   }));
 
-  const allItems = computed<LibraryItem[]>(() => {
-    const items: LibraryItem[] = [likedItem.value, allMusic.value];
+  const systemItems = computed<LibraryItem[]>(() => [likedItem.value, allMusic.value]);
+
+  const entityItems = computed<LibraryItem[]>(() => {
+    const items: LibraryItem[] = [];
 
     for (const artist of artists.value) {
       items.push({
@@ -163,6 +165,8 @@ export const useLibrary = () => {
     return items;
   });
 
+  const allItems = computed<LibraryItem[]>(() => [...systemItems.value, ...entityItems.value]);
+
   const folderItemKey = (item: LibraryFolderEntry) => `${item.type}:${item.id}`;
 
   const folderItemKeys = computed(() => {
@@ -177,7 +181,7 @@ export const useLibrary = () => {
 
   const itemByKey = computed(() => {
     const map = new Map<string, LibraryItem>();
-    for (const item of allItems.value) {
+    for (const item of entityItems.value) {
       if (item.type === "artist" || item.type === "album" || item.type === "playlist") {
         map.set(`${item.type}:${item.id}`, item);
       }
@@ -198,20 +202,15 @@ export const useLibrary = () => {
   })));
 
   const rootItems = computed<LibraryItem[]>(() => [
-    ...allItems.value.filter((item) => {
-      if (item.type !== "artist" && item.type !== "album" && item.type !== "playlist") return true;
-      return !folderItemKeys.value.has(`${item.type}:${item.id}`);
-    }),
+    ...entityItems.value.filter(item => !folderItemKeys.value.has(`${item.type}:${item.id}`)),
     ...folderItems.value,
   ]);
 
   const searchedRootItems = computed(() => {
     const q = searchQuery.value.trim().toLowerCase();
     if (!q) return rootItems.value;
-    // System rows stay whatever the query.
     return rootItems.value.filter(item =>
-      item.isSystem
-      || item.title.toLowerCase().includes(q)
+      item.title.toLowerCase().includes(q)
       || item.subtitle?.toLowerCase().includes(q)
       || item.artistName?.toLowerCase().includes(q),
     );
@@ -224,8 +223,6 @@ export const useLibrary = () => {
     }
 
     const items = [...searchedRootItems.value].sort((a, b) => {
-      if (a.isSystem && !b.isSystem) return -1;
-      if (!a.isSystem && b.isSystem) return 1;
       if (a.type === "folder" && b.type !== "folder") return -1;
       if (a.type !== "folder" && b.type === "folder") return 1;
 
@@ -233,7 +230,7 @@ export const useLibrary = () => {
       const bPinned = b.isPinned ? 1 : 0;
       if (aPinned !== bPinned) return bPinned - aPinned;
 
-      if (a.isPinned && b.isPinned && !a.isSystem && !b.isSystem) {
+      if (a.isPinned && b.isPinned) {
         const aOrder = pinnedOrder.get(`${a.type}:${a.id}`) ?? 0;
         const bOrder = pinnedOrder.get(`${b.type}:${b.id}`) ?? 0;
         return aOrder - bOrder;
@@ -259,15 +256,19 @@ export const useLibrary = () => {
 
   /**
    * The sidebar's list for every filter at once, so each keeps a view of its
-   * own: one sort, then one pass that buckets rows in order. System rows
-   * belong to "all" and "album".
+   * own: one sort, then one pass that buckets rows in order. The system rows
+   * are prepended to "all" and "album", never sorted.
    */
   const itemsByFilter = computed<Record<LibraryFilter, LibraryItem[]>>(() => {
-    const lists: Record<LibraryFilter, LibraryItem[]> = { all: [], playlist: [], artist: [], album: [] };
+    const lists: Record<LibraryFilter, LibraryItem[]> = {
+      all: [...systemItems.value],
+      playlist: [],
+      artist: [],
+      album: [...systemItems.value],
+    };
     for (const item of sortedRootItems.value) {
       lists.all.push(item);
-      if (item.isSystem) lists.album.push(item);
-      else if (item.type === "playlist" || item.type === "artist" || item.type === "album") lists[item.type].push(item);
+      if (item.type === "playlist" || item.type === "artist" || item.type === "album") lists[item.type].push(item);
     }
     return lists;
   });
@@ -332,7 +333,7 @@ export const useLibrary = () => {
     });
   };
 
-  const movableItems = computed(() => allItems.value.filter((item): item is LibraryItem & { type: FolderLibraryItemType } => {
+  const movableItems = computed(() => entityItems.value.filter((item): item is LibraryItem & { type: FolderLibraryItemType } => {
     return item.type === "artist" || item.type === "album" || item.type === "playlist";
   }));
 
