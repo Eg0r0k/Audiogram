@@ -217,14 +217,19 @@ const scrollable = useScrollable(containerRef, {
 // A list must not scroll away under an anchored context menu / dropdown.
 watch(isScrollLockedByOverlay, locked => scrollable.setScrollLocked(locked));
 
-const virtualizer = useVirtualizer(computed(() => ({
-  count: props.items.length,
-  getScrollElement: () => containerRef.value,
-  estimateSize: () => props.itemHeight ?? props.estimateSize,
-  overscan: props.overscan,
-  getItemKey: index => props.getItemKey(index),
-  scrollMargin: preListHeight.value,
-})));
+// TanStack calls estimateSize and getItemKey once per item on every count change; a props read per call costs a proxy trap and a dependency track each.
+const virtualizer = useVirtualizer(computed(() => {
+  const size = props.itemHeight ?? props.estimateSize;
+  const getItemKey = props.getItemKey;
+  return {
+    count: props.items.length,
+    getScrollElement: () => containerRef.value,
+    estimateSize: () => size,
+    overscan: props.overscan,
+    getItemKey,
+    scrollMargin: preListHeight.value,
+  };
+}));
 
 const measureElement = (el: Element | null) => {
   if (el && !props.itemHeight) {
@@ -368,7 +373,8 @@ const getScrollAnchor = (): ScrollAnchor | null => {
 };
 
 const getOffsetForAnchor = (anchor: ScrollAnchor): number | null => {
-  const index = props.items.findIndex((_, i) => props.getItemKey(i) === anchor.key);
+  const { items, getItemKey } = props;
+  const index = items.findIndex((_, i) => getItemKey(i) === anchor.key);
   if (index === -1) return null;
   virtualizer.value.getTotalSize();
   const measurements = virtualizer.value.measurementsCache;
@@ -405,7 +411,10 @@ const restoreAnchors = (anchors: ScrollAnchor[]) => {
 // not free), and only a change in key order needs the FLIP snapshot (a
 // layout read per rendered row, before and after the render).
 let previousKeys: (string | number)[] = [];
-const currentKeys = () => props.items.map((_, index) => props.getItemKey(index));
+const currentKeys = () => {
+  const { items, getItemKey } = props;
+  return items.map((_, index) => getItemKey(index));
+};
 const keysChanged = (keys: (string | number)[]) =>
   keys.length !== previousKeys.length || keys.some((key, index) => key !== previousKeys[index]);
 const tracksKeys = props.animateReorder || props.keepScrollAnchor;
