@@ -36,7 +36,7 @@ const ORANGE: ColorResult = {
   hsl: "hsl(27, 100%, 32%)",
   isDark: true,
   seeds: ["#f7750e"],
-  palette: { accent: "#ffb68d", onAccent: "#532200", text: "#fbeee9", textMuted: "#d7c2b8", vivid: "#a24900" },
+  palette: { accent: "#ffb68d", onAccent: "#532200", text: "#fbeee9", textMuted: "#d7c2b8", vivid: "#c75a1a" },
 };
 
 describe("MobileLayout full-player accent variables", () => {
@@ -74,9 +74,14 @@ describe("MobileLayout full-player accent variables", () => {
 
   it("passes the cover palette accent and on-accent to the wrapper", async () => {
     const style = await mountLayout(ORANGE);
-    expect(style).toContain("--player-bg: hsl(27, 100%, 32%)");
+    expect(style).toContain("--player-bg: #c75a1a");
     expect(style).toContain("--player-accent: #ffb68d");
     expect(style).toContain("--player-on-accent: #532200");
+  });
+
+  it("paints the background with the vivid role and falls back to the plain colour without a palette", async () => {
+    const style = await mountLayout(NEUTRAL);
+    expect(style).toContain("--player-bg: hsl(0, 0%, 21%)");
   });
 
   it("passes the cover palette text roles to the wrapper", async () => {

@@ -35,7 +35,7 @@
         v-if="isFullPlayerOpen"
         class="fixed z-40 top-(--toolbar-height) bottom-0 left-0 right-0 full-player-bg"
         :style="{
-          '--player-bg': playerColor.hsl,
+          '--player-bg': playerColor.palette?.vivid ?? playerColor.hsl,
           '--player-accent': playerColor.palette?.accent ?? 'var(--primary)',
           '--player-on-accent': playerColor.palette?.onAccent ?? 'var(--primary-foreground)',
           '--player-text': playerColor.palette?.text ?? 'var(--foreground)',

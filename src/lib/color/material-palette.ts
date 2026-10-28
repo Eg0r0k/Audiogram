@@ -21,12 +21,14 @@ const ACCENT_TONE = 80;
 const ON_ACCENT_TONE = 20;
 const TEXT_TONE = 95;
 const TEXT_MUTED_TONE = 80;
-// Hero gradients need punch: a lighter tone with a chroma floor. The floor
-// only applies to seeds that already carry a hue; Score lets chroma down to
-// 5 through, and lifting those would paint a grey cover teal or mustard.
+// Hero gradients need punch: a lighter tone with a high chroma floor, for
+// seeds that already carry a hue so a grey cover does not turn teal or
+// mustard. The player background lifts a dull coloured seed to a lower floor,
+// since its darker tone caps chroma earlier.
 const VIVID_TONE = 50;
-const VIVID_CHROMA_FLOOR = 48;
-const VIVID_MIN_SEED_CHROMA = 16;
+const VIVID_CHROMA_FLOOR = 64;
+const BACKGROUND_CHROMA_FLOOR = 36;
+const COLOURED_SEED_CHROMA = 16;
 
 export interface PaletteFromSeedOptions {
   /** Scales the seed chroma used for the background palette (1 = as-is). */
@@ -64,10 +66,12 @@ export const paletteFromSeed = (
 ): SeedPalette => {
   const { hue, chroma } = Hct.fromInt(seed);
   const primary = TonalPalette.fromHueAndChroma(hue, chroma);
-  const background = TonalPalette.fromHueAndChroma(hue, chroma * chromaMultiplier);
+  const isColoured = chroma >= COLOURED_SEED_CHROMA;
+  const backgroundChroma = isColoured ? Math.max(chroma, BACKGROUND_CHROMA_FLOOR) : chroma;
+  const background = TonalPalette.fromHueAndChroma(hue, backgroundChroma * chromaMultiplier);
   const text = TonalPalette.fromHueAndChroma(hue, Math.min(chroma / 12, 4));
   const textMuted = TonalPalette.fromHueAndChroma(hue, Math.min(chroma / 6, 8));
-  const vividChroma = chroma >= VIVID_MIN_SEED_CHROMA ? Math.max(chroma, VIVID_CHROMA_FLOOR) : chroma;
+  const vividChroma = isColoured ? Math.max(chroma, VIVID_CHROMA_FLOOR) : chroma;
   const vivid = TonalPalette.fromHueAndChroma(hue, vividChroma);
 
   return {
