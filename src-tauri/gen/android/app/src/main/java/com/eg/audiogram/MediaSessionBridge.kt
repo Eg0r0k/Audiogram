@@ -4,11 +4,14 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -64,6 +67,7 @@ class MediaSessionBridge(
 
   private var session: MediaSessionCompat? = null
   private var buttonReceiver: android.content.BroadcastReceiver? = null
+  private var noisyReceiver: BroadcastReceiver? = null
 
   private var title = ""
   private var artist = ""
@@ -167,6 +171,12 @@ class MediaSessionBridge(
       }
     }
     buttonReceiver = null
+    noisyReceiver?.let {
+      try {
+        activity.unregisterReceiver(it)
+      } catch (_: Exception) {}
+    }
+    noisyReceiver = null
     artwork = null
     placeholderArtwork = null
     title = ""
@@ -196,9 +206,28 @@ class MediaSessionBridge(
     buttonReceiver = receiver
   }
 
+  private fun ensureNoisyReceiver() {
+    if (noisyReceiver != null) return
+    val receiver = object : BroadcastReceiver() {
+      override fun onReceive(context: Context?, intent: Intent?) {
+        if (playing) dispatch("pause")
+      }
+    }
+    val filter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
+    // The system UID sends this broadcast, so a not-exported receiver still gets it.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      activity.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+    } else {
+      @Suppress("UnspecifiedRegisterReceiverFlag")
+      activity.registerReceiver(receiver, filter)
+    }
+    noisyReceiver = receiver
+  }
+
   private fun ensureSession(): MediaSessionCompat {
     session?.let { return it }
     ensureButtonReceiver()
+    ensureNoisyReceiver()
     val created = MediaSessionCompat(activity, "AudiogramMediaSession")
     created.setCallback(object : MediaSessionCompat.Callback() {
       override fun onPlay() = dispatch("play")
@@ -428,8 +457,9 @@ class MediaSessionBridge(
   private fun dispatch(action: String, positionMs: Long = -1L) {
     mainHandler.post {
       // Chromium freezes a hidden silent page: it still runs this script but not the
-      // continuations play() awaits. A brief VISIBLE unfreezes it; a playing page stays unfrozen.
-      if (webView.windowVisibility != View.VISIBLE) {
+      // continuations play() awaits. A brief VISIBLE unfreezes it; pause and stop skip it
+      // since they reach a playing page, which is never frozen.
+      if (MediaActions.needsWake(action) && webView.windowVisibility != View.VISIBLE) {
         webView.dispatchWindowVisibilityChanged(View.VISIBLE)
         mainHandler.removeCallbacks(restoreWindowVisibility)
         mainHandler.postDelayed(restoreWindowVisibility, WAKE_WINDOW_MS)
