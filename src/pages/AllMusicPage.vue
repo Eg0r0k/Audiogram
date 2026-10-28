@@ -83,10 +83,8 @@
                   :index="index + 1"
                   :match="matches[item.id]"
                   :is-active="currentTrackId === item.id"
-                  :is-selected="isSelected(item.id)"
                   :is-selecting="isSelectMode"
-                  :join-top="joinsSelectedNeighbour(index, -1)"
-                  :join-bottom="joinsSelectedNeighbour(index, 1)"
+                  v-bind="trackSelection(index)"
                   selectable
                   @play="handlePlayTrack(index)"
                   @select="handleTrackSelect"
@@ -156,6 +154,7 @@
 
 <script setup lang="ts">
 import LoadMoreError from "@/components/common/LoadMoreError.vue";
+import { rowSelectionAt } from "@/components/common/row-selection";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import EmptyLibraryArt from "@/modules/library/components/EmptyLibraryArt.vue";
@@ -183,7 +182,6 @@ import { useEntityPlayback } from "@/modules/player/composables/useEntityPlaybac
 import type { QueueSource } from "@/modules/queue/types";
 import { usePlayerStore } from "@/modules/player/store/player.store";
 import { useImport } from "@/modules/library/composables/useImport";
-import type { Track } from "@/types/track";
 import { getLogger } from "@/lib/logger";
 import TrackSelectionBar from "@/modules/tracks/components/TrackSelectionBar.vue";
 import { useTrackSelectionMode } from "@/modules/tracks/composables/useTrackSelectionMode";
@@ -236,11 +234,9 @@ const {
 const goBack = useGoBack();
 const { isMobileLayout } = useDeviceLayout();
 
-const joinsSelectedNeighbour = (index: number, offset: -1 | 1) => {
-  const list: readonly (Track | undefined)[] = tracks.value;
-  const track = list[index];
-  const neighbour = index + offset >= 0 ? list[index + offset] : undefined;
-  return !!track && !!neighbour && isSelected(track.id) && isSelected(neighbour.id);
+const trackSelection = (index: number) => {
+  const selection = rowSelectionAt(tracks.value, index, track => isSelected(track.id));
+  return { isSelected: selection.selected, joinTop: selection.joinTop, joinBottom: selection.joinBottom };
 };
 
 // The input stops keydown propagation so typing never hits global hotkeys,

@@ -10,7 +10,7 @@
       :data-join-top="joinTop || undefined"
       :data-join-bottom="joinBottom || undefined"
       :data-menu-open="isMenuSelected || undefined"
-      :class="styles.root({ state: rowState })"
+      :class="[styles.root({ state: rowState }), isSelected && joinedCornersClass(joinTop, joinBottom)]"
       @click="handleClick"
       @keypress.enter="handleClick"
       @contextmenu="onContextMenu"
@@ -233,6 +233,7 @@ import { cva } from "class-variance-authority";
 import { useDeviceLayout } from "@/composables/useDeviceLayout";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { joinedCornersClass, SELECTED_ROW_CLASS } from "@/components/common/row-selection";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import { formatDuration, formatRelativeTime } from "@/lib/format/time";
 import { useTrackRowCover } from "@/modules/tracks/composables/useTrackRowCover";
@@ -272,7 +273,7 @@ const styles = {
           default: "hover:bg-muted/50",
           menu: "bg-muted/50",
           active: "bg-primary/10 hover:bg-primary/15",
-          selected: "bg-accent/80 hover:bg-accent/90",
+          selected: SELECTED_ROW_CLASS,
         },
       },
       defaultVariants: { state: "default" },
@@ -469,16 +470,6 @@ function handleAlbumClick(event: MouseEvent) {
 
 .track-expanded-container {
   container-type: inline-size;
-}
-
-.track-expanded[data-join-top] {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-}
-
-.track-expanded[data-join-bottom] {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
 }
 
 /* The checkbox shares a cell (index, or the cover's in the narrow layout):

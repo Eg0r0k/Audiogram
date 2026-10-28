@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { selectedRowClass } from "../selection";
+import { rowSelectionAt, selectedRowClass, type RowSelection } from "../row-selection";
 
-const classes = (flags: { selected: boolean; joinTop: boolean; joinBottom: boolean }) =>
-  selectedRowClass(flags).split(/\s+/).filter(Boolean);
+const classes = (flags: RowSelection) => selectedRowClass(flags).split(/\s+/).filter(Boolean);
 
 describe("selectedRowClass", () => {
   it("squares only the joined sides of a selected row", () => {
@@ -26,5 +25,26 @@ describe("selectedRowClass", () => {
   it("returns nothing for an unselected row", () => {
     expect(selectedRowClass({ selected: false, joinTop: false, joinBottom: false })).toBe("");
     expect(selectedRowClass({ selected: false, joinTop: true, joinBottom: true })).toBe("");
+  });
+});
+
+describe("rowSelectionAt", () => {
+  const items = ["a", "b", "c", "d"];
+
+  it("computes joined corners from the selected neighbours", () => {
+    const isSelected = (item: string) => item === "b" || item === "c";
+
+    expect(items.map((_, index) => rowSelectionAt(items, index, isSelected))).toEqual([
+      { selected: false, joinTop: false, joinBottom: false },
+      { selected: true, joinTop: false, joinBottom: true },
+      { selected: true, joinTop: true, joinBottom: false },
+      { selected: false, joinTop: false, joinBottom: false },
+    ]);
+  });
+
+  it("treats a missing predicate as nothing selected", () => {
+    for (const index of items.keys()) {
+      expect(rowSelectionAt(items, index, undefined)).toEqual({ selected: false, joinTop: false, joinBottom: false });
+    }
   });
 });

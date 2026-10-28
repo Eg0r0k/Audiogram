@@ -68,7 +68,7 @@
               name="row"
               :item="item"
               :index="index"
-              v-bind="rowSelection(index)"
+              v-bind="rowSelectionAt(items, index, isSelected)"
             />
           </div>
         </template>
@@ -128,7 +128,7 @@ import AddFloatingButton from "@/modules/tracks/components/tracks-sheet/AddFloat
 import IconInbox from "~icons/tabler/inbox";
 import IconX from "~icons/tabler/x";
 import IconSearch from "~icons/tabler/search";
-import type { RowSelection } from "./selection";
+import { rowSelectionAt } from "@/components/common/row-selection";
 
 const props = withDefaults(defineProps<{
   title: string;
@@ -224,16 +224,6 @@ onScopeDispose(() => {
 const keyAt = (index: number) => {
   const item = props.items[index];
   return item ? props.getKey(item) : index;
-};
-
-const rowSelection = (index: number): RowSelection => {
-  const { items, isSelected } = props;
-  if (!isSelected?.(items[index])) return { selected: false, joinTop: false, joinBottom: false };
-  return {
-    selected: true,
-    joinTop: index > 0 && isSelected(items[index - 1]),
-    joinBottom: index + 1 < items.length && isSelected(items[index + 1]),
-  };
 };
 
 </script>

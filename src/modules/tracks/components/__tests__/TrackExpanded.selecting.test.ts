@@ -175,5 +175,7 @@ describe("TrackExpanded in select mode", () => {
 
     expect(row.hasAttribute("data-join-top")).toBe(true);
     expect(row.hasAttribute("data-join-bottom")).toBe(false);
+    expect(row).toHaveClass("rounded-t-none");
+    expect(row).not.toHaveClass("rounded-b-none");
   });
 });

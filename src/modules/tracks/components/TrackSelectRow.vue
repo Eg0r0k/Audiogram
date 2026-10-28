@@ -7,7 +7,9 @@
     :data-track-index="index"
     :class="[
       'group track-row flex h-16 w-full select-none items-center gap-3 rounded px-2.5 transition-colors',
-      'cursor-pointer hover:bg-muted/50 focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:border-ring outline-none',
+      'cursor-pointer focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:border-ring outline-none',
+      !isSelected && 'hover:bg-muted/50',
+      selectedRowClass({ selected: isSelected, joinTop, joinBottom }),
     ]"
     @click="handleClick"
     @keypress.enter="handleClick"
@@ -33,12 +35,7 @@
     </div>
 
     <div class="flex min-w-0 flex-1 flex-col">
-      <div
-        :class="[
-          'truncate text-base font-medium',
-          isSelected && 'text-primary',
-        ]"
-      >
+      <div class="truncate text-base font-medium">
         {{ track.title }}
       </div>
       <div class="truncate text-sm text-muted-foreground">
@@ -56,6 +53,7 @@
 import { computed } from "vue";
 import NuxtImage from "@/components/ui/image/NuxtImage.vue";
 import { Checkbox } from "@/components/ui/checkbox";
+import { selectedRowClass } from "@/components/common/row-selection";
 import { formatDuration } from "@/lib/format/time";
 import type { Track } from "@/types/track";
 import { useTrackCover } from "@/modules/covers/composables/useTrackCover";
@@ -63,11 +61,15 @@ import { useTrackCover } from "@/modules/covers/composables/useTrackCover";
 interface Props {
   track: Track;
   isSelected?: boolean;
+  joinTop?: boolean;
+  joinBottom?: boolean;
   index?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   isSelected: false,
+  joinTop: false,
+  joinBottom: false,
   index: 0,
 });
 

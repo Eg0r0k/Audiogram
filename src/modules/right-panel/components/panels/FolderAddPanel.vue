@@ -97,7 +97,8 @@
 import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { reportError } from "@/app/error-feedback";
-import { EntitySelectPanel, selectedRowClass } from "@/components/entity-select";
+import { EntitySelectPanel } from "@/components/entity-select";
+import { selectedRowClass } from "@/components/common/row-selection";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Empty, EmptyDescription } from "@/components/ui/empty";
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";

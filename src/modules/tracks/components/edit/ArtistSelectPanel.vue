@@ -50,7 +50,8 @@
 import { computed, ref, watch } from "vue";
 import { refDebounced } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
-import { EntitySelectPanel, selectedRowClass } from "@/components/entity-select";
+import { EntitySelectPanel } from "@/components/entity-select";
+import { selectedRowClass } from "@/components/common/row-selection";
 import { identityKey, sameArtistNames } from "@/lib/artist-names";
 import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";

@@ -14,6 +14,7 @@ import type { TrackToSave } from "@/services/types";
 import type { Track } from "@/types/track";
 import { AlbumId, TrackId } from "@/types/ids";
 import type { RightPanelAddTracksPayload } from "@/modules/right-panel/types";
+import { rowSelectionAt } from "@/components/common/row-selection";
 import AddTracksPanel from "../AddTracksPanel.vue";
 
 const queries = vi.hoisted(() => ({
@@ -33,20 +34,27 @@ vi.mock("@/modules/queue/store/queue.store", () => ({ useQueueStore: () => queue
 
 const stubs = {
   EntitySelectPanel: {
-    props: ["items", "search"],
+    props: ["items", "search", "isSelected"],
     emits: ["confirm", "update:search"],
+    setup: () => ({ rowSelectionAt }),
     template: `<div>
       <input data-testid="search" :value="search" @input="$emit('update:search', $event.target.value)" />
       <template v-for="(item, index) in items" :key="item.id">
-        <slot name="row" :item="item" :index="index" />
+        <slot name="row" :item="item" :index="index" v-bind="rowSelectionAt(items, index, isSelected)" />
       </template>
       <button type="button" data-testid="confirm" @click="$emit('confirm')"></button>
     </div>`,
   },
   TrackSelectRow: {
-    props: ["track", "index", "isSelected"],
+    props: ["track", "index", "isSelected", "joinTop", "joinBottom"],
     emits: ["toggleSelect"],
-    template: `<button type="button" :data-testid="'row-' + track.id" @click="$emit('toggleSelect', track, $event)"></button>`,
+    template: `<button
+      type="button"
+      :data-testid="'row-' + track.id"
+      :data-join-top="joinTop || undefined"
+      :data-join-bottom="joinBottom || undefined"
+      @click="$emit('toggleSelect', track, $event)"
+    ></button>`,
   },
 };
 
@@ -182,5 +190,20 @@ describe("AddTracksPanel", () => {
     await db.tracks.update(TrackId("t1"), { title: "Roads" });
     await syncSearchIndex({ tracks: [TrackId("t1")] });
     await waitFor(() => expect(shownRows()).toEqual(["row-glory-new"]));
+  });
+
+  it("hands joined-corner flags to adjacent selected rows", async () => {
+    await db.tracks.add({ ...STORED, id: TrackId("t2"), title: "Teardrop", storagePath: "tracks/t2.mp3", addedAt: 2 });
+    renderPanel({ entityType: "favorite", entityId: "" });
+    await screen.findByTestId("row-t2");
+    expect(shownRows()).toEqual(["row-t2", "row-t1"]);
+
+    await userEvent.click(screen.getByTestId("row-t2"));
+    await userEvent.click(screen.getByTestId("row-t1"));
+
+    await waitFor(() => expect(screen.getByTestId("row-t2")).toHaveAttribute("data-join-bottom"));
+    expect(screen.getByTestId("row-t2")).not.toHaveAttribute("data-join-top");
+    expect(screen.getByTestId("row-t1")).toHaveAttribute("data-join-top");
+    expect(screen.getByTestId("row-t1")).not.toHaveAttribute("data-join-bottom");
   });
 });

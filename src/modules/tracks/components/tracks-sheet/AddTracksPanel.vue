@@ -7,17 +7,20 @@
     :get-key="(track: Track) => track.id"
     :is-loading="isLoading"
     :confirm-count="selectedCount"
+    :is-selected="(track: Track) => isTrackSelected(track.id)"
     :show-back="rightPanel.depth > 0"
     @confirm="handleConfirm"
     @load-more="handleLoadMore"
     @back="handleBack"
     @close="closePanel"
   >
-    <template #row="{ item, index }">
+    <template #row="{ item, index, joinTop, joinBottom }">
       <TrackSelectRow
         :track="item"
         :index="index"
         :is-selected="isTrackSelected(item.id)"
+        :join-top="joinTop"
+        :join-bottom="joinBottom"
         @toggle-select="toggleTrackSelect"
       />
     </template>
