@@ -143,6 +143,50 @@ describe("EntitySelectPanel", () => {
     expect(getAllByTestId("row")).toHaveLength(2);
   });
 
+  describe("row selection", () => {
+    const items = ["a", "b", "c", "d"].map(id => ({ id, name: id }));
+
+    const renderFlags = (props: Record<string, unknown> = {}) =>
+      render(EntitySelectPanel, {
+        props: { title: "T", items, getKey: (item: { id: string }) => item.id, search: "", ...props },
+        slots: {
+          row: `<template #row="{ item, selected, joinTop, joinBottom }">
+            <span
+              data-testid="row"
+              :data-id="item.id"
+              :data-selected="String(selected)"
+              :data-join-top="String(joinTop)"
+              :data-join-bottom="String(joinBottom)"
+            />
+          </template>`,
+        },
+        global: { plugins: [i18n], stubs },
+      });
+
+    const flagsById = (rows: HTMLElement[]) => Object.fromEntries(rows.map(row => [
+      row.dataset.id,
+      { selected: row.dataset.selected, joinTop: row.dataset.joinTop, joinBottom: row.dataset.joinBottom },
+    ]));
+
+    it("hands selected and joined-corner flags to the row slot", () => {
+      const { getAllByTestId } = renderFlags({ isSelected: (item: { id: string }) => item.id === "b" || item.id === "c" });
+
+      expect(flagsById(getAllByTestId("row"))).toEqual({
+        a: { selected: "false", joinTop: "false", joinBottom: "false" },
+        b: { selected: "true", joinTop: "false", joinBottom: "true" },
+        c: { selected: "true", joinTop: "true", joinBottom: "false" },
+        d: { selected: "false", joinTop: "false", joinBottom: "false" },
+      });
+    });
+
+    it("marks nothing selected without isSelected", () => {
+      const { getAllByTestId } = renderFlags();
+
+      const none = { selected: "false", joinTop: "false", joinBottom: "false" };
+      expect(flagsById(getAllByTestId("row"))).toEqual({ a: none, b: none, c: none, d: none });
+    });
+  });
+
   it("emits update:search on typing", async () => {
     const { container, emitted } = renderPanel();
     const input = container.querySelector("input")!;

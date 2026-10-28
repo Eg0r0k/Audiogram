@@ -8,16 +8,18 @@
     :confirm-count="selectedNames.length"
     :show-confirm="isDirty"
     :reveal-key="revealKey"
+    :is-selected="artist => isSelectedName(artist.name)"
     @confirm="handleConfirm"
     @create="handleCreate"
     @back="handleDone"
     @close="rightPanel.close()"
   >
-    <template #row="{ item }">
+    <template #row="{ item, selected, joinTop, joinBottom }">
       <Item
         as="button"
         type="button"
         class="w-full cursor-pointer gap-3 px-2 py-2 text-left"
+        :class="selectedRowClass({ selected, joinTop, joinBottom })"
         @click="toggleName(item.name)"
       >
         <ItemMedia>
@@ -48,7 +50,7 @@
 import { computed, ref, watch } from "vue";
 import { refDebounced } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
-import { EntitySelectPanel } from "@/components/entity-select";
+import { EntitySelectPanel, selectedRowClass } from "@/components/entity-select";
 import { identityKey, sameArtistNames } from "@/lib/artist-names";
 import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";

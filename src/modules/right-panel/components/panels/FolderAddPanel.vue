@@ -7,6 +7,7 @@
     :get-key="libraryItemKey"
     :confirm-count="selectedCount"
     :show-back="rightPanel.depth > 0"
+    :is-selected="item => isSelected(libraryItemKey(item))"
     @confirm="handleConfirm"
     @back="rightPanel.back()"
     @close="rightPanel.close()"
@@ -22,22 +23,19 @@
           :model-value="filter"
           @update:model-value="filter = $event as FolderPickerFilter"
         >
-          <TabsList variant="line" class="inline-flex items-center gap-0 px-4">
+          <TabsList
+            variant="chip"
+            size="sm"
+            class="inline-flex items-center px-4 py-2"
+          >
             <TabsTrigger
               v-for="chip in chips"
               :key="chip.value"
               :value="chip.value"
-              class="text-base font-medium mb-0.5 gap-1.5"
+              class="text-sm font-medium gap-1.5"
             >
               <span>{{ chip.label }}</span>
-              <Badge
-                variant="soft"
-                color="neutral"
-                size="md"
-                class="h-5 min-w-5 px-1 py-0 tabular-nums"
-              >
-                {{ chip.count }}
-              </Badge>
+              <span class="tabular-nums opacity-70">{{ chip.count }}</span>
             </TabsTrigger>
           </TabsList>
           <TabsContent
@@ -50,7 +48,7 @@
       </Scrollable>
     </template>
 
-    <template #row="{ item, index }">
+    <template #row="{ item, index, selected, joinTop, joinBottom }">
       <Item
         v-ripple
         role="checkbox"
@@ -59,6 +57,7 @@
         :data-item-key="libraryItemKey(item)"
         :data-item-index="index"
         class="h-16 w-full cursor-pointer gap-3 px-2 py-2 flex-nowrap"
+        :class="selectedRowClass({ selected, joinTop, joinBottom })"
         @click="handleRowClick(item, $event)"
         @keypress.enter="handleRowClick(item, $event)"
       >
@@ -71,10 +70,7 @@
           />
         </ItemMedia>
         <ItemContent class="min-w-0">
-          <ItemTitle
-            class="w-full text-sm font-medium"
-            :class="isSelected(libraryItemKey(item)) && 'text-primary'"
-          >
+          <ItemTitle class="w-full text-sm font-medium">
             <span class="min-w-0 truncate">{{ item.title }}</span>
           </ItemTitle>
           <span class="block truncate text-xs text-muted-foreground">{{ rowSubtitle(item) }}</span>
@@ -101,8 +97,7 @@
 import { computed, ref, useTemplateRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { reportError } from "@/app/error-feedback";
-import { EntitySelectPanel } from "@/components/entity-select";
-import { Badge } from "@/components/ui/badge";
+import { EntitySelectPanel, selectedRowClass } from "@/components/entity-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Empty, EmptyDescription } from "@/components/ui/empty";
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";

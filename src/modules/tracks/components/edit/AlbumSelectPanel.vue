@@ -7,16 +7,18 @@
     :can-create="canCreate"
     :show-confirm="isDirty"
     :reveal-key="payload.selectedAlbumId ?? null"
+    :is-selected="album => selected?.id === album.id"
     @confirm="handleConfirm"
     @create="handleCreate"
     @back="handleDone"
     @close="rightPanel.close()"
   >
-    <template #row="{ item }">
+    <template #row="{ item, selected: rowSelected, joinTop, joinBottom }">
       <Item
         as="button"
         type="button"
         class="w-full cursor-pointer gap-3 px-2 py-2 text-left"
+        :class="selectedRowClass({ selected: rowSelected, joinTop, joinBottom })"
         @click="toggleAlbum(item)"
       >
         <ItemMedia>
@@ -53,7 +55,7 @@
 import { computed, ref } from "vue";
 import { refDebounced } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
-import { EntitySelectPanel } from "@/components/entity-select";
+import { EntitySelectPanel, selectedRowClass } from "@/components/entity-select";
 import { identityKey } from "@/lib/artist-names";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";

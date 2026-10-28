@@ -108,6 +108,25 @@ describe("FolderAddPanel", () => {
     expect(keys(container)).toEqual(["album:al1"]);
   });
 
+  it("renders the type filter as chip tabs with their counts", () => {
+    const { getByRole, getAllByRole } = renderPanel();
+    const t = (key: string) => i18n.global.t(key);
+    expect(getByRole("tablist").getAttribute("data-variant")).toBe("chip");
+
+    const tabs = getAllByRole("tab").map(tab => tab.textContent ?? "");
+    const expected = [
+      [t("library.filterAll"), "3"],
+      [t("library.filterArtists"), "1"],
+      [t("library.filterAlbums"), "1"],
+      [t("library.filterPlaylists"), "1"],
+    ];
+    expect(tabs).toHaveLength(expected.length);
+    expected.forEach(([label, count], index) => {
+      expect(tabs[index]).toContain(label);
+      expect(tabs[index]).toContain(count);
+    });
+  });
+
   it("filters rows by search", async () => {
     const { container } = renderPanel();
     await fireEvent.update(container.querySelector("input")!, "chi");
@@ -157,6 +176,17 @@ describe("FolderAddPanel", () => {
     await fireEvent.click(first);
     await fireEvent.click(first);
     expect(queryByTestId("fab")).toBeNull();
+  });
+
+  it("paints a selected row with the accent background", async () => {
+    const { container } = renderPanel();
+    expect(rows(container)[0]).not.toHaveClass("bg-accent/80");
+
+    await fireEvent.click(rows(container)[0]);
+
+    const [selected, other] = rows(container);
+    expect(selected).toHaveClass("bg-accent/80");
+    expect(other).not.toHaveClass("bg-accent/80");
   });
 
   it("switching the type chip drops selections that are no longer visible", async () => {

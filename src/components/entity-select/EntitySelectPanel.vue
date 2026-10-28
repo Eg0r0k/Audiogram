@@ -68,6 +68,7 @@
               name="row"
               :item="item"
               :index="index"
+              v-bind="rowSelection(index)"
             />
           </div>
         </template>
@@ -127,6 +128,7 @@ import AddFloatingButton from "@/modules/tracks/components/tracks-sheet/AddFloat
 import IconInbox from "~icons/tabler/inbox";
 import IconX from "~icons/tabler/x";
 import IconSearch from "~icons/tabler/search";
+import type { RowSelection } from "./selection";
 
 const props = withDefaults(defineProps<{
   title: string;
@@ -145,6 +147,7 @@ const props = withDefaults(defineProps<{
   headerClass?: string;
   /** Key of the row to scroll into view once it first appears (a picker's current choice). */
   revealKey?: string | null;
+  isSelected?: (item: T) => boolean;
 }>(), {
   isLoading: false,
   itemHeight: 64,
@@ -155,6 +158,7 @@ const props = withDefaults(defineProps<{
   showBack: true,
   headerClass: undefined,
   revealKey: null,
+  isSelected: undefined,
 });
 
 const emit = defineEmits<{
@@ -220,6 +224,16 @@ onScopeDispose(() => {
 const keyAt = (index: number) => {
   const item = props.items[index];
   return item ? props.getKey(item) : index;
+};
+
+const rowSelection = (index: number): RowSelection => {
+  const { items, isSelected } = props;
+  if (!isSelected?.(items[index])) return { selected: false, joinTop: false, joinBottom: false };
+  return {
+    selected: true,
+    joinTop: index > 0 && isSelected(items[index - 1]),
+    joinBottom: index + 1 < items.length && isSelected(items[index + 1]),
+  };
 };
 
 </script>
