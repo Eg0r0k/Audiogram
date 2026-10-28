@@ -44,26 +44,40 @@
           class="flex-1 min-h-0 gap-0"
           @update:model-value="setFilter($event as LibraryFilter)"
         >
-          <Scrollable
+          <div
             v-if="!isCompact"
-            direction="horizontal"
-            hide-thumb
-            class="shrink-0 border-b dark:border-background border-border"
+            class="relative shrink-0"
           >
-            <TabsList
-              variant="line"
-              class="inline-flex items-center gap-0 px-2"
+            <Scrollable
+              direction="horizontal"
+              hide-thumb
+              class="shrink-0 border-b dark:border-background border-border"
             >
-              <TabsTrigger
-                v-for="filter in visibleFilters"
-                :key="filter"
-                :value="filter"
-                class="text-base font-medium mb-0.5"
+              <TabsList
+                variant="line"
+                class="inline-flex items-center gap-0 ps-2 pe-10"
               >
-                {{ filterLabel(filter) }}
-              </TabsTrigger>
-            </TabsList>
-          </Scrollable>
+                <TabsTrigger
+                  v-for="filter in visibleFilters"
+                  :key="filter"
+                  :value="filter"
+                  class="text-base font-medium mb-0.5"
+                >
+                  {{ filterLabel(filter) }}
+                </TabsTrigger>
+              </TabsList>
+            </Scrollable>
+            <div
+              v-if="!isCatalog"
+              class="pointer-events-none absolute inset-y-0 bottom-px right-0 flex items-center pl-8 pr-1 bg-linear-to-l from-card from-[calc(100%-2rem)] to-transparent"
+            >
+              <LibrarySortMenu
+                class="pointer-events-auto"
+                :model-value="sortBy"
+                @update:model-value="setSortBy"
+              />
+            </div>
+          </div>
 
           <SourceHealthNotice
             :kind="catalogKind"
@@ -161,6 +175,7 @@ import { Button } from "@/components/ui/button";
 import FloatingButton from "@/components/layout/sidebar/floatingButton/FloatingButton.vue";
 import LibrarySidebarFolderHeader from "@/components/layout/sidebar/LibrarySidebarFolderHeader.vue";
 import LibrarySidebarList from "@/components/layout/sidebar/LibrarySidebarList.vue";
+import LibrarySortMenu from "@/components/layout/sidebar/LibrarySortMenu.vue";
 import SearchPanel from "@/modules/search/components/SearchPanel.vue";
 import SidebarHeader from "@/components/layout/sidebar/header/SidebarHeader.vue";
 import { SIDEBAR_COMPACT_KEY } from "@/components/layout/sidebar/sidebarCompact";
@@ -193,6 +208,8 @@ const {
   deleteFolder,
   setFolderItems,
   getFolderItems,
+  sortBy,
+  setSortBy,
 } = useLibrary();
 
 const {
