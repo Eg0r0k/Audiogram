@@ -6,6 +6,7 @@ import { createSharedComposable } from "@vueuse/core";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { LIBRARY_FILTERS, type FolderLibraryItemType, type LibraryFilter, type LibraryFolderEntry, type LibraryItem } from "../types";
+import { compareLibraryItems } from "../lib/librarySort";
 import { clearAllData } from "@/services/storage-info.service";
 import { createAlbumAndSync, deleteAlbumAndSync } from "@/queries/album.queries";
 import { createArtistAndSync, deleteArtistAndSync } from "@/queries/artist.queries";
@@ -46,7 +47,7 @@ export const useLibrary = () => {
   const queryClient = useQueryClient();
   const { t } = useI18n();
 
-  const { sortBy, activeFilter, searchQuery } = storeToRefs(store);
+  const { sortKey, activeFilter, searchQuery } = storeToRefs(store);
   const navigateHome = () => router.push(routeLocation.home());
 
   const libraryItemRouteNames = {
@@ -222,6 +223,8 @@ export const useLibrary = () => {
       pinnedOrder.set(`${pinned.type}:${pinned.id}`, pinned.pinnedAt);
     }
 
+    const compareUnpinned = compareLibraryItems(sortKey.value);
+
     const items = [...searchedRootItems.value].sort((a, b) => {
       if (a.type === "folder" && b.type !== "folder") return -1;
       if (a.type !== "folder" && b.type === "folder") return 1;
@@ -236,18 +239,7 @@ export const useLibrary = () => {
         return aOrder - bOrder;
       }
 
-      switch (sortBy.value) {
-        case "recent":
-          return b.addedAt - a.addedAt;
-        case "updated":
-          return (b.updatedAt ?? b.addedAt) - (a.updatedAt ?? a.addedAt);
-        case "alphabetical":
-          return a.title.localeCompare(b.title);
-        case "author":
-          return (a.artistName ?? a.title).localeCompare(b.artistName ?? b.title);
-        default:
-          return 0;
-      }
+      return compareUnpinned(a, b);
     });
 
     // Pinned rows lead the list, ahead of folders too.
@@ -408,7 +400,7 @@ export const useLibrary = () => {
   };
 
   return {
-    sortBy,
+    sortKey,
     activeFilter,
     searchQuery,
     allItems,
@@ -421,7 +413,7 @@ export const useLibrary = () => {
     isEmpty,
     hasResults,
     setFilter: store.setFilter,
-    setSortBy: store.setSortBy,
+    setSortKey: store.setSortKey,
     setSearchQuery: store.setSearchQuery,
     clearSearch: store.clearSearch,
     togglePin: store.togglePin,

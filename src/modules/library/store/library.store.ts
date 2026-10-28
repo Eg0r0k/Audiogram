@@ -1,10 +1,10 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-import type { LibraryFilter, PinnedItem, SortOption } from "../types";
+import type { LibraryFilter, LibrarySortKey, PinnedItem } from "../types";
 
 export const useLibraryStore = defineStore("library", () => {
   const pinnedItems = ref<PinnedItem[]>([]);
-  const sortBy = ref<SortOption>("recent");
+  const sortKey = ref<LibrarySortKey | null>(null);
   const activeFilter = ref<LibraryFilter>("all");
   const searchQuery = ref("");
 
@@ -44,8 +44,8 @@ export const useLibraryStore = defineStore("library", () => {
     activeFilter.value = filter;
   };
 
-  const setSortBy = (sort: SortOption) => {
-    sortBy.value = sort;
+  const setSortKey = (key: LibrarySortKey | null) => {
+    sortKey.value = key;
   };
 
   const setSearchQuery = (query: string) => {
@@ -62,7 +62,7 @@ export const useLibraryStore = defineStore("library", () => {
 
   return {
     pinnedItems,
-    sortBy,
+    sortKey,
     activeFilter,
     searchQuery,
     pinnedSet,
@@ -71,7 +71,7 @@ export const useLibraryStore = defineStore("library", () => {
     unpin,
     togglePin,
     setFilter,
-    setSortBy,
+    setSortKey,
     setSearchQuery,
     clearSearch,
     clearPins,
@@ -79,6 +79,6 @@ export const useLibraryStore = defineStore("library", () => {
 }, {
   persist: {
     key: "auriogram-library",
-    pick: ["pinnedItems", "sortBy", "activeFilter"],
+    pick: ["pinnedItems", "sortKey", "activeFilter"],
   },
 });

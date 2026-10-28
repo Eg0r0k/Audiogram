@@ -3,7 +3,7 @@
     variant="ghost"
     color="muted"
     size="icon-lg"
-    class="rounded-full"
+    :class="['rounded-full', modelValue && 'text-foreground']"
     :aria-label="t('library.sortLabel')"
     :title="t('library.sortLabel')"
   >
@@ -16,14 +16,18 @@
       <MenuLabel>{{ t('library.sortLabel') }}</MenuLabel>
       <MenuSeparator />
       <MenuItem
-        v-for="option in SORT_OPTIONS"
-        :key="option"
-        :data-active="option === modelValue || undefined"
-        @select="pick(option)"
+        v-for="field in SORT_OPTIONS"
+        :key="field"
+        :data-active="directionOf(field) !== null || undefined"
+        @select="toggle(field)"
       >
-        <span class="flex-1 truncate">{{ t(LABEL_KEYS[option]) }}</span>
+        <span class="flex-1 truncate">{{ t(LABEL_KEYS[field]) }}</span>
         <IconChevronDown
-          v-if="option === modelValue"
+          v-if="directionOf(field) === 'asc'"
+          class="size-5 rotate-180 text-green-400!"
+        />
+        <IconChevronDown
+          v-else-if="directionOf(field) === 'desc'"
           class="size-5 text-green-400!"
         />
       </MenuItem>
@@ -35,7 +39,8 @@
 import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from "@/components/ui/menu";
-import { SORT_OPTIONS, type SortOption } from "@/modules/library/types";
+import { getLibrarySortDirection, getNextLibrarySortKey } from "@/modules/library/lib/librarySort";
+import { SORT_OPTIONS, type LibrarySortKey, type SortOption } from "@/modules/library/types";
 import IconSort from "~icons/tabler/arrows-sort";
 import IconChevronDown from "~icons/tabler/chevron-down";
 
@@ -46,17 +51,19 @@ const LABEL_KEYS: Record<SortOption, string> = {
   author: "library.sortAuthor",
 };
 
-defineProps<{
-  modelValue: SortOption;
+const props = defineProps<{
+  modelValue: LibrarySortKey | null;
 }>();
 
 const emit = defineEmits<{
-  "update:modelValue": [value: SortOption];
+  "update:modelValue": [value: LibrarySortKey | null];
 }>();
 
 const { t } = useI18n();
 
-const pick = (option: SortOption) => {
-  emit("update:modelValue", option);
+const directionOf = (field: SortOption) => getLibrarySortDirection(props.modelValue, field);
+
+const toggle = (field: SortOption) => {
+  emit("update:modelValue", getNextLibrarySortKey(props.modelValue, field));
 };
 </script>

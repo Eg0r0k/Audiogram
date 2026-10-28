@@ -11,7 +11,7 @@ import { trackRepository } from "@/db/repositories/track.repository";
 import { TrackScope } from "@/db/repositories/track.scope";
 import { createAlbumAndSync } from "@/queries/album.queries";
 import { rebuildCounters } from "@/queries/track.queries";
-import { AlbumId, ArtistId, TrackId } from "@/types/ids";
+import { AlbumId, ArtistId, PlaylistId, TrackId } from "@/types/ids";
 
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock("vue-router", () => ({
@@ -70,6 +70,9 @@ describe("useLibrary on live reads", () => {
 
   const albumTitles = (api: ReturnType<typeof useLibrary>) =>
     api.allItems.value.filter(item => item.type === "album").map(item => item.title);
+
+  const rootTitles = (api: ReturnType<typeof useLibrary>) =>
+    api.itemsByFilter.value.all.filter(item => !item.isSystem).map(item => item.title);
 
   beforeEach(async () => {
     await db.open();
@@ -178,5 +181,21 @@ describe("useLibrary on live reads", () => {
     expect(types(all).slice(0, 2)).toEqual(["liked", "allMedia"]);
     expect(types(artist)).toEqual(["artist"]);
     expect(types(playlist)).toEqual([]);
+  });
+
+  it("setSortKey reorders the sidebar rows and null restores newest first", async () => {
+    await db.albums.add({ id: AlbumId("al1"), title: "Zebra", artistId: ARTIST, pinned: 1, addedAt: 3, updatedAt: 3 });
+    await db.playlists.add({ id: PlaylistId("pl1"), name: "Mango", trackIds: [], addedAt: 2, updatedAt: 2 });
+    const api = mountLibrary();
+    await until(() => !api.isLoading.value && rootTitles(api).length === 3);
+
+    expect(api.itemsByFilter.value.all.slice(0, 2).map(item => item.type)).toEqual(["liked", "allMedia"]);
+    expect(rootTitles(api)).toEqual(["Zebra", "Mango", "Artist"]);
+
+    api.setSortKey("alphabetical_asc");
+    expect(rootTitles(api)).toEqual(["Artist", "Mango", "Zebra"]);
+
+    api.setSortKey(null);
+    expect(rootTitles(api)).toEqual(["Zebra", "Mango", "Artist"]);
   });
 });

@@ -5,6 +5,8 @@ export type LibraryFilter = (typeof LIBRARY_FILTERS)[number];
 
 export const SORT_OPTIONS = ["recent", "updated", "alphabetical", "author"] as const;
 export type SortOption = (typeof SORT_OPTIONS)[number];
+export type LibrarySortDirection = "asc" | "desc";
+export type LibrarySortKey = `${SortOption}_${LibrarySortDirection}`;
 
 /** "radio": a source's endless station (Yandex "My Wave") — activating it starts playback, there is no page. */
 export type LibraryItemType = "artist" | "album" | "playlist" | "liked" | "allMedia" | "folder" | "radio";

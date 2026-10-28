@@ -73,8 +73,8 @@
             >
               <LibrarySortMenu
                 class="pointer-events-auto"
-                :model-value="sortBy"
-                @update:model-value="setSortBy"
+                :model-value="sortKey"
+                @update:model-value="setSortKey"
               />
             </div>
           </div>
@@ -208,8 +208,8 @@ const {
   deleteFolder,
   setFolderItems,
   getFolderItems,
-  sortBy,
-  setSortBy,
+  sortKey,
+  setSortKey,
 } = useLibrary();
 
 const {
