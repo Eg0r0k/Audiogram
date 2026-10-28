@@ -135,6 +135,7 @@ describe("useTrackSelectionMode", () => {
     mode.enter(TrackId("t1"));
     const layer = document.createElement("div");
     layer.setAttribute("data-dismissable-layer", "");
+    layer.setAttribute("data-state", "open");
     document.body.appendChild(layer);
 
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -143,6 +144,18 @@ describe("useTrackSelectionMode", () => {
     layer.remove();
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     expect(mode.isSelectMode.value).toBe(false);
+  });
+
+  it("Escape exits the mode despite an idle Editable layer", () => {
+    const { mode } = setup();
+    mode.enter(TrackId("t1"));
+    const layer = document.createElement("div");
+    layer.setAttribute("data-dismissable-layer", "");
+    document.body.appendChild(layer);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(mode.isSelectMode.value).toBe(false);
+    layer.remove();
   });
 });
 

@@ -299,18 +299,36 @@ export const useOverlayBackButton = (): void => {
   });
 };
 
-// Desktop: Esc closes one step of the most recently opened surface. Decided a
-// microtask later so any handler that claims the press via preventDefault
-// wins; reka-ui layers dismiss on Esc without preventDefault, so while a
-// [data-dismissable-layer] is mounted the press is theirs.
+const TEXT_FIELD = "input, textarea";
+
+/**
+ * A reka [data-dismissable-layer] owns a key press while it is open or while
+ * the press lands in a text field inside it. An idle Editable root carries the
+ * attribute too, and its preview can hold the focus without editing. The
+ * press target is judged, not the focus: an Editable cancels on the input's
+ * own keydown and drops the focus before later listeners run.
+ */
+export const isDismissableLayerActive = (target: EventTarget | null = null): boolean => {
+  const fields = [target, document.activeElement].filter(
+    (el): el is HTMLElement => el instanceof HTMLElement && (el.matches(TEXT_FIELD) || el.isContentEditable),
+  );
+  for (const layer of document.querySelectorAll("[data-dismissable-layer]")) {
+    if (layer.getAttribute("data-state") === "open") return true;
+    if (fields.some(field => layer.contains(field))) return true;
+  }
+  return false;
+};
+
+// Desktop: Esc closes one step of the most recently opened surface a microtask
+// later, unless a handler called preventDefault or a reka layer owns the press.
 export const useOverlayEscape = (): void => {
   watch(totalDepth, () => syncOpenOrder());
 
   useEventListener(window, "keydown", (event: KeyboardEvent) => {
     if (event.key !== "Escape") return;
+    const claimed = isDismissableLayerActive(event.target);
     queueMicrotask(() => {
-      if (event.defaultPrevented) return;
-      if (document.querySelector("[data-dismissable-layer]")) return;
+      if (event.defaultPrevented || claimed) return;
       topOpenHandler()?.back();
     });
   });

@@ -1,6 +1,7 @@
 import { computed, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import { onKeyStroke } from "@vueuse/core";
+import { isDismissableLayerActive } from "@/composables/useOverlayBackButton";
 import type { Track } from "@/types/track";
 import type { TrackId } from "@/types/ids";
 import { useTrackSelection } from "./useTrackSelection";
@@ -81,8 +82,8 @@ export const useTrackSelectionMode = (
   onKeyStroke("Escape", (event) => {
     if (!isSelectMode.value) return;
     // reka overlays (dropdown menus, dialogs) share this window Escape listener and
-    // don't preventDefault, so let an open overlay close first before exiting the mode.
-    if (document.querySelector("[data-dismissable-layer]")) return;
+    // don't preventDefault, so let an active overlay close first before exiting the mode.
+    if (isDismissableLayerActive(event.target)) return;
     event.preventDefault();
     exit();
   });

@@ -45,6 +45,7 @@
 import { computed } from "vue";
 import { useEventListener } from "@vueuse/core";
 import FloatingActionButton from "@/components/common/FloatingActionButton.vue";
+import { isDismissableLayerActive } from "@/composables/useOverlayBackButton";
 import { Button } from "@/components/ui/button";
 import { Scrollable } from "@/components/ui/scrollable";
 import LyricsLines from "@/modules/player/components/lyrics/LyricsLines.vue";
@@ -110,7 +111,7 @@ const isTyping = () => {
 };
 
 const isOverlayOpen = (target: EventTarget | null) =>
-  document.querySelector("[data-dismissable-layer]") !== null
+  isDismissableLayerActive(target)
   || (target instanceof Element && target.closest(OVERLAY_ROLES) !== null);
 
 // Capture on window runs before the global Space hotkey, which listens on window in the bubble phase.

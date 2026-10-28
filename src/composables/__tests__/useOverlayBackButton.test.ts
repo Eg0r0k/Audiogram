@@ -708,12 +708,83 @@ describe("useOverlayEscape", () => {
 
     const layer = document.createElement("div");
     layer.setAttribute("data-dismissable-layer", "");
+    layer.setAttribute("data-state", "open");
     document.body.appendChild(layer);
 
     await pressEscape();
     expect(queueBack).not.toHaveBeenCalled();
 
     layer.remove();
+    await pressEscape();
+    expect(queueBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores an idle Editable root that only carries the layer attribute", async () => {
+    mountEscHost();
+    queueOpen.value = true;
+    await nextTick();
+
+    const layer = document.createElement("div");
+    layer.setAttribute("data-dismissable-layer", "");
+    document.body.appendChild(layer);
+
+    await pressEscape();
+    expect(queueBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the press to a layer that holds the focus", async () => {
+    mountEscHost();
+    queueOpen.value = true;
+    await nextTick();
+
+    const layer = document.createElement("div");
+    layer.setAttribute("data-dismissable-layer", "");
+    const input = document.createElement("input");
+    layer.appendChild(input);
+    document.body.appendChild(layer);
+    input.focus();
+    expect(document.activeElement).toBe(input);
+
+    await pressEscape();
+    expect(queueBack).not.toHaveBeenCalled();
+  });
+
+  it("decides a layer's claim at press time, before an Editable gives up the focus", async () => {
+    mountEscHost();
+    queueOpen.value = true;
+    await nextTick();
+
+    const layer = document.createElement("div");
+    layer.setAttribute("data-dismissable-layer", "");
+    const input = document.createElement("input");
+    layer.appendChild(input);
+    document.body.appendChild(layer);
+    input.focus();
+    // reka cancels the edit on the input's own keydown; Vue's flush then hides the input before any later microtask.
+    input.addEventListener("keydown", () => input.blur());
+
+    const event = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    input.dispatchEvent(event);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(document.activeElement).not.toBe(input);
+    expect(queueBack).not.toHaveBeenCalled();
+  });
+
+  it("ignores an idle Editable whose preview holds the focus", async () => {
+    mountEscHost();
+    queueOpen.value = true;
+    await nextTick();
+
+    const layer = document.createElement("div");
+    layer.setAttribute("data-dismissable-layer", "");
+    const preview = document.createElement("span");
+    preview.tabIndex = 0;
+    layer.appendChild(preview);
+    document.body.appendChild(layer);
+    preview.focus();
+    expect(document.activeElement).toBe(preview);
+
     await pressEscape();
     expect(queueBack).toHaveBeenCalledTimes(1);
   });

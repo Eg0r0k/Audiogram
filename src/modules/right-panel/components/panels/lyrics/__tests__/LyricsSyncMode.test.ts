@@ -238,6 +238,7 @@ describe("LyricsSyncMode", () => {
 
     const layer = document.createElement("div");
     layer.setAttribute("data-dismissable-layer", "");
+    layer.setAttribute("data-state", "open");
     layer.setAttribute("role", "alertdialog");
     const discard = document.createElement("button");
     layer.append(discard);
