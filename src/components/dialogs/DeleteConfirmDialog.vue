@@ -13,7 +13,14 @@
         class="size-16 shrink-0 overflow-hidden bg-muted"
         :class="coverShapeClass"
       >
+        <div
+          v-if="data.type === 'folder'"
+          class="size-full bg-accent text-primary flex items-center justify-center"
+        >
+          <IconFolder class="size-8" />
+        </div>
         <EntityCoverImage
+          v-else
           :owner-type="data.type"
           :owner-id="data.id"
           :alt="data.name"
@@ -26,7 +33,7 @@
           {{ data.name }}
         </p>
         <p class="text-sm text-muted-foreground">
-          {{ $t("common.trackCount", data.trackCount) }}
+          {{ countLabel }}
         </p>
       </div>
     </div>
@@ -77,6 +84,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import type { DeleteConfirmData, DeleteConfirmResult } from "@/components/dialogs/deleteConfirm";
 import EntityCoverImage from "@/components/ui/EntityCoverImage.vue";
+import IconFolder from "~icons/tabler/folder-filled";
 
 const props = defineProps<{
   data: DeleteConfirmData;
@@ -90,7 +98,9 @@ watch(() => props.data.defaultDeleteTracks, (value) => {
   deleteTracks.value = value === true;
 }, { immediate: true });
 
-const canDeleteTracks = computed(() => props.data.trackCount > 0 && !props.data.atSource);
+const canDeleteTracks = computed(() =>
+  props.data.type !== "folder" && props.data.trackCount > 0 && !props.data.atSource,
+);
 
 const dialogTitle = computed(() => {
   const name = props.data.name;
@@ -99,6 +109,8 @@ const dialogTitle = computed(() => {
       return t("dialogs.deleteConfirm.titleAlbum", { name });
     case "artist":
       return t("dialogs.deleteConfirm.titleArtist", { name });
+    case "folder":
+      return t("dialogs.deleteConfirm.titleFolder", { name });
     case "playlist":
     default:
       return t("dialogs.deleteConfirm.titlePlaylist", { name });
@@ -109,10 +121,17 @@ const dialogDescription = computed(() => {
   if (props.data.atSource) {
     return t("dialogs.deleteConfirm.descriptionAtSource", { name: props.data.name, source: props.data.atSource });
   }
+  if (props.data.type === "folder") return t("dialogs.deleteConfirm.descriptionFolder");
   return props.data.type === "artist"
     ? t("dialogs.deleteConfirm.descriptionArtist")
     : t("dialogs.deleteConfirm.description");
 });
+
+const countLabel = computed(() =>
+  props.data.type === "folder"
+    ? t("library.folder.itemCount", { count: props.data.trackCount })
+    : t("common.trackCount", props.data.trackCount),
+);
 
 const coverShapeClass = computed(() =>
   props.data.type === "artist" ? "rounded-full" : "rounded-lg",

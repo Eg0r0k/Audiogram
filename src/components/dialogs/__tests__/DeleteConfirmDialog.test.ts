@@ -4,7 +4,7 @@ import { nextTick } from "vue";
 import { screen, fireEvent, waitFor } from "@testing-library/vue";
 import { VueQueryPlugin } from "@tanstack/vue-query";
 import { artistFallbackUrl, mascotCoverUrl } from "@/modules/covers/lib/placeholder";
-import type { ArtistId, PlaylistId } from "@/types/ids";
+import type { ArtistId, PlaylistId, SidebarFolderId } from "@/types/ids";
 import DeleteConfirmDialog from "../DeleteConfirmDialog.vue";
 import { closeDialogs, openForResult, renderDialogHost } from "@/test/dialogs";
 import type { DeleteConfirmData, DeleteConfirmResult } from "../deleteConfirm";
@@ -115,6 +115,24 @@ describe("DeleteConfirmDialog (summoned)", () => {
 
     expect(await screen.findByText("Delete artist “Tester”?")).toBeInTheDocument();
     expect(screen.getByText("Their albums will be deleted too. This cannot be undone.")).toBeInTheDocument();
+  });
+
+  it("names the folder, counts its entries and hides the track opt-in", async () => {
+    renderHost();
+    openForResult<DeleteConfirmResult>(DeleteConfirmDialog, {
+      data: { type: "folder", id: "f-1" as SidebarFolderId, name: "Rock", trackCount: 4 },
+    });
+    await nextTick();
+    const name = await screen.findByText("Rock");
+
+    const title = screen.getByRole("heading");
+    expect(title).toHaveTextContent("Delete folder");
+    expect(title).toHaveTextContent("Rock");
+    expect(screen.getByText("The albums, artists and playlists inside stay in the library. This cannot be undone.")).toBeInTheDocument();
+    expect(screen.getByText("4 items")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(name.parentElement?.previousElementSibling?.querySelector("svg")).not.toBeNull();
+    expect(screen.getByRole("dialog").querySelector("img")).toBeNull();
   });
 
   it("resolves undefined when cancelled", async () => {

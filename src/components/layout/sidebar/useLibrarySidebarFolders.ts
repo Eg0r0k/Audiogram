@@ -98,10 +98,18 @@ export function useLibrarySidebarFolders({
     rightPanel.openFolderAdd({ folderId });
   };
 
-  async function deleteSidebarFolder(folderId: string) {
+  const deleteSidebarFolder = async (folderId: string) => {
+    const folder = folders.value.find((folder: SidebarFolderEntity) => folder.id === folderId);
+    if (!folder) return;
+
+    const confirmed = await summonDialog("deleteConfirm", {
+      data: { type: "folder", id: folder.id, name: folder.name, trackCount: folder.items.length },
+    }, { key: `delete:${folderId}` });
+    if (!confirmed) return;
+
     await deleteFolder(folderId);
     if (activeFolderId.value === folderId) closeFolder();
-  }
+  };
 
   async function removeItemFromActiveFolder(item: LibraryItem) {
     if (!activeFolder.value || !canMoveToFolder(item)) return;

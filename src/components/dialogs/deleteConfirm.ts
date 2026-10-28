@@ -1,11 +1,12 @@
-import type { AlbumId, ArtistId, PlaylistId } from "@/types/ids";
+import type { AlbumId, ArtistId, PlaylistId, SidebarFolderId } from "@/types/ids";
 
-export type DeleteConfirmType = "playlist" | "album" | "artist";
+export type DeleteConfirmType = "playlist" | "album" | "artist" | "folder";
 
 export interface DeleteConfirmData {
   type: DeleteConfirmType;
-  id: PlaylistId | AlbumId | ArtistId;
+  id: PlaylistId | AlbumId | ArtistId | SidebarFolderId;
   name: string;
+  /** For a folder, the number of entries inside. */
   trackCount: number;
   coverPath?: string;
   /**

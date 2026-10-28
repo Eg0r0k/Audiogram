@@ -7,6 +7,9 @@ import type { SidebarFolderEntity } from "@/db/entities";
 import { useRightPanelStore } from "@/modules/right-panel/store/right-panel.store";
 import { activeSidebarFolderId, useLibrarySidebarFolders } from "../useLibrarySidebarFolders";
 
+const dialog = vi.hoisted(() => ({ summonDialog: vi.fn() }));
+vi.mock("@/components/dialogs/summonDialog", () => dialog);
+
 const folders: SidebarFolderEntity[] = [
   { id: "f1", name: "Rock", items: [{ type: "album", id: "al1" }], addedAt: 1, updatedAt: 1 } as unknown as SidebarFolderEntity,
   { id: "f2", name: "Jazz", items: [], addedAt: 1, updatedAt: 1 } as unknown as SidebarFolderEntity,
@@ -83,12 +86,36 @@ describe("useLibrarySidebarFolders picker", () => {
   });
 
   it("deleting the active folder closes the panel", async () => {
+    dialog.summonDialog.mockResolvedValue({ deleteTracks: false });
     const { api, rightPanel } = setup();
     api.openFolderPicker("f1");
     await api.deleteSidebarFolder("f1");
     await nextTick();
     expect(api.activeFolder.value).toBeNull();
     expect(rightPanel.isOpen).toBe(false);
+  });
+
+  it("asks before deleting a folder and keeps it when the dialog is cancelled", async () => {
+    dialog.summonDialog.mockResolvedValue(undefined);
+    const { api, deleteFolder } = setup();
+    api.openFolder("f1");
+    await api.deleteSidebarFolder("f1");
+    expect(deleteFolder).not.toHaveBeenCalled();
+    expect(dialog.summonDialog).toHaveBeenCalledWith(
+      "deleteConfirm",
+      { data: { type: "folder", id: "f1", name: "Rock", trackCount: 1 } },
+      { key: "delete:f1" },
+    );
+    expect(api.activeFolder.value?.id).toBe("f1");
+  });
+
+  it("deletes the folder once the dialog confirms", async () => {
+    dialog.summonDialog.mockResolvedValue({ deleteTracks: false });
+    const { api, deleteFolder } = setup();
+    api.openFolder("f1");
+    await api.deleteSidebarFolder("f1");
+    expect(deleteFolder).toHaveBeenCalledWith("f1");
+    expect(api.activeFolder.value).toBeNull();
   });
 
   it("unmounting the sidebar closes a folder-scoped panel", () => {
