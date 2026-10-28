@@ -52,10 +52,11 @@
               direction="horizontal"
               hide-thumb
               class="shrink-0 border-b dark:border-background border-border"
+              :class="isCatalog ? '[--tabs-scroll-inset-end:0px]' : '[--tabs-scroll-inset-end:84px]'"
             >
               <TabsList
                 variant="line"
-                class="inline-flex items-center gap-0 ps-2 pe-10"
+                class="inline-flex items-center gap-0 ps-2 pe-[max(--spacing(2),var(--tabs-scroll-inset-end))]"
               >
                 <TabsTrigger
                   v-for="filter in visibleFilters"

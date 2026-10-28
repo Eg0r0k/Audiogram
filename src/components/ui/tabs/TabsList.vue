@@ -44,11 +44,14 @@ const scrollActiveTabIntoView = (tab: HTMLElement) => {
   if (!scroller) return;
   const left = tab.getBoundingClientRect().left - scroller.getBoundingClientRect().left + scroller.scrollLeft;
   const right = left + tab.offsetWidth;
+  // Width the host covers at the end of the strip, e.g. an overlay button.
+  const insetEnd = Number.parseFloat(getComputedStyle(scroller).getPropertyValue("--tabs-scroll-inset-end")) || 0;
+  const visibleWidth = scroller.clientWidth - insetEnd;
   if (left - SCROLL_MARGIN < scroller.scrollLeft) {
     scroller.scrollTo({ left: Math.max(0, left - SCROLL_MARGIN), behavior: "smooth" });
   }
-  else if (right + SCROLL_MARGIN > scroller.scrollLeft + scroller.clientWidth) {
-    scroller.scrollTo({ left: right + SCROLL_MARGIN - scroller.clientWidth, behavior: "smooth" });
+  else if (right + SCROLL_MARGIN > scroller.scrollLeft + visibleWidth) {
+    scroller.scrollTo({ left: right + SCROLL_MARGIN - visibleWidth, behavior: "smooth" });
   }
 };
 
