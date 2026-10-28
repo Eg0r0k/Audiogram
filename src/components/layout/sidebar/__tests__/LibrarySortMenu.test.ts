@@ -36,25 +36,26 @@ const renderMenu = (modelValue: SortOption = "recent") =>
 
 const openMenu = async () => {
   await userEvent.click(screen.getByRole("button", { name: t("library.sortLabel") }));
-  return screen.findAllByRole("menuitemradio");
+  return screen.findAllByRole("menuitem");
 };
 
 describe("LibrarySortMenu", () => {
-  it("offers the four sort options with the current one checked", async () => {
+  it("offers the four sort options and marks the current one with the chevron", async () => {
     renderMenu("alphabetical");
 
     const items = await openMenu();
 
     expect(items.map(item => item.textContent?.trim())).toEqual(SORT_OPTIONS.map(label));
-    const checked = items.filter(item => item.getAttribute("aria-checked") === "true");
-    expect(checked.map(item => item.textContent?.trim())).toEqual([label("alphabetical")]);
+    const active = items.filter(item => item.hasAttribute("data-active"));
+    expect(active.map(item => item.textContent?.trim())).toEqual([label("alphabetical")]);
+    expect(active[0].querySelector("svg")).not.toBeNull();
   });
 
   it("emits update:modelValue with the picked option", async () => {
     const { emitted } = renderMenu("recent");
 
     await openMenu();
-    await userEvent.click(screen.getByRole("menuitemradio", { name: label("author") }));
+    await userEvent.click(screen.getByRole("menuitem", { name: label("author") }));
 
     expect(emitted()["update:modelValue"]).toEqual([["author"]]);
   });
@@ -63,5 +64,13 @@ describe("LibrarySortMenu", () => {
     renderMenu();
 
     expect(screen.getByRole("button")).toHaveAttribute("aria-label", t("library.sortLabel"));
+  });
+
+  it("draws the icon in the muted tone, not primary", () => {
+    renderMenu();
+
+    const button = screen.getByRole("button", { name: t("library.sortLabel") });
+    expect(button).toHaveAttribute("data-color", "muted");
+    expect(button).toHaveAttribute("data-size", "icon-lg");
   });
 });

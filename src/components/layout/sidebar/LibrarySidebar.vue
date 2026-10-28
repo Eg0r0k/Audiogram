@@ -69,7 +69,7 @@
             </Scrollable>
             <div
               v-if="!isCatalog"
-              class="pointer-events-none absolute inset-y-0 bottom-px right-0 flex items-center pl-8 pr-1 bg-linear-to-l from-card from-[calc(100%-2rem)] to-transparent"
+              class="pointer-events-none absolute inset-y-0 bottom-px right-0 flex items-center pl-8 pr-3 bg-linear-to-l from-card from-[calc(100%-2rem)] to-transparent"
             >
               <LibrarySortMenu
                 class="pointer-events-auto"

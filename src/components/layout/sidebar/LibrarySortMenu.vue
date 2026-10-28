@@ -1,12 +1,13 @@
 <template>
   <Button
     variant="ghost"
-    size="icon-sm"
+    color="muted"
+    size="icon-lg"
     class="rounded-full"
     :aria-label="t('library.sortLabel')"
     :title="t('library.sortLabel')"
   >
-    <IconSort class="size-5" />
+    <IconSort class="size-6" />
     <Menu
       anchor="bottom end"
       self="top end"
@@ -14,18 +15,18 @@
     >
       <MenuLabel>{{ t('library.sortLabel') }}</MenuLabel>
       <MenuSeparator />
-      <MenuRadioGroup
-        :model-value="modelValue"
-        @update:model-value="pick"
+      <MenuItem
+        v-for="option in SORT_OPTIONS"
+        :key="option"
+        :data-active="option === modelValue || undefined"
+        @select="pick(option)"
       >
-        <MenuRadioItem
-          v-for="option in SORT_OPTIONS"
-          :key="option"
-          :value="option"
-        >
-          {{ t(LABEL_KEYS[option]) }}
-        </MenuRadioItem>
-      </MenuRadioGroup>
+        <span class="flex-1 truncate">{{ t(LABEL_KEYS[option]) }}</span>
+        <IconChevronDown
+          v-if="option === modelValue"
+          class="size-5 text-green-400!"
+        />
+      </MenuItem>
     </Menu>
   </Button>
 </template>
@@ -33,9 +34,10 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
-import { Menu, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuSeparator } from "@/components/ui/menu";
+import { Menu, MenuItem, MenuLabel, MenuSeparator } from "@/components/ui/menu";
 import { SORT_OPTIONS, type SortOption } from "@/modules/library/types";
 import IconSort from "~icons/tabler/arrows-sort";
+import IconChevronDown from "~icons/tabler/chevron-down";
 
 const LABEL_KEYS: Record<SortOption, string> = {
   recent: "library.sortRecent",
@@ -54,8 +56,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const pick = (value: unknown) => {
-  const option = SORT_OPTIONS.find(candidate => candidate === value);
-  if (option) emit("update:modelValue", option);
+const pick = (option: SortOption) => {
+  emit("update:modelValue", option);
 };
 </script>
