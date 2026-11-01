@@ -25,6 +25,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   isTauri: () => false,
 }));
 
+import { useSettingsStore } from "@/modules/settings/store";
 import { usePlayerStore } from "../../store/player.store";
 import { useDiscordPresence } from "../useDiscordPresence";
 
@@ -136,5 +137,30 @@ describe("useDiscordPresence", () => {
     player.playbackState = { kind: "playing" };
     await nextTick();
     expect(activityCalls()).toHaveLength(1);
+  });
+
+  it("clears the activity when the setting is off and resumes when it is on", async () => {
+    mount();
+    const settings = useSettingsStore();
+    const player = usePlayerStore();
+    player.currentTrack = createLibraryTrack("t1");
+    player.duration = 200;
+    player.playbackState = { kind: "playing" };
+    await nextTick();
+    expect(activityCalls()).toHaveLength(1);
+
+    invokeMock.mockClear();
+    settings.updateGeneral({ discordActivity: false });
+    await nextTick();
+    expect(invokeMock).toHaveBeenLastCalledWith("discord_clear_activity");
+
+    player.currentTrack = createLibraryTrack("t2");
+    await nextTick();
+    expect(activityCalls()).toHaveLength(0);
+
+    settings.updateGeneral({ discordActivity: true });
+    await nextTick();
+    expect(activityCalls()).toHaveLength(1);
+    expect(activityCalls()[0][1]).toMatchObject({ payload: { title: "Track t2" } });
   });
 });

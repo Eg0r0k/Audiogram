@@ -13,6 +13,7 @@ const TauriGeneralSchema = object({
   closeToTray: optional(boolean(), true),
   launchAtStartup: optional(boolean(), false),
   launchMinimized: optional(boolean(), false),
+  discordActivity: optional(boolean(), true),
 });
 
 export const GeneralSettingsSchema = intersect([BaseGeneralSchema, TauriGeneralSchema]);
@@ -26,4 +27,5 @@ export const TAURI_ONLY_KEYS: (keyof TauriGeneralSettings)[] = [
   "closeToTray",
   "launchAtStartup",
   "launchMinimized",
+  "discordActivity",
 ];

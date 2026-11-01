@@ -39,6 +39,7 @@ export const useGeneralSettings = () => {
   const closeToTray = computed(() => store.general.closeToTray);
   const launchAtStartup = computed(() => store.general.launchAtStartup);
   const launchMinimized = computed(() => store.general.launchMinimized);
+  const discordActivity = computed(() => store.general.discordActivity);
 
   const systemLanguage = computed<SupportedLanguage>(() => {
     const browserLang = browserLanguage.value?.split("-")[0];
@@ -95,6 +96,11 @@ export const useGeneralSettings = () => {
     store.updateGeneral({ launchMinimized: value });
   };
 
+  const setDiscordActivity = (value: boolean) => {
+    if (!platformCaps.hasDiscord) return;
+    store.updateGeneral({ discordActivity: value });
+  };
+
   const update = (partial: Partial<GeneralSettings>) => {
     if (!platformCaps.hasNativeWindow) {
       const filtered = { ...partial };
@@ -140,6 +146,7 @@ export const useGeneralSettings = () => {
     closeToTray,
     launchAtStartup,
     launchMinimized,
+    discordActivity,
 
     // Constants
     languages: LANGUAGE_OPTIONS,
@@ -151,6 +158,7 @@ export const useGeneralSettings = () => {
     setCloseToTray,
     setLaunchAtStartup,
     setLaunchMinimized,
+    setDiscordActivity,
     update,
     init,
   };

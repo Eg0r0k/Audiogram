@@ -29,7 +29,9 @@
     "checkUpdates": "Check for updates on launch",
     "launchAtStartup": "Launch at system startup",
     "launchMinimized": "Launch minimized",
-    "closeToTray": "Close to system tray"
+    "closeToTray": "Close to system tray",
+    "discordActivity": "Show activity in Discord",
+    "discordActivityDescription": "Display the current track in your Discord profile"
   },
   "stats": {
     "title": "Statistics",

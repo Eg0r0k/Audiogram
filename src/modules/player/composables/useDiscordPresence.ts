@@ -1,6 +1,7 @@
 import { onUnmounted, watch } from "vue";
 import { platformCaps } from "@/lib/environment/platformCaps";
 import { getLogger } from "@/lib/logger";
+import { useSettingsStore } from "@/modules/settings/store";
 import { usePlayerStore } from "../store/player.store";
 import { clearDiscordActivity, setDiscordActivity } from "../api/discordApi";
 import {
@@ -21,6 +22,7 @@ export const useDiscordPresence = () => {
   }
 
   const player = usePlayerStore();
+  const settings = useSettingsStore();
 
   let lastSignature = "";
   let retryAfter = 0;
@@ -43,6 +45,10 @@ export const useDiscordPresence = () => {
   };
 
   const syncActivity = () => {
+    if (!settings.general.discordActivity) {
+      clearActivity();
+      return;
+    }
     if (Date.now() < retryAfter) return;
 
     const payload = createDiscordActivityPayload({
@@ -70,6 +76,7 @@ export const useDiscordPresence = () => {
   // array identity) and push the activity ~4 times a second.
   const stop = watch(
     [
+      () => settings.general.discordActivity,
       () => player.currentTrack?.id,
       () => player.currentTrack?.title,
       () => player.currentTrack?.artist,

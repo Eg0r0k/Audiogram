@@ -62,6 +62,25 @@
       </SettingsGroup>
     </template>
 
+    <SettingsGroup
+      v-if="platformCaps.hasDiscord"
+      class="mt-2"
+    >
+      <Item @click="setDiscordActivity(!discordActivity)">
+        <ItemContent>
+          <ItemTitle>{{ $t('settings.general.discordActivity') }}</ItemTitle>
+          <ItemDescription>{{ $t('settings.general.discordActivityDescription') }}</ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          <Switch
+            :model-value="discordActivity"
+            @click.stop
+            @update:model-value="setDiscordActivity"
+          />
+        </ItemActions>
+      </Item>
+    </SettingsGroup>
+
     <SettingsGroup class="mt-3">
       <SettingsLink
         :to="routeLocation.settingsLanguage()"
@@ -104,6 +123,7 @@ import {
   Item,
   ItemActions,
   ItemContent,
+  ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
 import IconLanguage from "~icons/tabler/language";
@@ -124,10 +144,12 @@ import { platformCaps } from "@/lib/environment/platformCaps";
 const {
   checkUpdatesOnLaunch,
   closeToTray,
+  discordActivity,
   launchAtStartup,
   launchMinimized,
   setCheckUpdatesOnLaunch,
   setCloseToTray,
+  setDiscordActivity,
   setLaunchAtStartup,
   setLaunchMinimized,
   language,

@@ -29,7 +29,9 @@
     "checkUpdates": "Проверять обновления при запуске",
     "launchAtStartup": "Запускать при старте системы",
     "launchMinimized": "Запускать свернутым",
-    "closeToTray": "Сворачивать в трей"
+    "closeToTray": "Сворачивать в трей",
+    "discordActivity": "Показывать активность в Discord",
+    "discordActivityDescription": "Отображать текущий трек в профиле Discord"
   },
   "stats": {
     "title": "Статистика",
