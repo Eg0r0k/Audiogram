@@ -41,7 +41,7 @@ const WAVE_BLOBS = [4, 3, 2, 1] as const;
 
       <div
         v-else-if="item.type === 'folder'"
-        class="size-full rounded-md bg-[#3d3d3d] text-primary flex items-center justify-center"
+        class="size-full rounded-md bg-accent text-primary flex items-center justify-center"
       >
         <IconFolder class="size-8" />
       </div>

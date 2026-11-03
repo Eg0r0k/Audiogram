@@ -311,7 +311,7 @@ const styles = {
     "focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none focus-visible:border-ring",
   ])(),
   index: "text-center font-semibold text-muted-foreground font-mono w-8 text-base group-data-[compact=true]:w-6 group-data-[compact=true]:text-xs hidden sm:block",
-  image: "size-full rounded object-cover",
+  image: "size-full rounded object-cover bg-muted",
   imageOverlay: [
     "absolute inset-0 rounded flex items-center justify-center",
     "bg-black/50 transition-opacity duration-200 ease-out",

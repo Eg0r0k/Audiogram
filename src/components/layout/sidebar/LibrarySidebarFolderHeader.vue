@@ -1,7 +1,7 @@
 <template>
   <div
     class="shrink-0 flex items-center pb-3 border-b dark:border-background border-border"
-    :class="compact ? 'justify-center px-2' : 'gap-2 px-4'"
+    :class="compact ? 'justify-center px-2' : 'gap-2 px-3'"
   >
     <Button
       variant="ghost"

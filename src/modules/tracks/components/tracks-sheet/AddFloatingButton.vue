@@ -3,7 +3,7 @@
     <Button class="relative size-12 rounded-full shadow-lg">
       <span
         v-if="count > 0"
-        class="absolute -right-1 -top-1 flex items-center justify-center rounded-full bg-secondary px-[7px] min-w-5 h-5 py-0.5 text-[14px] font-medium leading-none text-secondary-foreground"
+        class="absolute -right-1 -top-1 flex items-center justify-center rounded-full bg-foreground px-1.75 min-w-5 h-5 py-0.5 text-[14px] font-medium leading-none text-background"
       >
         {{ formatCountWithCap(count) }}
       </span>
